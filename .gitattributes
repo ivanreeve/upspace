@@ -1,0 +1,45 @@
+# Set default behavior to automatically normalize line endings.
+* text=auto
+
+# Handle line endings for common file types
+*.js     text eol=lf
+*.ts     text eol=lf
+*.jsx    text eol=lf
+*.tsx    text eol=lf
+*.css    text eol=lf
+*.scss   text eol=lf
+*.md     text eol=lf
+*.json   text eol=lf
+*.yml    text eol=lf
+
+# Treat images and fonts as binary
+*.png    binary
+*.ico    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.pdf    binary
+*.svg    binary
+*.webp   binary
+*.woff   binary
+*.woff2  binary
+*.ttf    binary
+*.eot    binary
+
+
+# Exclude sensitive config from diffing (optional and symbolic)
+*.env linguist-vendored
+
+# Linguist overrides (optional)
+# If you want GitHub to recognize your repo's primary language correctly, you can add:
+# docs/* linguist-documentation
+# *.js linguist-language=JavaScript
+
+# Lock down known system or config files
+.DS_Store linguist-generated
+Thumbs.db linguist-generated
+
+# Prevent diff on lock files
+package-lock.json -diff
+yarn.lock -diff
+pnpm-lock.yaml -diff
