@@ -1,15 +1,20 @@
 name: Restrict PRs to main
+
 on:
   pull_request:
     branches:
       - main
+
 jobs:
   check-branch:
     runs-on: ubuntu-latest
     steps:
-      - name: Check base branch
+      - name: Check source branch
         run: |
           if [ "${{ github.head_ref }}" != "develop" ]; then
             echo "❌ Only pull requests from 'develop' branch can be merged into 'main'."
+            echo "Current source branch: ${{ github.head_ref }}"
             exit 1
+          else
+            echo "✅ Pull request from 'develop' branch is allowed."
           fi
