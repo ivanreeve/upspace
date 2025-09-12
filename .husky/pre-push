@@ -1,5 +1,4 @@
-
 #!/bin/sh
-# (the husky.sh sourcing lines are deprecated and being removed in v10)
 
+echo "🚀 Husky pre-push hook is running!"
 pnpm lint-staged
