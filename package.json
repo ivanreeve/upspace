@@ -40,8 +40,5 @@
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.8",
     "typescript": "^5"
-  },
-  "lint-staged": {
-    "*.{js,ts,tsx}": "eslint --fix"
   }
 }
