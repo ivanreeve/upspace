@@ -7,7 +7,7 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "prepare": "husky install"
+    "prepare": "husky"
   },
   "dependencies": {
     "@google/genai": "^1.19.0",
@@ -36,6 +36,7 @@
     "eslint-plugin-import-newlines": "^1.4.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "husky": "^9.1.7",
+    "lint-staged": "^16.1.6",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.8",
     "typescript": "^5"
