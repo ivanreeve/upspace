@@ -35,7 +35,7 @@ const eslintConfig = [
         },
         ObjectPattern: {
           multiline: true,
-          minProperties: 2,
+minProperties: 2,
         },
       }],
       'object-property-newline': ['error', { allowAllPropertiesOnSameLine: false, }],
