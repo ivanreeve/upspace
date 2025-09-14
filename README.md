@@ -1,7 +1,5 @@
 ![banner](public/banner.png)
 
-# UpSpace Project Repository
-
  This is the official repository for our capstone project.
 
 ![stars](https://img.shields.io/github/stars/ivanreeve/capstone)
