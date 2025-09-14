@@ -1,3 +1,5 @@
+![banner](public/banner.png)
+
 # UpSpace Project Repository
 
  This is the official repository for our capstone project.
