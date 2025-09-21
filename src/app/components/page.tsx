@@ -1,5 +1,5 @@
-import { Checkbox } from '@radix-ui/react-checkbox';
-
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Home() {
   return (
-    <>
+    <div className="p-10 space-y-6">
       <h2>Button</h2>
       <Button>Button</Button>
 
@@ -20,7 +20,10 @@ export default function Home() {
       />
 
       <h2>Switch</h2>
-      <Switch />
+      <div className='flex flex-row space-x-2 items-center'>
+        <Switch />
+        <Label>This is a switch.</Label>
+      </div>
 
       <h2>Tabs</h2>
       <Tabs defaultValue="tab1">
@@ -31,9 +34,18 @@ export default function Home() {
       </Tabs>
 
       <h2>Checkbox</h2>
-      <Checkbox
-        defaultChecked
-      />
-    </>
+      <div className="flex flex-row space-x-2 items-center">
+        <Checkbox
+          value="c1"
+          defaultChecked
+        />
+        <Label htmlFor="c1">This is a checkbox.</Label>
+      </div>
+
+      <h2>Text Selection</h2>
+      <p>
+        Try selecting this text to see how it looks with the current theme.
+      </p>
+    </div>
   );
 }
