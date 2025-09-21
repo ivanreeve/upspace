@@ -1,8 +1,7 @@
-
 export default function Home() {
   return (
     <>
-      <span>Hello World</span>
+      This is the landing page
     </>
   );
 }
