@@ -192,7 +192,7 @@
 
 :root {
   --radius: 8px;
-  --background: oklch(1 0 0);
+  --background: oklch(0.9818 0.0054 95.1);
   --foreground: oklch(0.2155 0.0254 284.06);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -223,7 +223,7 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  --font-sf: "SF Pro Text", system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  --font-sf: "SF Pro Text";
 }
 
 .dark {
@@ -267,8 +267,17 @@
 
 @layer base {
   html {
-    font-family: var(--font-sf);
+    font-family: var(--font-serif);
     font-weight: 400;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: 700;
   }
 
   * {
