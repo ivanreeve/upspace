@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Noto_Serif, EB_Garamond } from 'next/font/google';
+import { ThemeProvider } from 'next-themes';
 
 const serif = Noto_Serif({
   weight: ['300', '400', '700'],
@@ -24,9 +25,16 @@ export default function RootLayout({ children, }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${serif.variable} ${garamond.variable}`} >
+    <html lang="en" className={`${serif.variable} ${garamond.variable}`} suppressHydrationWarning>
       <body>
-        {children}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
       </body>
     </html >
   );
