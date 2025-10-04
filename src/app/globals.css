@@ -181,6 +181,7 @@
   html {
     font-family: var(--ufont-sf);
     font-weight: 400;
+    scroll-behavior: smooth;
   }
 
   p {
