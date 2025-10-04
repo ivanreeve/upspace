@@ -1,10 +1,11 @@
 
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button"
-import { signIn } from "next-auth/react";
-import { FcGoogle } from "react-icons/fc";
+import { useState } from 'react';
+import { signIn } from 'next-auth/react';
+import { FcGoogle } from 'react-icons/fc';
+
+import { Button } from '@/components/ui/button';
 
 type Props = {
   callbackUrl?: string;
@@ -13,8 +14,8 @@ type Props = {
 };
 
 export default function GoogleSignInButton({
-  callbackUrl = "/",
-  label = "Continue with Google",
+  callbackUrl = '/',
+  label = 'Continue with Google',
   className,
 }: Props) {
   const [loading, setLoading] = useState(false);
@@ -23,28 +24,28 @@ export default function GoogleSignInButton({
     <Button
       type="button"
       aria-label="Sign in with Google"
-      onClick={async () => {
+      onClick={ async () => {
         setLoading(true);
         try {
-          await signIn("google", { callbackUrl });
+          await signIn('google', { callbackUrl, });
         } finally {
           setLoading(false);
         }
-      }}
-      className={[
+      } }
+      className={ [
         // Surface
-        "w-full h-12 inline-flex items-center justify-center gap-2",
-        "bg-primary text-primary-foreground",
-        "rounded-md border border-border px-4 py-2",
+        'w-full h-12 inline-flex items-center justify-center gap-2',
+        'bg-primary text-primary-foreground',
+        'rounded-md border border-border px-4 py-2',
         // Motion/feedback
-        "transition-[transform,opacity] active:scale-[0.98]",
-        "disabled:opacity-70",
-        className ?? "",
-      ].join(" ")}
-      disabled={loading}
+        'transition-[transform,opacity] active:scale-[0.98]',
+        'disabled:opacity-70',
+        className ?? ''
+      ].join(' ') }
+      disabled={ loading }
     >
-      <FcGoogle size={18} />
-      <span>{loading ? "Redirecting…" : label}</span>
+      <FcGoogle size={ 18 } />
+      <span>{ loading ? 'Redirecting…' : label }</span>
     </Button>
   );
 }

@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import * as React from 'react';
 
+import { ThemeSwitcher } from './theme-switcher';
+
 import {
   NavigationMenu,
   NavigationMenuList,
@@ -10,7 +12,6 @@ import {
   NavigationMenuLink,
   navigationMenuTriggerStyle
 } from '@/components/ui/navigation-menu';
-import { ThemeSwitcher } from './theme-switcher';
 
 export type NavBarProps = React.HTMLAttributes<HTMLElement>;
 
@@ -29,7 +30,7 @@ export default function NavBar({
       {...props}
     >
       <div className="mx-auto px-4 max-w-[1440px] flex items-center self-center justify-between">
-        <a href='/'><h1 className='font-serif'>UpSpace</h1></a>
+        <Link href='/'><h1 className='font-serif'>UpSpace</h1></Link>
         <div className="flex h-14 items-center">
           <NavigationMenu className="ml-auto">
             <NavigationMenuList className="gap-1">

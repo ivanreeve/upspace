@@ -20,7 +20,7 @@ export default function RootLayout({ children, }: Readonly<{
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          { children }
         </ThemeProvider>
       </body>
     </html>

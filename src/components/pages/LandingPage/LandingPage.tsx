@@ -1,4 +1,4 @@
-import { FAQs, Features, Hero } from "./LandingPage.components";
+import { FAQs, Features, Hero } from './LandingPage.components';
 
 export default function LandingPage() {
   return (

@@ -1,10 +1,10 @@
-"use server";
+'use server';
 
-import { z } from "zod";
+import { z } from 'zod';
 
 const schema = z.object({
-  email: z.string().email("Provide a valid email."),
-  password: z.string().min(8, "Minimum 8 characters."),
+  email: z.string().email('Provide a valid email.'),
+  password: z.string().min(8, 'Minimum 8 characters.'),
 });
 
 export type LoginState = {
@@ -15,8 +15,8 @@ export type LoginState = {
 
 export async function loginAction(_prev: LoginState, formData: FormData): Promise<LoginState> {
   const data = {
-    email: String(formData.get("email") ?? ""),
-    password: String(formData.get("password") ?? ""),
+    email: String(formData.get('email') ?? ''),
+    password: String(formData.get('password') ?? ''),
   };
 
   const parsed = schema.safeParse(data);
@@ -24,9 +24,13 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     const fieldErrors = Object.fromEntries(
       Object.entries(parsed.error.flatten().fieldErrors).map(([k, v]) => [k, v ?? []])
     );
-    return { ok: false, errors: fieldErrors, message: "Fix the highlighted fields." };
+    return {
+ ok: false,
+errors: fieldErrors,
+message: 'Fix the highlighted fields.', 
+};
   }
 
   // Business logic gate is intentionally thin. NextAuth will perform the real check.
-  return { ok: true };
+  return { ok: true, };
 }
