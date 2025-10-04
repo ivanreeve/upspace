@@ -3,10 +3,13 @@
 import * as React from 'react';
 import { useTheme } from 'next-themes';
 import { FiSun, FiMoon } from 'react-icons/fi';
+
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-export function ThemeSwitcher({ className }: { className?: string }) {
-  const { theme, setTheme } = useTheme();
+export function ThemeSwitcher({ className, }: { className?: string }) {
+  const {
+ theme, setTheme, 
+} = useTheme();
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -19,9 +22,9 @@ export function ThemeSwitcher({ className }: { className?: string }) {
 
   return (
     <Tabs
-      value={theme}
-      onValueChange={setTheme}
-      className={className}
+      value={ theme }
+      onValueChange={ setTheme }
+      className={ className }
     >
       <TabsList>
         <TabsTrigger value="light">

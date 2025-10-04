@@ -25,7 +25,7 @@ export default function RootLayout({ children, }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${serif.variable} ${garamond.variable}`} suppressHydrationWarning>
+    <html lang="en" className={ `${serif.variable} ${garamond.variable}` } suppressHydrationWarning>
       <body>
         <ThemeProvider
           attribute="class"
@@ -33,7 +33,7 @@ export default function RootLayout({ children, }: Readonly<{
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          { children }
         </ThemeProvider>
       </body>
     </html >
