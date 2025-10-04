@@ -22,9 +22,9 @@ export function ThemeSwitcher({ className, }: { className?: string }) {
 
   return (
     <Tabs
-      value={theme}
-      onValueChange={setTheme}
-      className={className}
+      value={ theme }
+      onValueChange={ setTheme }
+      className={ className }
     >
       <TabsList>
         <TabsTrigger value="light">
