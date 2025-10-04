@@ -111,7 +111,7 @@ export default function EmailPasswordForm({
 
       <span className='text-foreground text-sm'>
         Don’t have an account yet?&nbsp;
-        <Link href="/signup" className="font-medium text-secondary hover:underline">
+        <Link href="/signup" className="font-medium text-primary dark:text-secondary hover:underline">
           Sign Up
         </Link>
       </span>
