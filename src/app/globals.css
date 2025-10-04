@@ -199,3 +199,16 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* hide textarea native scrollbars */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  /* IE & old Edge */
+  scrollbar-width: none;
+  /* Firefox */
+}
+
+/* Chrome/Safari */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
