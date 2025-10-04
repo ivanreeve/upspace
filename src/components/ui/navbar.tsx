@@ -1,33 +1,38 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import * as React from "react";
+import Link from 'next/link';
+import * as React from 'react';
+
 import {
   NavigationMenu,
   NavigationMenuList,
   NavigationMenuItem,
   NavigationMenuLink,
-  navigationMenuTriggerStyle,
-} from "@/components/ui/navigation-menu";
+  navigationMenuTriggerStyle
+} from '@/components/ui/navigation-menu';
+import { ThemeSwitcher } from './theme-switcher';
 
 export type NavBarProps = React.HTMLAttributes<HTMLElement>;
 
-export default function NavBar({ className = "", ...props }: NavBarProps) {
+export default function NavBar({
+  className = '', ...props
+}: NavBarProps) {
   return (
     <nav
       aria-label="Main"
       className={[
-        "sticky top-0 z-50 w-full",
-        "bg-background text-foreground border-b border-border",
-        "backdrop-blur",
-        className,
-      ].join(" ")}
+        'sticky top-0 z-50 w-full',
+        'bg-background/93 text-foreground border-none',
+        'backdrop-blur',
+        className
+      ].join(' ')}
       {...props}
     >
-      <div className="mx-auto w-full max-w-screen-2xl px-4">
+      <div className="mx-auto px-4 max-w-[1440px] flex items-center self-center justify-between">
+        <a href='/'><h1 className='font-serif'>UpSpace</h1></a>
         <div className="flex h-14 items-center">
           <NavigationMenu className="ml-auto">
-            <NavigationMenuList className="justify-end gap-1">
+            <NavigationMenuList className="gap-1">
               <NavigationMenuItem>
                 <NavigationMenuLink asChild>
                   <Link href="/" className={navigationMenuTriggerStyle()}>
@@ -53,6 +58,10 @@ export default function NavBar({ className = "", ...props }: NavBarProps) {
                     FAQs
                   </Link>
                 </NavigationMenuLink>
+              </NavigationMenuItem>
+
+              <NavigationMenuItem>
+                <ThemeSwitcher />
               </NavigationMenuItem>
             </NavigationMenuList>
           </NavigationMenu>

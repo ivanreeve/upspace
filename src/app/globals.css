@@ -1,3 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,100..900;1,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap');
+
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -6,54 +9,6 @@
 /* ---------------------------------------
    SF Pro Text (public/fonts/SF-Pro-Text)
    --------------------------------------- */
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-Thin.woff2") format("woff2");
-  font-weight: 100;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-ThinItalic.woff2") format("woff2");
-  font-weight: 100;
-  font-style: italic;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-Ultralight.woff2") format("woff2");
-  font-weight: 200;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-UltralightItalic.woff2") format("woff2");
-  font-weight: 200;
-  font-style: italic;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-Light.woff2") format("woff2");
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-LightItalic.woff2") format("woff2");
-  font-weight: 300;
-  font-style: italic;
-  font-display: swap;
-}
-
 @font-face {
   font-family: "SF Pro Text";
   src: url("/fonts/SF-Pro-Text/SF-Pro-Text-Regular.woff2") format("woff2");
@@ -102,59 +57,9 @@
   font-display: swap;
 }
 
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-Bold.woff2") format("woff2");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-BoldItalic.woff2") format("woff2");
-  font-weight: 700;
-  font-style: italic;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-Heavy.woff2") format("woff2");
-  font-weight: 800;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-HeavyItalic.woff2") format("woff2");
-  font-weight: 800;
-  font-style: italic;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-Black.woff2") format("woff2");
-  font-weight: 900;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-BlackItalic.woff2") format("woff2");
-  font-weight: 900;
-  font-style: italic;
-  font-display: swap;
-}
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -188,7 +93,9 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --font-sf: var(--font-sf-pro)
+  --font-sf: var(--ufont-sf);
+  --font-serif: var(--ufont-serif);
+  --font-instrument-serif: var(--ufont-instrument-serif);
 }
 
 :root {
@@ -224,7 +131,9 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  --font-sf-pro: "SF Pro Text";
+  --ufont-sf: "SF Pro Text";
+  --ufont-serif: "Noto Serif";
+  --ufont-instrument-serif: "Instrument Serif";
 }
 
 .dark {
@@ -258,7 +167,9 @@
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --font-sf-pro: "SF Pro Text";
+  --ufont-sf: "SF Pro Text";
+  --ufont-serif: "Noto Serif";
+  --ufont-instrument-serif: "Instrument Serif";
 }
 
 ::selection {
@@ -268,27 +179,21 @@
 
 @layer base {
   html {
-    font-family: var(--font-sf-pro);
+    font-family: var(--ufont-sf);
     font-weight: 400;
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    font-weight: 700;
-  }
-
-  p,
-  label {
-    font-family: var(--font-serif);
+  p {
+    font-family: var(--ufont-serif);
   }
 
   * {
     @apply border-border outline-ring/50;
   }
+
+  *,
+  *::before,
+  *::after {}
 
   body {
     @apply bg-background text-foreground;
