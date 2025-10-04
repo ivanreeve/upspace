@@ -1,7 +1,7 @@
-import { About } from "./LandingPage.About";
-import { FAQs } from "./LandingPage.FAQ";
-import { Features } from "./LandingPage.Features";
-import { Hero } from "./LandingPage.Hero";
+import { About } from './LandingPage.About';
+import { FAQs } from './LandingPage.FAQ';
+import { Features } from './LandingPage.Features';
+import { Hero } from './LandingPage.Hero';
 
 export default function LandingPage() {
   return (
