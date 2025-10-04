@@ -5,7 +5,7 @@ import SignInCard from '@/components/auth/SignInCard';
 export function Hero() {
   return (
     <div className="flex h-[90vh] items-center">
-      { /* Left container */ }
+      { /* Left container */}
       <div className="flex-1 flex flex-col items-center justify-center">
         <h1 className="text-[4rem] text-center font-instrument-serif">
           Find the Perfect Space<br />for Work
@@ -15,8 +15,8 @@ export function Hero() {
         <SignInCard />
       </div>
 
-      { /* Right container */ }
-      <div className="relative flex-1 flex items-center justify-center bg-blue-300 rounded-lg h-[720px] overflow-hidden">
+      { /* Right container */}
+      <div className="relative flex-1 flex items-center justify-center bg-background rounded-lg h-[720px] overflow-hidden">
         <Image
           src="/img/hero-featured-dark.png"
           alt="Admiring the vast expanse."
