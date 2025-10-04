@@ -177,6 +177,11 @@
   color: var(--background);
 }
 
+::selection {
+  background-color: var(--secondary);
+  color: var(--background);
+}
+
 @layer base {
   html {
     font-family: var(--ufont-sf);
