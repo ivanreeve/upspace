@@ -1,23 +1,38 @@
-'use client'
+'use client';
 
-import * as React from 'react'
-import { useTheme } from 'next-themes'
-import { Switch } from '@/components/ui/switch'
-import { RiSunLine, RiMoonLine } from 'react-icons/ri'
+import * as React from 'react';
+import { useTheme } from 'next-themes';
+import { FiSun, FiMoon } from 'react-icons/fi';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-export function ModeToggle() {
-  const { theme, setTheme, resolvedTheme } = useTheme()
-  const isDark = (theme === 'dark') || (resolvedTheme === 'dark')
+export function ThemeSwitcher({ className }: { className?: string }) {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
 
-  const handleToggle = (value: boolean) => {
-    setTheme(value ? 'dark' : 'light')
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
   }
 
   return (
-    <div className="flex items-center space-x-2">
-      <RiSunLine className="size-5 text-yellow-500" />
-      <Switch checked={isDark} onCheckedChange={handleToggle} />
-      <RiMoonLine className="size-5 text-blue-500" />
-    </div>
-  )
+    <Tabs
+      value={theme}
+      onValueChange={setTheme}
+      className={className}
+    >
+      <TabsList>
+        <TabsTrigger value="light">
+          <FiSun className="size-5" />
+          <span className="sr-only">Light</span>
+        </TabsTrigger>
+        <TabsTrigger value="dark" className="dark:data-[state=active]:bg-amber-400 dark:data-[state=active]:text-background">
+          <FiMoon className="size-5" />
+          <span className="sr-only">Dark</span>
+        </TabsTrigger>
+      </TabsList>
+    </Tabs >
+  );
 }

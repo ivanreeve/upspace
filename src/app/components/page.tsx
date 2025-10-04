@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ThemeSwitcher } from '@/components/ui/theme-switch';
+import { ThemeSwitcher } from '@/components/ui/theme-switcher';
 
 export default function Home() {
   return (
