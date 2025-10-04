@@ -21,22 +21,22 @@ export default function NavBar({
   return (
     <nav
       aria-label="Main"
-      className={ [
+      className={[
         'sticky top-0 z-50 w-full',
         'bg-background/93 text-foreground border-none',
         'backdrop-blur',
         className
-      ].join(' ') }
-      { ...props }
+      ].join(' ')}
+      {...props}
     >
-      <div className="mx-auto px-4 max-w-[1440px] flex items-center self-center justify-between">
-        <Link href='/'><h1 className='font-serif'>UpSpace</h1></Link>
-        <div className="flex h-14 items-center">
+      <div className="mx-auto px-4 max-w-[1440px] h-18 flex items-center self-center justify-between">
+        <Link href='/'><h1 className='font-serif text-xl font-bold'>UpSpace</h1></Link>
+        <div className="flex items-center">
           <NavigationMenu className="ml-auto">
             <NavigationMenuList className="gap-1">
               <NavigationMenuItem>
                 <NavigationMenuLink asChild>
-                  <Link href="/" className={ navigationMenuTriggerStyle() }>
+                  <Link href="/" className={navigationMenuTriggerStyle()}>
                     Home
                   </Link>
                 </NavigationMenuLink>
@@ -46,7 +46,7 @@ export default function NavBar({
                 <NavigationMenuLink asChild>
                   <Link
                     href="/#features"
-                    className={ navigationMenuTriggerStyle() }
+                    className={navigationMenuTriggerStyle()}
                   >
                     Features
                   </Link>
@@ -55,7 +55,18 @@ export default function NavBar({
 
               <NavigationMenuItem>
                 <NavigationMenuLink asChild>
-                  <Link href="/#faqs" className={ navigationMenuTriggerStyle() }>
+                  <Link
+                    href="/#features"
+                    className={navigationMenuTriggerStyle()}
+                  >
+                    About
+                  </Link>
+                </NavigationMenuLink>
+              </NavigationMenuItem>
+
+              <NavigationMenuItem>
+                <NavigationMenuLink asChild>
+                  <Link href="/#faqs" className={navigationMenuTriggerStyle()}>
                     FAQs
                   </Link>
                 </NavigationMenuLink>

@@ -108,6 +108,13 @@ export default function EmailPasswordForm({
       )}
 
       <SubmitButton />
+
+      <span className='text-foreground text-sm'>
+        Don’t have an account yet?&nbsp;
+        <Link href="/signup" className="font-medium text-secondary hover:underline">
+          Sign Up
+        </Link>
+      </span>
     </form>
   );
 }
