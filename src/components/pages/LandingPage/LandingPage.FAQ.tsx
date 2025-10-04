@@ -135,17 +135,17 @@ export function Faq({
   return (
     <section
       data-slot="faq"
-      className={cn('w-full mt-16', className)}
+      className={ cn('w-full mt-16', className) }
       aria-label="Frequently Asked Questions"
     >
-      {showSearch && (
+      { showSearch && (
         <div className="mb-3 flex items-center gap-2">
           <div className="relative w-full">
             <input
               type="search"
               placeholder="Search FAQs"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              value={ query }
+              onChange={ (e) => setQuery(e.target.value) }
               className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
             />
             <IoSearch
@@ -154,11 +154,11 @@ export function Faq({
             />
           </div>
 
-          { /* Expand/Collapse all only in multiple mode */}
-          {allowMultiple && (
+          { /* Expand/Collapse all only in multiple mode */ }
+          { allowMultiple && (
             <button
               type="button"
-              onClick={() =>
+              onClick={ () =>
                 setOpen(
                   Array.isArray(open) && open.length === filtered.length
                     ? []
@@ -167,43 +167,43 @@ export function Faq({
               }
               className="cursor-pointer whitespace-nowrap rounded-md border px-3 py-2 text-sm outline-none transition hover:underline focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
             >
-              {Array.isArray(open) && open.length === filtered.length
+              { Array.isArray(open) && open.length === filtered.length
                 ? 'Collapse all'
-                : 'Expand all'}
+                : 'Expand all' }
             </button>
-          )}
+          ) }
         </div>
-      )}
+      ) }
 
       <Accordion
-        type={type}
-        value={open as any}
-        onValueChange={handleValueChange as any}
-        defaultValue={undefined}
-        {...(!allowMultiple && { collapsible })}
+        type={ type }
+        value={ open as any }
+        onValueChange={ handleValueChange as any }
+        defaultValue={ undefined }
+        { ...(!allowMultiple && { collapsible, }) }
         className="rounded-lg border"
       >
-        {filtered.map((item) => (
-          <AccordionItem key={item._id} value={item._id}>
+        { filtered.map((item) => (
+          <AccordionItem key={ item._id } value={ item._id }>
             <AccordionTrigger className="text-base p-4 cursor-pointer">
-              <span id={item._id} className="scroll-mt-24">
-                {item.question}
+              <span id={ item._id } className="scroll-mt-24">
+                { item.question }
               </span>
             </AccordionTrigger>
             <AccordionContent className="pl-8 [&_p]:leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5">
-              {item.answer}
+              { item.answer }
             </AccordionContent>
           </AccordionItem>
-        ))}
+        )) }
       </Accordion>
 
-      {jsonLdData && (
+      { jsonLdData && (
         <script
           type="application/ld+json"
 
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData), }}
+          dangerouslySetInnerHTML={ { __html: JSON.stringify(jsonLdData), } }
         />
-      )}
+      ) }
     </section>
   );
 }
@@ -233,14 +233,14 @@ export function FAQs() {
         Quick answers to operationally unblock users.
       </p>
       <Faq
-        items={faqs}
+        items={ faqs }
         allowMultiple
         showSearch
         jsonLd
-        onToggle={(id, open) => {
+        onToggle={ (id, open) => {
           // optional: route to your analytics
           // track('faq_toggle', { id, open });
-        }}
+        } }
       />
     </div>
   );
