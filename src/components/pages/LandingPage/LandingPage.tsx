@@ -1,4 +1,5 @@
 import { About } from './LandingPage.About';
+import CallToAction from './LandingPage.CallToAction';
 import { FAQs } from './LandingPage.FAQ';
 import { Features } from './LandingPage.Features';
 import { Hero } from './LandingPage.Hero';
@@ -12,6 +13,7 @@ export default function LandingPage() {
       <Features />
       <About />
       <FAQs />
+      <CallToAction />
       <BackToTopButton />
     </div>
   );

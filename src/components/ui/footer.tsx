@@ -12,7 +12,7 @@ type FooterSection = { title: string; links: FooterLink[] };
 const BRAND = {
   name: 'UpSpace',
   href: '/',
-  tagline: 'Your workspace marketplace. Book in seconds.',
+  tagline: 'Book in seconds.',
   logo: <LogoSymbolic className="h-[18px] w-[18px] text-background dark:text-foreground" />, // color via text-*
 };
 
