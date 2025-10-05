@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ThemeSwitcher } from '@/components/ui/theme-switcher';
 
 export default function Home() {
   return (
@@ -23,6 +24,12 @@ export default function Home() {
       <div className='flex flex-row space-x-2 items-center'>
         <Switch />
         <Label>This is a switch.</Label>
+      </div>
+
+      <h2>Theme Switcher</h2>
+      <div className='flex flex-row space-x-2 items-center'>
+        <ThemeSwitcher />
+        <Label>This is a theme switcher.</Label>
       </div>
 
       <h2>Tabs</h2>

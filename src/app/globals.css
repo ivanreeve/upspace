@@ -1,3 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,100..900;1,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap');
+
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -6,54 +9,6 @@
 /* ---------------------------------------
    SF Pro Text (public/fonts/SF-Pro-Text)
    --------------------------------------- */
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-Thin.woff2") format("woff2");
-  font-weight: 100;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-ThinItalic.woff2") format("woff2");
-  font-weight: 100;
-  font-style: italic;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-Ultralight.woff2") format("woff2");
-  font-weight: 200;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-UltralightItalic.woff2") format("woff2");
-  font-weight: 200;
-  font-style: italic;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-Light.woff2") format("woff2");
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-LightItalic.woff2") format("woff2");
-  font-weight: 300;
-  font-style: italic;
-  font-display: swap;
-}
-
 @font-face {
   font-family: "SF Pro Text";
   src: url("/fonts/SF-Pro-Text/SF-Pro-Text-Regular.woff2") format("woff2");
@@ -102,59 +57,9 @@
   font-display: swap;
 }
 
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-Bold.woff2") format("woff2");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-BoldItalic.woff2") format("woff2");
-  font-weight: 700;
-  font-style: italic;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-Heavy.woff2") format("woff2");
-  font-weight: 800;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-HeavyItalic.woff2") format("woff2");
-  font-weight: 800;
-  font-style: italic;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-Black.woff2") format("woff2");
-  font-weight: 900;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "SF Pro Text";
-  src: url("/fonts/SF-Pro-Text/SF-Pro-Text-BlackItalic.woff2") format("woff2");
-  font-weight: 900;
-  font-style: italic;
-  font-display: swap;
-}
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -188,28 +93,31 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --font-sf: var(--ufont-sf);
+  --font-serif: var(--ufont-serif);
+  --font-instrument-serif: var(--ufont-instrument-serif);
 }
 
 :root {
   --radius: 8px;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.2155 0.0254 284.06);
+  --background: oklch(0.9942 0.021 112.56);
+  --foreground: oklch(0.1776 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.3712 0.0625 207.56);
+  --primary: oklch(0.3018 0.06 231.92);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.5348 0.091286 204.6929);
   --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.9264 0.0385 200.53);
+  --muted: oklch(0.8984 0.0393 78.56);
   --muted-foreground: oklch(0.556 0 0);
   --accent: oklch(0.3712 0.0625 207.56);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.5505 0.2155 19.81);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: oklch(0.7704 0.0018 67.8);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -223,12 +131,14 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  --font-sf: "SF Pro Text", system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  --ufont-sf: "SF Pro Text";
+  --ufont-serif: "Noto Serif";
+  --ufont-instrument-serif: "Instrument Serif";
 }
 
 .dark {
   --background: oklch(0.205 0 0);
-  --foreground: oklch(0.762 0.0518 202.43);
+  --foreground: oklch(0.9942 0.021 112.56);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
@@ -236,7 +146,7 @@
   --primary: oklch(0.3712 0.0625 207.56);
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.5348 0.091286 204.6929);
-  --secondary-foreground: oklch(1 0 215);
+  --secondary-foreground: oklch(0.9942 0.021 112.56);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.3712 0.0625 207.56);
@@ -257,7 +167,14 @@
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --ufont-sf: "SF Pro Text";
+  --ufont-serif: "Noto Serif";
+  --ufont-instrument-serif: "Instrument Serif";
+}
+
+::selection {
+  background-color: var(--secondary);
+  color: var(--background);
 }
 
 ::selection {
@@ -267,15 +184,64 @@
 
 @layer base {
   html {
-    font-family: var(--font-sf);
+    font-family: var(--ufont-sf);
     font-weight: 400;
+    scroll-behavior: smooth;
+  }
+
+  p {
+    font-family: var(--ufont-serif);
   }
 
   * {
     @apply border-border outline-ring/50;
   }
 
+  *,
+  *::before,
+  *::after {}
+
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* hide textarea native scrollbars */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  /* IE & old Edge */
+  scrollbar-width: none;
+  /* Firefox */
+}
+
+/* Chrome/Safari */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---------------------------------------
+              Custom Scrollbar
+   --------------------------------------- */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--muted);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--muted);
+  border: 2px solid var(--muted);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted) var(--background);
 }
