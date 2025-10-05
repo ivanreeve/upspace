@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+
 import {
   Accordion,
   AccordionItem,
@@ -109,37 +110,37 @@ export function Faq({
   return (
     <section
       data-slot="faq"
-      className={cn('w-full mt-16', className)}
+      className={ cn('w-full mt-16', className) }
       aria-label="Frequently Asked Questions"
     >
       <Accordion
-        type={type}
-        value={open as any}
-        onValueChange={handleValueChange as any}
-        defaultValue={undefined}
-        {...(!allowMultiple && { collapsible })}
+        type={ type }
+        value={ open as any }
+        onValueChange={ handleValueChange as any }
+        defaultValue={ undefined }
+        { ...(!allowMultiple && { collapsible, }) }
         className="rounded-lg border"
       >
-        {normalized.map((item) => (
-          <AccordionItem key={item._id} value={item._id}>
+        { normalized.map((item) => (
+          <AccordionItem key={ item._id } value={ item._id }>
             <AccordionTrigger className="text-base p-4 cursor-pointer">
-              <span id={item._id} className="scroll-mt-24">
-                {item.question}
+              <span id={ item._id } className="scroll-mt-24">
+                { item.question }
               </span>
             </AccordionTrigger>
             <AccordionContent className="px-8 [&_p]:leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5">
-              {item.answer}
+              { item.answer }
             </AccordionContent>
           </AccordionItem>
-        ))}
+        )) }
       </Accordion>
 
-      {jsonLdData && (
+      { jsonLdData && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData) }}
+          dangerouslySetInnerHTML={ { __html: JSON.stringify(jsonLdData), } }
         />
-      )}
+      ) }
     </section>
   );
 }
@@ -179,7 +180,7 @@ const faqs: FaqItem[] = [
     question: 'Is there map-based search?',
     answer: <p>Yes. The app integrates with Maps so you can search, view, and navigate to coworking spaces near your location.</p>,
     answerText: 'Map-based search helps locate coworking spaces nearby.',
-  },
+  }
 ];
 
 export function FAQs() {
@@ -195,12 +196,12 @@ export function FAQs() {
         Quick answers to common questions.
       </p>
       <Faq
-        items={faqs}
+        items={ faqs }
         allowMultiple
         jsonLd
-        onToggle={(id, open) => {
+        onToggle={ (id, open) => {
           // track analytics if needed
-        }}
+        } }
       />
     </div>
   );
