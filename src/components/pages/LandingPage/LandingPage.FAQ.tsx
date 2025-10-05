@@ -1,32 +1,29 @@
 'use client';
 
 import * as React from 'react';
-import { IoSearch } from 'react-icons/io5';
-
 import {
   Accordion,
   AccordionItem,
   AccordionTrigger,
   AccordionContent
-} from '@/components/ui/accordion'; // adjust if your path differs
+} from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
 
 export type FaqItem = {
-  id?: string;                 // stable id (optional). if absent, slugified from question
+  id?: string;
   question: string;
-  answer: React.ReactNode;     // rich content allowed
-  answerText?: string;         // plain text for JSON-LD (optional but recommended)
+  answer: React.ReactNode;
+  answerText?: string;
 };
 
 type FaqProps = {
   items: FaqItem[];
   className?: string;
-  allowMultiple?: boolean;     // defaults to single
-  defaultOpenIds?: string[];   // initial expanded panels
-  collapsible?: boolean;       // allow closing the last open item (single mode)
-  showSearch?: boolean;        // renders a search input to filter questions
-  jsonLd?: boolean;            // outputs FAQPage JSON-LD for SEO
-  onToggle?(id: string, open: boolean): void; // analytics hook
+  allowMultiple?: boolean;
+  defaultOpenIds?: string[];
+  collapsible?: boolean;
+  jsonLd?: boolean;
+  onToggle?(id: string, open: boolean): void;
 };
 
 function toSlug(input: string) {
@@ -45,11 +42,9 @@ export function Faq({
   allowMultiple = false,
   defaultOpenIds,
   collapsible = true,
-  showSearch = true,
   jsonLd = true,
   onToggle,
 }: FaqProps) {
-  const [query, setQuery] = React.useState('');
   const normalized = React.useMemo(
     () =>
       items.map((it) => ({
@@ -59,18 +54,6 @@ export function Faq({
     [items]
   );
 
-  // Filter by question (fast path); extend to answerText if provided
-  const filtered = React.useMemo(() => {
-    if (!query.trim()) return normalized;
-    const q = query.toLowerCase();
-    return normalized.filter(
-      (it) =>
-        it.question.toLowerCase().includes(q) ||
-        (it.answerText?.toLowerCase().includes(q) ?? false)
-    );
-  }, [normalized, query]);
-
-  // Deep-link: open item if hash matches
   const [open, setOpen] = React.useState<string[] | string | undefined>(() => {
     if (defaultOpenIds?.length) {
       return allowMultiple ? defaultOpenIds : defaultOpenIds[0];
@@ -102,21 +85,12 @@ export function Faq({
 
   function handleValueChange(next: string | string[]) {
     setOpen(next);
-    // fire analytics hook
     if (onToggle) {
       const opened = new Set(Array.isArray(next) ? next : [next]);
       normalized.forEach((it) => onToggle(it._id, opened.has(it._id)));
     }
   }
 
-  function copyAnchor(id: string) {
-    const url = new URL(window.location.href);
-    url.hash = id;
-    navigator.clipboard?.writeText(url.toString());
-    history.replaceState(null, '', `#${id}`);
-  }
-
-  // Build JSON-LD payload
   const jsonLdData =
     jsonLd &&
     normalized.some((it) => it.answerText) && {
@@ -135,75 +109,37 @@ export function Faq({
   return (
     <section
       data-slot="faq"
-      className={ cn('w-full mt-16', className) }
+      className={cn('w-full mt-16', className)}
       aria-label="Frequently Asked Questions"
     >
-      { showSearch && (
-        <div className="mb-3 flex items-center gap-2">
-          <div className="relative w-full">
-            <input
-              type="search"
-              placeholder="Search FAQs"
-              value={ query }
-              onChange={ (e) => setQuery(e.target.value) }
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-            />
-            <IoSearch
-              className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-          </div>
-
-          { /* Expand/Collapse all only in multiple mode */ }
-          { allowMultiple && (
-            <button
-              type="button"
-              onClick={ () =>
-                setOpen(
-                  Array.isArray(open) && open.length === filtered.length
-                    ? []
-                    : filtered.map((f) => f._id)
-                )
-              }
-              className="cursor-pointer whitespace-nowrap rounded-md border px-3 py-2 text-sm outline-none transition hover:underline focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-            >
-              { Array.isArray(open) && open.length === filtered.length
-                ? 'Collapse all'
-                : 'Expand all' }
-            </button>
-          ) }
-        </div>
-      ) }
-
       <Accordion
-        type={ type }
-        value={ open as any }
-        onValueChange={ handleValueChange as any }
-        defaultValue={ undefined }
-        { ...(!allowMultiple && { collapsible, }) }
+        type={type}
+        value={open as any}
+        onValueChange={handleValueChange as any}
+        defaultValue={undefined}
+        {...(!allowMultiple && { collapsible })}
         className="rounded-lg border"
       >
-        { filtered.map((item) => (
-          <AccordionItem key={ item._id } value={ item._id }>
+        {normalized.map((item) => (
+          <AccordionItem key={item._id} value={item._id}>
             <AccordionTrigger className="text-base p-4 cursor-pointer">
-              <span id={ item._id } className="scroll-mt-24">
-                { item.question }
+              <span id={item._id} className="scroll-mt-24">
+                {item.question}
               </span>
             </AccordionTrigger>
             <AccordionContent className="pl-8 [&_p]:leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5">
-              { item.answer }
+              {item.answer}
             </AccordionContent>
           </AccordionItem>
-        )) }
+        ))}
       </Accordion>
 
-      { jsonLdData && (
+      {jsonLdData && (
         <script
           type="application/ld+json"
-
-          dangerouslySetInnerHTML={ { __html: JSON.stringify(jsonLdData), } }
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData) }}
         />
-      ) }
+      )}
     </section>
   );
 }
@@ -218,29 +154,35 @@ const faqs: FaqItem[] = [
     question: 'What’s your SLA?',
     answer: (
       <p>
-        99.9% monthly uptime. See <a href="/legal/sla" className="underline">SLA</a>.
+        99.9% monthly uptime. See{' '}
+        <a href="/legal/sla" className="underline">
+          SLA
+        </a>.
       </p>
     ),
     answerText: '99.9% monthly uptime. See the SLA for specifics.',
-  }
+  },
 ];
 
 export function FAQs() {
   return (
-    <div id='faqs' className="mx-auto max-w-3xl h-screen flex flex-col justify-center items-center">
-      <h2 className="mb-2 text-[3rem] text-center font-semibold">Frequently Answered Questions</h2>
+    <div
+      id="faqs"
+      className="mx-auto max-w-3xl h-screen flex flex-col justify-center items-center"
+    >
+      <h2 className="mb-2 text-[3rem] text-center font-semibold">
+        Frequently Answered Questions
+      </h2>
       <p className="mb-6 text-lg text-[1rem] text-muted-foreground text-center">
         Quick answers to operationally unblock users.
       </p>
       <Faq
-        items={ faqs }
+        items={faqs}
         allowMultiple
-        showSearch
         jsonLd
-        onToggle={ (id, open) => {
-          // optional: route to your analytics
-          // track('faq_toggle', { id, open });
-        } }
+        onToggle={(id, open) => {
+          // track analytics if needed
+        }}
       />
     </div>
   );
