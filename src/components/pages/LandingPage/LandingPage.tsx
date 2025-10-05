@@ -1,8 +1,9 @@
-import BackToTopButton from '@/components/ui/back-to-top';
 import { About } from './LandingPage.About';
 import { FAQs } from './LandingPage.FAQ';
 import { Features } from './LandingPage.Features';
 import { Hero } from './LandingPage.Hero';
+
+import BackToTopButton from '@/components/ui/back-to-top';
 
 export default function LandingPage() {
   return (

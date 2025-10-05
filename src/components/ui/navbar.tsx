@@ -4,6 +4,7 @@ import Link from 'next/link';
 import * as React from 'react';
 
 import { ThemeSwitcher } from './theme-switcher';
+import { LogoSymbolic } from './logo-symbolic';
 
 import {
   NavigationMenu,
@@ -12,7 +13,6 @@ import {
   NavigationMenuLink,
   navigationMenuTriggerStyle
 } from '@/components/ui/navigation-menu';
-import { LogoSymbolic } from './logo-symbolic';
 
 export type NavBarProps = React.HTMLAttributes<HTMLElement>;
 
@@ -22,13 +22,13 @@ export default function NavBar({
   return (
     <nav
       aria-label="Main"
-      className={[
+      className={ [
         'sticky top-0 z-50 w-full',
         'bg-background/93 text-foreground border-none',
         'backdrop-blur',
         className
-      ].join(' ')}
-      {...props}
+      ].join(' ') }
+      { ...props }
     >
       <div className="mx-auto px-4 max-w-[1440px] h-18 flex items-center self-center justify-between">
         <div className='flex flex-row gap-2'>
@@ -40,7 +40,7 @@ export default function NavBar({
             <NavigationMenuList className="gap-1">
               <NavigationMenuItem>
                 <NavigationMenuLink asChild>
-                  <Link href="/" className={navigationMenuTriggerStyle()}>
+                  <Link href="/" className={ navigationMenuTriggerStyle() }>
                     Home
                   </Link>
                 </NavigationMenuLink>
@@ -50,7 +50,7 @@ export default function NavBar({
                 <NavigationMenuLink asChild>
                   <Link
                     href="/#features"
-                    className={navigationMenuTriggerStyle()}
+                    className={ navigationMenuTriggerStyle() }
                   >
                     Features
                   </Link>
@@ -61,7 +61,7 @@ export default function NavBar({
                 <NavigationMenuLink asChild>
                   <Link
                     href="/#about"
-                    className={navigationMenuTriggerStyle()}
+                    className={ navigationMenuTriggerStyle() }
                   >
                     About
                   </Link>
@@ -70,7 +70,7 @@ export default function NavBar({
 
               <NavigationMenuItem>
                 <NavigationMenuLink asChild>
-                  <Link href="/#faqs" className={navigationMenuTriggerStyle()}>
+                  <Link href="/#faqs" className={ navigationMenuTriggerStyle() }>
                     FAQs
                   </Link>
                 </NavigationMenuLink>
