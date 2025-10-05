@@ -127,7 +127,7 @@ export function Faq({
                 {item.question}
               </span>
             </AccordionTrigger>
-            <AccordionContent className="pl-8 [&_p]:leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5">
+            <AccordionContent className="px-8 [&_p]:leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5">
               {item.answer}
             </AccordionContent>
           </AccordionItem>
@@ -146,21 +146,39 @@ export function Faq({
 
 const faqs: FaqItem[] = [
   {
-    question: 'How do I reset my password?',
-    answer: <p>Use the “Forgot password” flow from the sign-in screen.</p>,
-    answerText: 'Use the “Forgot password” flow from the sign-in screen.',
+    question: 'How do I find and book a coworking space?',
+    answer: <p>Browse available spaces using filters like location, pricing, and amenities. Once you find the right space, complete the booking through the app.</p>,
+    answerText: 'Browse, filter, and book coworking spaces directly within the app.',
   },
   {
-    question: 'What’s your SLA?',
-    answer: (
-      <p>
-        99.9% monthly uptime. See{' '}
-        <a href="/legal/sla" className="underline">
-          SLA
-        </a>.
-      </p>
-    ),
-    answerText: '99.9% monthly uptime. See the SLA for specifics.',
+    question: 'Can I save spaces I’m interested in?',
+    answer: <p>Yes. You can bookmark spaces to revisit them later from your “Shortlisted” tab.</p>,
+    answerText: 'Bookmark coworking spaces to review and compare them later.',
+  },
+  {
+    question: 'What payment methods do you support?',
+    answer: <p>We support all major credit cards, debit cards, and digital wallets. Payments are processed securely through our integrated gateway.</p>,
+    answerText: 'Supports credit, debit, and digital wallet payments via secure gateway.',
+  },
+  {
+    question: 'How can partners list their coworking spaces?',
+    answer: <p>Partners can register and verify their business through the Partner Portal, then use the “Listing Management” dashboard to add or update spaces.</p>,
+    answerText: 'Partners list and manage their spaces via the Partner Portal after verification.',
+  },
+  {
+    question: 'Do partners receive payouts automatically?',
+    answer: <p>Yes. Payouts are automatically processed after the booking is confirmed and the stay period completes, per the agreed terms.</p>,
+    answerText: 'Partner payouts are automated post-booking completion.',
+  },
+  {
+    question: 'How is user data protected?',
+    answer: <p>All data is encrypted and handled in compliance with industry privacy standards. Access controls ensure only authorized users manage data.</p>,
+    answerText: 'User data is encrypted and secured per privacy best practices.',
+  },
+  {
+    question: 'Is there map-based search?',
+    answer: <p>Yes. The app integrates with Maps so you can search, view, and navigate to coworking spaces near your location.</p>,
+    answerText: 'Map-based search helps locate coworking spaces nearby.',
   },
 ];
 
@@ -168,13 +186,13 @@ export function FAQs() {
   return (
     <div
       id="faqs"
-      className="mx-auto max-w-3xl h-screen flex flex-col justify-center items-center"
+      className="mx-auto max-w-3xl min-h-screen flex flex-col justify-center items-center py-16"
     >
       <h2 className="mb-2 text-[3rem] text-center font-semibold">
         Frequently Answered Questions
       </h2>
-      <p className="mb-6 text-lg text-[1rem] text-muted-foreground text-center">
-        Quick answers to operationally unblock users.
+      <p className="text-lg text-[1rem] text-muted-foreground text-center">
+        Quick answers to common questions.
       </p>
       <Faq
         items={faqs}
