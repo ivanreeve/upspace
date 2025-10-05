@@ -1,3 +1,4 @@
+import BackToTopButton from '@/components/ui/back-to-top';
 import { About } from './LandingPage.About';
 import { FAQs } from './LandingPage.FAQ';
 import { Features } from './LandingPage.Features';
@@ -10,6 +11,7 @@ export default function LandingPage() {
       <Features />
       <About />
       <FAQs />
+      <BackToTopButton />
     </div>
   );
 }
