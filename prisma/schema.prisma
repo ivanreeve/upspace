@@ -1,1 +1,27 @@
-// prisma schema goes here
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Test {
+  id   Int     @id @default(autoincrement())
+  name String?
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model user {
+  user_id     BigInt    @id @default(autoincrement())
+  name        String    @default("") @db.VarChar
+  email       String?   @default("") @db.VarChar
+  provider    String?   @db.VarChar
+  provider_id String?   @db.VarChar
+  user_type   String?   @db.VarChar
+  birthday    DateTime? @db.Date
+  is_disabled Boolean?  @default(false)
+  created_at  DateTime? @db.Timestamp(6)
+  updated_at  DateTime? @db.Timestamp(6)
+}
