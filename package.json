@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "prepare": "husky",
-    "devApi": "nodemon --exec \"node --loader ts-node/esm\" script.ts"
+    "devApi": "npx prisma generate && nodemon --exec \"node --loader ts-node/esm\" script.ts"
   },
   "dependencies": {
     "@google/genai": "^1.19.0",
