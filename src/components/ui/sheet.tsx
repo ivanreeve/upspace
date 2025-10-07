@@ -2,24 +2,24 @@
 
 import * as React from 'react';
 import * as SheetPrimitive from '@radix-ui/react-dialog';
-import { FaArrowRight } from "react-icons/fa6";
+import { FaArrowRight } from 'react-icons/fa6';
 
 import { cn } from '@/lib/utils';
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
-  return <SheetPrimitive.Root data-slot="sheet" {...props} />;
+  return <SheetPrimitive.Root data-slot="sheet" { ...props } />;
 }
 
 function SheetTrigger({ ...props }: React.ComponentProps<typeof SheetPrimitive.Trigger>) {
-  return <SheetPrimitive.Trigger data-slot="sheet-trigger" {...props} />;
+  return <SheetPrimitive.Trigger data-slot="sheet-trigger" { ...props } />;
 }
 
 function SheetClose({ ...props }: React.ComponentProps<typeof SheetPrimitive.Close>) {
-  return <SheetPrimitive.Close data-slot="sheet-close" {...props} />;
+  return <SheetPrimitive.Close data-slot="sheet-close" { ...props } />;
 }
 
 function SheetPortal({ ...props }: React.ComponentProps<typeof SheetPrimitive.Portal>) {
-  return <SheetPrimitive.Portal data-slot="sheet-portal" {...props} />;
+  return <SheetPrimitive.Portal data-slot="sheet-portal" { ...props } />;
 }
 
 function SheetOverlay({
@@ -29,11 +29,11 @@ function SheetOverlay({
   return (
     <SheetPrimitive.Overlay
       data-slot="sheet-overlay"
-      className={cn(
+      className={ cn(
         'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50',
         className
-      )}
-      {...props}
+      ) }
+      { ...props }
     />
   );
 }
@@ -51,7 +51,7 @@ function SheetContent({
       <SheetOverlay />
       <SheetPrimitive.Content
         data-slot="sheet-content"
-        className={cn(
+        className={ cn(
           'bg-background data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-50 flex flex-col gap-4 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500',
           side === 'right' &&
           'data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm',
@@ -62,10 +62,10 @@ function SheetContent({
           side === 'bottom' &&
           'data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom inset-x-0 bottom-0 h-auto border-t',
           className
-        )}
-        {...props}
+        ) }
+        { ...props }
       >
-        {children}
+        { children }
         <SheetPrimitive.Close className="py-2 px-3 bg-muted dark:bg-muted dark:text-muted-foreground text-primary ring-offset-transparent focus:ring-transparent data-[state=open]:bg-secondary absolute top-4 right-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none text-primary">
           <FaArrowRight className="size-5" />
           <span className="sr-only">Close</span>
@@ -81,8 +81,8 @@ function SheetHeader({
   return (
     <div
       data-slot="sheet-header"
-      className={cn('flex flex-col gap-1.5 p-4', className)}
-      {...props}
+      className={ cn('flex flex-col gap-1.5 p-4', className) }
+      { ...props }
     />
   );
 }
@@ -93,8 +93,8 @@ function SheetFooter({
   return (
     <div
       data-slot="sheet-footer"
-      className={cn('mt-auto flex flex-col gap-2 p-4', className)}
-      {...props}
+      className={ cn('mt-auto flex flex-col gap-2 p-4', className) }
+      { ...props }
     />
   );
 }
@@ -106,8 +106,8 @@ function SheetTitle({
   return (
     <SheetPrimitive.Title
       data-slot="sheet-title"
-      className={cn('text-foreground font-semibold', className)}
-      {...props}
+      className={ cn('text-foreground font-semibold', className) }
+      { ...props }
     />
   );
 }
@@ -119,8 +119,8 @@ function SheetDescription({
   return (
     <SheetPrimitive.Description
       data-slot="sheet-description"
-      className={cn('text-muted-foreground text-sm', className)}
-      {...props}
+      className={ cn('text-muted-foreground text-sm', className) }
+      { ...props }
     />
   );
 }
