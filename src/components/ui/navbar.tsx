@@ -39,37 +39,37 @@ export default function NavBar({
 
   const menuItems = [
     {
- href: '/',
-label: 'Home',
-icon: GrHomeRounded, 
-},
+      href: '/',
+      label: 'Home',
+      icon: GrHomeRounded,
+    },
     {
- href: '/#features',
-label: 'Features',
-icon: TbSparkles, 
-},
+      href: '/#features',
+      label: 'Features',
+      icon: TbSparkles,
+    },
     {
- href: '/#about',
-label: 'About',
-icon: LuBookOpenText, 
-},
+      href: '/#about',
+      label: 'About',
+      icon: LuBookOpenText,
+    },
     {
- href: '/#faqs',
-label: 'FAQs',
-icon: FaQuestion, 
-}
+      href: '/#faqs',
+      label: 'FAQs',
+      icon: FaQuestion,
+    }
   ];
 
   return (
     <nav
       aria-label="Main"
-      className={ [
+      className={[
         'sticky top-0 z-50 w-full',
         'bg-background/93 text-foreground border-none',
         'backdrop-blur',
         className
-      ].join(' ') }
-      { ...props }
+      ].join(' ')}
+      {...props}
     >
       <div className="mx-auto px-4 max-w-[1440px] h-18 flex items-center self-center justify-between">
         <div className='flex flex-row gap-2'>
@@ -77,13 +77,13 @@ icon: FaQuestion,
           <Link href='/'><h1 className='text-xl font-bold'>UpSpace</h1></Link>
         </div>
 
-        { /* Desktop Navigation */ }
+        { /* Desktop Navigation */}
         <div className="hidden min-[570px]:flex items-center">
           <NavigationMenu className="ml-auto">
             <NavigationMenuList className="gap-1">
               <NavigationMenuItem>
                 <NavigationMenuLink asChild>
-                  <Link href="/" className={ navigationMenuTriggerStyle() }>
+                  <Link href="/" className={navigationMenuTriggerStyle()}>
                     Home
                   </Link>
                 </NavigationMenuLink>
@@ -93,7 +93,7 @@ icon: FaQuestion,
                 <NavigationMenuLink asChild>
                   <Link
                     href="/#features"
-                    className={ navigationMenuTriggerStyle() }
+                    className={navigationMenuTriggerStyle()}
                   >
                     Features
                   </Link>
@@ -104,7 +104,7 @@ icon: FaQuestion,
                 <NavigationMenuLink asChild>
                   <Link
                     href="/#about"
-                    className={ navigationMenuTriggerStyle() }
+                    className={navigationMenuTriggerStyle()}
                   >
                     About
                   </Link>
@@ -113,7 +113,7 @@ icon: FaQuestion,
 
               <NavigationMenuItem>
                 <NavigationMenuLink asChild>
-                  <Link href="/#faqs" className={ navigationMenuTriggerStyle() }>
+                  <Link href="/#faqs" className={navigationMenuTriggerStyle()}>
                     FAQs
                   </Link>
                 </NavigationMenuLink>
@@ -126,10 +126,10 @@ icon: FaQuestion,
           </NavigationMenu>
         </div>
 
-        { /* Mobile Menu Button */ }
+        { /* Mobile Menu Button */}
         <div className="flex min-[570px]:hidden items-center gap-2">
           <ThemeSwitcher />
-          <Sheet open={ isOpen } onOpenChange={ setIsOpen }>
+          <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
               <Button
                 className="p-2 rounded-sm bg-muted text-primary dark:bg-muted dark:text-muted-foreground hover:bg-secondary/20 transition-colors"
@@ -149,20 +149,20 @@ icon: FaQuestion,
                 </SheetTitle>
               </SheetHeader>
               <div className="mt-6">
-                { menuItems.map((item) => {
+                {menuItems.map((item) => {
                   const Icon = item.icon;
                   return (
                     <Link
-                      key={ item.href }
-                      href={ item.href }
-                      onClick={ closeMenu }
-                      className="flex rounded-none items-center gap-3 px-4 py-3 hover:bg-secondary/20 hover:text-primary transition-colors text-md group"
+                      key={item.href}
+                      href={item.href}
+                      onClick={closeMenu}
+                      className="flex rounded-md items-center gap-3 px-4 py-3 bg-transparent text-sm font-medium transition-colors active:bg-secondary/20 active:text-primary dark:active:bg-secondary/10 dark:active:text-secondary group outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px]"
                     >
-                      <Icon className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                      <span>{ item.label }</span>
+                      <Icon className="h-5 w-5 group-active:scale-110 transition-transform" />
+                      <span>{item.label}</span>
                     </Link>
                   );
-                }) }
+                })}
               </div>
             </SheetContent>
           </Sheet>
