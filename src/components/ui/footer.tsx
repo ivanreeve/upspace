@@ -86,67 +86,67 @@ export function Footer() {
           <div className="md:col-span-4">
             <div className="flex items-center justify-start gap-3">
               <div className="flex justify-center p-1">
-                { BRAND.logo }
+                {BRAND.logo}
               </div>
               <div>
                 <a
-                  href={ BRAND.href }
+                  href={BRAND.href}
                   className="text-lg font-medium hover:underline"
-                  aria-label={ BRAND.name }
+                  aria-label={BRAND.name}
                 >
-                  { BRAND.name }
+                  {BRAND.name}
                 </a>
                 <p className="mt-1 max-w-prose text-sm text-background dark:text-foreground">
-                  { BRAND.tagline }
+                  {BRAND.tagline}
                 </p>
               </div>
             </div>
 
             <div className="mt-6 flex items-center gap-3">
-              { SOCIALS.github && (
+              {SOCIALS.github && (
                 <a
-                  href={ SOCIALS.github }
+                  href={SOCIALS.github}
                   target="_blank"
                   rel="noreferrer"
                   aria-label="GitHub"
-                  className="inline-flex h-9 items-center justify-center gap-2 p-4 border-2 border-white text-black bg-white hover:bg-black dark:hover:bg-background hover:text-white"
+                  className="inline-flex h-9 items-center justify-center gap-2 p-4 border-2 border-white text-black bg-white hover:bg-black active:bg-black dark:active:bg-transparent active:text-white dark:hover:bg-background hover:text-white"
                 >
-                  <FaGithub size={ 16 } /> <span className="text-sm font-semibold">GitHub</span> <GoLinkExternal />
+                  <FaGithub size={16} /> <span className="text-sm font-semibold">GitHub</span> <GoLinkExternal />
                 </a>
-              ) }
+              )}
             </div>
           </div>
 
           <nav aria-label="Footer navigation" className="md:col-span-8">
             <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
-              { SECTIONS.map((section) => (
-                <div key={ section.title }>
-                  <h3 className="text-sm font-medium dark:text-foreground text-background">{ section.title }</h3>
+              {SECTIONS.map((section) => (
+                <div key={section.title}>
+                  <h3 className="text-sm font-medium dark:text-foreground text-background">{section.title}</h3>
                   <ul className="mt-3 space-y-2">
-                    { section.links.map((link) => (
-                      <li key={ link.href }>
+                    {section.links.map((link) => (
+                      <li key={link.href}>
                         <a
-                          href={ link.href }
-                          { ...(link.external ? {
+                          href={link.href}
+                          {...(link.external ? {
                             target: '_blank',
                             rel: 'noreferrer',
-                          } : {}) }
+                          } : {})}
                           className="text-sm text-muted-foreground dark:hover:text-foreground hover:text-background"
                         >
-                          { link.label }
+                          {link.label}
                         </a>
                       </li>
-                    )) }
+                    ))}
                   </ul>
                 </div>
-              )) }
+              ))}
             </div>
           </nav>
         </div>
 
         <div className="mt-10 flex flex-wrap items-center justify-between gap-6">
           <div className="text-sm text-background dark:text-muted-foreground">
-            <span>© { year } { BRAND.name }. All rights reserved.</span>
+            <span>© {year} {BRAND.name}. All rights reserved.</span>
           </div>
         </div>
       </div>
