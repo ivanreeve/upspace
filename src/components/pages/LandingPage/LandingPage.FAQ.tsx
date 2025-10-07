@@ -189,7 +189,7 @@ export function FAQs() {
       id="faqs"
       className="mx-auto max-w-3xl min-h-screen flex flex-col justify-center items-center py-16"
     >
-      <h2 className="mb-2 text-[3rem] text-center font-semibold">
+      <h2 className="mb-2 text-[2rem] text-center font-semibold">
         Frequently Answered Questions
       </h2>
       <p className="text-lg text-[1rem] text-muted-foreground text-center">
