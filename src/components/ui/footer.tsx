@@ -109,7 +109,7 @@ export function Footer() {
                   target="_blank"
                   rel="noreferrer"
                   aria-label="GitHub"
-                  className="inline-flex h-9 items-center justify-center gap-2 p-4 border-2 border-white text-black bg-white hover:bg-black dark:hover:bg-background hover:text-white"
+                  className="inline-flex h-9 items-center justify-center gap-2 p-4 border-2 border-white text-black bg-white hover:bg-black active:bg-black dark:active:bg-transparent active:text-white dark:hover:bg-background hover:text-white"
                 >
                   <FaGithub size={ 16 } /> <span className="text-sm font-semibold">GitHub</span> <GoLinkExternal />
                 </a>
