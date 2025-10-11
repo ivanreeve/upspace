@@ -18,81 +18,134 @@ model user {
   is_disabled Boolean    @default(false)
   created_at  DateTime   @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamptz(6)
   updated_at  DateTime   @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamptz(6)
-  user_id     BigInt     @id @default(autoincrement())
+  user_id     BigInt     @id @unique @default(autoincrement())
+  booking     booking[]
   bookmark    bookmark[]
   space       space[]
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model amenity {
-  amenity_id BigInt  @id @default(autoincrement())
-  category   String? @db.VarChar
-  name       String? @db.VarChar
-  space_id   BigInt?
-  space      space?  @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
+  amenity_id BigInt @id @unique @default(autoincrement())
+  category   String @db.VarChar
+  name       String @db.VarChar
+  space_id   BigInt
+  space      space  @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model area {
-  area_id                 BigInt  @id @default(autoincrement())
+  area_id                 BigInt  @id @unique @default(autoincrement())
   space_id                BigInt
-  rate_id                 BigInt?
-  name                    String? @db.VarChar
-  capacity                BigInt?
-  rate_area_rate_idTorate rate?   @relation("area_rate_idTorate", fields: [rate_id], references: [rate_id], onDelete: NoAction, onUpdate: NoAction)
+  rate_id                 BigInt
+  name                    String  @db.VarChar
+  capacity                BigInt
+  rate_area_rate_idTorate rate    @relation("area_rate_idTorate", fields: [rate_id], references: [rate_id], onDelete: NoAction, onUpdate: NoAction)
   space                   space   @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
+  image                   image[]
   rate_rate_area_idToarea rate[]  @relation("rate_area_idToarea")
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model bookmark {
-  bookmark_id BigInt    @id @default(autoincrement())
+  bookmark_id BigInt   @id @unique @default(autoincrement())
   user_id     BigInt
-  space_id    BigInt?
-  created_at  DateTime? @db.Timestamptz(6)
-  space       space?    @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
-  user        user      @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  space_id    BigInt
+  created_at  DateTime @db.Timestamptz(6)
+  space       space    @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
+  user        user     @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model rate {
-  rate_id                 BigInt   @id @default(autoincrement())
+  rate_id                 BigInt  @id @unique @default(autoincrement())
   area_id                 BigInt
-  time_unit               String?  @db.VarChar
-  price                   Decimal? @db.Decimal
-  area_area_rate_idTorate area[]   @relation("area_rate_idTorate")
-  area_rate_area_idToarea area     @relation("rate_area_idToarea", fields: [area_id], references: [area_id], onDelete: NoAction, onUpdate: NoAction)
+  time_unit               String  @db.VarChar
+  price                   Decimal @db.Decimal
+  area_area_rate_idTorate area[]  @relation("area_rate_idTorate")
+  area_rate_area_idToarea area    @relation("rate_area_idToarea", fields: [area_id], references: [area_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model space {
-  space_id           BigInt               @id @default(autoincrement())
+  space_id           BigInt               @id @unique @default(autoincrement())
   name               String               @db.VarChar
-  unit_number        String?              @db.VarChar
-  street             String?              @db.VarChar
-  address_subunit    String?              @db.VarChar
-  city               String?              @db.VarChar
-  region             String?              @db.VarChar
-  country            String?              @db.VarChar
-  created_at         DateTime?            @db.Timestamptz(6)
-  updated_at         DateTime?            @db.Timestamptz(6)
-  postal_code        String?              @db.VarChar
-  user_id            BigInt?
+  unit_number        String               @db.VarChar
+  street             String               @db.VarChar
+  address_subunit    String               @db.VarChar
+  city               String               @db.VarChar
+  region             String               @db.VarChar
+  country            String               @db.VarChar
+  created_at         DateTime             @db.Timestamptz(6)
+  updated_at         DateTime             @db.Timestamptz(6)
+  postal_code        String               @db.VarChar
+  user_id            BigInt
   amenity            amenity[]
   area               area[]
+  booking            booking[]
   bookmark           bookmark[]
-  user               user?                @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  user               user                 @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
   space_availability space_availability[]
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model space_availability {
-  availability_id BigInt    @id @default(autoincrement())
-  day_of_week     DateTime  @default(now()) @db.Timestamptz(6)
-  opening_time    DateTime? @db.Timetz(6)
-  closing_time    DateTime? @db.Timetz(6)
+  availability_id BigInt   @id @unique @default(autoincrement())
+  day_of_week     DateTime @default(now()) @db.Timestamptz(6)
+  opening_time    DateTime @db.Timetz(6)
+  closing_time    DateTime @db.Timetz(6)
   space_id        BigInt
-  space           space     @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
+  space           space    @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model booking {
+  booking_id      BigInt        @id @unique @default(autoincrement())
+  user_id         BigInt
+  space_id        BigInt
+  expires_at      DateTime      @db.Timestamptz(6)
+  arrival_time    DateTime      @db.Timetz(6)
+  stay_hours      BigInt
+  booked_at       DateTime      @db.Timetz(6)
+  booking_type    String        @db.VarChar
+  status_code     String        @db.VarChar
+  id_invoice      BigInt
+  created_at      DateTime      @db.Timestamptz(6)
+  updated_at      DateTime      @db.Timestamptz(6)
+  idempotency_key BigInt
+  space           space         @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
+  user            user          @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  transaction     transaction[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model image {
+  image_id      BigInt   @id @unique @default(autoincrement())
+  space_id      BigInt
+  area_id       BigInt
+  url           String   @db.VarChar
+  display_order BigInt
+  is_primary    Float
+  created_at    DateTime @db.Timestamptz(6)
+  area          area     @relation(fields: [area_id], references: [area_id], onDelete: NoAction, onUpdate: NoAction)
+  image         image    @relation("imageToimage", fields: [space_id], references: [image_id], onDelete: NoAction, onUpdate: NoAction)
+  other_image   image[]  @relation("imageToimage")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model transaction {
+  transaction_id  BigInt   @id @unique @default(autoincrement())
+  booking_id      BigInt
+  amount          Decimal  @db.Decimal
+  currency        String   @db.VarChar
+  fee             Decimal  @db.Decimal
+  net_amount      Decimal  @db.Decimal
+  payment_method  String   @db.VarChar
+  is_livemode     Boolean
+  gateway_data    BigInt
+  created_at      DateTime @db.Timestamptz(6)
+  idempotency_key String   @db.VarChar
+  booking         booking  @relation(fields: [booking_id], references: [booking_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 enum user_type {
