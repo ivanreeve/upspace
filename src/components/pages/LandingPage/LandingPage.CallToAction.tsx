@@ -64,7 +64,7 @@ function CallToActionBase({
             href={ buttonHref }
             className={ cn(
               'relative inline-flex items-center justify-center bg-transparent border-2 border-white text-white',
-              'px-6 py-3 font-medium transition-colors hover:bg-white active:bg-white active:text-transparent hover:text-transparent',
+              'px-6 py-3 font-medium transition-colors hover:bg-white active:bg-white active:text-transparent hover:text-black',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring gap-2'
             ) }
           >

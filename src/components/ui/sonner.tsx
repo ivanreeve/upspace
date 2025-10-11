@@ -1,25 +1,33 @@
-'use client';
+// sonner.tsx
+import { Toaster as Sonner } from 'sonner';
+import type { ToasterProps } from 'sonner';
 
-import { useTheme } from 'next-themes';
-import { Toaster as Sonner, ToasterProps } from 'sonner';
-
-const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = 'system', } = useTheme();
-
+export const Toaster = ({ ...props }: ToasterProps) => {
   return (
-    <Sonner
-      theme={ theme as ToasterProps['theme'] }
-      className="toaster group"
-      style={
-        {
-          '--normal-bg': 'var(--popover)',
-          '--normal-text': 'var(--popover-foreground)',
-          '--normal-border': 'var(--border)',
-        } as React.CSSProperties
-      }
-      { ...props }
-    />
+    <>
+      <Sonner
+        theme="light"
+        className="toaster group"
+        visibleToasts={ 1 }
+        position="top-center"
+        offset={ 80 }
+        closeButton
+        toastOptions={ {
+          className: 'custom-toast',
+          style: {
+            backdropFilter: 'blur(5px)',
+            border: '1px solid var(--custom-red)',
+            backgroundColor: 'hsl(var(--sonner-bg-h, 0 0% 100%) / 0.75)',
+          },
+          // ADD TYPE-SPECIFIC STYLING HERE
+          classNames: {
+             // These classes will be applied to the main toast container (which has the type data attribute)
+             success: 'toast-success-color',
+             error: 'toast-error-color',
+          }
+        } }
+        { ...props }
+      />
+    </>
   );
 };
-
-export { Toaster };
