@@ -63,7 +63,7 @@ export default function EmailPasswordForm({
 
     const combinedMessages = [
       state.message?.trim() ?? '',
-      ...fieldMessages,
+      ...fieldMessages
     ].filter(Boolean);
 
     if (!combinedMessages.length) return;

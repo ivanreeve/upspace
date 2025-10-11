@@ -24,7 +24,7 @@ export const Toaster = ({ ...props }: ToasterProps) => {
              // These classes will be applied to the main toast container (which has the type data attribute)
              success: 'toast-success-color',
              error: 'toast-error-color',
-          }
+          },
         } }
         { ...props }
       />
