@@ -85,8 +85,8 @@ export function Hero() {
               <Image
                 src="/img/hero-featured-dark.png"
                 alt="Illustration of a welcoming workspace."
-                width={64}
-                height={64}
+                width={ 64 }
+                height={ 64 }
                 className="rounded-full object-cover"
               />
             </div>

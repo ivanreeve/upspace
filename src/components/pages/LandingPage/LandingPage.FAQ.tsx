@@ -6,7 +6,7 @@ import {
   Accordion,
   AccordionItem,
   AccordionTrigger,
-  AccordionContent,
+  AccordionContent
 } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';

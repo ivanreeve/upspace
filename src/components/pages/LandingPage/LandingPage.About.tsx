@@ -1,5 +1,10 @@
 import type { LucideIcon } from 'lucide-react';
-import { Building2, Clock3, Handshake, Sparkles } from 'lucide-react';
+import {
+Building2,
+Clock3,
+Handshake,
+Sparkles
+} from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 
@@ -24,13 +29,22 @@ const HIGHLIGHTS: Highlight[] = [
     title: 'Partner-first management tools',
     description: 'Space owners track occupancy, manage approvals, and automate billing without leaving the UpSpace dashboard.',
     icon: Handshake,
-  },
+  }
 ];
 
 const STATS = [
-  { value: '3.5k+', label: 'Desks & suites ready to book' },
-  { value: '92%', label: 'Bookings confirmed on first request' },
-  { value: '<24h', label: 'Average partner response time' },
+  {
+ value: '3.5k+',
+label: 'Desks & suites ready to book', 
+},
+  {
+ value: '92%',
+label: 'Bookings confirmed on first request', 
+},
+  {
+ value: '<24h',
+label: 'Average partner response time', 
+}
 ];
 
 export function About() {
@@ -53,7 +67,9 @@ export function About() {
           </div>
 
           <div className="space-y-6">
-            { HIGHLIGHTS.map(({ title, description, icon: Icon }) => (
+            { HIGHLIGHTS.map(({
+ title, description, icon: Icon, 
+}) => (
               <div key={ title } className="flex items-start gap-4">
                 <div className="mt-1 flex h-11 w-11 items-center justify-center rounded-full bg-secondary/15 text-secondary">
                   <Icon className="h-5 w-5" strokeWidth={ 1.8 } />
