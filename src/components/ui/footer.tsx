@@ -80,7 +80,7 @@ export function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="border-t border-border bg-black text-background dark:bg-background dark:text-foreground">
+    <footer className="border-t border-border bg-black text-white dark:bg-background dark:text-foreground">
       <div className="mx-auto max-w-7xl px-6 py-12">
         <div className="grid grid-cols-1 gap-10 md:grid-cols-12">
           <div className="md:col-span-4">
@@ -109,7 +109,7 @@ export function Footer() {
                   target="_blank"
                   rel="noreferrer"
                   aria-label="GitHub"
-                  className="inline-flex h-9 items-center justify-center gap-2 p-4 border-2 border-white text-black bg-white hover:bg-black dark:hover:bg-background hover:text-white"
+                  className="inline-flex h-9 items-center justify-center gap-2 p-4 border-2 border-white text-black bg-white hover:bg-black active:bg-black dark:active:bg-transparent active:text-white dark:hover:bg-background hover:text-white"
                 >
                   <FaGithub size={ 16 } /> <span className="text-sm font-semibold">GitHub</span> <GoLinkExternal />
                 </a>
