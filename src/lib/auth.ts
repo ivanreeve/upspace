@@ -3,6 +3,10 @@ import Google from 'next-auth/providers/google';
 import Credentials from 'next-auth/providers/credentials';
 import { z } from 'zod';
 
+import { verifyPassword } from './password';
+
+import { findMockUserByEmail } from '@/data/mock-users';
+
 const credentialsSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
@@ -11,11 +15,17 @@ const credentialsSchema = z.object({
 // minimal app user shape for credentials flow
 type AppUser = { id: string; email: string; name?: string | null };
 
-async function verifyUser(email: string, _password: string): Promise<AppUser | null> {
-  // TODO: replace with real lookup + bcrypt compare
-  // Temporary stub to keep types happy:
-  // return { id: "123", email, name: "Demo User" };
-  return null;
+async function verifyUser(email: string, password: string): Promise<AppUser | null> {
+  const record = findMockUserByEmail(email);
+  if (!record) return null;
+
+  if (!verifyPassword(password, record.passwordHash)) return null;
+
+  return {
+    id: record.id,
+    email: record.email,
+    name: record.name ?? null,
+  };
 }
 
 export const {
@@ -37,10 +47,10 @@ export const {
 
         // NextAuth expects at least { id }
         return {
- id: user.id,
-email: user.email,
-name: user.name ?? null, 
-};
+          id: user.id,
+          email: user.email,
+          name: user.name ?? null,
+        };
       },
     })
   ],

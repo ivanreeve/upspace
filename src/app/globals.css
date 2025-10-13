@@ -134,6 +134,7 @@
   --ufont-sf: "SF Pro Text";
   --ufont-serif: "Noto Serif";
   --ufont-instrument-serif: "Instrument Serif";
+  --custom-red: oklch(0.6368 0.2078 25.33);
 }
 
 .dark {
@@ -197,10 +198,6 @@
     @apply border-border outline-ring/50;
   }
 
-  *,
-  *::before,
-  *::after {}
-
   body {
     @apply bg-background text-foreground;
   }
@@ -244,4 +241,28 @@
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--muted) var(--background);
+}
+
+/* Sonner Custom Styles */
+.custom-toast button[data-close-button] {
+  position: absolute !important;
+  right: 12px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  left: auto !important;
+  border: transparent !important;
+  background-color: transparent !important;
+}
+
+.custom-toast button[data-close-button]:hover {
+  background-color: transparent !important;
+  border: transparent !important;
+}
+
+.toast-error-color * {
+  color: oklch(0.5505 0.2155 19.81) !important;
+}
+
+.toast-success-color * {
+  color: oklch(0.625 0.1772 140.44) !important;
 }
