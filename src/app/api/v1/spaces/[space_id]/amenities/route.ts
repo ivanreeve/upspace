@@ -59,16 +59,21 @@ export async function POST(req: NextRequest, { params, }: Params) {
   }
 }
 
-export async function GET(_req: NextRequest, { params }: Params) {
-  const { space_id } = params;
+export async function GET(_req: NextRequest, { params, }: Params) {
+  const { space_id, } = params;
   if (!space_id) {
-    return NextResponse.json({ error: "space_id is required" }, { status: 400 });
+    return NextResponse.json({ error: 'space_id is required', }, { status: 400, });
   }
 
   const rows = await prisma.amenity.findMany({
-    where: { space_id: BigInt(space_id) },
-    orderBy: { name: "asc" },
-    select: { amenity_id: true, space_id: true, name: true, category: true },
+    where: { space_id: BigInt(space_id), },
+    orderBy: { name: 'asc', },
+    select: {
+ amenity_id: true,
+space_id: true,
+name: true,
+category: true, 
+},
   });
 
   return NextResponse.json({
@@ -79,4 +84,40 @@ export async function GET(_req: NextRequest, { params }: Params) {
       category: r.category,
     })),
   });
+}
+
+
+const schema = z.object({ amenity_id: z.string().regex(/^\d+$/) });
+
+export async function DELETE(req: NextRequest, { params }: Params) {
+  const { space_id } = params;
+  if (!/^\d+$/.test(space_id)) {
+    return NextResponse.json({ error: "Invalid space_id" }, { status: 400 });
+  }
+
+  const body = await req.json().catch(() => null);
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+
+  const amenityId = BigInt(parsed.data.amenity_id);
+  const spaceId = BigInt(space_id);
+
+  const { count } = await prisma.amenity.deleteMany({
+    where: { space_id: spaceId, amenity_id: amenityId },
+  });
+
+  if (count === 0) {
+    return NextResponse.json({ error: "Amenity not found" }, { status: 404 });
+  }
+
+    return NextResponse.json({
+    message: "Amenity deleted successfully",
+    data: {
+      space_id: spaceId.toString(),
+      amenity_id: amenityId.toString(),
+      deleted: true,
+    },
+  }, { status: 200 });
 }
