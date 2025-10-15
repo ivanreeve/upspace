@@ -9,6 +9,7 @@ CardDescription,
 CardContent,
 CardFooter
 } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 export default function SignInCard({
   callbackUrl = '/dashboard',
@@ -18,7 +19,7 @@ export default function SignInCard({
   title?: string; description?: string; callbackUrl?: string; forgotHref?: string; className?: string;
 }) {
   return (
-    <Card className={ className }>
+    <Card className={ cn('bg-background', className) }>
       <CardContent>
         <GoogleSignInButton callbackUrl={ callbackUrl } />
         <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground">
