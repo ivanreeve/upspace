@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { FaGoogle } from 'react-icons/fa6';
+import { FcGoogle } from 'react-icons/fc';
 
 import { Button } from '@/components/ui/button';
 
@@ -23,15 +23,15 @@ export default function GoogleSignInButton({
     <Button
       type="button"
       aria-label="Sign in with Google"
-      onClick={ async () => {
+      onClick={async () => {
         setLoading(true);
         try {
           await signIn('google', { callbackUrl, });
         } finally {
           setLoading(false);
         }
-      } }
-      className={ [
+      }}
+      className={[
         // Surface
         'w-full h-12 inline-flex items-center justify-center gap-2',
         'bg-primary text-primary-foreground',
@@ -40,12 +40,12 @@ export default function GoogleSignInButton({
         'transition-[transform,opacity] active:scale-[0.98]',
         'disabled:opacity-70',
         className ?? ''
-      ].join(' ') }
-      disabled={ loading }
+      ].join(' ')}
+      disabled={loading}
     >
-      <FaGoogle size={ 18 } />
+      <FcGoogle size={18} />
 
-      <span>{ loading ? 'Redirecting…' : label }</span>
+      <span>{loading ? 'Redirecting…' : label}</span>
     </Button>
   );
 }

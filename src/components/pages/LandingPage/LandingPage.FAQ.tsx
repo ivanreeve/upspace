@@ -120,7 +120,7 @@ export function Faq({
         onValueChange={handleValueChange as any}
         defaultValue={undefined}
         {...(!allowMultiple && { collapsible, })}
-        className="rounded-md border border-border/60 bg-background shadow-xl shadow-secondary/10 backdrop-blur"
+        className="rounded-md border border-border/60 bg-background backdrop-blur"
       >
         {normalized.map((item) => (
           <AccordionItem
@@ -194,10 +194,6 @@ export function FAQs() {
       id="faqs"
       className="relative py-24 sm:py-32"
     >
-      <div
-        className="pointer-events-none absolute inset-x-0 top-1/2 -z-10 h-[540px] -translate-y-1/2 bg-gradient-to-b from-primary/10 via-transparent to-secondary/10 blur-3xl"
-        aria-hidden="true"
-      />
       <div className="mx-auto max-w-4xl space-y-10 text-center">
         <div className="space-y-5">
           <Badge variant="secondary" className="mx-auto w-fit uppercase tracking-wide">

@@ -22,14 +22,14 @@ function SubmitButton() {
   return (
     <Button
       type="submit"
-      disabled={pending}
-      className={[
+      disabled={ pending }
+      className={ [
         'w-full h-10 inline-flex items-center justify-center rounded-lg px-4 py-2',
         'bg-primary text-primary-foreground border border-border',
         'transition-[transform,opacity] active:scale-[0.98] disabled:opacity-70'
-      ].join(' ')}
+      ].join(' ') }
     >
-      {pending ? 'Validating…' : 'Sign In'}
+      { pending ? 'Validating…' : 'Sign In' }
     </Button>
   );
 }
@@ -78,8 +78,8 @@ export default function EmailPasswordForm({
   const fieldErr = (k: string) => state.errors?.[k]?.[0];
 
   return (
-    <form action={formAction} className="space-y-3">
-      <input type="hidden" name="callbackUrl" value={callbackUrl} />
+    <form action={ formAction } className="space-y-3">
+      <input type="hidden" name="callbackUrl" value={ callbackUrl } />
       <div className="space-y-1.5">
         <Label htmlFor="email" className="font-sf text-sm text-muted-foreground">Email</Label>
         <Input
@@ -88,23 +88,23 @@ export default function EmailPasswordForm({
           type="email"
           required
           autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className={[
+          value={ email }
+          onChange={ (e) => setEmail(e.target.value) }
+          className={ [
             'w-full h-10 rounded-md px-3',
             'bg-muted/60 text-foreground border border-input',
             'placeholder:text-muted-foreground',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-          ].join(' ')}
+          ].join(' ') }
           placeholder="Enter your email"
         />
-        {fieldErr('email') && <p className="font-sf text-sm text-destructive">{fieldErr('email')}</p>}
+        { fieldErr('email') && <p className="font-sf text-sm text-destructive">{ fieldErr('email') }</p> }
       </div>
 
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <Label htmlFor="password" className="text-sm text-muted-foreground">Password</Label>
-          <Link href={forgotHref} className="text-sm text-primary dark:text-secondary hover:underline">Forgot password?</Link>
+          <Link href={ forgotHref } className="text-sm text-primary dark:text-secondary hover:underline">Forgot password?</Link>
         </div>
         <Input
           id="password"
@@ -112,17 +112,17 @@ export default function EmailPasswordForm({
           type="password"
           required
           autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className={[
+          value={ password }
+          onChange={ (e) => setPassword(e.target.value) }
+          className={ [
             'w-full h-10 rounded-md px-3',
             'bg-muted/60 text-foreground border border-input',
             'placeholder:text-muted-foreground',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-          ].join(' ')}
+          ].join(' ') }
           placeholder="Password"
         />
-        {fieldErr('password') && <p className="font-sf text-sm text-destructive">{fieldErr('password')}</p>}
+        { fieldErr('password') && <p className="font-sf text-sm text-destructive">{ fieldErr('password') }</p> }
       </div>
       <SubmitButton />
 
