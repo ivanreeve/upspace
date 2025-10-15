@@ -5,6 +5,7 @@ import { useFormStatus } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { CgSpinner } from 'react-icons/cg';
 
 import type { LoginState } from '@/app/(auth)/signin/actions';
 import { loginAction } from '@/app/(auth)/signin/actions';
@@ -24,12 +25,13 @@ function SubmitButton() {
       type="submit"
       disabled={ pending }
       className={ [
-        'w-full h-10 inline-flex items-center justify-center rounded-lg px-4 py-2',
+        'w-full h-10 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2',
         'bg-primary text-primary-foreground border border-border',
         'transition-[transform,opacity] active:scale-[0.98] disabled:opacity-70'
       ].join(' ') }
     >
-      { pending ? 'Validating…' : 'Sign In' }
+      { pending && <CgSpinner className="h-4 w-4 animate-spin" /> }
+      <span>{ pending ? 'Validating…' : 'Sign In' }</span>
     </Button>
   );
 }

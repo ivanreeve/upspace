@@ -111,41 +111,41 @@ export function Faq({
   return (
     <section
       data-slot="faq"
-      className={cn('w-full', className)}
+      className={ cn('w-full', className) }
       aria-label="Frequently Asked Questions"
     >
       <Accordion
-        type={type}
-        value={open as any}
-        onValueChange={handleValueChange as any}
-        defaultValue={undefined}
-        {...(!allowMultiple && { collapsible, })}
+        type={ type }
+        value={ open as any }
+        onValueChange={ handleValueChange as any }
+        defaultValue={ undefined }
+        { ...(!allowMultiple && { collapsible, }) }
         className="rounded-md border border-border/60 bg-background backdrop-blur"
       >
-        {normalized.map((item) => (
+        { normalized.map((item) => (
           <AccordionItem
-            key={item._id}
-            value={item._id}
+            key={ item._id }
+            value={ item._id }
             className="border-b border-border/40 last:border-b-0 first:rounded-t-md last:rounded-b-md overflow-hidden"
           >
             <AccordionTrigger className="group flex items-start gap-4 px-6 py-6 text-left text-base font-medium transition hover:text-foreground hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-lg">
-              <span id={item._id} className="scroll-mt-24">
-                {item.question}
+              <span id={ item._id } className="scroll-mt-24">
+                { item.question }
               </span>
             </AccordionTrigger>
             <AccordionContent className="px-6 pb-6 text-base text-left leading-relaxed text-muted-foreground [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:ml-5 [&_ul]:list-disc [&_ol]:ml-5 [&_ol]:list-decimal">
-              {item.answer}
+              { item.answer }
             </AccordionContent>
           </AccordionItem>
-        ))}
+        )) }
       </Accordion>
 
-      {jsonLdData && (
+      { jsonLdData && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData), }}
+          dangerouslySetInnerHTML={ { __html: JSON.stringify(jsonLdData), } }
         />
-      )}
+      ) }
     </section>
   );
 }
@@ -207,12 +207,12 @@ export function FAQs() {
           </p>
         </div>
         <Faq
-          items={faqs}
+          items={ faqs }
           allowMultiple
           jsonLd
-          onToggle={(id, open) => {
+          onToggle={ (id, open) => {
             // track analytics if needed
-          }}
+          } }
           className="mx-auto max-w-3xl"
         />
       </div>
