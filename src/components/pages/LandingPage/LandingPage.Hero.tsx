@@ -4,7 +4,7 @@ import SignInCard from '@/components/auth/SignInCard';
 
 export function Hero() {
   return (
-    <div className="flex flex-col lg:flex-row h-auto lg:h-[90vh] items-center py-8 lg:py-0">
+    <div className="flex flex-col lg:flex-row h-auto lg:h-[900px] items-center py-8 lg:py-0">
       { /* Left container */ }
       <div className="flex-1 flex flex-col items-center justify-center px-4 lg:px-0">
         <h1 className="text-3xl sm:text-4xl lg:text-[4rem] text-center font-instrument-serif">

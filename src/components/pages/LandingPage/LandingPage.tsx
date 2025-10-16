@@ -8,7 +8,7 @@ import BackToTopButton from '@/components/ui/back-to-top';
 
 export default function LandingPage() {
   return (
-    <div className="px-4 max-w-[1200px] mx-auto">
+    <div className="px-4 max-w-[1440px] mx-auto">
       <Hero />
       <Features />
       <About />
