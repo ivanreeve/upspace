@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { FaFacebook } from 'react-icons/fa';
+import { FaFacebookF } from 'react-icons/fa';
 import { CgSpinner } from 'react-icons/cg';
 
 import { Button } from '@/components/ui/button';
@@ -47,7 +47,7 @@ export default function FacebookSignInButton({
       { loading ? (
         <CgSpinner className="h-4 w-4 animate-spin" />
       ) : (
-        <FaFacebook size={ 18 } />
+        <FaFacebookF size={ 18 } />
       ) }
       <span>{ loading ? 'Redirecting…' : label }</span>
     </Button>

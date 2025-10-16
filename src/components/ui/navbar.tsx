@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import * as React from 'react';
+import type { IconType } from 'react-icons';
 import { GrHomeRounded } from 'react-icons/gr';
 import { TbSparkles } from 'react-icons/tb';
 import { LuBookOpenText } from 'react-icons/lu';
@@ -28,18 +29,28 @@ import {
   SheetTrigger
 } from '@/components/ui/sheet';
 
-export type NavBarProps = React.HTMLAttributes<HTMLElement>;
+export type NavItem = {
+  href: string;
+  label: string;
+  icon?: IconType;
+};
+
+export type NavBarProps = React.HTMLAttributes<HTMLElement> & {
+  menuItems?: NavItem[];
+};
 
 export default function NavBar({
-  className = '', ...props
+  className = '',
+  menuItems,
+  ...props
 }: NavBarProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
   const closeMenu = () => setIsOpen(false);
 
-  const menuItems = [
+  const defaultMenuItems: NavItem[] = [
     {
-      href: '/',
+      href: '/#home',
       label: 'Home',
       icon: GrHomeRounded,
     },
@@ -59,6 +70,7 @@ export default function NavBar({
       icon: FaQuestion,
     }
   ];
+  const resolvedMenuItems = menuItems ?? defaultMenuItems;
 
   return (
     <nav
@@ -81,43 +93,18 @@ export default function NavBar({
         <div className="hidden min-[570px]:flex items-center">
           <NavigationMenu className="ml-auto">
             <NavigationMenuList className="gap-1">
-              <NavigationMenuItem>
-                <NavigationMenuLink asChild>
-                  <Link href="/" className={ navigationMenuTriggerStyle() }>
-                    Home
-                  </Link>
-                </NavigationMenuLink>
-              </NavigationMenuItem>
-
-              <NavigationMenuItem>
-                <NavigationMenuLink asChild>
-                  <Link
-                    href="/#features"
-                    className={ navigationMenuTriggerStyle() }
-                  >
-                    Features
-                  </Link>
-                </NavigationMenuLink>
-              </NavigationMenuItem>
-
-              <NavigationMenuItem>
-                <NavigationMenuLink asChild>
-                  <Link
-                    href="/#about"
-                    className={ navigationMenuTriggerStyle() }
-                  >
-                    About
-                  </Link>
-                </NavigationMenuLink>
-              </NavigationMenuItem>
-
-              <NavigationMenuItem>
-                <NavigationMenuLink asChild>
-                  <Link href="/#faqs" className={ navigationMenuTriggerStyle() }>
-                    FAQs
-                  </Link>
-                </NavigationMenuLink>
-              </NavigationMenuItem>
+              { resolvedMenuItems.map((item) => (
+                <NavigationMenuItem key={ item.href }>
+                  <NavigationMenuLink asChild>
+                    <Link
+                      href={ item.href }
+                      className={ navigationMenuTriggerStyle() }
+                    >
+                      { item.label }
+                    </Link>
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
+              )) }
 
               <NavigationMenuItem>
                 <ThemeSwitcher />
@@ -149,7 +136,7 @@ export default function NavBar({
                 </SheetTitle>
               </SheetHeader>
               <div className="mt-6">
-                { menuItems.map((item) => {
+                { resolvedMenuItems.map((item) => {
                   const Icon = item.icon;
                   return (
                     <Link
@@ -158,7 +145,9 @@ export default function NavBar({
                       onClick={ closeMenu }
                       className="flex rounded-md items-center gap-3 px-4 py-3 bg-transparent text-sm font-medium transition-colors active:bg-secondary/20 active:text-primary dark:active:bg-secondary/10 dark:active:text-secondary group outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px]"
                     >
-                      <Icon className="h-5 w-5 group-active:scale-110 transition-transform" />
+                      { Icon && (
+                        <Icon className="h-5 w-5 group-active:scale-110 transition-transform" />
+                      ) }
                       <span>{ item.label }</span>
                     </Link>
                   );

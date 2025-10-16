@@ -25,9 +25,9 @@ export function Hero() {
       {
         src: '/img/hero-featured-dark-4.png',
         alt: 'Quiet lounge area with comfortable seating.',
-      },
+      }
     ],
-    [],
+    []
   );
 
   const [activeIndex, setActiveIndex] = useState(0);
@@ -45,7 +45,7 @@ export function Hero() {
   }, [heroImages]);
 
   return (
-    <div className="flex flex-col lg:flex-row h-auto lg:h-[900px] items-center py-8 lg:py-0">
+    <div id="home" className="flex flex-col lg:flex-row h-auto lg:h-[900px] items-center py-8 lg:py-0">
       { /* Left container */ }
       <div className="flex-1 flex flex-col items-center justify-center px-4 lg:px-0">
         <h1 className="text-3xl sm:text-4xl lg:text-[4rem] text-center font-instrument-serif">
@@ -58,19 +58,21 @@ export function Hero() {
 
       { /* Right container - Hidden on mobile */ }
       <div className="relative hidden lg:flex flex-1 items-center justify-center bg-background rounded-lg h-[720px] overflow-hidden">
-        {heroImages.map(({ alt, src }, index) => (
+        { heroImages.map(({
+ alt, src, 
+}, index) => (
           <Image
-            key={src}
-            src={src}
-            alt={alt}
+            key={ src }
+            src={ src }
+            alt={ alt }
             sizes="(min-width: 1024px) 50vw, 100vw"
             fill
-            priority={index === 0}
-            className={`object-cover transition-opacity duration-700 ease-in-out ${
+            priority={ index === 0 }
+            className={ `object-cover transition-opacity duration-700 ease-in-out ${
               activeIndex === index ? 'opacity-100' : 'opacity-0'
-            }`}
+            }` }
           />
-        ))}
+        )) }
       </div>
     </div>
   );
