@@ -9,7 +9,7 @@ self.addEventListener('install', (event) => {
       .then((cache) => cache.addAll(PRECACHE_URLS))
       .catch((error) => {
         console.error('Failed to pre-cache assets:', error);
-      }),
+      })
   );
 
   self.skipWaiting();
@@ -21,9 +21,9 @@ self.addEventListener('activate', (event) => {
       Promise.all(
         cacheNames
           .filter((cacheName) => cacheName !== CACHE_NAME)
-          .map((cacheName) => caches.delete(cacheName)),
-      ),
-    ),
+          .map((cacheName) => caches.delete(cacheName))
+      )
+    )
   );
 
   self.clients.claim();
@@ -61,6 +61,6 @@ self.addEventListener('fetch', (event) => {
         .catch(() => cachedResponse || caches.match(OFFLINE_URL));
 
       return cachedResponse || fetchPromise;
-    }),
+    })
   );
 });

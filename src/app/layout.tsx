@@ -12,11 +12,21 @@ export const metadata: Metadata = {
   themeColor: '#0f172a',
   icons: {
     icon: [
-      { url: '/favicon.svg', type: 'image/svg+xml', sizes: 'any' },
-      { url: '/favicon.ico', sizes: 'any' },
+      {
+ url: '/favicon.svg',
+type: 'image/svg+xml',
+sizes: 'any', 
+},
+      {
+ url: '/favicon.ico',
+sizes: 'any', 
+}
     ],
-    shortcut: [{ url: '/favicon.ico' }],
-    apple: [{ url: '/favicon.svg', type: 'image/svg+xml' }],
+    shortcut: [{ url: '/favicon.ico', }],
+    apple: [{
+ url: '/favicon.svg',
+type: 'image/svg+xml', 
+}],
   },
   appleWebApp: {
     capable: true,

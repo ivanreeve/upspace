@@ -17,7 +17,7 @@ export function ServiceWorkerRegistration() {
     const registerServiceWorker = async () => {
       try {
         const registration = await navigator.serviceWorker.register(
-          SERVICE_WORKER_PATH,
+          SERVICE_WORKER_PATH
         );
         return registration;
       } catch (error) {

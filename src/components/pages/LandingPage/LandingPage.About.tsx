@@ -1,9 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import {
-  Building2,
-  Handshake,
-  Sparkles
-} from 'lucide-react';
+import { Building2, Handshake, Sparkles } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 
@@ -57,7 +53,7 @@ export function About() {
 }) => (
             <div
               key={ title }
-              className="flex h-full flex-col gap-4 rounded-2xl border border-border/70 bg-card/80 p-6 shadow-lg shadow-secondary/5 backdrop-blur-sm"
+              className="flex h-full flex-col gap-4 rounded-sm border border-border/70 bg-card/80 p-6 shadow-lg shadow-secondary/5 backdrop-blur-sm"
             >
               <div className="flex h-11 w-11 items-center justify-center rounded-full bg-secondary/15 text-secondary">
                 <Icon className="h-5 w-5" strokeWidth={ 1.8 } />
