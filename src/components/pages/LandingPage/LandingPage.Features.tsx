@@ -1,4 +1,4 @@
-import Image from "next/image";
+import Image from 'next/image';
 
 export function Features() {
   return (
@@ -7,7 +7,7 @@ export function Features() {
       className='w-full min-h-[1024px] flex items-center justify-start py-24 lg:py-32'
     >
       <div className='max-w-6xl w-full flex flex-col-reverse lg:flex-row items-center lg:items-start justify-start gap-14 px-6'>
-        {/* Right container - Hidden on mobile */}
+        { /* Right container - Hidden on mobile */ }
         <div className="relative hidden lg:flex flex-none w-[640px] items-center justify-center bg-background h-[500px] overflow-hidden">
           <Image
             src="/img/feature-light-1.svg"
