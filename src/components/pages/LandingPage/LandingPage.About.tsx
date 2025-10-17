@@ -29,7 +29,7 @@ const HIGHLIGHTS: Highlight[] = [
 
 export function About() {
   return (
-    <section id="about" className="py-24 sm:py-32 h-[900px]">
+    <section id="about" className="py-48 sm:py-40">
       <div className="mx-auto max-w-6xl space-y-12 px-6 lg:px-8">
         <div className="space-y-8 text-center lg:text-left">
           <Badge variant="secondary" className="mx-auto w-fit uppercase tracking-wide lg:mx-0">

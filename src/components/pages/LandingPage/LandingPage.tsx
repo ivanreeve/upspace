@@ -3,6 +3,7 @@ import CallToAction from './LandingPage.CallToAction';
 import { FAQs } from './LandingPage.FAQ';
 import { Features } from './LandingPage.Features';
 import { Hero } from './LandingPage.Hero';
+import { Team } from './LandingPage.Team';
 
 import BackToTopButton from '@/components/ui/back-to-top';
 
@@ -12,6 +13,7 @@ export default function LandingPage() {
       <Hero />
       <Features />
       <About />
+      <Team />
       <FAQs />
       <CallToAction />
       <BackToTopButton />

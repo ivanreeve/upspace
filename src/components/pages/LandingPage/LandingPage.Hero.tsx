@@ -48,7 +48,7 @@ export function Hero() {
     <div id="home" className="flex flex-col lg:flex-row h-auto lg:h-[900px] items-center py-8 lg:py-0">
       { /* Left container */ }
       <div className="flex-1 flex flex-col items-center justify-center px-4 lg:px-0">
-        <h1 className="text-3xl sm:text-4xl lg:text-[4rem] text-center font-instrument-serif">
+        <h1 className="text-[3.25rem] lg:text-[3.5rem] text-center font-instrument-serif leading-tight">
           Find the Perfect Space<br />for Meaningful Work
         </h1>
         <span className="font-serif text-sm sm:text-base">Smarter. Faster. Easier.</span>

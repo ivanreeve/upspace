@@ -13,20 +13,20 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
- url: '/favicon.svg',
-type: 'image/svg+xml',
-sizes: 'any', 
-},
+        url: '/favicon.svg',
+        type: 'image/svg+xml',
+        sizes: 'any', 
+      },
       {
- url: '/favicon.ico',
-sizes: 'any', 
-}
+        url: '/favicon.ico',
+        sizes: 'any', 
+      }
     ],
     shortcut: [{ url: '/favicon.ico', }],
     apple: [{
- url: '/favicon.svg',
-type: 'image/svg+xml', 
-}],
+      url: '/favicon.svg',
+      type: 'image/svg+xml', 
+    }],
   },
   appleWebApp: {
     capable: true,

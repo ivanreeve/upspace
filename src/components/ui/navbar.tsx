@@ -5,7 +5,7 @@ import * as React from 'react';
 import type { IconType } from 'react-icons';
 import { GrHomeRounded } from 'react-icons/gr';
 import { TbSparkles } from 'react-icons/tb';
-import { LuBookOpenText } from 'react-icons/lu';
+import { LuBookOpenText, LuUsers } from 'react-icons/lu';
 import { FaQuestion } from 'react-icons/fa6';
 import { FiSidebar } from 'react-icons/fi';
 
@@ -44,9 +44,49 @@ export default function NavBar({
   menuItems,
   ...props
 }: NavBarProps) {
+  const navRef = React.useRef<HTMLElement>(null);
   const [isOpen, setIsOpen] = React.useState(false);
 
-  const closeMenu = () => setIsOpen(false);
+  const closeMenu = React.useCallback(() => setIsOpen(false), []);
+
+  const handleNavLinkClick = React.useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>, href: string, shouldCloseMenu?: boolean) => {
+      if (shouldCloseMenu) {
+        closeMenu();
+      }
+
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      const url = new URL(href, window.location.href);
+      const isSamePath = url.pathname === window.location.pathname;
+      const targetId = url.hash.replace('#', '');
+
+      if (!isSamePath || !targetId) {
+        return;
+      }
+
+      const targetElement = document.getElementById(targetId);
+
+      if (!targetElement) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const navHeight = navRef.current?.offsetHeight ?? 0;
+      const targetPosition = targetElement.getBoundingClientRect().top + window.scrollY;
+
+      window.scrollTo({
+        top: targetPosition - navHeight,
+        behavior: 'smooth'
+      });
+
+      history.replaceState(null, '', `${url.pathname}${url.hash}`);
+    },
+    [closeMenu]
+  );
 
   const defaultMenuItems: NavItem[] = [
     {
@@ -65,6 +105,11 @@ export default function NavBar({
       icon: LuBookOpenText,
     },
     {
+      href: '/#team',
+      label: 'Team',
+      icon: LuUsers,
+    },
+    {
       href: '/#faqs',
       label: 'FAQs',
       icon: FaQuestion,
@@ -74,6 +119,7 @@ export default function NavBar({
 
   return (
     <nav
+      ref={ navRef }
       aria-label="Main"
       className={ [
         'sticky top-0 z-50 w-full',
@@ -98,6 +144,7 @@ export default function NavBar({
                   <NavigationMenuLink asChild>
                     <Link
                       href={ item.href }
+                      onClick={ (event) => handleNavLinkClick(event, item.href) }
                       className={ navigationMenuTriggerStyle() }
                     >
                       { item.label }
@@ -142,7 +189,7 @@ export default function NavBar({
                     <Link
                       key={ item.href }
                       href={ item.href }
-                      onClick={ closeMenu }
+                      onClick={ (event) => handleNavLinkClick(event, item.href, true) }
                       className="flex rounded-md items-center gap-3 px-4 py-3 bg-transparent text-sm font-medium transition-colors active:bg-secondary/20 active:text-primary dark:active:bg-secondary/10 dark:active:text-secondary group outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px]"
                     >
                       { Icon && (
