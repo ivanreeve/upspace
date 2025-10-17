@@ -80,7 +80,7 @@ export default function NavBar({
 
       window.scrollTo({
         top: targetPosition - navHeight,
-        behavior: 'smooth'
+        behavior: 'smooth',
       });
 
       history.replaceState(null, '', `${url.pathname}${url.hash}`);

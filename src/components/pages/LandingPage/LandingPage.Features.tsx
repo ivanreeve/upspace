@@ -1,6 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+useEffect,
+useMemo,
+useRef,
+useState
+} from 'react';
 import Image from 'next/image';
 
 type FeatureSlide = {
@@ -37,14 +42,14 @@ export function Features() {
           'Get full visibility into bookings, usage trends, and occupancy analytics to optimize your workplace strategy.',
         lightImage: '/img/feature-light-1.svg',
         darkImage: '/img/feature-dark-1.svg',
-      },
+      }
     ],
-    [],
+    []
   );
 
   const slidesWithLoop = useMemo(
     () => (slides.length > 0 ? [...slides, slides[0]] : slides),
-    [slides],
+    [slides]
   );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(true);
@@ -64,7 +69,7 @@ export function Features() {
         cancelAnimationFrame(transitionResetFrame.current);
       }
     },
-    [],
+    []
   );
 
   const handleTransitionEnd = () => {
@@ -86,45 +91,45 @@ export function Features() {
     >
       <div className='relative w-full overflow-hidden'>
         <div
-          className={`flex ${
+          className={ `flex ${
             isTransitioning
               ? 'transition-transform duration-700 ease-in-out'
               : 'transition-none'
-          }`}
-          style={{ transform: `translateX(-${currentIndex * 100}%)` }}
-          onTransitionEnd={handleTransitionEnd}
+          }` }
+          style={ { transform: `translateX(-${currentIndex * 100}%)`, } }
+          onTransitionEnd={ handleTransitionEnd }
         >
-          {slidesWithLoop.map((slide, index) => {
+          { slidesWithLoop.map((slide, index) => {
             const isClone = index === slidesWithLoop.length - 1;
 
             return (
               <div
-                key={isClone ? `${slide.title}-clone` : slide.title}
-                className={`w-full flex ${
+                key={ isClone ? `${slide.title}-clone` : slide.title }
+                className={ `w-full flex ${
                   slide.layout === 'stack'
                     ? 'flex-col items-center justify-start text-center gap-4'
                     : 'flex-col-reverse lg:flex-row items-center lg:items-start justify-start text-center lg:text-left gap-12'
-                } px-6 flex-shrink-0`}
+                } px-6 flex-shrink-0` }
               >
-                {/* Right container - Hidden on mobile */}
+                { /* Right container - Hidden on mobile */ }
                 <div
-                  className={`relative ${
+                  className={ `relative ${
                     slide.layout === 'stack'
                       ? 'flex w-full max-w-[640px]'
                       : 'hidden lg:flex flex-none w-[640px]'
-                  } items-center justify-center bg-background h-[500px] overflow-hidden`}
+                  } items-center justify-center bg-background h-[500px] overflow-hidden` }
                 >
                   <Image
-                    src={slide.lightImage}
-                    alt={slide.title}
+                    src={ slide.lightImage }
+                    alt={ slide.title }
                     sizes='(min-width: 1024px) 50vw, 100vw'
                     fill
-                    priority={index === 0}
+                    priority={ index === 0 }
                     className='object-contain dark:hidden'
                   />
                   <Image
-                    src={slide.darkImage}
-                    alt={slide.title}
+                    src={ slide.darkImage }
+                    alt={ slide.title }
                     sizes='(min-width: 1024px) 50vw, 100vw'
                     fill
                     className='hidden object-contain dark:block'
@@ -132,22 +137,22 @@ export function Features() {
                 </div>
 
                 <div
-                  className={`flex-1 flex flex-col gap-5 w-full lg:max-w-3xl ${
+                  className={ `flex-1 flex flex-col gap-5 w-full lg:max-w-3xl ${
                     slide.layout === 'stack'
                       ? 'items-center text-center order-first'
                       : 'items-center lg:items-start text-center lg:text-left'
-                  }`}
+                  }` }
                 >
                   <h1 className='text-[3.25rem] lg:text-[3.5rem] font-instrument-serif leading-tight'>
-                    {slide.title}
+                    { slide.title }
                   </h1>
                   <p className='text-lg lg:text-xl max-w-2xl'>
-                    {slide.description}
+                    { slide.description }
                   </p>
                 </div>
               </div>
             );
-          })}
+          }) }
         </div>
       </div>
     </div>

@@ -3,6 +3,7 @@
 
 @import "tailwindcss";
 @import "tw-animate-css";
+@import 'swagger-ui-react/swagger-ui.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -265,4 +266,10 @@
 
 .toast-success-color * {
   color: oklch(0.625 0.1772 140.44) !important;
+}
+
+/* Force Swagger UI to use the SF font stack */
+.swagger-ui,
+.swagger-ui * {
+  font-family: var(--font-sf) !important;
 }

@@ -8,6 +8,30 @@ const replacer = (_k: string, v: unknown) =>
   : v instanceof Date ? v.toISOString()
   : v;
 
+/**
+ * @swagger
+ * /api/v1/spaces:
+ *   get:
+ *     summary: List spaces
+ *     description: Returns a paginated list of spaces optionally filtered by location or name search.
+ *     tags:
+ *       - Spaces
+ *     parameters:
+ *       - $ref: '#/components/parameters/SpaceLimitParam'
+ *       - $ref: '#/components/parameters/SpaceCursorParam'
+ *       - $ref: '#/components/parameters/SpaceCityParam'
+ *       - $ref: '#/components/parameters/SpaceRegionParam'
+ *       - $ref: '#/components/parameters/SpaceSearchParam'
+ *     responses:
+ *       '200':
+ *         description: A page of spaces matching the provided filters.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SpaceListResponse'
+ *       '500':
+ *         description: The request failed due to a server-side error.
+ */
 export async function GET(req: NextRequest) {
   try {
     const { searchParams, } = new URL(req.url);
@@ -60,6 +84,30 @@ nextCursor,
   }
 }
 
+/**
+ * @swagger
+ * /api/v1/spaces:
+ *   post:
+ *     summary: Create a space
+ *     description: Creates a new space owned by the supplied user. This endpoint is currently a stub and will be expanded in future iterations.
+ *     tags:
+ *       - Spaces
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateSpaceRequest'
+ *     responses:
+ *       '200':
+ *         description: Placeholder response confirming receipt of the payload.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CreateSpaceResponse'
+ *       '500':
+ *         description: The request failed due to a server-side error.
+ */
 export async function POST(req: NextRequest) {
   try {
     return NextResponse.json({ test: 'Post space', }, { status: 200, });

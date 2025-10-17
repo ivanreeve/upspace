@@ -5,6 +5,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ThemeSwitcher } from '@/components/ui/theme-switcher';
+import { SemanticSearchIcon } from '@/components/pages/LandingPage/LandingPage.Feature.SemanticSearchIcon';
 
 export default function Home() {
   return (
@@ -14,9 +15,9 @@ export default function Home() {
 
       <h2>Slider</h2>
       <Slider
-        defaultValue={ [50] }
-        max={ 100 }
-        step={ 1 }
+        defaultValue={[50]}
+        max={100}
+        step={1}
         className='w-[300px]'
       />
 
@@ -53,6 +54,9 @@ export default function Home() {
       <p>
         Try selecting this text to see how it looks with the current theme.
       </p>
+
+      <h2>Semantic Search Icon</h2>
+      <SemanticSearchIcon />
     </div>
   );
 }

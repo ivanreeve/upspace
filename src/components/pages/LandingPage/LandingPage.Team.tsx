@@ -35,7 +35,7 @@ const TEAM_MEMBERS: TeamMember[] = [
     name: 'Jerome Tegrado',
     role: 'Business Analyst',
     photo: '/img/team/analyst.png',
-  },
+  }
 ];
 
 export function Team() {
@@ -65,38 +65,36 @@ export function Team() {
           <div className="flex gap-12">
             <div
               className="flex min-w-max gap-12 px-6"
-              style={{
-                animation: 'team-marquee 28s linear infinite',
-              }}
+              style={ { animation: 'team-marquee 28s linear infinite', } }
             >
-              {carouselMembers.map((member, index) => (
+              { carouselMembers.map((member, index) => (
                 <article
-                  key={`${member.name}-${index}`}
+                  key={ `${member.name}-${index}` }
                   className="relative flex shrink-0 flex-col items-left gap-4 bg-background/80 text-left backdrop-blur"
                 >
                   <div className="relative h-64 w-48 overflow-hidden border border-border/60 bg-muted/40 rounded-md">
                     <Image
-                      src={member.photo}
-                      alt={member.name}
+                      src={ member.photo }
+                      alt={ member.name }
                       fill
                       sizes="192px"
                       className="object-cover"
-                      priority={index === 0}
+                      priority={ index === 0 }
                       unoptimized
                     />
                   </div>
                   <div className="space-y-1">
-                    <h3 className="text-lg font-semibold">{member.name}</h3>
-                    <p className="text-sm text-muted-foreground">{member.role}</p>
+                    <h3 className="text-lg font-semibold">{ member.name }</h3>
+                    <p className="text-sm text-muted-foreground">{ member.role }</p>
                   </div>
                 </article>
-              ))}
+              )) }
             </div>
           </div>
         </div>
       </div>
 
-      <style jsx>{`
+      <style jsx>{ `
         @keyframes team-marquee {
           0% {
             transform: translateX(0);
@@ -105,7 +103,7 @@ export function Team() {
             transform: translateX(-50%);
           }
         }
-      `}</style>
+      ` }</style>
     </section>
   );
 }
