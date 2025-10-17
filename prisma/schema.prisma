@@ -88,7 +88,7 @@ model space {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model space_availability {
   availability_id BigInt   @id @unique @default(autoincrement())
-  day_of_week     DateTime @default(now()) @db.Timestamptz(6)
+  day_of_week     String   @db.VarChar
   opening_time    DateTime @db.Timetz(6)
   closing_time    DateTime @db.Timetz(6)
   space_id        BigInt
