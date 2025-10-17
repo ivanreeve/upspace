@@ -37,10 +37,8 @@ model amenity {
 model area {
   area_id                 BigInt  @id @unique @default(autoincrement())
   space_id                BigInt
-  rate_id                 BigInt
   name                    String  @db.VarChar
   capacity                BigInt
-  rate_area_rate_idTorate rate    @relation("area_rate_idTorate", fields: [rate_id], references: [rate_id], onDelete: NoAction, onUpdate: NoAction)
   space                   space   @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
   image                   image[]
   rate_rate_area_idToarea rate[]  @relation("rate_area_idToarea")
@@ -62,7 +60,6 @@ model rate {
   area_id                 BigInt
   time_unit               String  @db.VarChar
   price                   Decimal @db.Decimal
-  area_area_rate_idTorate area[]  @relation("area_rate_idTorate")
   area_rate_area_idToarea area    @relation("rate_area_idToarea", fields: [area_id], references: [area_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
