@@ -1,0 +1,23 @@
+{
+  "name": "UpSpace",
+  "short_name": "UpSpace",
+  "description": "A marketplace and management platform for coworking spaces.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    },
+    {
+      "src": "/img/logo-symbolic.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ]
+}

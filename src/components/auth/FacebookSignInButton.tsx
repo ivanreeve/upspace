@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { FaGoogle } from 'react-icons/fa6';
+import { FaFacebookF } from 'react-icons/fa';
 import { CgSpinner } from 'react-icons/cg';
 
 import { Button } from '@/components/ui/button';
@@ -13,9 +13,9 @@ type Props = {
   className?: string;
 };
 
-export default function GoogleSignInButton({
+export default function FacebookSignInButton({
   callbackUrl = '/',
-  label = 'Continue with Google',
+  label = 'Continue with Facebook',
   className,
 }: Props) {
   const [loading, setLoading] = useState(false);
@@ -23,11 +23,11 @@ export default function GoogleSignInButton({
   return (
     <Button
       type="button"
-      aria-label="Sign in with Google"
+      aria-label="Sign in with Facebook"
       onClick={ async () => {
         setLoading(true);
         try {
-          await signIn('google', { callbackUrl, });
+          await signIn('facebook', { callbackUrl, });
         } finally {
           setLoading(false);
         }
@@ -47,7 +47,7 @@ export default function GoogleSignInButton({
       { loading ? (
         <CgSpinner className="h-4 w-4 animate-spin" />
       ) : (
-        <FaGoogle size={ 18 } />
+        <FaFacebookF size={ 18 } />
       ) }
       <span>{ loading ? 'Redirecting…' : label }</span>
     </Button>

@@ -3,11 +3,36 @@ import './globals.css';
 import { ThemeProvider } from 'next-themes';
 
 import { Toaster } from '@/components/ui/sonner';
+import { ServiceWorkerRegistration } from '@/components/common/ServiceWorkerRegistration';
 
 export const metadata: Metadata = {
   title: 'UpSpace',
   description: 'A marketplace and management platform for coworking spaces.',
-  icons: { icon: 'favicon.svg', },
+  manifest: '/manifest.webmanifest',
+  themeColor: '#0f172a',
+  icons: {
+    icon: [
+      {
+        url: '/favicon.svg',
+        type: 'image/svg+xml',
+        sizes: 'any', 
+      },
+      {
+        url: '/favicon.svg',
+        sizes: 'any', 
+      }
+    ],
+    shortcut: [{ url: '/favicon.svg', }],
+    apple: [{
+      url: '/favicon.svg',
+      type: 'image/svg+xml', 
+    }],
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'UpSpace',
+  },
 };
 
 export default function RootLayout({ children, }: Readonly<{
@@ -24,6 +49,7 @@ export default function RootLayout({ children, }: Readonly<{
         >
           { children }
           <Toaster />
+          <ServiceWorkerRegistration />
         </ThemeProvider>
       </body>
     </html>

@@ -1,14 +1,9 @@
 import GoogleSignInButton from './GoogleSignInButton';
+import FacebookSignInButton from './FacebookSignInButton';
 import EmailPasswordForm from './EmailPasswordForm';
 
-import {
-Card,
-CardHeader,
-CardTitle,
-CardDescription,
-CardContent,
-CardFooter
-} from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 export default function SignInCard({
   callbackUrl = '/dashboard',
@@ -18,8 +13,9 @@ export default function SignInCard({
   title?: string; description?: string; callbackUrl?: string; forgotHref?: string; className?: string;
 }) {
   return (
-    <Card className={ className }>
+    <Card className={ cn('bg-background', className) }>
       <CardContent>
+        <FacebookSignInButton callbackUrl={ callbackUrl } className="mb-2" />
         <GoogleSignInButton callbackUrl={ callbackUrl } />
         <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground">
           <div className="h-px flex-1 bg-border" />
