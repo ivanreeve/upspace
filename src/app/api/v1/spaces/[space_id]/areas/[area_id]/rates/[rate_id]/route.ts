@@ -87,3 +87,45 @@ export async function PUT(req: NextRequest, { params }: Params) {
   }
 }
 
+// DELETE /api/v1/spaces/[space_id]/areas/[area_id]/rates/[rate_id]
+export async function DELETE(_req: NextRequest, { params }: Params) {
+  const { space_id, area_id, rate_id } = params ?? {};
+
+  if (!isNumericId(space_id) || !isNumericId(area_id) || !isNumericId(rate_id)) {
+    return NextResponse.json(
+      { error: 'space_id, area_id and rate_id are required and must be numeric' },
+      { status: 400 },
+    );
+  }
+
+  const spaceId = BigInt(space_id);
+  const areaId = BigInt(area_id);
+  const rateId = BigInt(rate_id);
+
+  try {
+    // ensure area exists and belongs to space
+    const area = await prisma.area.findUnique({
+      where: { area_id: areaId },
+      select: { space_id: true },
+    });
+
+    if (!area || area.space_id !== spaceId) {
+      return NextResponse.json({ error: 'Area not found' }, { status: 404 });
+    }
+
+    const { count } = await prisma.rate.deleteMany({
+      where: { rate_id: rateId, area_id: areaId },
+    });
+
+    if (count === 0) {
+      return NextResponse.json({ error: 'Rate not found' }, { status: 404 });
+    }
+
+    return new NextResponse(null, { status: 204 });
+  } catch (err: any) {
+    if (err?.code === 'P2003') {
+      return NextResponse.json({ error: 'Area not found' }, { status: 404 });
+    }
+    return NextResponse.json({ error: 'Failed to delete rate' }, { status: 500 });
+  }
+}
