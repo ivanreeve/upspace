@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 
 // JSON-safe replacer: BigInt->string, Date->ISO
@@ -61,9 +61,78 @@ nextCursor,
 }
 
 export async function POST(req: NextRequest) {
+  const bodySchema = z.object({
+    user_id: z.string().regex(/^\d+$/),
+    name: z.string().min(1).max(200),
+    unit_number: z.string().min(1).max(200),
+    street: z.string().min(1).max(200),
+    address_subunit: z.string().min(1).max(200),
+    city: z.string().min(1).max(200),
+    region: z.string().min(1).max(200),
+    country: z.string().min(1).max(200),
+    postal_code: z.string().min(1).max(50),
+  });
+
+  const json = await req.json().catch(() => null);
+  const parsed = bodySchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten(), }, { status: 400, });
+  }
+
   try {
-    return NextResponse.json({ test: 'Post space', }, { status: 200, });
-  } catch (err) {
+    const now = new Date();
+    const created = await prisma.space.create({
+      data: {
+        user_id: BigInt(parsed.data.user_id),
+        name: parsed.data.name,
+        unit_number: parsed.data.unit_number,
+        street: parsed.data.street,
+        address_subunit: parsed.data.address_subunit,
+        city: parsed.data.city,
+        region: parsed.data.region,
+        country: parsed.data.country,
+        postal_code: parsed.data.postal_code,
+        created_at: now,
+        updated_at: now,
+      },
+      select: {
+        space_id: true,
+        user_id: true,
+        name: true,
+        unit_number: true,
+        street: true,
+        address_subunit: true,
+        city: true,
+        region: true,
+        country: true,
+        postal_code: true,
+        created_at: true,
+        updated_at: true,
+      },
+    });
+
+    const payload = {
+      space_id: created.space_id.toString(),
+      user_id: created.user_id.toString(),
+      name: created.name,
+      unit_number: created.unit_number,
+      street: created.street,
+      address_subunit: created.address_subunit,
+      city: created.city,
+      region: created.region,
+      country: created.country,
+      postal_code: created.postal_code,
+      created_at: created.created_at instanceof Date ? created.created_at.toISOString() : created.created_at,
+      updated_at: created.updated_at instanceof Date ? created.updated_at.toISOString() : created.updated_at,
+    };
+
+    const res = NextResponse.json({ data: payload, }, { status: 201, });
+    res.headers.set('Location', `/api/v1/spaces/${payload.space_id}`);
+    return res;
+  } catch (err: any) {
+    if (err?.code === 'P2003') {
+      return NextResponse.json({ error: 'User not found.' }, { status: 404 });
+    }
     return NextResponse.json({ error: 'Failed to create space', }, { status: 500, });
   }
 }
