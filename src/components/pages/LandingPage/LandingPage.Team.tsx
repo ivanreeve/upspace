@@ -59,8 +59,8 @@ export function Team() {
         </div>
 
         <div className="relative overflow-hidden py-8">
-          <div className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-background/95 via-background/60 to-transparent z-10" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-background/95 via-background/60 to-transparent z-10" />
+          <div className="pointer-events-none absolute inset-y-0 left-0 md:w-64 w-16 bg-gradient-to-r from-background/95 via-background/60 to-transparent z-10" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 md:w-64 w-16 bg-gradient-to-l from-background/95 via-background/60 to-transparent z-10" />
 
           <div className="flex gap-12">
             <div

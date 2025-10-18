@@ -15,9 +15,9 @@ export default function Home() {
 
       <h2>Slider</h2>
       <Slider
-        defaultValue={[50]}
-        max={100}
-        step={1}
+        defaultValue={ [50] }
+        max={ 100 }
+        step={ 1 }
         className='w-[300px]'
       />
 
