@@ -108,7 +108,6 @@ export async function POST(req: NextRequest, { params }: Params) {
     };
 
     const res = NextResponse.json({ data: payload }, { status: 201 });
-    // make path plural to match /rates
     res.headers.set(
       'Location',
       `/api/v1/spaces/${space_id}/areas/${area_id}/rates/${payload.rate_id}`,
