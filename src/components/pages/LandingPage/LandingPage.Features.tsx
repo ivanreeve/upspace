@@ -1,7 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+useEffect,
+useMemo,
+useRef,
+useState
+} from 'react';
 import Image from 'next/image';
+
 import { SemanticSearchIcon } from './LandingPage.Feature.SemanticSearchIcon';
 
 type FeatureSlide = {
@@ -39,7 +45,7 @@ export function Features() {
           'Surface the most relevant spaces instantly with vector-powered results that understand intent, not just keywords.',
         component: SemanticSearchIcon,
         layout: 'overlay',
-      },
+      }
     ],
     []
   );
@@ -126,7 +132,9 @@ export function Features() {
             }
 
             const isStack = slide.layout === 'stack';
-            const { lightImage, darkImage } = slide;
+            const {
+ lightImage, darkImage, 
+} = slide;
 
             return (
               <div

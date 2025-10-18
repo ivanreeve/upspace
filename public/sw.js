@@ -1,6 +1,6 @@
 const CACHE_NAME = 'upspace-pwa-v1';
 const OFFLINE_URL = '/';
-const PRECACHE_URLS = ['/', '/manifest.webmanifest', '/favicon.ico'];
+const PRECACHE_URLS = ['/', '/manifest.webmanifest', '/favicon.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
