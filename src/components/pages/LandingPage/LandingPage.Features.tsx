@@ -6,6 +6,7 @@ useMemo,
 useRef,
 useState
 } from 'react';
+import type { JSX } from 'react';
 import Image from 'next/image';
 
 import { SemanticSearchIcon } from './LandingPage.Feature.SemanticSearchIcon';
