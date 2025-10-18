@@ -57,7 +57,7 @@ export function Features() {
   );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(true);
-  const transitionResetFrame = useRef<number>();
+  const transitionResetFrame = useRef<number | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -69,8 +69,9 @@ export function Features() {
 
   useEffect(
     () => () => {
-      if (transitionResetFrame.current) {
+      if (transitionResetFrame.current !== null) {
         cancelAnimationFrame(transitionResetFrame.current);
+        transitionResetFrame.current = null;
       }
     },
     []
@@ -83,6 +84,7 @@ export function Features() {
         setCurrentIndex(0);
         transitionResetFrame.current = requestAnimationFrame(() => {
           setIsTransitioning(true);
+          transitionResetFrame.current = null;
         });
       });
     }
