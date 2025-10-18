@@ -1,10 +1,13 @@
-/* Use require at runtime to avoid a compile-time missing-export error in some setups */
-const { PrismaClient } = require('@prisma/client');
+import type { PrismaClient as PrismaClientType } from '@prisma/client';
 
-const globalForPrisma = globalThis as unknown as { prisma: any };
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClientType };
 
-export const prisma = 
-    globalForPrisma.prisma || 
-    new PrismaClient({ log: ['query', 'info', 'warn', 'error'] });
+async function getPrisma() {
+  if (!globalForPrisma.prisma) {
+    const { PrismaClient } = await import('@prisma/client');
+    globalForPrisma.prisma = new PrismaClient({ log: ['query', 'info', 'warn', 'error'] });
+  }
+  return globalForPrisma.prisma;
+}
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+export const prisma = await getPrisma();
