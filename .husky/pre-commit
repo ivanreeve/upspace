@@ -1,0 +1,4 @@
+#!/bin/sh
+
+# Auto-generate commit messages when the placeholder '/ai' is used.
+node scripts/ai-commit.mjs
