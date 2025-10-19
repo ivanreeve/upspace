@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { GoogleGenAI } from "@google/genai";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { lstat, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -15,6 +15,14 @@ function logInfo(message) {
 
 function logError(message) {
   console.error(`${logPrefix} ${message}`);
+}
+
+function runGit(args, options = {}) {
+  return execFileSync("git", args, {
+    encoding: "utf8",
+    maxBuffer: 10e6,
+    ...options,
+  });
 }
 
 async function resolveGitDir() {
@@ -86,7 +94,7 @@ async function getSystemInstructions() {
 
 function getStagedDiff() {
   try {
-    return execSync("git diff --cached", { encoding: "utf8", maxBuffer: 10e6 });
+    return runGit(["diff", "--cached", "--no-ext-diff", "--binary"]);
   } catch (error) {
     throw new Error(
       `Failed to compute staged diff: ${error?.message ?? String(error)}`
@@ -94,8 +102,53 @@ function getStagedDiff() {
   }
 }
 
-function validateDiff(diffText) {
+function hasParentCommit() {
+  try {
+    execFileSync("git", ["rev-parse", "--verify", "--quiet", "HEAD^"], {
+      stdio: "ignore",
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function getHeadDiff() {
+  try {
+    return runGit(["diff", "HEAD^", "HEAD", "--no-ext-diff", "--binary"]);
+  } catch (error) {
+    throw new Error(
+      `Failed to compute existing commit diff: ${
+        error?.message ?? String(error)
+      }`
+    );
+  }
+}
+
+function collectDiff() {
+  const stagedDiff = getStagedDiff();
+  if (stagedDiff.trim()) {
+    return { diffText: stagedDiff, source: "staged" };
+  }
+
+  if (hasParentCommit()) {
+    const headDiff = getHeadDiff();
+    if (headDiff.trim()) {
+      return { diffText: headDiff, source: "head" };
+    }
+  }
+
+  return { diffText: "", source: "none" };
+}
+
+function validateDiff(diffText, source) {
   if (!diffText.trim()) {
+    if (source === "head") {
+      throw new Error(
+        "Detected --amend with unchanged content. Unable to derive diff."
+      );
+    }
+
     throw new Error(
       "No staged changes found. Stage your changes before using /ai."
     );
@@ -103,7 +156,7 @@ function validateDiff(diffText) {
 
   if (!/^diff --git /m.test(diffText)) {
     throw new Error(
-      'Staged diff is not in unified format. Ensure `git diff --cached` starts with "diff --git".'
+      'Diff is not in unified format. Ensure the computed diff starts with "diff --git".'
     );
   }
 }
@@ -177,12 +230,16 @@ async function main() {
 
   logInfo("Generating commit message via Gemini...");
 
-  const [systemInstructions, diffText] = await Promise.all([
-    getSystemInstructions(),
-    (async () => getStagedDiff())(),
-  ]);
+  const { diffText, source } = collectDiff();
+  if (source === "head") {
+    logInfo(
+      "No staged changes detected; using previous commit diff (amend scenario)."
+    );
+  }
 
-  validateDiff(diffText);
+  const systemInstructions = await getSystemInstructions();
+
+  validateDiff(diffText, source);
 
   const prompt = `${systemInstructions.trim()}\n\nDiff:\n${diffText}`;
   const rawResponse = await callGemini(prompt);
