@@ -11,10 +11,7 @@ export default function SpaceHeader({
         <div className="space-y-2">
           <h1 className="text-3xl font-semibold text-foreground">{ name }</h1>
           <p className="text-sm text-muted-foreground">
-            <span className="mr-1" aria-label="Rating">
-              ⭐
-            </span>
-            { rating.score.toFixed(1) } · { rating.count } reviews · { location }
+            * { rating.score.toFixed(1) } - { rating.count } reviews - { location }
           </p>
         </div>
         <div className="flex items-center gap-3 text-sm text-foreground">

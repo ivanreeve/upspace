@@ -10,10 +10,8 @@ export default function WhereYoullBe({
 
   return (
     <section className="space-y-4 border-t pt-6">
-      <h2 className="text-xl font-medium">Where you’ll be</h2>
-      <p className="text-sm text-muted-foreground">
-        { label } · Map coming soon
-      </p>
+      <h2 className="text-xl font-medium text-foreground">Where you will be</h2>
+      <p className="text-sm text-muted-foreground">{ label } - Map coming soon</p>
       <figure className="overflow-hidden rounded-2xl border">
         <img
           src={ MAP_PLACEHOLDER }
