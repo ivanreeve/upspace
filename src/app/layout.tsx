@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ThemeProvider } from 'next-themes';
+import QueryProvider from '@/components/providers/QueryProvider';
 
 import { AuthProfileSync } from '@/components/auth/AuthProfileSync';
 import { SessionProvider } from '@/components/auth/SessionProvider';
