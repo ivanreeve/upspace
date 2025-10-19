@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
-import { signIn } from 'next-auth/react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { CgSpinner } from 'react-icons/cg';
 
 import type { LoginState } from '@/app/(auth)/signin/actions';
 import { loginAction } from '@/app/(auth)/signin/actions';
@@ -11,7 +13,10 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
-const initialState: LoginState = { ok: false, };
+const initialState: LoginState = {
+  ok: false,
+  redirectTo: undefined,
+};
 
 function SubmitButton() {
   const { pending, } = useFormStatus();
@@ -20,12 +25,13 @@ function SubmitButton() {
       type="submit"
       disabled={ pending }
       className={ [
-        'w-full h-10 inline-flex items-center justify-center rounded-lg px-4 py-2',
+        'w-full h-10 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2',
         'bg-primary text-primary-foreground border border-border',
         'transition-[transform,opacity] active:scale-[0.98] disabled:opacity-70'
       ].join(' ') }
     >
-      { pending ? 'Validating…' : 'Sign In' }
+      { pending && <CgSpinner className="h-4 w-4 animate-spin" /> }
+      <span>{ pending ? 'Validating…' : 'Sign In' }</span>
     </Button>
   );
 }
@@ -34,30 +40,48 @@ export default function EmailPasswordForm({
   callbackUrl = '/dashboard',
   forgotHref = '/forgot-password',
 }: { callbackUrl?: string; forgotHref?: string }) {
-  // Local mirrors to invoke NextAuth after server validation passes.
+  // Controlled inputs to mirror the form state locally.
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const [state, formAction] =
     useActionState<LoginState, FormData>(loginAction, initialState);
 
+  const router = useRouter();
+
   useEffect(() => {
-    if (state.ok) {
-      // Hand off to NextAuth Credentials provider.
-      // No secrets baked; provider config lives server-side.
-      void signIn('credentials', {
-        email,
-        password,
-        callbackUrl,
-        redirect: true,
-      });
-    }
-  }, [state.ok, email, password, callbackUrl]);
+    if (!state.ok || !state.redirectTo) return;
+
+    router.push(state.redirectTo);
+  }, [state.ok, state.redirectTo, router]);
+
+  useEffect(() => {
+    if (state.ok) return;
+
+    const fieldMessages = Object.values(state.errors ?? {})
+      .flat()
+      .map((message) => message?.trim())
+      .filter((message): message is string => Boolean(message));
+
+    const combinedMessages = [
+      state.message?.trim() ?? '',
+      ...fieldMessages
+    ].filter(Boolean);
+
+    if (!combinedMessages.length) return;
+
+    const uniqueMessages = Array.from(new Set(combinedMessages));
+
+    uniqueMessages.forEach((message) => {
+      toast.error(message);
+    });
+  }, [state]);
 
   const fieldErr = (k: string) => state.errors?.[k]?.[0];
 
   return (
     <form action={ formAction } className="space-y-3">
+      <input type="hidden" name="callbackUrl" value={ callbackUrl } />
       <div className="space-y-1.5">
         <Label htmlFor="email" className="font-sf text-sm text-muted-foreground">Email</Label>
         <Input
@@ -70,13 +94,13 @@ export default function EmailPasswordForm({
           onChange={ (e) => setEmail(e.target.value) }
           className={ [
             'w-full h-10 rounded-md px-3',
-            'bg-border text-foreground border border-input',
+            'bg-muted/60 text-foreground border border-input',
             'placeholder:text-muted-foreground',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
           ].join(' ') }
           placeholder="Enter your email"
         />
-        { fieldErr('email') && <p className="text-sm text-destructive">{ fieldErr('email') }</p> }
+        { fieldErr('email') && <p className="font-sf text-sm text-destructive">{ fieldErr('email') }</p> }
       </div>
 
       <div className="space-y-1.5">
@@ -94,19 +118,14 @@ export default function EmailPasswordForm({
           onChange={ (e) => setPassword(e.target.value) }
           className={ [
             'w-full h-10 rounded-md px-3',
-            'bg-border text-foreground border border-input',
+            'bg-muted/60 text-foreground border border-input',
             'placeholder:text-muted-foreground',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
           ].join(' ') }
           placeholder="Password"
         />
-        { fieldErr('password') && <p className="text-sm text-destructive">{ fieldErr('password') }</p> }
+        { fieldErr('password') && <p className="font-sf text-sm text-destructive">{ fieldErr('password') }</p> }
       </div>
-
-      { state.message && !state.ok && (
-        <p role="alert" className="text-sm text-destructive">{ state.message }</p>
-      ) }
-
       <SubmitButton />
 
       <span className='text-foreground text-sm'>

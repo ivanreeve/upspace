@@ -8,6 +8,7 @@ import {
   AccordionTrigger,
   AccordionContent
 } from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 export type FaqItem = {
@@ -110,7 +111,7 @@ export function Faq({
   return (
     <section
       data-slot="faq"
-      className={ cn('w-full mt-16', className) }
+      className={ cn('w-full', className) }
       aria-label="Frequently Asked Questions"
     >
       <Accordion
@@ -119,16 +120,20 @@ export function Faq({
         onValueChange={ handleValueChange as any }
         defaultValue={ undefined }
         { ...(!allowMultiple && { collapsible, }) }
-        className="rounded-lg border"
+        className="rounded-md border border-border/60 bg-background backdrop-blur"
       >
         { normalized.map((item) => (
-          <AccordionItem key={ item._id } value={ item._id }>
-            <AccordionTrigger className="text-base p-4 cursor-pointer">
+          <AccordionItem
+            key={ item._id }
+            value={ item._id }
+            className="border-b border-border/40 last:border-b-0 first:rounded-t-md last:rounded-b-md overflow-hidden"
+          >
+            <AccordionTrigger className="group flex items-start gap-4 px-6 py-6 text-left text-base font-medium transition hover:text-foreground hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-lg">
               <span id={ item._id } className="scroll-mt-24">
                 { item.question }
               </span>
             </AccordionTrigger>
-            <AccordionContent className="px-8 [&_p]:leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5">
+            <AccordionContent className="px-6 pb-6 text-base text-left leading-relaxed text-muted-foreground [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:ml-5 [&_ul]:list-disc [&_ol]:ml-5 [&_ol]:list-decimal">
               { item.answer }
             </AccordionContent>
           </AccordionItem>
@@ -185,24 +190,32 @@ const faqs: FaqItem[] = [
 
 export function FAQs() {
   return (
-    <div
+    <section
       id="faqs"
-      className="mx-auto max-w-3xl min-h-screen flex flex-col justify-center items-center py-16"
+      className="relative py-24 sm:py-32"
     >
-      <h2 className="mb-2 text-[2rem] text-center font-semibold">
-        Frequently Answered Questions
-      </h2>
-      <p className="text-lg text-[1rem] text-muted-foreground text-center">
-        Quick answers to common questions.
-      </p>
-      <Faq
-        items={ faqs }
-        allowMultiple
-        jsonLd
-        onToggle={ (id, open) => {
-          // track analytics if needed
-        } }
-      />
-    </div>
+      <div className="mx-auto max-w-4xl space-y-10 text-center">
+        <div className="space-y-5">
+          <Badge variant="secondary" className="mx-auto w-fit uppercase tracking-wide">
+            Frequently Answered Questions
+          </Badge>
+          <h2 className="text-4xl font-instrument-serif tracking-tight text-balance sm:text-[2.75rem]">
+            Answers to keep your bookings moving.
+          </h2>
+          <p className="mx-auto max-w-2xl text-base text-muted-foreground sm:text-lg">
+            Everything you need to know about finding your next workspace and partnering with UpSpace, in one place.
+          </p>
+        </div>
+        <Faq
+          items={ faqs }
+          allowMultiple
+          jsonLd
+          onToggle={ (id, open) => {
+            // track analytics if needed
+          } }
+          className="mx-auto max-w-3xl"
+        />
+      </div>
+    </section>
   );
 }

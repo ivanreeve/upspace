@@ -80,8 +80,8 @@ export function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="border-t border-border bg-black text-background dark:bg-background dark:text-foreground">
-      <div className="mx-auto max-w-7xl px-6 py-12">
+    <footer className="border-t border-border bg-black text-white dark:bg-background dark:text-foreground">
+      <div className="mx-auto max-w-[1440px] px-4 py-12">
         <div className="grid grid-cols-1 gap-10 md:grid-cols-12">
           <div className="md:col-span-4">
             <div className="flex items-center justify-start gap-3">

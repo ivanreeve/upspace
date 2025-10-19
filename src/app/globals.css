@@ -3,6 +3,7 @@
 
 @import "tailwindcss";
 @import "tw-animate-css";
+@import '@scalar/api-reference-react/style.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -102,8 +103,8 @@
   --radius: 8px;
   --background: oklch(0.9942 0.021 112.56);
   --foreground: oklch(0.1776 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card: oklch(94.261% 0.03157 78.124);
+  --card-foreground: oklch(33.191% 0.07195 69.827);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.3018 0.06 231.92);
@@ -134,6 +135,7 @@
   --ufont-sf: "SF Pro Text";
   --ufont-serif: "Noto Serif";
   --ufont-instrument-serif: "Instrument Serif";
+  --custom-red: oklch(0.6368 0.2078 25.33);
 }
 
 .dark {
@@ -182,6 +184,15 @@
   color: var(--background);
 }
 
+.scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
 @layer base {
   html {
     font-family: var(--ufont-sf);
@@ -197,12 +208,17 @@
     @apply border-border outline-ring/50;
   }
 
-  *,
-  *::before,
-  *::after {}
-
   body {
     @apply bg-background text-foreground;
+  }
+
+  html {
+    background-color: var(--background) !important;
+  }
+
+  body {
+    background-color: var(--background) !important;
+    color: var(--foreground) !important;
   }
 }
 
@@ -244,4 +260,28 @@
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--muted) var(--background);
+}
+
+/* Sonner Custom Styles */
+.custom-toast button[data-close-button] {
+  position: absolute !important;
+  right: 12px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  left: auto !important;
+  border: transparent !important;
+  background-color: transparent !important;
+}
+
+.custom-toast button[data-close-button]:hover {
+  background-color: transparent !important;
+  border: transparent !important;
+}
+
+.toast-error-color * {
+  color: oklch(0.5505 0.2155 19.81) !important;
+}
+
+.toast-success-color * {
+  color: oklch(0.625 0.1772 140.44) !important;
 }
