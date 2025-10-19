@@ -76,6 +76,7 @@ model space {
   updated_at         DateTime             @db.Timestamptz(6)
   postal_code        String               @db.VarChar
   user_id            BigInt
+  overview           String?
   amenity            amenity[]
   area               area[]
   booking            booking[]
