@@ -4,12 +4,11 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "prisma generate && next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "prepare": "husky",
-    "devApi": "npx prisma generate && nodemon --exec \"node --loader ts-node/esm\" script.ts"
+    "prepare": "husky"
   },
   "dependencies": {
     "@google/genai": "^1.19.0",
