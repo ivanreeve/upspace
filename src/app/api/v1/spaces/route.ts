@@ -231,9 +231,9 @@ export async function GET(req: NextRequest) {
     const nextCursor = hasNext ? String(items[items.length - 1].space_id as unknown as bigint) : null;
 
     const body = JSON.stringify({
- data: items,
-nextCursor, 
-}, replacer);
+      data: items,
+      nextCursor,
+    }, replacer);
 
     return new NextResponse(body, {
       headers: { 'content-type': 'application/json', },

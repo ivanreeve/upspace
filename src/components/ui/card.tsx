@@ -3,13 +3,13 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 function Card({
- className, ...props 
+  className, ...props
 }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="card"
       className={ cn(
-        'bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm',
+        'bg-card text-card-foreground flex flex-col gap-6 rounded-xl border border-muted py-6',
         className
       ) }
       { ...props }
@@ -18,7 +18,7 @@ function Card({
 }
 
 function CardHeader({
- className, ...props 
+  className, ...props
 }: React.ComponentProps<'div'>) {
   return (
     <div
@@ -33,7 +33,7 @@ function CardHeader({
 }
 
 function CardTitle({
- className, ...props 
+  className, ...props
 }: React.ComponentProps<'div'>) {
   return (
     <div
@@ -45,7 +45,7 @@ function CardTitle({
 }
 
 function CardDescription({
- className, ...props 
+  className, ...props
 }: React.ComponentProps<'div'>) {
   return (
     <div
@@ -57,7 +57,7 @@ function CardDescription({
 }
 
 function CardAction({
- className, ...props 
+  className, ...props
 }: React.ComponentProps<'div'>) {
   return (
     <div
@@ -72,7 +72,7 @@ function CardAction({
 }
 
 function CardContent({
- className, ...props 
+  className, ...props
 }: React.ComponentProps<'div'>) {
   return (
     <div
@@ -84,7 +84,7 @@ function CardContent({
 }
 
 function CardFooter({
- className, ...props 
+  className, ...props
 }: React.ComponentProps<'div'>) {
   return (
     <div
