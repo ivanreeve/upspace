@@ -2,7 +2,7 @@
 
 import { GoogleGenAI } from "@google/genai";
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
@@ -16,6 +16,8 @@ function logInfo(message) {
 function logError(message) {
   console.error(`${logPrefix} ${message}`);
 }
+
+loadDotEnv();
 
 function runGit(args, options = {}) {
   return execFileSync("git", args, {
@@ -184,3 +186,63 @@ main().catch((error) => {
   logError(error?.message ?? String(error));
   process.exit(1);
 });
+
+function loadDotEnv() {
+  const envPath = path.join(process.cwd(), ".env");
+  if (!existsSync(envPath)) {
+    return;
+  }
+
+  let content;
+  try {
+    content = readFileSync(envPath, "utf8");
+  } catch (error) {
+    logError(
+      `Failed to read .env file at ${envPath}: ${
+        error?.message ?? String(error)
+      }`
+    );
+    return;
+  }
+
+  for (const line of content.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) {
+      continue;
+    }
+
+    const equalsIndex = trimmed.indexOf("=");
+    if (equalsIndex === -1) {
+      continue;
+    }
+
+    let key = trimmed.slice(0, equalsIndex).trim();
+    if (key.startsWith("export ")) {
+      key = key.slice(7).trim();
+    }
+
+    if (!key) {
+      continue;
+    }
+
+    let value = trimmed.slice(equalsIndex + 1).trim();
+
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    } else {
+      const commentIndex = value.indexOf(" #");
+      if (commentIndex !== -1) {
+        value = value.slice(0, commentIndex).trim();
+      }
+    }
+
+    value = value.replace(/\\n/g, "\n").replace(/\\r/g, "\r");
+
+    if (process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
+}
