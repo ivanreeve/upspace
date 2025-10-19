@@ -1,0 +1,4 @@
+#!/bin/sh
+
+# Amend commits whose message placeholder is `/ai`.
+node scripts/ai-commit.mjs

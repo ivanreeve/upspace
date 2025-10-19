@@ -3,7 +3,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { lstat, readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
@@ -25,51 +25,34 @@ function runGit(args, options = {}) {
   });
 }
 
-async function resolveGitDir() {
-  const envGitDir = process.env.GIT_DIR;
-  if (envGitDir) {
-    return path.isAbsolute(envGitDir)
-      ? envGitDir
-      : path.resolve(process.cwd(), envGitDir);
-  }
-
-  const gitEntry = path.join(process.cwd(), ".git");
-  if (!existsSync(gitEntry)) {
-    throw new Error("Unable to locate .git directory.");
-  }
-
-  const stats = await lstat(gitEntry);
-  if (stats.isDirectory()) {
-    return gitEntry;
-  }
-
-  if (!stats.isFile()) {
-    throw new Error("Unsupported .git reference type.");
-  }
-
-  const dotGitContents = await readFile(gitEntry, "utf8");
-  const match = dotGitContents.match(/gitdir:\s*(.+)/i);
-  if (!match) {
-    throw new Error("Malformed .git file: missing gitdir directive.");
-  }
-
-  const gitDirPath = match[1].trim();
-  return path.isAbsolute(gitDirPath)
-    ? gitDirPath
-    : path.resolve(path.dirname(gitEntry), gitDirPath);
-}
-
-async function getCommitMessagePath() {
-  const gitDir = await resolveGitDir();
-  return path.join(gitDir, "COMMIT_EDITMSG");
-}
-
-async function readCommitMessage(commitMessagePath) {
+function getLatestCommitMessage() {
   try {
-    return await readFile(commitMessagePath, "utf8");
+    return runGit(["log", "-1", "--pretty=%B"]).trim();
+  } catch (error) {
+    throw new Error(
+      `Failed to read latest commit message: ${
+        error?.message ?? String(error)
+      }`
+    );
+  }
+}
+
+function hasParentCommit() {
+  try {
+    runGit(["rev-parse", "--verify", "HEAD~1"]);
+    return true;
   } catch {
-    // If the commit message file does not exist yet, bail out quietly.
-    return null;
+    return false;
+  }
+}
+
+function getDiffAgainstParent() {
+  try {
+    return runGit(["diff", "HEAD~1", "HEAD", "--no-ext-diff", "--binary"]);
+  } catch (error) {
+    throw new Error(
+      `Failed to compute commit diff: ${error?.message ?? String(error)}`
+    );
   }
 }
 
@@ -92,71 +75,14 @@ async function getSystemInstructions() {
   return readFile(instructionsPath, "utf8");
 }
 
-function getStagedDiff() {
-  try {
-    return runGit(["diff", "--cached", "--no-ext-diff", "--binary"]);
-  } catch (error) {
-    throw new Error(
-      `Failed to compute staged diff: ${error?.message ?? String(error)}`
-    );
-  }
-}
-
-function hasParentCommit() {
-  try {
-    execFileSync("git", ["rev-parse", "--verify", "--quiet", "HEAD^"], {
-      stdio: "ignore",
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function getHeadDiff() {
-  try {
-    return runGit(["diff", "HEAD^", "HEAD", "--no-ext-diff", "--binary"]);
-  } catch (error) {
-    throw new Error(
-      `Failed to compute existing commit diff: ${
-        error?.message ?? String(error)
-      }`
-    );
-  }
-}
-
-function collectDiff() {
-  const stagedDiff = getStagedDiff();
-  if (stagedDiff.trim()) {
-    return { diffText: stagedDiff, source: "staged" };
-  }
-
-  if (hasParentCommit()) {
-    const headDiff = getHeadDiff();
-    if (headDiff.trim()) {
-      return { diffText: headDiff, source: "head" };
-    }
-  }
-
-  return { diffText: "", source: "none" };
-}
-
-function validateDiff(diffText, source) {
+function validateDiff(diffText) {
   if (!diffText.trim()) {
-    if (source === "head") {
-      throw new Error(
-        "Detected --amend with unchanged content. Unable to derive diff."
-      );
-    }
-
-    throw new Error(
-      "No staged changes found. Stage your changes before using /ai."
-    );
+    throw new Error("Commit diff was empty; nothing to analyze.");
   }
 
   if (!/^diff --git /m.test(diffText)) {
     throw new Error(
-      'Diff is not in unified format. Ensure the computed diff starts with "diff --git".'
+      'Commit diff is not in unified format. Expected lines starting with "diff --git".'
     );
   }
 }
@@ -201,6 +127,10 @@ function parseGeminiResponse(rawText) {
       throw new Error("Parsed response missing subject or description.");
     }
 
+    if (subject.includes("\n")) {
+      throw new Error("Subject must be a single line.");
+    }
+
     return { subject, description };
   } catch (error) {
     throw new Error(
@@ -211,43 +141,43 @@ function parseGeminiResponse(rawText) {
   }
 }
 
-async function writeCommitMessage(commitMessagePath, subject, description) {
-  const finalMessage = `${subject}\n\n${description}\n`;
-  await writeFile(commitMessagePath, finalMessage, "utf8");
+function amendLatestCommit(subject, description) {
+  try {
+    runGit(["commit", "--amend", "-m", subject, "-m", description]);
+  } catch (error) {
+    throw new Error(
+      `Failed to amend commit message: ${error?.message ?? String(error)}`
+    );
+  }
 }
 
 async function main() {
-  const commitMessagePath = await getCommitMessagePath();
-  const commitMessage = await readCommitMessage(commitMessagePath);
+  const latestMessage = getLatestCommitMessage();
 
-  if (!commitMessage) {
+  if (latestMessage !== "/ai") {
     return;
   }
 
-  if (commitMessage.trim() !== "/ai") {
-    return;
-  }
-
-  logInfo("Generating commit message via Gemini...");
-
-  const { diffText, source } = collectDiff();
-  if (source === "head") {
-    logInfo(
-      "No staged changes detected; using previous commit diff (amend scenario)."
+  if (!hasParentCommit()) {
+    throw new Error(
+      "Cannot use /ai for the initial commit because no parent diff exists."
     );
   }
 
+  logInfo("Latest commit flagged for AI-generated message; analyzing diff...");
+
+  const diffText = getDiffAgainstParent();
+  validateDiff(diffText);
+
   const systemInstructions = await getSystemInstructions();
-
-  validateDiff(diffText, source);
-
   const prompt = `${systemInstructions.trim()}\n\nDiff:\n${diffText}`;
+
   const rawResponse = await callGemini(prompt);
-
   const { subject, description } = parseGeminiResponse(rawResponse);
-  await writeCommitMessage(commitMessagePath, subject, description);
 
-  logInfo("Commit message updated using Gemini output.");
+  amendLatestCommit(subject, description);
+
+  logInfo("Latest commit message updated using Gemini output.");
 }
 
 main().catch((error) => {
