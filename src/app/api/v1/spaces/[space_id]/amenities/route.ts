@@ -5,7 +5,6 @@ import { prisma } from '@/lib/prisma';
 
 const bodySchema = z.object({
   name: z.string().min(1).max(100),
-  category: z.string().min(1).max(100),
 });
 
 type Params = { params: { space_id: string } };
@@ -27,7 +26,6 @@ export async function POST(req: NextRequest, { params, }: Params) {
       data: {
         space_id: BigInt(space_id),
         name: parsed.data.name,
-        category: parsed.data.category,
       },
     });
 
@@ -35,7 +33,6 @@ export async function POST(req: NextRequest, { params, }: Params) {
       amenity_id: created.amenity_id.toString(),
       space_id: created.space_id.toString(),
       name: created.name,
-      category: created.category,
     };
 
     const res = NextResponse.json({ data: payload, }, { status: 201, });
@@ -72,7 +69,6 @@ export async function GET(_req: NextRequest, { params, }: Params) {
  amenity_id: true,
 space_id: true,
 name: true,
-category: true, 
 },
   });
 
@@ -81,9 +77,7 @@ category: true,
       amenity_id: r.amenity_id.toString(),
       space_id: r.space_id.toString(),
       name: r.name,
-      category: r.category,
     })),
   });
 }
-
 
