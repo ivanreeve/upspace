@@ -19,7 +19,7 @@ export default function ReviewsSection({
     <section className="space-y-6 border-t pt-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-medium">
-          ⭐ { rating.score.toFixed(1) } · { rating.count } reviews
+          * { rating.score.toFixed(1) } - { rating.count } reviews
         </h2>
         <button
           type="button"
@@ -31,7 +31,7 @@ export default function ReviewsSection({
 
       <div className="grid gap-6 lg:grid-cols-2">
         <dl className="grid gap-4 sm:grid-cols-2">
-          { [leftHighlights, rightHighlights]
+          {[leftHighlights, rightHighlights]
             .filter((group) => group.length > 0)
             .map((group, index) => (
               <div key={ index } className="space-y-4">
@@ -44,7 +44,7 @@ export default function ReviewsSection({
                     <div className="h-1.5 rounded-full bg-muted">
                       <div
                         className="h-full rounded-full bg-foreground"
-                        style={ { width: `${ (item.value / 5) * 100 }%`, } }
+                        style={{ width: `${(item.value / 5) * 100}%` }}
                       />
                     </div>
                   </div>
@@ -62,7 +62,7 @@ export default function ReviewsSection({
               <header className="mb-3 flex items-center gap-3 text-sm">
                 <span
                   className="flex h-10 w-10 items-center justify-center rounded-full text-white"
-                  style={ { backgroundColor: review.color, } }
+                  style={{ backgroundColor: review.color }}
                 >
                   { review.author.charAt(0).toUpperCase() }
                 </span>
