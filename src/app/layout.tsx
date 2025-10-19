@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ThemeProvider } from 'next-themes';
 
@@ -9,7 +9,6 @@ export const metadata: Metadata = {
   title: 'UpSpace',
   description: 'A marketplace and management platform for coworking spaces.',
   manifest: '/manifest.webmanifest',
-  themeColor: '#0f172a',
   icons: {
     icon: [
       {
@@ -33,6 +32,10 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'UpSpace',
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#023347',
 };
 
 export default function RootLayout({ children, }: Readonly<{
