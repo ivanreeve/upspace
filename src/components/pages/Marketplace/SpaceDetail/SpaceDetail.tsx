@@ -19,20 +19,41 @@ type Space = {
   amenity: { amenity_id: bigint; name: string }[];
 };
 
-export default function SpaceDetail({ space }: { space: Space }) {
+export default function SpaceDetail({ space, }: { space: Space }) {
   const locationParts = [space.city, space.region].filter(Boolean);
   const location = locationParts.length > 0 ? locationParts.join(', ') : 'Global City, Taguig';
 
-  const rating = { score: 5, count: 7 };
+  const rating = {
+ score: 5,
+count: 7, 
+};
   const hostName = 'Trisha M.';
 
   const reviewHighlights = [
-    { label: 'Cleanliness', value: 5 },
-    { label: 'Communication', value: 5 },
-    { label: 'Check-in', value: 5 },
-    { label: 'Accuracy', value: 5 },
-    { label: 'Location', value: 4.9 },
-    { label: 'Value', value: 4.7 },
+    {
+ label: 'Cleanliness',
+value: 5, 
+},
+    {
+ label: 'Communication',
+value: 5, 
+},
+    {
+ label: 'Check-in',
+value: 5, 
+},
+    {
+ label: 'Accuracy',
+value: 5, 
+},
+    {
+ label: 'Location',
+value: 4.9, 
+},
+    {
+ label: 'Value',
+value: 4.7, 
+}
   ];
 
   const testimonials = [
@@ -46,7 +67,7 @@ export default function SpaceDetail({ space }: { space: Space }) {
       author: 'Shayna',
       date: 'December 2021',
       content:
-        "The environment is calm yet energizing, and I have met so many like-minded professionals. The meeting rooms are well-equipped, and the coffee bar is a nice bonus. Definitely...",
+        'The environment is calm yet energizing, and I have met so many like-minded professionals. The meeting rooms are well-equipped, and the coffee bar is a nice bonus. Definitely...',
       color: '#0ea5e9',
     },
     {
@@ -60,17 +81,29 @@ export default function SpaceDetail({ space }: { space: Space }) {
       date: 'November 2021',
       content: 'Well designed and fun space, neighborhood has lots of energy and amenities.',
       color: '#111827',
-    },
+    }
   ];
 
   const overviewFallback =
-    "Located in the heart of the city, Downtown Space offers a modern and flexible coworking environment designed for entrepreneurs, freelancers, and small teams. With high-speed Wi-Fi, ergonomic workstations, private meeting rooms, and a cozy lounge area, it is the perfect place to stay productive and inspired.";
+    'Located in the heart of the city, Downtown Space offers a modern and flexible coworking environment designed for entrepreneurs, freelancers, and small teams. With high-speed Wi-Fi, ergonomic workstations, private meeting rooms, and a cozy lounge area, it is the perfect place to stay productive and inspired.';
 
   const featureList = [
-    { name: 'Breakout Spaces', available: true },
-    { name: 'Wheelchair Accessible', available: true },
-    { name: 'Parking Space(s)', available: false },
-    { name: 'Restrooms', available: true },
+    {
+ name: 'Breakout Spaces',
+available: true, 
+},
+    {
+ name: 'Wheelchair Accessible',
+available: true, 
+},
+    {
+ name: 'Parking Space(s)',
+available: false, 
+},
+    {
+ name: 'Restrooms',
+available: true, 
+}
   ];
 
   return (
