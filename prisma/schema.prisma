@@ -27,7 +27,6 @@ model user {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model amenity {
   amenity_id BigInt @id @unique @default(autoincrement())
-  category   String @db.VarChar
   name       String @db.VarChar
   space_id   BigInt
   space      space  @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
