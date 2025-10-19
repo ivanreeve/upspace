@@ -3,9 +3,7 @@ import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
 
-const bodySchema = z.object({
-  name: z.string().min(1).max(100),
-});
+const bodySchema = z.object({ name: z.string().min(1).max(100), });
 
 type Params = { params: { space_id: string } };
 
