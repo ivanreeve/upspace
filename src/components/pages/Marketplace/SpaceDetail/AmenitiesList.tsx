@@ -52,7 +52,7 @@ export default function AmenitiesList({
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Do not see an amenity you are looking for?{' '}
+        Do not see an amenity you are looking for?{ ' ' }
         <button
           type="button"
           className="font-medium text-foreground underline underline-offset-4 hover:text-primary"
