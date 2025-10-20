@@ -36,7 +36,7 @@ export async function listSpaces(params: ListSpacesParams = {}) {
   if (params.amenities_mode) sp.set('amenities_mode', params.amenities_mode);
 
   const res = await fetch(`/api/v1/spaces?${sp.toString()}`, {
-    headers: { 'accept': 'application/json' },
+    headers: { 'accept': 'application/json', },
     cache: 'no-store',
   });
   if (!res.ok) {
