@@ -64,10 +64,10 @@ export async function GET(_req: NextRequest, { params, }: Params) {
     where: { space_id: BigInt(space_id), },
     orderBy: { name: 'asc', },
     select: {
- amenity_id: true,
-space_id: true,
-name: true,
-},
+      amenity_id: true,
+      space_id: true,
+      name: true,
+    },
   });
 
   return NextResponse.json({

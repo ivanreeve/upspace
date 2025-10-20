@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
 
-type Params = { params: { space_id?: string } };
+type Params = { params: Promise<{ space_id?: string }> };
 
 const isNumericId = (value: string | undefined): value is string =>
   typeof value === 'string' && /^\d+$/.test(value);
@@ -21,7 +21,7 @@ const updateSchema = z.object({
 }).refine((data) => Object.values(data).some(v => v !== undefined), { message: 'At least one field must be provided', });
 
 export async function GET(_req: NextRequest, { params, }: Params) {
-  const { space_id, } = params;
+  const { space_id, } = await params;
   if (!isNumericId(space_id)) {
     return NextResponse.json({ error: 'space_id is required and must be numeric', }, { status: 400, });
   }
@@ -70,7 +70,7 @@ export async function GET(_req: NextRequest, { params, }: Params) {
 
 
 export async function PUT(req: NextRequest, { params, }: Params) {
-  const { space_id, } = params;
+  const { space_id, } = await params;
   if (!isNumericId(space_id)) {
     return NextResponse.json({ error: 'space_id is required and must be numeric', }, { status: 400, });
   }
@@ -137,7 +137,7 @@ export async function PUT(req: NextRequest, { params, }: Params) {
 }
 
 export async function DELETE(_req: NextRequest, { params, }: Params) {
-  const { space_id, } = params;
+  const { space_id, } = await params;
   if (!isNumericId(space_id)) {
     return NextResponse.json({ error: 'space_id is required and must be numeric', }, { status: 400, });
   }
