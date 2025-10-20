@@ -113,23 +113,63 @@ export async function GET(req: NextRequest) {
 
     // Build Prisma where clause
     const and: any[] = [];
-    if (city) and.push({ city });
-    if (region) and.push({ region });
-    if (country) and.push({ country });
-    if (postal_code) and.push({ postal_code });
-    if (user_id) and.push({ user_id: BigInt(user_id) });
+    if (city) and.push({ city, });
+    if (region) and.push({ region, });
+    if (country) and.push({ country, });
+    if (postal_code) and.push({ postal_code, });
+    if (user_id) and.push({ user_id: BigInt(user_id), });
 
     if (q) {
       and.push({
         OR: [
-          { name: { contains: q, mode: 'insensitive' as const } },
-          { street: { contains: q, mode: 'insensitive' as const } },
-          { address_subunit: { contains: q, mode: 'insensitive' as const } },
-          { unit_number: { contains: q, mode: 'insensitive' as const } },
-          { city: { contains: q, mode: 'insensitive' as const } },
-          { region: { contains: q, mode: 'insensitive' as const } },
-          { country: { contains: q, mode: 'insensitive' as const } },
-          { postal_code: { contains: q, mode: 'insensitive' as const } },
+          {
+ name: {
+ contains: q,
+mode: 'insensitive' as const, 
+}, 
+},
+          {
+ street: {
+ contains: q,
+mode: 'insensitive' as const, 
+}, 
+},
+          {
+ address_subunit: {
+ contains: q,
+mode: 'insensitive' as const, 
+}, 
+},
+          {
+ unit_number: {
+ contains: q,
+mode: 'insensitive' as const, 
+}, 
+},
+          {
+ city: {
+ contains: q,
+mode: 'insensitive' as const, 
+}, 
+},
+          {
+ region: {
+ contains: q,
+mode: 'insensitive' as const, 
+}, 
+},
+          {
+ country: {
+ contains: q,
+mode: 'insensitive' as const, 
+}, 
+},
+          {
+ postal_code: {
+ contains: q,
+mode: 'insensitive' as const, 
+}, 
+}
         ],
       });
     }
@@ -140,20 +180,20 @@ export async function GET(req: NextRequest) {
       .map(s => s.trim())
       .filter(s => /^\d+$/.test(s))
       .map(s => BigInt(s));
-    if (ids.length > 0) and.push({ space_id: { in: ids } });
+    if (ids.length > 0) and.push({ space_id: { in: ids, }, });
 
     // Created/updated range filters
     if (created_from || created_to) {
       const created: any = {};
       if (created_from) created.gte = new Date(created_from);
       if (created_to) created.lte = new Date(created_to);
-      and.push({ created_at: created });
+      and.push({ created_at: created, });
     }
     if (updated_from || updated_to) {
       const updated: any = {};
       if (updated_from) updated.gte = new Date(updated_from);
       if (updated_to) updated.lte = new Date(updated_to);
-      and.push({ updated_at: updated });
+      and.push({ updated_at: updated, });
     }
 
     // Amenities filter: comma separated names, mode: any|all
@@ -164,14 +204,28 @@ export async function GET(req: NextRequest) {
     if (amenityNames.length > 0) {
       if ((amenities_mode ?? 'any') === 'all') {
         for (const name of amenityNames) {
-          and.push({ amenity: { some: { name: { equals: name, mode: 'insensitive' as const } } } });
+          and.push({
+ amenity: {
+ some: {
+ name: {
+ equals: name,
+mode: 'insensitive' as const, 
+}, 
+}, 
+}, 
+});
         }
       } else {
         and.push({
           amenity: {
             some: {
-              OR: amenityNames.map((name) => ({ name: { equals: name, mode: 'insensitive' as const } })),
-            },
+ OR: amenityNames.map((name) => ({
+ name: {
+ equals: name,
+mode: 'insensitive' as const, 
+}, 
+})), 
+},
           },
         });
       }
@@ -179,12 +233,12 @@ export async function GET(req: NextRequest) {
 
     // Minimum capacity via related areas
     if (typeof min_capacity === 'number') {
-      and.push({ area: { some: { capacity: { gte: BigInt(min_capacity) } } } });
+      and.push({ area: { some: { capacity: { gte: BigInt(min_capacity), }, }, }, });
     }
 
     // Bookmarked by a specific user
     if (bookmark_user_id) {
-      and.push({ bookmark: { some: { user_id: BigInt(bookmark_user_id) } } });
+      and.push({ bookmark: { some: { user_id: BigInt(bookmark_user_id), }, }, });
     }
 
     // Availability by day_of_week
@@ -193,7 +247,7 @@ export async function GET(req: NextRequest) {
       .map(s => s.trim())
       .filter(Boolean);
     if (days.length > 0) {
-      and.push({ space_availability: { some: { day_of_week: { in: days } } } });
+      and.push({ space_availability: { some: { day_of_week: { in: days, }, }, }, });
     }
 
     // Rate-based price/time-unit filter via areas -> rates
@@ -205,17 +259,17 @@ export async function GET(req: NextRequest) {
       if (rate_time_unit) rateCond.time_unit = rate_time_unit;
       if (Object.keys(priceCond).length > 0) rateCond.price = priceCond;
 
-      and.push({ area: { some: { rate_rate_area_idToarea: { some: rateCond } } } });
+      and.push({ area: { some: { rate_rate_area_idToarea: { some: rateCond, }, }, }, });
     }
 
-    const where = and.length > 0 ? { AND: and } : {};
+    const where = and.length > 0 ? { AND: and, } : {};
 
     // Pagination and sorting
     const take = limit + 1; // read one extra to know if there's a next page
     const orderBy = (() => {
       const field = sort ?? 'space_id';
       const direction = order ?? 'asc';
-      return { [field]: direction } as const;
+      return { [field]: direction, } as const;
     })();
 
     const rows = await prisma.space.findMany({
