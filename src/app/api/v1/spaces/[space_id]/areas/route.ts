@@ -3,14 +3,14 @@ import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
 
-type Params = { params: { space_id?: string } };
+type Params = { params: Promise<{ space_id?: string }> };
 
 const isNumericId = (value: string | undefined): value is string =>
   typeof value === 'string' && /^\d+$/.test(value);
 
 // List areas under a space
 export async function GET(_req: NextRequest, { params, }: Params) {
-  const { space_id, } = params;
+  const { space_id, } = await params;
   if (!isNumericId(space_id)) {
     return NextResponse.json(
       { error: 'space_id is required and must be numeric', },
@@ -50,7 +50,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: NextRequest, { params, }: Params) {
-  const { space_id, } = params;
+  const { space_id, } = await params;
   if (!isNumericId(space_id)) {
     return NextResponse.json(
       { error: 'space_id is required and must be numeric', },

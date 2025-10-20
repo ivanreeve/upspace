@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
 
-type Params = { params: { space_id?: string; area_id?: string } };
+type Params = { params: Promise<{ space_id?: string; area_id?: string }> };
 
 const isNumericId = (value: string | undefined): value is string =>
   typeof value === 'string' && /^\d+$/.test(value);
@@ -16,7 +16,7 @@ const updateSchema = z.object({
 export async function PUT(req: NextRequest, { params, }: Params) {
   const {
  space_id, area_id, 
-} = params;
+} = await params;
 
   if (!isNumericId(space_id) || !isNumericId(area_id)) {
     return NextResponse.json(
@@ -91,7 +91,7 @@ capacity: true,
 export async function DELETE(_req: NextRequest, { params, }: Params) {
   const {
  space_id, area_id, 
-} = params;
+} = await params;
 
   if (!isNumericId(space_id) || !isNumericId(area_id)) {
     return NextResponse.json(

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { prisma } from '@/lib/prisma';
 
-type Params = { params: { space_id?: string; availability_id?: string } };
+type Params = { params: Promise<{ space_id?: string; availability_id?: string }> };
 
 const isNumeric = (v: string | undefined): v is string => typeof v === 'string' && /^\d+$/.test(v);
 
@@ -22,7 +22,7 @@ const parseTimeToUTCDate = (time: string): Date | null => {
 export async function PUT(req: NextRequest, { params, }: Params) {
   const {
  space_id, availability_id, 
-} = params;
+} = await params;
   if (!isNumeric(space_id) || !isNumeric(availability_id)) {
     return NextResponse.json({ error: 'space_id and availability_id must be numeric', }, { status: 400, });
   }
@@ -74,6 +74,10 @@ closing_time: true,
     return NextResponse.json({ error: 'Invalid time format. Use HH:mm or HH:mm:ss', }, { status: 422, });
   }
 
+  if (!openDate || !closeDate) {
+    return NextResponse.json({ error: 'Failed to parse availability times', }, { status: 500, });
+  }
+
   if (closeDate <= openDate) {
     return NextResponse.json({ error: 'closing_time must be after opening_time', }, { status: 422, });
   }
@@ -109,7 +113,7 @@ closing_time: true,
 export async function DELETE(_req: NextRequest, { params, }: Params) {
   const {
  space_id, availability_id, 
-} = params;
+} = await params;
   if (!isNumeric(space_id) || !isNumeric(availability_id)) {
     return NextResponse.json({ error: 'space_id and availability_id must be numeric', }, { status: 400, });
   }
