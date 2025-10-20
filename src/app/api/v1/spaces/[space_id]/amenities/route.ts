@@ -5,10 +5,10 @@ import { prisma } from '@/lib/prisma';
 
 const bodySchema = z.object({ name: z.string().min(1).max(100), });
 
-type Params = { params: { space_id: string } };
+type Params = { params: Promise<{ space_id: string }> };
 
 export async function POST(req: NextRequest, { params, }: Params) {
-  const { space_id, } = params;
+  const { space_id, } = await params;
   if (!space_id) {
     return NextResponse.json({ error: 'space_id is required', }, { status: 400, });
   }
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest, { params, }: Params) {
 }
 
 export async function GET(_req: NextRequest, { params, }: Params) {
-  const { space_id, } = params;
+  const { space_id, } = await params;
   if (!space_id) {
     return NextResponse.json({ error: 'space_id is required', }, { status: 400, });
   }
@@ -78,4 +78,3 @@ name: true,
     })),
   });
 }
-
