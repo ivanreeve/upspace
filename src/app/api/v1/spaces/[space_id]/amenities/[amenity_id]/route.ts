@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { prisma } from '@/lib/prisma';
 
-type Params = { params: { space_id?: string; amenity_id?: string } };
+type Params = { params: Promise<{ space_id: string; amenity_id: string }> };
 
 const isNumeric = (v: string | undefined): v is string => typeof v === 'string' && /^\d+$/.test(v);
 
 export async function DELETE(_req: NextRequest, { params, }: Params) {
   const {
  space_id, amenity_id, 
-} = params;
+} = await params;
   if (!isNumeric(space_id) || !isNumeric(amenity_id)) {
     return NextResponse.json({ error: 'space_id and amenity_id must be numeric', }, { status: 400, });
   }
