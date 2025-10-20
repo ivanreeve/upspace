@@ -18,20 +18,18 @@ const updateSchema = z.object({
   region: z.string().min(1).max(200).optional(),
   country: z.string().min(1).max(200).optional(),
   postal_code: z.string().min(1).max(50).optional(),
-}).refine((data) => Object.values(data).some(v => v !== undefined), {
-  message: 'At least one field must be provided',
-});
+}).refine((data) => Object.values(data).some(v => v !== undefined), { message: 'At least one field must be provided', });
 
-export async function GET(_req: NextRequest, { params }: Params) {
-  const { space_id } = params;
+export async function GET(_req: NextRequest, { params, }: Params) {
+  const { space_id, } = params;
   if (!isNumericId(space_id)) {
-    return NextResponse.json({ error: 'space_id is required and must be numeric' }, { status: 400 });
+    return NextResponse.json({ error: 'space_id is required and must be numeric', }, { status: 400, });
   }
 
   const id = BigInt(space_id);
 
   const row = await prisma.space.findUnique({
-    where: { space_id: id },
+    where: { space_id: id, },
     select: {
       space_id: true,
       user_id: true,
@@ -49,7 +47,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
   });
 
   if (!row) {
-    return NextResponse.json({ error: 'Space not found' }, { status: 404 });
+    return NextResponse.json({ error: 'Space not found', }, { status: 404, });
   }
 
   return NextResponse.json({
@@ -71,32 +69,32 @@ export async function GET(_req: NextRequest, { params }: Params) {
 }
 
 
-export async function PUT(req: NextRequest, { params }: Params) {
-  const { space_id } = params;
+export async function PUT(req: NextRequest, { params, }: Params) {
+  const { space_id, } = params;
   if (!isNumericId(space_id)) {
-    return NextResponse.json({ error: 'space_id is required and must be numeric' }, { status: 400 });
+    return NextResponse.json({ error: 'space_id is required and must be numeric', }, { status: 400, });
   }
 
   const json = await req.json().catch(() => null);
   const parsed = updateSchema.safeParse(json);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: parsed.error.flatten(), }, { status: 400, });
   }
 
   const id = BigInt(space_id);
 
   try {
     const updated = await prisma.space.update({
-      where: { space_id: id },
+      where: { space_id: id, },
       data: {
-        ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
-        ...(parsed.data.unit_number !== undefined ? { unit_number: parsed.data.unit_number } : {}),
-        ...(parsed.data.street !== undefined ? { street: parsed.data.street } : {}),
-        ...(parsed.data.address_subunit !== undefined ? { address_subunit: parsed.data.address_subunit } : {}),
-        ...(parsed.data.city !== undefined ? { city: parsed.data.city } : {}),
-        ...(parsed.data.region !== undefined ? { region: parsed.data.region } : {}),
-        ...(parsed.data.country !== undefined ? { country: parsed.data.country } : {}),
-        ...(parsed.data.postal_code !== undefined ? { postal_code: parsed.data.postal_code } : {}),
+        ...(parsed.data.name !== undefined ? { name: parsed.data.name, } : {}),
+        ...(parsed.data.unit_number !== undefined ? { unit_number: parsed.data.unit_number, } : {}),
+        ...(parsed.data.street !== undefined ? { street: parsed.data.street, } : {}),
+        ...(parsed.data.address_subunit !== undefined ? { address_subunit: parsed.data.address_subunit, } : {}),
+        ...(parsed.data.city !== undefined ? { city: parsed.data.city, } : {}),
+        ...(parsed.data.region !== undefined ? { region: parsed.data.region, } : {}),
+        ...(parsed.data.country !== undefined ? { country: parsed.data.country, } : {}),
+        ...(parsed.data.postal_code !== undefined ? { postal_code: parsed.data.postal_code, } : {}),
       },
       select: {
         space_id: true,
@@ -129,36 +127,39 @@ export async function PUT(req: NextRequest, { params }: Params) {
         created_at: updated.created_at instanceof Date ? updated.created_at.toISOString() : updated.created_at,
         updated_at: updated.updated_at instanceof Date ? updated.updated_at.toISOString() : updated.updated_at,
       },
-    }, { status: 200 });
+    }, { status: 200, });
   } catch (err: any) {
     if (err?.code === 'P2025') {
-      return NextResponse.json({ error: 'Space not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Space not found', }, { status: 404, });
     }
-    return NextResponse.json({ error: 'Failed to update space' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to update space', }, { status: 500, });
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: Params) {
-  const { space_id } = params;
+export async function DELETE(_req: NextRequest, { params, }: Params) {
+  const { space_id, } = params;
   if (!isNumericId(space_id)) {
-    return NextResponse.json({ error: 'space_id is required and must be numeric' }, { status: 400 });
+    return NextResponse.json({ error: 'space_id is required and must be numeric', }, { status: 400, });
   }
 
   const id = BigInt(space_id);
 
   try {
-    await prisma.space.delete({ where: { space_id: id } });
+    await prisma.space.delete({ where: { space_id: id, }, });
     return NextResponse.json({
       message: 'Space deleted successfully',
-      data: { space_id: id.toString(), deleted: true },
-    }, { status: 200 });
+      data: {
+ space_id: id.toString(),
+deleted: true, 
+},
+    }, { status: 200, });
   } catch (err: any) {
     if (err?.code === 'P2025') {
-      return NextResponse.json({ error: 'Space not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Space not found', }, { status: 404, });
     }
     if (err?.code === 'P2003') {
-      return NextResponse.json({ error: 'Cannot delete space with related records' }, { status: 409 });
+      return NextResponse.json({ error: 'Cannot delete space with related records', }, { status: 409, });
     }
-    return NextResponse.json({ error: 'Failed to delete space' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to delete space', }, { status: 500, });
   }
 }
