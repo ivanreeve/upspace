@@ -4,6 +4,7 @@ import React from 'react';
 
 import MarketplaceHero from './Marketplace.Hero';
 import { CardsGrid } from './Marketplace.Cards';
+import MarketplaceFilters from './Marketplace.Filters';
 
 import type { Space } from '@/lib/api/spaces';
 import BackToTopButton from '@/components/ui/back-to-top';
@@ -106,7 +107,12 @@ image_url: '/img/hero-featured-dark-1.png',
   return (
     <div className="px-4 max-w-[1440px] mx-auto py-10">
       <MarketplaceHero />
-
+      <MarketplaceFilters
+        q={ state.q }
+        amenities={ state.amenities }
+        onChange={ (newState) => setState(newState) }
+        onSearch={ () => { /* no-op for placeholder */ } }
+      />
       <section className="mt-8">
         <h2 className="text-xl font-semibold mb-4">Near Me</h2>
         <CardsGrid items={ nearMe } />
