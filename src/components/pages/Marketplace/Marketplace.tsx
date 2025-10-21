@@ -5,15 +5,23 @@ import React from 'react';
 import MarketplaceHero from './Marketplace.Hero';
 import { CardsGrid } from './Marketplace.Cards';
 import MarketplaceFilters from './Marketplace.Filters';
+import {
+  DEFAULT_FILTER_STATE,
+  DEFAULT_MIN_RATING,
+  DEFAULT_PRICE_RANGE,
+  type MarketplaceFilterState
+} from './filters/constants';
 
 import type { Space } from '@/lib/api/spaces';
 import BackToTopButton from '@/components/ui/back-to-top';
 
 export default function Marketplace() {
-  const [state, setState] = React.useState<{ q: string; amenities: string[] }>({
- q: '',
-amenities: [], 
-});
+  const [state, setState] = React.useState<MarketplaceFilterState>(() => ({
+    q: DEFAULT_FILTER_STATE.q,
+    amenities: [...DEFAULT_FILTER_STATE.amenities],
+    priceRange: [...DEFAULT_FILTER_STATE.priceRange] as [number, number],
+    minRating: DEFAULT_FILTER_STATE.minRating,
+  }));
 
   // Placeholder data for cards (no API call)
   const MOCK_SPACES: Space[] = React.useMemo(() => ([
@@ -93,13 +101,21 @@ image_url: '/img/hero-featured-dark-1.png',
 
   const filtered = React.useMemo(() => {
     const q = state.q.trim().toLowerCase();
-    if (!q && state.amenities.length === 0) return MOCK_SPACES;
-    // Since this is placeholder, only basic text search is applied
+    const hasAmenityFilters = state.amenities.length > 0;
+    const hasPriceFilter =
+      state.priceRange[0] !== DEFAULT_PRICE_RANGE[0] ||
+      state.priceRange[1] !== DEFAULT_PRICE_RANGE[1];
+    const hasRatingFilter = state.minRating !== DEFAULT_MIN_RATING;
+
+    if (!q && !hasAmenityFilters && !hasPriceFilter && !hasRatingFilter) return MOCK_SPACES;
+
+    // Placeholder: price and rating filters will apply once data is available
     return MOCK_SPACES.filter((s) => {
       const hay = `${s.name ?? ''} ${s.city ?? ''} ${s.region ?? ''}`.toLowerCase();
-      return q ? hay.includes(q) : true;
+      const matchesQuery = q ? hay.includes(q) : true;
+      return matchesQuery;
     });
-  }, [MOCK_SPACES, state.q, state.amenities]);
+  }, [MOCK_SPACES, state.amenities, state.minRating, state.priceRange, state.q]);
 
   const nearMe = filtered.slice(0, 4);
   const recommended = filtered.slice(4);
@@ -110,7 +126,9 @@ image_url: '/img/hero-featured-dark-1.png',
       <MarketplaceFilters
         q={ state.q }
         amenities={ state.amenities }
-        onChange={ (newState) => setState(newState) }
+        priceRange={ state.priceRange }
+        minRating={ state.minRating }
+        onChange={ setState }
         onSearch={ () => { /* no-op for placeholder */ } }
       />
       <section className="mt-8">
