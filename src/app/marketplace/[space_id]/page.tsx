@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 
 import { prisma } from '@/lib/prisma';
 import { getSpaceDetail } from '@/lib/queries/space';
-import SpaceDetail from '@/components/pages/Marketplace/SpaceDetail/SpaceDetail';
+import MarketplaceSpaceDetail from '@/components/pages/Marketplace/SpaceDetail/Marketplace.SpaceDetail';
 import NavBar from '@/components/ui/navbar';
 import { Footer } from '@/components/ui/footer';
 
@@ -26,7 +26,7 @@ export default async function SpaceDetailPage({ params, }: Props) {
   return (
     <>
       <NavBar />
-      <SpaceDetail space={ space as any } />
+      <MarketplaceSpaceDetail space={ space as any } />
       <Footer />
     </>
   );

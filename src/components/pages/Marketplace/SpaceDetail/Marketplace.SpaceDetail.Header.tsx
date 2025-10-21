@@ -1,6 +1,6 @@
 type Rating = { score: number; count: number };
 
-export default function SpaceHeader({
+export default function Header({
   name,
   rating,
   location,

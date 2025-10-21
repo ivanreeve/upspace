@@ -11,9 +11,12 @@ export async function getSpaceDetail(spaceId: bigint) {
       amenity: { orderBy: { name: 'asc', }, },
       area: {
         orderBy: { name: 'asc', },
-        include: { rate_rate_area_idToarea: { orderBy: { rate_id: 'asc', }, }, },
+        include: {
+          rate_rate_area_idToarea: { orderBy: { rate_id: 'asc', }, },
+          image: { orderBy: { display_order: 'asc', }, },
+        },
       },
-      space_availability: true,
+      space_availability: { orderBy: { day_of_week: 'asc', }, },
     },
   });
 }

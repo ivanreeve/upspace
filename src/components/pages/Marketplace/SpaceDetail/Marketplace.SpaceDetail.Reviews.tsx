@@ -1,8 +1,11 @@
 type Rating = { score: number; count: number };
 type Highlight = { label: string; value: number };
-type Testimonial = { author: string; date: string; content: string; color: string };
+type Testimonial = { author: string; date: string; content: string; color: string; rating: number };
 
-export default function ReviewsSection({
+const STAR_FILLED = String.fromCharCode(9733);
+const STAR_EMPTY = String.fromCharCode(9734);
+
+export default function Reviews({
   rating,
   highlights,
   testimonials,
@@ -16,9 +19,9 @@ export default function ReviewsSection({
   const rightHighlights = highlights.slice(midpoint);
 
   return (
-    <section className="space-y-6 border-t pt-6">
+    <section className="space-y-6 border-t pt-10">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-medium">
+        <h2 className="text-2xl text-foreground">
           * { rating.score.toFixed(1) } - { rating.count } reviews
         </h2>
         <button
@@ -55,10 +58,7 @@ export default function ReviewsSection({
 
         <div className="grid gap-4">
           { testimonials.map((review) => (
-            <article
-              key={ review.author }
-              className="gap-3 rounded-2xl border p-4 shadow-sm"
-            >
+            <article key={ review.author } className="space-y-3 rounded-2xl border p-4 shadow-sm">
               <header className="mb-3 flex items-center gap-3 text-sm">
                 <span
                   className="flex h-10 w-10 items-center justify-center rounded-full text-white"
@@ -71,6 +71,19 @@ export default function ReviewsSection({
                   <p className="text-muted-foreground">{ review.date }</p>
                 </div>
               </header>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 text-base">
+                  { Array.from({ length: 5, }, (_, starIndex) => (
+                    <span
+                      key={ `${review.author}-star-${starIndex}` }
+                      className={ starIndex < review.rating ? 'text-yellow-500' : 'text-muted-foreground' }
+                    >
+                      { starIndex < review.rating ? STAR_FILLED : STAR_EMPTY }
+                    </span>
+                  )) }
+                </div>
+                <span className="text-xs text-muted-foreground">{ review.rating }/5</span>
+              </div>
               <p className="text-sm leading-relaxed text-foreground/80">{ review.content }</p>
             </article>
           )) }
