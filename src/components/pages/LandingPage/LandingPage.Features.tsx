@@ -28,14 +28,14 @@ export function Features() {
       {
         title: 'Discover and Book Coworking Spaces',
         description:
-          'Explore hundreds of verified coworking spaces near you — from shared desks to private rooms. Compare amenities, view photos, and book instantly through UpSpace’s all-in-one platform.',
+          'This is a description of the features of the product. It highlights the key functionalities and benefits that users can expect.',
         lightImage: '/img/feature-light-1.svg',
         darkImage: '/img/feature-dark-1.svg',
       },
       {
         title: 'Manage Team Reservations Effortlessly',
         description:
-          'Coordinate schedules across teams with shared calendars, smart reminders, unified payment management, and real-time availability across all locations.',
+          'Coordinate schedules across teams with shared calendars, smart reminders, and real-time availability across all locations.',
         lightImage: '/img/feature-light-2.svg',
         darkImage: '/img/feature-dark-2.svg',
         layout: 'stack',
@@ -43,7 +43,7 @@ export function Features() {
       {
         title: 'Semantic Search Insights',
         description:
-          'Find the ideal space faster with AI-powered search. UpSpace delivers results that match intent, not just keywords.',
+          'Surface the most relevant spaces instantly with vector-powered results that understand intent, not just keywords.',
         component: SemanticSearchIcon,
         layout: 'overlay',
       }
