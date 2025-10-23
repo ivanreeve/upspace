@@ -59,6 +59,10 @@ build/Release
 .env
 .env*
 
+# Supabase
+supabase/.temp/
+supabase/.branches/
+
 # ====================
 # React Frontend
 # ====================
