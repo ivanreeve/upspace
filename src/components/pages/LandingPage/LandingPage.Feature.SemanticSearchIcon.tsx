@@ -198,20 +198,36 @@ export function SemanticSearchIcon() {
                 <stop offset="0%" stopColor="rgba(255,255,255,0.85)" />
                 <stop offset="100%" stopColor="rgba(255,255,255,0)" />
               </radialGradient>
+              <filter id="semantic-spark-motion-blur" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="0">
+                  <animate
+                    attributeName="stdDeviation"
+                    values="0;0;3;0"
+                    keyTimes="0;0.6;0.72;1"
+                    dur="1.5s"
+                    calcMode="spline"
+                    keySplines="0.35 0 0.65 0;0.2 0.8 0.4 1;0.6 0 0.8 0.2"
+                    repeatCount="indefinite"
+                  />
+                </feGaussianBlur>
+              </filter>
             </defs>
 
             <g>
               <animateTransform
                 attributeName="transform"
                 type="rotate"
-                from="0 60 60"
-                to="360 60 60"
-                dur="12s"
+                values="0 60 60;40 60 60;360 60 60"
+                keyTimes="0;0.68;1"
+                dur="1.5s"
+                calcMode="spline"
+                keySplines="0.55 0 0.85 0.2;0.15 0.85 0.3 1"
                 repeatCount="indefinite"
               />
               <path
                 d="M60 8C62 32 88 58 112 60C88 62 62 88 60 112C58 88 32 62 8 60C32 58 58 32 60 8Z"
                 fill="url(#semantic-spark-gradient)"
+                filter="url(#semantic-spark-motion-blur)"
               />
             </g>
           </svg>
