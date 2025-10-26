@@ -57,36 +57,70 @@ export function Features() {
   );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(true);
-  const transitionResetFrame = useRef<number | null>(null);
+  const transitionResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const timer = setInterval(() => {
+    const timer = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return;
+      }
       setCurrentIndex((prev) => prev + 1);
     }, SLIDE_INTERVAL_MS);
 
-    return () => clearInterval(timer);
+    return () => window.clearInterval(timer);
   }, [slides.length]);
 
   useEffect(
     () => () => {
-      if (transitionResetFrame.current !== null) {
-        cancelAnimationFrame(transitionResetFrame.current);
-        transitionResetFrame.current = null;
+      if (transitionResetTimeout.current !== null) {
+        clearTimeout(transitionResetTimeout.current);
+        transitionResetTimeout.current = null;
       }
     },
     []
   );
 
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') {
+        return;
+      }
+
+      setCurrentIndex((prev) => {
+        if (prev >= slides.length) {
+          return prev % slides.length;
+        }
+
+        return prev;
+      });
+      setIsTransitioning(true);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [slides.length]);
+
   const handleTransitionEnd = () => {
     if (currentIndex === slides.length) {
       setIsTransitioning(false);
-      transitionResetFrame.current = requestAnimationFrame(() => {
+      if (transitionResetTimeout.current !== null) {
+        clearTimeout(transitionResetTimeout.current);
+      }
+
+      transitionResetTimeout.current = window.setTimeout(() => {
         setCurrentIndex(0);
-        transitionResetFrame.current = requestAnimationFrame(() => {
+        transitionResetTimeout.current = window.setTimeout(() => {
           setIsTransitioning(true);
-          transitionResetFrame.current = null;
-        });
-      });
+          transitionResetTimeout.current = null;
+        }, 50);
+      }, 20);
     }
   };
 
