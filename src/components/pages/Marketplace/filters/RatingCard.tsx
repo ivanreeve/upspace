@@ -17,9 +17,9 @@ export function RatingCard({
   onChange,
 }: RatingCardProps) {
   return (
-    <div className="rounded-2xl border border-[#0f5a62]/20 bg-muted/30 p-4">
+    <div className="rounded-xl border border-border/60 bg-background px-5 py-4 shadow-sm">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-sm font-semibold text-[#0f5a62]">Minimum rating</span>
+        <span className="text-sm font-semibold text-foreground">Minimum rating</span>
         <span className="text-xs font-medium text-muted-foreground">
           { minRating ? `${minRating} star${minRating > 1 ? 's' : ''} & up` : 'Any rating' }
         </span>
@@ -29,10 +29,10 @@ export function RatingCard({
           type="button"
           onClick={ () => onChange(DEFAULT_MIN_RATING) }
           className={ cn(
-            'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40',
+            'inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20',
             minRating === DEFAULT_MIN_RATING
-              ? 'border-[#0f5a62] bg-[#0f5a62]/10 text-[#0f5a62] shadow-sm'
-              : 'border-transparent bg-background text-muted-foreground hover:border-[#0f5a62]/40 hover:bg-secondary/10 hover:text-[#0f5a62]'
+              ? 'border-primary bg-primary/10 text-primary shadow-sm'
+              : 'border-border/60 bg-muted/40 text-muted-foreground hover:border-primary/40 hover:bg-muted/70 hover:text-primary'
           ) }
         >
           Any rating
@@ -45,10 +45,10 @@ export function RatingCard({
               type="button"
               onClick={ () => onChange(rating) }
               className={ cn(
-                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40',
+                'inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20',
                 isActive
-                  ? 'border-[#0f5a62] bg-[#0f5a62]/10 text-[#0f5a62] shadow-sm'
-                  : 'border-transparent bg-background text-muted-foreground hover:border-[#0f5a62]/40 hover:bg-secondary/10 hover:text-[#0f5a62]'
+                  ? 'border-primary bg-primary/10 text-primary shadow-sm'
+                  : 'border-border/60 bg-muted/40 text-muted-foreground hover:border-primary/40 hover:bg-muted/70 hover:text-primary'
               ) }
             >
               <span>{ rating }+</span>

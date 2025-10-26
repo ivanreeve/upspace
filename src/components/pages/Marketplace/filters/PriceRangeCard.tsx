@@ -20,10 +20,10 @@ export function PriceRangeCard({
   const [minPrice, maxPrice] = priceRange;
 
   return (
-    <div className="rounded-2xl border border-[#0f5a62]/20 bg-muted/30 p-4">
+    <div className="rounded-xl border border-border/60 bg-background px-5 py-4 shadow-sm">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-sm font-semibold text-[#0f5a62]">Monthly price range</span>
-        <span className="text-sm font-semibold text-[#0f5a62]">
+        <span className="text-sm font-semibold text-foreground">Monthly price range</span>
+        <span className="text-sm font-semibold text-primary">
           { formatCurrency(minPrice) } – { formatCurrency(maxPrice) }
         </span>
       </div>
