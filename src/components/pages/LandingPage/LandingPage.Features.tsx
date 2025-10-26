@@ -57,7 +57,7 @@ export function Features() {
   );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(true);
-  const transitionResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const transitionResetTimeout = useRef<number | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -73,7 +73,7 @@ export function Features() {
   useEffect(
     () => () => {
       if (transitionResetTimeout.current !== null) {
-        clearTimeout(transitionResetTimeout.current);
+        window.clearTimeout(transitionResetTimeout.current);
         transitionResetTimeout.current = null;
       }
     },
@@ -111,7 +111,7 @@ export function Features() {
     if (currentIndex === slides.length) {
       setIsTransitioning(false);
       if (transitionResetTimeout.current !== null) {
-        clearTimeout(transitionResetTimeout.current);
+        window.clearTimeout(transitionResetTimeout.current);
       }
 
       transitionResetTimeout.current = window.setTimeout(() => {
