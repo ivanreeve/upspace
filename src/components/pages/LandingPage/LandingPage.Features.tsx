@@ -57,7 +57,7 @@ export function Features() {
   );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(true);
-  const transitionResetTimeout = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const transitionResetTimeout = useRef<number | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
