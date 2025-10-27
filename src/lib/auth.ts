@@ -1,8 +1,5 @@
-import { createHmac } from 'crypto';
-
 import NextAuth from 'next-auth';
 import Google from 'next-auth/providers/google';
-import Facebook from 'next-auth/providers/facebook';
 import Credentials from 'next-auth/providers/credentials';
 import { z } from 'zod';
 
@@ -17,50 +14,6 @@ const credentialsSchema = z.object({
 
 // minimal app user shape for credentials flow
 type AppUser = { id: string; email: string; name?: string | null };
-
-async function fetchFacebookEmail(accessToken: string): Promise<string | null> {
-  const params = new URLSearchParams({
-    fields: 'id,name,email,picture',
-    access_token: accessToken,
-  });
-
-  const appSecret = process.env.FACEBOOK_CLIENT_SECRET;
-  if (appSecret) {
-    const proof = createHmac('sha256', appSecret)
-      .update(accessToken)
-      .digest('hex');
-    params.set('appsecret_proof', proof);
-  }
-
-  try {
-    const response = await fetch(
-      `https://graph.facebook.com/v19.0/me?${params.toString()}`
-    );
-    const payload = await response.json();
-    if (process.env.NODE_ENV === 'development') {
-      console.info('Facebook email fetch response', payload);
-    }
-
-    if (payload && typeof payload.email === 'string') {
-      return payload.email;
-    }
-
-    if (
-      payload
-      && Array.isArray(payload.emails)
-      && typeof payload.emails[0]?.value === 'string'
-    ) {
-      return payload.emails[0].value;
-    }
-
-    return null;
-  } catch (error) {
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('Facebook email fetch failed', error);
-    }
-    return null;
-  }
-}
 
 async function verifyUser(email: string, password: string): Promise<AppUser | null> {
   const record = findMockUserByEmail(email);
@@ -83,31 +36,6 @@ export const {
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-    Facebook({
-      clientId: process.env.FACEBOOK_CLIENT_ID!,
-      clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
-      authorization: {
- params: {
- scope: 'public_profile,email',
-auth_type: 'rerequest', 
-}, 
-},
-      userinfo: { params: { fields: 'id,name,email,picture{url}', }, },
-      profile: async (fbProfile, tokens) => {
-        let email = fbProfile.email ?? null;
-
-        if (!email && tokens?.access_token) {
-          email = await fetchFacebookEmail(tokens.access_token);
-        }
-
-        return {
-          id: fbProfile.id,
-          name: fbProfile.name,
-          email,
-          image: fbProfile.picture?.data?.url ?? null,
-        };
-      },
     }),
     Credentials({
       authorize: async (raw) => {
@@ -152,17 +80,6 @@ auth_type: 'rerequest',
         && typeof profile.email === 'string'
       ) {
         token.email = profile.email;
-      }
-
-      if (
-        !token.email
-        && account?.provider === 'facebook'
-        && typeof account.access_token === 'string'
-      ) {
-        const emailFromGraph = await fetchFacebookEmail(account.access_token);
-        if (emailFromGraph) {
-          token.email = emailFromGraph;
-        }
       }
 
       return token;
