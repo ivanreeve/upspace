@@ -41,6 +41,14 @@ export const {
     Facebook({
       clientId: process.env.FACEBOOK_CLIENT_ID!,
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
+      authorization: { params: { scope: 'public_profile,email', }, },
+      userinfo: { params: { fields: 'id,name,email,picture{url}', }, },
+      profile: (fbProfile) => ({
+        id: fbProfile.id,
+        name: fbProfile.name,
+        email: fbProfile.email ?? null,
+        image: fbProfile.picture?.data?.url ?? null,
+      }),
     }),
     Credentials({
       authorize: async (raw) => {
