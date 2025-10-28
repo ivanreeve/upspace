@@ -44,48 +44,81 @@ export function CardsGrid({ items, }: { items: Space[] }) {
   );
 }
 
-export function SpaceCard({ space, }: { space: Space }) {
+export function SpaceCard({ space }: { space: Space }) {
   const location = [space.city, space.region].filter(Boolean).join(', ');
-  const priceText = '₱1,500–₱1,700'; // placeholder
-  const rating = 4.5; // placeholder
+  const priceText = '₱500–₱700'; // placeholder
+  const rating = 4.0; // placeholder
 
   return (
-    <Card className="shadow-sm hover:shadow-md transition overflow-hidden gap-0 py-0 text-sm">
-      <div className="relative aspect-[3/2] w-full">
-        { space.image_url ? (
+    <Card className="rounded-2xl shadow-sm overflow-hidden bg-[#fff6ec] text-sm transition hover:shadow-md p-0">
+      {/* Image Section */}
+      <div className="relative w-full aspect-[4/3]">
+        {space.image_url ? (
           <Image
-            src={ space.image_url }
-            alt={ space.name }
+            src={space.image_url}
+            alt={space.name}
             fill
+            priority
             sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, 100vw"
-            className="object-cover"
+            className="object-cover object-center rounded-t-2xl"
           />
         ) : (
-          <div className="h-full w-full bg-gradient-to-br from-slate-200 to-slate-300" />
-        ) }
+          <Skeleton className="h-full w-full rounded-none" />
+        )}
+
+        {/* Carousel dots */}
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+          {[...Array(3)].map((_, i) => (
+            <span
+              key={i}
+              className={`h-1.5 w-1.5 rounded-full ${
+                i === 1 ? 'bg-white/80' : 'bg-white/50'
+              }`}
+            />
+          ))}
+        </div>
       </div>
 
-      <CardContent className="px-3 py-3">
-        <Link href={ `/marketplace/${space.space_id}` } className="block group">
-          <div className="text-sm font-semibold group-hover:underline truncate">{ space.name }</div>
+      {/* Card Content */}
+      <CardContent className="p-4 pt-3">
+        <Link
+          href={`/marketplace/${space.space_id}`}
+          className="block group mb-1"
+        >
+          <div className="text-base font-semibold text-[#00473E] group-hover:underline truncate">
+            {space.name}
+          </div>
         </Link>
-        <div className="text-[0.7rem] text-muted-foreground mt-1 flex items-center gap-1 truncate">
-          <MapPin className="size-3 text-muted-foreground" /> { location || 'N/A' }
+
+        <div className="text-sm text-gray-500 flex items-center gap-1 truncate">
+          <MapPin className="w-4 h-4 text-gray-500" />
+          {location || 'N/A'}
         </div>
+
         <div className="mt-2 flex items-center justify-between">
-          <div className="text-[#0c7b46] text-xs font-semibold">{ priceText }</div>
-          <div className="flex items-center gap-1 text-amber-500 text-[0.7rem]">
-            <Star className="size-3 fill-amber-500 text-amber-500" />
-            { rating.toFixed(1) }
+          <div className="text-[#0c7b46] font-semibold text-[0.9rem]">
+            {priceText}
+          </div>
+          <div className="flex items-center gap-0.5 text-amber-500">
+            {[...Array(5)].map((_, i) => (
+              <Star
+                key={i}
+                className={`w-3.5 h-3.5 ${
+                  i < Math.floor(rating) ? 'fill-amber-500' : 'fill-gray-300'
+                }`}
+              />
+            ))}
           </div>
         </div>
-        <div className="mt-3">
-          <Link href={ `/marketplace/${space.space_id}` }>
-            <Button className="bg-[#0f5a62] hover:bg-[#0f5a62]/90 w-full h-8 text-xs">Check Availability</Button>
+
+        <div className="mt-4">
+          <Link href={`/marketplace/${space.space_id}`}>
+            <Button className="bg-[#0f5a62] hover:bg-[#0f5a62]/90 w-full h-9 text-sm font-medium rounded-lg">
+              Check Availability
+            </Button>
           </Link>
         </div>
       </CardContent>
     </Card>
   );
 }
-
