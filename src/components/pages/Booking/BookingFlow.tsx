@@ -153,16 +153,20 @@ export function BookingFlow({
     },
   });
 
-  const [selectedAreaId, selectedDate, rawStayHours, rawGuests] = useWatch({
+  const watchAll = useWatch({
     control: form.control,
-    name: ['areaId', 'reservationDate', 'stayHours', 'guests'],
-    defaultValue: ['', undefined, 1, 1],
-  }) as [
-    ReservationFormValues['areaId'],
-    ReservationFormValues['reservationDate'],
-    ReservationFormValues['stayHours'],
-    ReservationFormValues['guests']
-  ];
+    defaultValue: {
+      areaId: '',
+      reservationDate: undefined,
+      stayHours: 1,
+      guests: 1,
+    },
+  }) as Partial<ReservationFormValues>;
+
+  const selectedAreaId = watchAll.areaId ?? '';
+  const selectedDate = watchAll.reservationDate;
+  const rawStayHours = watchAll.stayHours;
+  const rawGuests = watchAll.guests;
 
   const selectedArea = useMemo(
     () => areaOptions.find((option) => option.id === selectedAreaId) ?? null,
@@ -170,15 +174,20 @@ export function BookingFlow({
   );
 
   const stayHours = useMemo(() => {
+    const candidate =
+      rawStayHours ?? form.getValues('stayHours');
     const value =
-      typeof rawStayHours === 'string' ? Number(rawStayHours) : rawStayHours;
+      typeof candidate === 'string' ? Number(candidate) : candidate;
     return Number.isFinite(value) && value != null ? value : 0;
-  }, [rawStayHours]);
+  }, [rawStayHours, form]);
 
   const guests = useMemo(() => {
-    const value = typeof rawGuests === 'string' ? Number(rawGuests) : rawGuests;
+    const candidate =
+      rawGuests ?? form.getValues('guests');
+    const value =
+      typeof candidate === 'string' ? Number(candidate) : candidate;
     return Number.isFinite(value) && value != null ? value : 0;
-  }, [rawGuests]);
+  }, [rawGuests, form]);
 
   const { hourOptions, } = useMemo(
     () => buildRateOptions(selectedArea, DEFAULT_HOUR_OPTIONS),
