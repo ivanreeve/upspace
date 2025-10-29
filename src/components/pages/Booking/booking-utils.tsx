@@ -208,11 +208,34 @@ export function resolveRatePricing(
       return aMax - bMax;
     });
 
-  const boundedRate = parsedRates.find((rate) => {
-    if (!rate.descriptor || rate.descriptor.kind === 'hourly') return false;
-    const upper = rate.descriptor.maxHours ?? rate.descriptor.minHours;
-    return stay >= rate.descriptor.minHours && stay <= upper;
-  });
+  const boundedCandidates = parsedRates
+    .filter((rate) => {
+      if (!rate.descriptor || rate.descriptor.kind === 'hourly') return false;
+      const upper = rate.descriptor.maxHours ?? Number.POSITIVE_INFINITY;
+      return stay >= rate.descriptor.minHours && stay <= upper;
+    })
+    .sort((a, b) => {
+      const aDescriptor = a.descriptor as ParsedRateUnit;
+      const bDescriptor = b.descriptor as ParsedRateUnit;
+      const aSpan =
+        aDescriptor.maxHours == null
+          ? Number.POSITIVE_INFINITY
+          : aDescriptor.maxHours - aDescriptor.minHours;
+      const bSpan =
+        bDescriptor.maxHours == null
+          ? Number.POSITIVE_INFINITY
+          : bDescriptor.maxHours - bDescriptor.minHours;
+
+      if (aSpan !== bSpan) {
+        if (aSpan === Number.POSITIVE_INFINITY) return 1;
+        if (bSpan === Number.POSITIVE_INFINITY) return -1;
+        return aSpan - bSpan;
+      }
+
+      return bDescriptor.minHours - aDescriptor.minHours;
+    });
+
+  const boundedRate = boundedCandidates[0];
   if (boundedRate) {
     const total = boundedRate.pricePerGuest * safeGuests;
     return {
