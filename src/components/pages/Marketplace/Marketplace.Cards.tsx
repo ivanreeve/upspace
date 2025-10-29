@@ -3,12 +3,25 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { MapPin, Star } from 'lucide-react';
+import {
+MapPin,
+Star,
+ChevronLeft,
+ChevronRight
+} from 'lucide-react';
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import type { Space } from '@/lib/api/spaces';
+import type { SpaceCard as SpaceCardData } from '@/lib/api/spaces';
+
+const PLACEHOLDER_IMAGES = [
+  '/img/hero-featured-dark-1.png',
+  '/img/hero-featured-dark-2.png',
+  '/img/hero-featured-dark-3.png',
+  '/img/hero-featured-dark-4.png',
+  '/img/hero-featured-dark-1.png'
+];
 
 export function SkeletonGrid({ count = 6, }: { count?: number }) {
   return (
@@ -28,7 +41,7 @@ export function SkeletonGrid({ count = 6, }: { count?: number }) {
   );
 }
 
-export function CardsGrid({ items, }: { items: Space[] }) {
+export function CardsGrid({ items, }: { items: SpaceCardData[] }) {
   if (items.length === 0) {
     return (
       <div className="text-sm text-muted-foreground">No spaces found. Try adjusting filters.</div>
@@ -44,80 +57,131 @@ export function CardsGrid({ items, }: { items: Space[] }) {
   );
 }
 
-export function SpaceCard({ space }: { space: Space }) {
+export function SpaceCard({ space, }: { space: SpaceCardData }) {
   const location = [space.city, space.region].filter(Boolean).join(', ');
-  const priceText = '₱500–₱700'; // placeholder
-  const rating = 4.0; // placeholder
+  const images = React.useMemo(() => {
+    const urls = Array.isArray(space.images)
+      ? space.images.filter((url) => typeof url === 'string' && url.trim().length > 0)
+      : [];
+    return (urls.length > 0 ? urls.slice(0, 5) : PLACEHOLDER_IMAGES);
+  }, [space.images]);
+  const [activeImage, setActiveImage] = React.useState(0);
+  const hasMultipleImages = images.length > 1;
+  const currentImage = images[activeImage] ?? PLACEHOLDER_IMAGES[0];
+
+  const priceText = React.useMemo(() => {
+    const min = typeof space.price_min === 'number' ? Math.round(space.price_min) : null;
+    const max = typeof space.price_max === 'number' ? Math.round(space.price_max) : null;
+    if (min !== null && max !== null) {
+      return min === max
+        ? `₱${min.toLocaleString()}`
+        : `₱${min.toLocaleString()}–₱${max.toLocaleString()}`;
+    }
+    if (min !== null) return `From ₱${min.toLocaleString()}`;
+    if (max !== null) return `Up to ₱${max.toLocaleString()}`;
+    return 'Pricing unavailable';
+  }, [space.price_min, space.price_max]);
+
+  const rating = typeof space.rating === 'number' ? space.rating : 4.5;
+  const fullStars = Math.floor(rating);
+
+  const showPrev = React.useCallback(() => {
+    setActiveImage((idx) => (idx === 0 ? images.length - 1 : idx - 1));
+  }, [images.length]);
+
+  const showNext = React.useCallback(() => {
+    setActiveImage((idx) => (idx === images.length - 1 ? 0 : idx + 1));
+  }, [images.length]);
+
+  React.useEffect(() => {
+    setActiveImage(0);
+  }, [space.space_id, images.length]);
 
   return (
-    <Card className="rounded-2xl shadow-sm overflow-hidden bg-[#fff6ec] text-sm transition hover:shadow-md p-0">
-      {/* Image Section */}
+    <Card className="rounded-2xl border border-border/70 bg-card text-card-foreground shadow-sm transition hover:shadow-md overflow-hidden p-0 py-0">
+      { /* Image Section */ }
       <div className="relative w-full aspect-[4/3]">
-        {space.image_url ? (
-          <Image
-            src={space.image_url}
-            alt={space.name}
-            fill
-            priority
-            sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, 100vw"
-            className="object-cover object-center rounded-t-2xl"
-          />
-        ) : (
-          <Skeleton className="h-full w-full rounded-none" />
-        )}
+        <Image
+          key={ `${space.space_id}-${currentImage}` }
+          src={ currentImage }
+          alt={ space.name }
+          fill
+          sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, 100vw"
+          className="object-cover object-center rounded-t-2xl transition-transform duration-300"
+        />
 
-        {/* Carousel dots */}
+        { hasMultipleImages ? (
+          <>
+            <button
+              type="button"
+              aria-label="Previous image"
+              onClick={ showPrev }
+              className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/45 p-1.5 text-white hover:bg-black/60 transition"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="Next image"
+              onClick={ showNext }
+              className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/45 p-1.5 text-white hover:bg-black/60 transition"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </>
+        ) : null }
+
+        { /* Carousel dots */ }
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-          {[...Array(3)].map((_, i) => (
+          { images.map((_, i) => (
             <span
-              key={i}
-              className={`h-1.5 w-1.5 rounded-full ${
-                i === 1 ? 'bg-white/80' : 'bg-white/50'
-              }`}
+              key={ i }
+              className={ `h-1.5 w-1.5 rounded-full ${
+                i === activeImage ? 'bg-white/90' : 'bg-white/50'
+              }` }
             />
-          ))}
+          )) }
         </div>
       </div>
 
-      {/* Card Content */}
+      { /* Card Content */ }
       <CardContent className="p-4 pt-3">
         <Link
-          href={`/marketplace/${space.space_id}`}
+          href={ `/marketplace/${space.space_id}` }
           className="block group mb-1"
         >
-          <div className="text-base font-semibold text-[#00473E] group-hover:underline truncate">
-            {space.name}
+          <div className="text-base font-semibold text-foreground group-hover:underline truncate">
+            { space.name }
           </div>
         </Link>
 
-        <div className="text-sm text-gray-500 flex items-center gap-1 truncate">
-          <MapPin className="w-4 h-4 text-gray-500" />
-          {location || 'N/A'}
+        <div className="text-sm text-muted-foreground flex items-center gap-1 truncate">
+          <MapPin className="w-4 h-4 text-muted-foreground" />
+          { location || 'N/A' }
         </div>
 
         <div className="mt-2 flex items-center justify-between">
-          <div className="text-[#0c7b46] font-semibold text-[0.9rem]">
-            {priceText}
+          <div className="text-sm font-semibold text-primary">
+            { priceText }
           </div>
           <div className="flex items-center gap-0.5 text-amber-500">
-            {[...Array(5)].map((_, i) => (
+            { [...Array(5)].map((_, i) => (
               <Star
-                key={i}
-                className={`w-3.5 h-3.5 ${
-                  i < Math.floor(rating) ? 'fill-amber-500' : 'fill-gray-300'
-                }`}
+                key={ i }
+                className={ `w-3.5 h-3.5 ${
+                  i < fullStars ? 'fill-amber-500' : 'fill-gray-300'
+                }` }
               />
-            ))}
+            )) }
+            <span className="ml-1 text-xs text-muted-foreground">{ rating.toFixed(1) }</span>
           </div>
         </div>
 
-        <div className="mt-4">
-          <Link href={`/marketplace/${space.space_id}`}>
-            <Button className="bg-[#0f5a62] hover:bg-[#0f5a62]/90 w-full h-9 text-sm font-medium rounded-lg">
-              Check Availability
-            </Button>
-          </Link>
-        </div>
+        <Link href={ `/marketplace/${space.space_id}` }>
+          <Button className="mt-4 w-full" size="lg">
+            Check Availability
+          </Button>
+        </Link>
       </CardContent>
     </Card>
   );

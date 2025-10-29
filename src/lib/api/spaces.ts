@@ -1,16 +1,13 @@
-export type Space = {
+export type SpaceCard = {
   space_id: string;
   name: string;
-  unit_number?: string | null;
-  street?: string | null;
-  address_subunit?: string | null;
-  city?: string | null;
-  region?: string | null;
-  country?: string | null;
-  postal_code?: string | null;
-  image_url?: string | null;
-  created_at?: string;
-  updated_at?: string;
+  city: string;
+  region: string;
+  address: string;
+  images: string[];
+  price_min: number | null;
+  price_max: number | null;
+  rating: number | null;
 };
 
 export type ListSpacesParams = Partial<{
@@ -43,5 +40,5 @@ export async function listSpaces(params: ListSpacesParams = {}) {
     throw new Error(`Failed to fetch spaces (${res.status})`);
   }
   const json = await res.json();
-  return json as { data: Space[]; nextCursor: string | null };
+  return json as { data: SpaceCard[]; nextCursor: string | null };
 }
