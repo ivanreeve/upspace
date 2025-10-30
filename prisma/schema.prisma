@@ -17,14 +17,15 @@ model amenity {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model area {
-  area_id  BigInt    @id @unique @default(autoincrement())
-  space_id BigInt
-  name     String    @db.VarChar
-  capacity BigInt
-  space    space     @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
-  booking  booking[]
-  image    image[]
-  rate     rate[]
+  area_id      BigInt    @id @unique @default(autoincrement())
+  space_id     BigInt
+  name         String    @db.VarChar
+  max_capacity BigInt
+  min_capacity BigInt
+  space        space     @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
+  booking      booking[]
+  image        image[]
+  rate         rate[]
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
