@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input';
 
 type FiltersProps = MarketplaceFilterState & {
   onChange: (next: MarketplaceFilterState) => void;
-  onSearch: () => void;
+  onSearch: (next?: MarketplaceFilterState) => void;
 };
 
 export default function MarketplaceFilters({
@@ -31,17 +31,35 @@ export default function MarketplaceFilters({
   onChange,
   onSearch,
 }: FiltersProps) {
+  const normalizedQ = typeof q === 'string' ? q : '';
+  const normalizedAmenities = React.useMemo(() => (
+    Array.isArray(amenities) ? amenities : []
+  ), [amenities]);
+  const normalizedPriceRange = React.useMemo(() => {
+    if (Array.isArray(priceRange) && priceRange.length === 2) {
+      return priceRange as [number, number];
+    }
+    return [...DEFAULT_FILTER_STATE.priceRange] as [number, number];
+  }, [priceRange]);
+  const normalizedMinRating = typeof minRating === 'number' ? minRating : DEFAULT_MIN_RATING;
+
+  const buildState = React.useCallback((): MarketplaceFilterState => ({
+    q: normalizedQ,
+    amenities: [...normalizedAmenities],
+    priceRange: [...normalizedPriceRange] as [number, number],
+    minRating: normalizedMinRating,
+  }), [normalizedAmenities, normalizedMinRating, normalizedPriceRange, normalizedQ]);
   const [draftAmenity, setDraftAmenity] = React.useState('');
   const [isFilterModalOpen, setFilterModalOpen] = React.useState(false);
   const [isAmenitiesModalOpen, setAmenitiesModalOpen] = React.useState(false);
 
-  const canAddAmenities = amenities.length < MAX_AMENITIES;
+  const canAddAmenities = normalizedAmenities.length < MAX_AMENITIES;
   const hasActiveFilters =
-    q.trim().length > 0 ||
-    amenities.length > 0 ||
-    minRating !== DEFAULT_MIN_RATING ||
-    priceRange[0] !== DEFAULT_FILTER_STATE.priceRange[0] ||
-    priceRange[1] !== DEFAULT_FILTER_STATE.priceRange[1];
+    normalizedQ.trim().length > 0 ||
+    normalizedAmenities.length > 0 ||
+    normalizedMinRating !== DEFAULT_MIN_RATING ||
+    normalizedPriceRange[0] !== DEFAULT_FILTER_STATE.priceRange[0] ||
+    normalizedPriceRange[1] !== DEFAULT_FILTER_STATE.priceRange[1];
 
   const formatCurrency = React.useCallback(
     (value: number) => `₱${value.toLocaleString('en-PH')}`,
@@ -50,38 +68,38 @@ export default function MarketplaceFilters({
 
   const updateFilters = React.useCallback((next: Partial<MarketplaceFilterState>) => {
     onChange({
-      q,
-      amenities,
-      priceRange,
-      minRating,
+      ...buildState(),
       ...next,
     });
-  }, [amenities, minRating, onChange, priceRange, q]);
+  }, [buildState, onChange]);
 
   const addAmenity = (name: string) => {
     const cleaned = name.trim();
     if (!cleaned || !canAddAmenities) return false;
-    const set = new Set(amenities.map((s) => s.trim()));
+    const set = new Set(normalizedAmenities.map((s) => s.trim()));
     if (!set.has(cleaned)) {
-      updateFilters({ amenities: [...amenities, cleaned], });
+      updateFilters({ amenities: [...normalizedAmenities, cleaned], });
       return true;
     }
     return false;
   };
 
   const removeAmenity = (name: string) => {
-    updateFilters({ amenities: amenities.filter((a) => a !== name), });
+    updateFilters({ amenities: normalizedAmenities.filter((a) => a !== name), });
   };
 
   const clearFilters = () => {
-    setDraftAmenity('');
-    setFilterModalOpen(false);
-    setAmenitiesModalOpen(false);
-    onChange({
+    const resetState: MarketplaceFilterState = {
       ...DEFAULT_FILTER_STATE,
       amenities: [],
       priceRange: [...DEFAULT_FILTER_STATE.priceRange] as [number, number],
-    });
+    };
+
+    setDraftAmenity('');
+    setFilterModalOpen(false);
+    setAmenitiesModalOpen(false);
+    onChange(resetState);
+    onSearch(resetState);
   };
 
   const clearAmenities = () => {
@@ -100,8 +118,8 @@ export default function MarketplaceFilters({
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
       commitAmenity();
-    } else if (e.key === 'Backspace' && !draftAmenity && amenities.length) {
-      removeAmenity(amenities[amenities.length - 1]);
+    } else if (e.key === 'Backspace' && !draftAmenity && normalizedAmenities.length) {
+      removeAmenity(normalizedAmenities[normalizedAmenities.length - 1]);
     }
   };
 
@@ -116,7 +134,7 @@ export default function MarketplaceFilters({
       return;
     }
 
-    const nextRating = minRating === rating ? DEFAULT_MIN_RATING : rating;
+    const nextRating = normalizedMinRating === rating ? DEFAULT_MIN_RATING : rating;
     updateFilters({ minRating: nextRating, });
   };
 
@@ -124,13 +142,16 @@ export default function MarketplaceFilters({
     <section className="rounded-3xl border border-border/40 bg-background/90 px-6 py-6 shadow-sm">
       <form
         className="flex flex-col gap-4 w-full"
-        onSubmit={ (e) => { e.preventDefault(); onSearch(); } }
+        onSubmit={ (e) => {
+          e.preventDefault();
+          onSearch(buildState());
+        } }
       >
         <div className="flex flex-col gap-3 md:flex-row md:items-center">
           <div className="flex-1 flex items-center gap-3 rounded-xl border border-border/50 bg-transparent px-4 py-3 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/20 focus-within:ring-offset-0">
             <Search className="size-5 text-foreground/80" />
             <Input
-              value={ q }
+              value={ normalizedQ }
               onChange={ (e) => updateFilters({ q: e.target.value, }) }
               placeholder="Find your perfect coworking space..."
               className="min-w-[160px] flex-1 border-none bg-transparent px-0 py-0 text-base placeholder:text-muted-foreground/70 focus-visible:ring-0 focus-visible:ring-offset-0"
@@ -153,16 +174,16 @@ export default function MarketplaceFilters({
             canAddAmenities={ canAddAmenities }
             isModalOpen={ isFilterModalOpen }
             onModalOpenChange={ setFilterModalOpen }
-            onApply={ onSearch }
+            onApply={ () => onSearch(buildState()) }
             modalContent={ (
               <div className="flex flex-col gap-5">
                 <PriceRangeCard
-                  priceRange={ priceRange }
+                  priceRange={ normalizedPriceRange }
                   formatCurrency={ formatCurrency }
                   onChange={ handlePriceRangeChange }
                 />
                 <RatingCard
-                  minRating={ minRating }
+                  minRating={ normalizedMinRating }
                   onChange={ handleRatingChange }
                 />
               </div>
@@ -170,7 +191,7 @@ export default function MarketplaceFilters({
           />
           <div className="flex min-w-[220px] flex-1 items-center gap-2">
             <AmenityControls
-              amenities={ amenities }
+              amenities={ normalizedAmenities }
               canAddAmenities={ canAddAmenities }
               draftAmenity={ draftAmenity }
               onDraftChange={ (value) => setDraftAmenity(value) }
@@ -202,10 +223,10 @@ export default function MarketplaceFilters({
             setDraftAmenity('');
           }
         } }
-        amenities={ amenities }
+        amenities={ normalizedAmenities }
         canAddAmenities={ canAddAmenities }
         draftAmenity={ draftAmenity }
-        remaining={ Math.max(0, MAX_AMENITIES - amenities.length) }
+        remaining={ Math.max(0, MAX_AMENITIES - normalizedAmenities.length) }
         onDraftChange={ (value) => setDraftAmenity(value) }
         onDraftKeyDown={ onAmenityKeyDown }
         onCommitAmenity={ commitAmenity }

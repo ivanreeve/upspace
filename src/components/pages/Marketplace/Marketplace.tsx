@@ -4,7 +4,7 @@ import React from 'react';
 import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
 
 import MarketplaceHero from './Marketplace.Hero';
-import { CardsGrid } from './Marketplace.Cards';
+import { CardsGrid, SkeletonGrid } from './Marketplace.Cards';
 import MarketplaceFilters from './Marketplace.Filters';
 import {
   DEFAULT_FILTER_STATE,
@@ -13,348 +13,88 @@ import {
   type MarketplaceFilterState
 } from './filters/constants';
 
-import type { SpaceCard as SpaceCardData } from '@/lib/api/spaces';
+import { type ListSpacesParams, type SpaceCard as SpaceCardData } from '@/lib/api/spaces';
 import BackToTopButton from '@/components/ui/back-to-top';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useSpaces } from '@/lib/queries/spaces';
 
 const NEAR_ME_PAGE_SIZE = 8;
+const DEFAULT_QUERY_LIMIT = 48;
+
+function cloneFilterState(value: MarketplaceFilterState): MarketplaceFilterState {
+  const amenities = Array.isArray(value.amenities) ? value.amenities : [];
+  const priceRange = Array.isArray(value.priceRange) ? value.priceRange : DEFAULT_PRICE_RANGE;
+  const q = typeof value.q === 'string' ? value.q : '';
+  const minRating = typeof value.minRating === 'number' ? value.minRating : DEFAULT_MIN_RATING;
+
+  return {
+    ...value,
+    q,
+    amenities: [...amenities],
+    priceRange: [...priceRange] as [number, number],
+    minRating,
+  };
+}
+
+function isDefaultPriceRange(range: [number, number]) {
+  return range[0] === DEFAULT_PRICE_RANGE[0] && range[1] === DEFAULT_PRICE_RANGE[1];
+}
 
 export default function Marketplace() {
-  const [state, setState] = React.useState<MarketplaceFilterState>(() => ({
-    q: DEFAULT_FILTER_STATE.q,
-    amenities: [...DEFAULT_FILTER_STATE.amenities],
-    priceRange: [...DEFAULT_FILTER_STATE.priceRange] as [number, number],
-    minRating: DEFAULT_FILTER_STATE.minRating,
-  }));
+  const [state, setState] = React.useState<MarketplaceFilterState>(() => cloneFilterState(DEFAULT_FILTER_STATE));
+  const [appliedFilters, setAppliedFilters] = React.useState<MarketplaceFilterState>(
+    () => cloneFilterState(DEFAULT_FILTER_STATE)
+  );
   const [nearMePage, setNearMePage] = React.useState(0);
 
-  // Placeholder data for cards (no API call)
-  const MOCK_SPACES: SpaceCardData[] = React.useMemo(() => ([
-    {
-      space_id: '1',
-      name: 'Coworking Space Abcde',
-      city: 'Manila',
-      region: 'Metro Manila',
-      address: 'Taft Ave, Manila',
-      images: [
-        '/img/hero-featured-dark-1.png',
-        '/img/hero-featured-dark-2.png',
-        '/img/hero-featured-dark-3.png'
-      ],
-      price_min: 1500,
-      price_max: 1900,
-      rating: 4.6,
-    },
-    {
-      space_id: '2',
-      name: 'Modern Loft Workspace',
-      city: 'Taguig',
-      region: 'Metro Manila',
-      address: '5th Ave, BGC',
-      images: [
-        '/img/hero-featured-dark-2.png',
-        '/img/hero-featured-dark-3.png',
-        '/img/hero-featured-dark-4.png'
-      ],
-      price_min: 1800,
-      price_max: 2200,
-      rating: 4.8,
-    },
-    {
-      space_id: '3',
-      name: 'Creative Hub Studio',
-      city: 'Pasig',
-      region: 'Metro Manila',
-      address: 'Emerald Ave, Ortigas',
-      images: [
-        '/img/hero-featured-dark-3.png',
-        '/img/hero-featured-dark-4.png',
-        '/img/hero-featured-dark-1.png'
-      ],
-      price_min: 1200,
-      price_max: 1600,
-      rating: 4.4,
-    },
-    {
-      space_id: '4',
-      name: 'Quiet Focus Nook',
-      city: 'Makati',
-      region: 'Metro Manila',
-      address: 'Legazpi Village, Makati',
-      images: [
-        '/img/hero-featured-dark-4.png',
-        '/img/hero-featured-dark-1.png',
-        '/img/hero-featured-dark-2.png'
-      ],
-      price_min: 1400,
-      price_max: 1800,
-      rating: 4.7,
-    },
-    {
-      space_id: '5',
-      name: 'Open Collaboration Lab',
-      city: 'Quezon City',
-      region: 'Metro Manila',
-      address: 'Katipunan Ave, QC',
-      images: [
-        '/img/hero-featured-dark-2.png',
-        '/img/hero-featured-dark-3.png',
-        '/img/hero-featured-dark-4.png',
-        '/img/hero-featured-dark-1.png'
-      ],
-      price_min: 1000,
-      price_max: 1500,
-      rating: 4.3,
-    },
-    {
-      space_id: '6',
-      name: 'Boutique Work Lounge',
-      city: 'Muntinlupa',
-      region: 'Metro Manila',
-      address: 'Filinvest City, Alabang',
-      images: [
-        '/img/hero-featured-dark-3.png',
-        '/img/hero-featured-dark-4.png',
-        '/img/hero-featured-dark-1.png'
-      ],
-      price_min: 1700,
-      price_max: 2100,
-      rating: 4.5,
-    },
-    {
-      space_id: '7',
-      name: 'Riverside Desk Collective',
-      city: 'Marikina',
-      region: 'Metro Manila',
-      address: 'Sumulong Hwy, Marikina',
-      images: [
-        '/img/hero-featured-dark-4.png',
-        '/img/hero-featured-dark-1.png',
-        '/img/hero-featured-dark-2.png',
-        '/img/hero-featured-dark-3.png'
-      ],
-      price_min: 900,
-      price_max: 1400,
-      rating: 4.2,
-    },
-    {
-      space_id: '8',
-      name: 'Skyline View Offices',
-      city: 'Pasay',
-      region: 'Metro Manila',
-      address: 'Roxas Blvd, Pasay',
-      images: [
-        '/img/hero-featured-dark-1.png',
-        '/img/hero-featured-dark-2.png',
-        '/img/hero-featured-dark-3.png',
-        '/img/hero-featured-dark-4.png',
-        '/img/hero-featured-dark-1.png'
-      ],
-      price_min: 2000,
-      price_max: 2600,
-      rating: 4.9,
-    },
-    {
-      space_id: '9',
-      name: 'Harborfront Innovation Hub',
-      city: 'Cebu City',
-      region: 'Central Visayas',
-      address: 'SRP, Cebu City',
-      images: [
-        '/img/hero-featured-dark-2.png',
-        '/img/hero-featured-dark-3.png',
-        '/img/hero-featured-dark-4.png'
-      ],
-      price_min: 1300,
-      price_max: 1700,
-      rating: 4.1,
-    },
-    {
-      space_id: '10',
-      name: 'Laguna Lakeside Co-lab',
-      city: 'Santa Rosa',
-      region: 'Laguna',
-      address: 'Nuvali Blvd, Santa Rosa',
-      images: [
-        '/img/hero-featured-dark-3.png',
-        '/img/hero-featured-dark-4.png',
-        '/img/hero-featured-dark-1.png'
-      ],
-      price_min: 900,
-      price_max: 1300,
-      rating: 4.0,
-    },
-    {
-      space_id: '11',
-      name: 'Summit Ridge Offices',
-      city: 'Tagaytay',
-      region: 'Cavite',
-      address: 'Tagaytay-Calamba Rd, Tagaytay',
-      images: [
-        '/img/hero-featured-dark-4.png',
-        '/img/hero-featured-dark-1.png',
-        '/img/hero-featured-dark-2.png'
-      ],
-      price_min: 1100,
-      price_max: 1600,
-      rating: 4.3,
-    },
-    {
-      space_id: '12',
-      name: 'Baguio Pineview Workspace',
-      city: 'Baguio',
-      region: 'Cordillera',
-      address: 'Session Rd, Baguio',
-      images: [
-        '/img/hero-featured-dark-1.png',
-        '/img/hero-featured-dark-2.png',
-        '/img/hero-featured-dark-3.png'
-      ],
-      price_min: 800,
-      price_max: 1200,
-      rating: 4.4,
-    },
-    {
-      space_id: '13',
-      name: 'Clark Freeport Studios',
-      city: 'Angeles',
-      region: 'Pampanga',
-      address: 'Clark Freeport Zone, Angeles',
-      images: [
-        '/img/hero-featured-dark-2.png',
-        '/img/hero-featured-dark-3.png',
-        '/img/hero-featured-dark-4.png'
-      ],
-      price_min: 1500,
-      price_max: 2100,
-      rating: 4.6,
-    },
-    {
-      space_id: '14',
-      name: 'Iloilo Riverfront Commons',
-      city: 'Iloilo City',
-      region: 'Western Visayas',
-      address: 'Iloilo Business Park, Iloilo',
-      images: [
-        '/img/hero-featured-dark-3.png',
-        '/img/hero-featured-dark-4.png',
-        '/img/hero-featured-dark-1.png'
-      ],
-      price_min: 1200,
-      price_max: 1700,
-      rating: 4.2,
-    },
-    {
-      space_id: '15',
-      name: 'Davao Skyline Labs',
-      city: 'Davao City',
-      region: 'Davao Region',
-      address: 'Lanang Business Park, Davao City',
-      images: [
-        '/img/hero-featured-dark-4.png',
-        '/img/hero-featured-dark-1.png',
-        '/img/hero-featured-dark-2.png'
-      ],
-      price_min: 1400,
-      price_max: 2000,
-      rating: 4.5,
-    },
-    {
-      space_id: '16',
-      name: 'Cagayan de Oro Work Loft',
-      city: 'Cagayan de Oro',
-      region: 'Northern Mindanao',
-      address: 'Pueblo de Oro, CDO',
-      images: [
-        '/img/hero-featured-dark-1.png',
-        '/img/hero-featured-dark-2.png',
-        '/img/hero-featured-dark-3.png'
-      ],
-      price_min: 1000,
-      price_max: 1400,
-      rating: 4.1,
-    },
-    {
-      space_id: '17',
-      name: 'Subic Bay Collaboration Hub',
-      city: 'Subic',
-      region: 'Zambales',
-      address: 'Subic Bay Freeport Zone',
-      images: [
-        '/img/hero-featured-dark-2.png',
-        '/img/hero-featured-dark-3.png',
-        '/img/hero-featured-dark-4.png'
-      ],
-      price_min: 950,
-      price_max: 1350,
-      rating: 4.0,
-    },
-    {
-      space_id: '18',
-      name: 'Batangas Seaside Collective',
-      city: 'Batangas City',
-      region: 'Batangas',
-      address: 'Calicanto, Batangas City',
-      images: [
-        '/img/hero-featured-dark-3.png',
-        '/img/hero-featured-dark-4.png',
-        '/img/hero-featured-dark-1.png'
-      ],
-      price_min: 1050,
-      price_max: 1550,
-      rating: 4.2,
-    },
-    {
-      space_id: '19',
-      name: 'Ilocos Heritage Workspace',
-      city: 'Vigan',
-      region: 'Ilocos Region',
-      address: 'Calle Crisologo, Vigan',
-      images: [
-        '/img/hero-featured-dark-4.png',
-        '/img/hero-featured-dark-1.png',
-        '/img/hero-featured-dark-2.png'
-      ],
-      price_min: 800,
-      price_max: 1150,
-      rating: 4.3,
-    },
-    {
-      space_id: '20',
-      name: 'Palawan Shoreline Studios',
-      city: 'Puerto Princesa',
-      region: 'Palawan',
-      address: 'Rizal Ave, Puerto Princesa',
-      images: [
-        '/img/hero-featured-dark-1.png',
-        '/img/hero-featured-dark-2.png',
-        '/img/hero-featured-dark-3.png',
-        '/img/hero-featured-dark-4.png'
-      ],
-      price_min: 1600,
-      price_max: 2100,
-      rating: 4.7,
+  const queryParams = React.useMemo<ListSpacesParams>(() => {
+    const params: ListSpacesParams = {
+      limit: DEFAULT_QUERY_LIMIT,
+      sort: 'name',
+      order: 'asc',
+    };
+    const q = (typeof appliedFilters.q === 'string' ? appliedFilters.q : '').trim();
+    if (q.length > 0) {
+      params.q = q;
     }
-  ]), []);
+    const amenities = Array.isArray(appliedFilters.amenities) ? appliedFilters.amenities : [];
+    if (amenities.length > 0) {
+      params.amenities = amenities;
+      params.amenities_mode = 'all';
+    }
+    const priceRange = Array.isArray(appliedFilters.priceRange)
+      ? appliedFilters.priceRange as [number, number]
+      : DEFAULT_PRICE_RANGE;
+    if (!isDefaultPriceRange(priceRange)) {
+      params.min_rate_price = priceRange[0];
+      params.max_rate_price = priceRange[1];
+    }
+    return params;
+  }, [appliedFilters]);
 
-  const filtered = React.useMemo(() => {
-    const q = state.q.trim().toLowerCase();
-    const hasAmenityFilters = state.amenities.length > 0;
-    const hasPriceFilter =
-      state.priceRange[0] !== DEFAULT_PRICE_RANGE[0] ||
-      state.priceRange[1] !== DEFAULT_PRICE_RANGE[1];
-    const hasRatingFilter = state.minRating !== DEFAULT_MIN_RATING;
+  const {
+    data,
+    error,
+    isError,
+    isFetching,
+    isPending,
+  } = useSpaces(queryParams);
 
-    if (!q && !hasAmenityFilters && !hasPriceFilter && !hasRatingFilter) return MOCK_SPACES;
+  const spaces: SpaceCardData[] = data?.data ?? [];
 
-    // Placeholder: price and rating filters will apply once data is available
-    return MOCK_SPACES.filter((s) => {
-      const hay = `${s.name ?? ''} ${s.city ?? ''} ${s.region ?? ''} ${s.address ?? ''}`.toLowerCase();
-      const matchesQuery = q ? hay.includes(q) : true;
-      return matchesQuery;
+  const filtered = appliedFilters.minRating <= DEFAULT_MIN_RATING
+    ? spaces
+    : spaces.filter((item) => {
+      const rating = typeof item.rating === 'number' ? item.rating : 0;
+      return rating >= appliedFilters.minRating;
     });
-  }, [MOCK_SPACES, state.amenities, state.minRating, state.priceRange, state.q]);
+
+  const applyFilters = React.useCallback((next?: MarketplaceFilterState) => {
+    const source = next ? cloneFilterState(next) : cloneFilterState(state);
+    setAppliedFilters(source);
+    setNearMePage(0);
+  }, [state]);
 
   React.useEffect(() => {
     setNearMePage(0);
@@ -430,6 +170,9 @@ export default function Marketplace() {
     setNearMePage(Math.max(pageNumber - 1, 0));
   }, []);
 
+  const isLoading = isPending && !data;
+  const showSkeleton = isLoading || (isFetching && spaces.length === 0);
+
   return (
     <div className="px-4 max-w-[1440px] mx-auto py-10">
       <MarketplaceHero />
@@ -439,12 +182,20 @@ export default function Marketplace() {
         priceRange={ state.priceRange }
         minRating={ state.minRating }
         onChange={ setState }
-        onSearch={ () => { /* no-op for placeholder */ } }
+        onSearch={ applyFilters }
       />
       <section className="mt-8">
         <h2 className="text-xl font-semibold mb-4">Near Me</h2>
-        <CardsGrid items={ nearMe } />
-        { showPagination ? (
+        { isError ? (
+          <div className="text-sm text-destructive">
+            Failed to load spaces. { error instanceof Error ? error.message : 'Please try again.' }
+          </div>
+        ) : showSkeleton ? (
+          <SkeletonGrid count={ NEAR_ME_PAGE_SIZE } />
+        ) : (
+          <CardsGrid items={ nearMe } />
+        ) }
+        { showPagination && !showSkeleton && !isError ? (
           <nav
             className="mt-6 flex items-center justify-center gap-4 text-sm"
             aria-label="Near me pagination"
@@ -510,7 +261,15 @@ export default function Marketplace() {
 
       <section className="mt-10">
         <h2 className="text-xl font-semibold mb-4">Recommended for you</h2>
-        <CardsGrid items={ recommended } />
+        { isError ? (
+          <div className="text-sm text-destructive">
+            Failed to load spaces. { error instanceof Error ? error.message : 'Please try again.' }
+          </div>
+        ) : showSkeleton ? (
+          <SkeletonGrid />
+        ) : (
+          <CardsGrid items={ recommended } />
+        ) }
       </section>
 
       <BackToTopButton />

@@ -293,7 +293,7 @@ mode: 'insensitive' as const,
 };
       if (Object.keys(priceCond).length > 0) rateCond.price = priceCond;
 
-      and.push({ area: { some: { rate_rate_area_idToarea: { some: rateCond, }, }, }, });
+      and.push({ area: { some: { rate: { some: rateCond, }, }, }, });
     }
 
     const where = and.length > 0 ? { AND: and, } : {};
@@ -399,8 +399,21 @@ max: price,
       };
     });
 
+    const filteredCardData = cardData.filter((card) => {
+      const min = card.price_min;
+      const max = card.price_max;
+
+      if (typeof min_rate_price === 'number') {
+        if (min == null || min < min_rate_price) return false;
+      }
+      if (typeof max_rate_price === 'number') {
+        if (max == null || max > max_rate_price) return false;
+      }
+      return true;
+    });
+
     const body = JSON.stringify({
-      data: cardData,
+      data: filteredCardData,
       nextCursor,
     }, replacer);
 
