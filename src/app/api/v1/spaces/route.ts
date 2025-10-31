@@ -113,10 +113,30 @@ export async function GET(req: NextRequest) {
 
     // Build Prisma where clause
     const and: any[] = [];
-    if (city) and.push({ city, });
-    if (region) and.push({ region, });
-    if (country) and.push({ country, });
-    if (postal_code) and.push({ postal_code, });
+    if (city) and.push({
+ city: {
+ equals: city,
+mode: 'insensitive' as const, 
+}, 
+});
+    if (region) and.push({
+ region: {
+ equals: region,
+mode: 'insensitive' as const, 
+}, 
+});
+    if (country) and.push({
+ country: {
+ equals: country,
+mode: 'insensitive' as const, 
+}, 
+});
+    if (postal_code) and.push({
+ postal_code: {
+ equals: postal_code,
+mode: 'insensitive' as const, 
+}, 
+});
     if (user_id) and.push({ user_id: BigInt(user_id), });
 
     if (q) {
@@ -247,7 +267,18 @@ mode: 'insensitive' as const,
       .map(s => s.trim())
       .filter(Boolean);
     if (days.length > 0) {
-      and.push({ space_availability: { some: { day_of_week: { in: days, }, }, }, });
+      and.push({
+        space_availability: {
+          some: {
+            OR: days.map((day) => ({
+              day_of_week: {
+                equals: day,
+                mode: 'insensitive' as const,
+              },
+            })),
+          },
+        },
+      });
     }
 
     // Rate-based price/time-unit filter via areas -> rates
@@ -256,10 +287,13 @@ mode: 'insensitive' as const,
       if (typeof min_rate_price === 'number') priceCond.gte = min_rate_price;
       if (typeof max_rate_price === 'number') priceCond.lte = max_rate_price;
       const rateCond: any = {};
-      if (rate_time_unit) rateCond.time_unit = rate_time_unit;
+      if (rate_time_unit) rateCond.time_unit = {
+ equals: rate_time_unit,
+mode: 'insensitive' as const, 
+};
       if (Object.keys(priceCond).length > 0) rateCond.price = priceCond;
 
-      and.push({ area: { some: { rate_rate_area_idToarea: { some: rateCond, }, }, }, });
+      and.push({ area: { some: { rate: { some: rateCond, }, }, }, });
     }
 
     const where = and.length > 0 ? { AND: and, } : {};
@@ -278,14 +312,108 @@ mode: 'insensitive' as const,
       skip: cursor ? 1 : 0,
       ...(cursor ? { cursor: { space_id: BigInt(cursor), }, } : {}),
       orderBy,
+      select: {
+        space_id: true,
+        name: true,
+        city: true,
+        region: true,
+        street: true,
+        address_subunit: true,
+      },
     });
 
     const hasNext = rows.length > limit;
     const items = hasNext ? rows.slice(0, limit) : rows;
     const nextCursor = hasNext ? String(items[items.length - 1].space_id as unknown as bigint) : null;
 
+    const spaceIds = items.map((space) => space.space_id);
+
+    const [images, rates] = spaceIds.length > 0
+      ? await Promise.all([
+        prisma.image.findMany({
+          where: { space_id: { in: spaceIds, }, },
+          orderBy: [
+            { is_primary: 'desc', },
+            { display_order: 'asc', },
+            { created_at: 'asc', }
+          ],
+          select: {
+            space_id: true,
+            url: true,
+          },
+        }),
+        prisma.rate.findMany({
+          where: { area: { space_id: { in: spaceIds, }, }, },
+          select: {
+            price: true,
+            area: { select: { space_id: true, }, },
+          },
+        })
+      ])
+      : [[], []];
+
+    const imagesBySpace = new Map<string, string[]>();
+    for (const img of images) {
+      const id = img.space_id.toString();
+      const list = imagesBySpace.get(id);
+      if (list) {
+        list.push(img.url);
+      } else {
+        imagesBySpace.set(id, [img.url]);
+      }
+    }
+
+    const priceBySpace = new Map<string, { min: number | null; max: number | null }>();
+    for (const rate of rates) {
+      const id = rate.area.space_id.toString();
+      const price = typeof rate.price === 'number' ? rate.price : Number(rate.price);
+      const entry = priceBySpace.get(id);
+      if (!entry) {
+        priceBySpace.set(id, {
+ min: price,
+max: price, 
+});
+      } else {
+        entry.min = entry.min === null ? price : Math.min(entry.min, price);
+        entry.max = entry.max === null ? price : Math.max(entry.max, price);
+      }
+    }
+
+    const cardData = items.map((space) => {
+      const id = space.space_id.toString();
+      const addressParts = [space.address_subunit, space.street, space.city]
+        .map((part) => part?.trim())
+        .filter((part): part is string => Boolean(part));
+      const price = priceBySpace.get(id);
+
+      return {
+        space_id: id,
+        name: space.name,
+        city: space.city,
+        region: space.region,
+        address: addressParts.join(', '),
+        images: imagesBySpace.get(id) ?? [],
+        price_min: price?.min ?? null,
+        price_max: price?.max ?? null,
+        rating: 4.5, // TODO: replace with computed average once available
+      };
+    });
+
+    const filteredCardData = cardData.filter((card) => {
+      const min = card.price_min;
+      const max = card.price_max;
+
+      if (typeof min_rate_price === 'number') {
+        if (min == null || min < min_rate_price) return false;
+      }
+      if (typeof max_rate_price === 'number') {
+        if (max == null || max > max_rate_price) return false;
+      }
+      return true;
+    });
+
     const body = JSON.stringify({
-      data: items,
+      data: filteredCardData,
       nextCursor,
     }, replacer);
 

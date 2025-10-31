@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ThemeProvider } from 'next-themes';
 
+import QueryProvider from '@/components/providers/QueryProvider';
 import { Toaster } from '@/components/ui/sonner';
 import { ServiceWorkerRegistration } from '@/components/common/ServiceWorkerRegistration';
 
@@ -48,7 +49,9 @@ export default function RootLayout({ children, }: Readonly<{
           enableSystem
           disableTransitionOnChange
         >
-          { children }
+          <QueryProvider>
+            { children }
+          </QueryProvider>
           <Toaster />
           <ServiceWorkerRegistration />
         </ThemeProvider>
