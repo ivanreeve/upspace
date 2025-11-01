@@ -4,12 +4,18 @@ import { createServerClient } from '@supabase/ssr';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { z } from 'zod';
 
-import { prisma } from '@/lib/prisma';
+import { ensureUserProfile } from '@/lib/auth/user-profile';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 
 const bodySchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8),
+  password: z
+    .string()
+    .min(8, 'Minimum 8 characters.')
+    .regex(/[A-Z]/, 'Include at least one uppercase letter.')
+    .regex(/[a-z]/, 'Include at least one lowercase letter.')
+    .regex(/[0-9]/, 'Include at least one number.')
+    .regex(/[^A-Za-z0-9]/, 'Include at least one symbol.'),
   handle: z
     .string()
     .min(1)
@@ -66,12 +72,13 @@ export async function POST(request: Request) {
 
     const authUserId = created.data.user.id;
 
-    await prisma.user.create({
-      data: {
-        auth_user_id: authUserId,
-        handle,
-        avatar: created.data.user.user_metadata?.avatar_url ?? null,
-      },
+    await ensureUserProfile({
+      authUserId,
+      preferredHandle: handle,
+      avatarUrl: created.data.user.user_metadata?.avatar_url ?? null,
+      email: created.data.user.email ?? email,
+      metadata: created.data.user.user_metadata ?? {},
+      strictHandle: true,
     });
 
     const cookieStore = cookies();

@@ -15,6 +15,12 @@ import {
   CardTitle
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot
+} from '@/components/ui/input-otp';
 import { Label } from '@/components/ui/label';
 
 const credentialsSchema = z
@@ -24,7 +30,9 @@ const credentialsSchema = z
       .string()
       .min(8, 'Minimum 8 characters.')
       .regex(/[A-Z]/, 'Include at least one uppercase letter.')
-      .regex(/[0-9]/, 'Include at least one number.'),
+      .regex(/[a-z]/, 'Include at least one lowercase letter.')
+      .regex(/[0-9]/, 'Include at least one number.')
+      .regex(/[^A-Za-z0-9]/, 'Include at least one symbol.'),
     confirmPassword: z.string(),
   })
   .superRefine((data, ctx) => {
@@ -45,10 +53,11 @@ const otpSchema = z.object({
 });
 
 function generateOtp() {
-  return Array.from(
-    { length: 6, },
-    () => Math.floor(Math.random() * 10)
-  ).join('');
+  let otp = '';
+  for (let index = 0; index < 6; index += 1) {
+    otp += Math.floor(Math.random() * 10);
+  }
+  return otp;
 }
 
 type FormErrors = Partial<Record<'email' | 'password' | 'confirmPassword', string>>;
@@ -278,17 +287,27 @@ export function SignUpFormCard() {
               <Label htmlFor="sign-up-otp" className="text-muted-foreground text-sm">
                 One-time verification code
               </Label>
-              <Input
+              <InputOTP
                 id="sign-up-otp"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                autoComplete="one-time-code"
                 maxLength={ 6 }
                 value={ otpValue }
-                onChange={ (event) => setOtpValue(event.target.value.replace(/\D/g, '').slice(0, 6)) }
-                placeholder="••••••"
-                className="tracking-[0.65em] text-center text-lg font-medium"
-              />
+                onChange={ (value) => setOtpValue(value.replace(/\D/g, '').slice(0, 6)) }
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                containerClassName="justify-between"
+              >
+                <InputOTPGroup>
+                  <InputOTPSlot index={ 0 } />
+                  <InputOTPSlot index={ 1 } />
+                  <InputOTPSlot index={ 2 } />
+                </InputOTPGroup>
+                <InputOTPSeparator />
+                <InputOTPGroup>
+                  <InputOTPSlot index={ 3 } />
+                  <InputOTPSlot index={ 4 } />
+                  <InputOTPSlot index={ 5 } />
+                </InputOTPGroup>
+              </InputOTP>
               { otpError && <p className="text-sm text-destructive">{ otpError }</p> }
               { generatedOtp && (
                 <p className="text-xs text-muted-foreground">

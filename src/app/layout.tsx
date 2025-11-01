@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ThemeProvider } from 'next-themes';
 
+import { AuthProfileSync } from '@/components/auth/AuthProfileSync';
 import { Toaster } from '@/components/ui/sonner';
 import { ServiceWorkerRegistration } from '@/components/common/ServiceWorkerRegistration';
 
@@ -48,6 +49,7 @@ export default function RootLayout({ children, }: Readonly<{
           enableSystem
           disableTransitionOnChange
         >
+          <AuthProfileSync />
           { children }
           <Toaster />
           <ServiceWorkerRegistration />

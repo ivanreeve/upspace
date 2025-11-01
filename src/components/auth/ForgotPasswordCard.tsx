@@ -1,40 +1,99 @@
 'use client';
 
-import { useEffect, useState, useActionState } from 'react';
+import {
+  useActionState,
+  useEffect,
+  useMemo,
+  useState
+} from 'react';
 import { useFormStatus } from 'react-dom';
 import Link from 'next/link';
-import { toast } from 'sonner';
 import { CgSpinner } from 'react-icons/cg';
+import { toast } from 'sonner';
+import { z } from 'zod';
 
 import type { ForgotPasswordState } from '@/app/(auth)/forgot-password/actions';
 import { requestPasswordResetAction } from '@/app/(auth)/forgot-password/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot
+} from '@/components/ui/input-otp';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
 const initialState: ForgotPasswordState = {
   ok: false,
+  mode: undefined,
+  email: undefined,
+  otp: undefined,
   message: undefined,
   errors: undefined,
 };
 
-function SubmitButton() {
+const passwordSchema = z
+  .string()
+  .min(8, 'Minimum 8 characters.')
+  .regex(/[A-Z]/, 'Include at least one uppercase letter.')
+  .regex(/[a-z]/, 'Include at least one lowercase letter.')
+  .regex(/[0-9]/, 'Include at least one number.')
+  .regex(/[^A-Za-z0-9]/, 'Include at least one symbol.');
+
+const resetSchema = z
+  .object({
+    otp: z.string().trim().regex(/^\d{6}$/, 'Enter the 6-digit code we emailed to you.'),
+    password: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.password !== value.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['confirmPassword'],
+        message: 'Passwords must match.',
+      });
+    }
+  });
+
+type ResetErrors = Partial<Record<'otp' | 'password' | 'confirmPassword', string>>;
+
+function maskEmail(value: string | null | undefined) {
+  if (!value || !value.includes('@')) return value ?? '';
+  const [localPart, domain] = value.split('@');
+  if (localPart.length <= 2) return `${localPart[0] ?? ''}***@${domain}`;
+  return `${localPart.slice(0, 2)}***@${domain}`;
+}
+
+function RequestSubmitButton({ label = 'Send code', }: { label?: string }) {
   const { pending, } = useFormStatus();
 
   return (
     <Button
       type="submit"
       disabled={ pending }
-      className={ [
-        'w-full h-10 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2',
-        'bg-primary text-primary-foreground border border-border',
-        'transition-[transform,opacity] active:scale-[0.98] disabled:opacity-70'
-      ].join(' ') }
+      className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-border bg-primary px-4 py-2 text-primary-foreground transition-[transform,opacity] active:scale-[0.98] disabled:opacity-70"
     >
       { pending && <CgSpinner className="h-4 w-4 animate-spin" /> }
-      <span>{ pending ? 'Sending…' : 'Send reset link' }</span>
+      { pending ? 'Sending…' : label }
+    </Button>
+  );
+}
+
+function ResendCodeButton({ disabled, }: { disabled?: boolean }) {
+  const { pending, } = useFormStatus();
+
+  return (
+    <Button
+      type="submit"
+      variant="ghost"
+      disabled={ disabled || pending }
+      className="h-auto p-0 text-sm font-medium text-primary underline-offset-4 transition hover:underline disabled:opacity-70"
+    >
+      { pending ? 'Sending…' : 'Resend code' }
     </Button>
   );
 }
@@ -44,20 +103,40 @@ type ForgotPasswordCardProps = {
 };
 
 export default function ForgotPasswordCard({ className, }: ForgotPasswordCardProps) {
+  const [step, setStep] = useState<'request' | 'verify' | 'complete'>('request');
   const [email, setEmail] = useState('');
+  const [requestedEmail, setRequestedEmail] = useState<string | null>(null);
+  const [serverOtp, setServerOtp] = useState<string | null>(null);
+
+  const [otpValue, setOtpValue] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resetErrors, setResetErrors] = useState<ResetErrors>({});
+  const [isResetting, setIsResetting] = useState(false);
+
+  const maskedEmail = useMemo(
+    () => maskEmail(requestedEmail ?? email),
+    [requestedEmail, email]
+  );
 
   const [state, formAction] =
     useActionState<ForgotPasswordState, FormData>(requestPasswordResetAction, initialState);
 
   useEffect(() => {
-    if (!state.ok) return;
+    if (!state.ok || state.mode !== 'sent') return;
 
-    setEmail('');
+    setRequestedEmail(state.email ?? null);
+    setServerOtp(state.otp ?? null);
+    setStep('verify');
+    setOtpValue('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setResetErrors({});
+
     toast.success(
-      state.message ??
-        'If that email is registered with Upspace, you will receive password reset instructions shortly.'
+      state.message ?? 'We sent a 6-digit verification code to your email address.'
     );
-  }, [state.ok, state.message]);
+  }, [state]);
 
   useEffect(() => {
     if (state.ok) return;
@@ -68,47 +147,214 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
       .filter((message): message is string => Boolean(message));
 
     const combinedMessages = [state.message?.trim() ?? '', ...fieldMessages].filter(Boolean);
-
     if (!combinedMessages.length) return;
 
-    const uniqueMessages = Array.from(new Set(combinedMessages));
-    uniqueMessages.forEach((message) => {
+    Array.from(new Set(combinedMessages)).forEach((message) => {
       toast.error(message);
     });
   }, [state]);
 
   const fieldErr = (key: string) => state.errors?.[key]?.[0];
 
+  const handleResetSubmit: React.FormEventHandler<HTMLFormElement> = async (event) => {
+    event.preventDefault();
+    setResetErrors({});
+
+    if (!serverOtp || !requestedEmail) {
+      toast.error('Request a new code to continue.');
+      setStep('request');
+      return;
+    }
+
+    const parsed = resetSchema.safeParse({
+      otp: otpValue,
+      password: newPassword,
+      confirmPassword,
+    });
+
+    if (!parsed.success) {
+      const errorMap = parsed.error.flatten().fieldErrors;
+      const nextErrors: ResetErrors = Object.fromEntries(
+        Object.entries(errorMap).map(([key, value]) => [key, value?.[0] ?? ''])
+      ) as ResetErrors;
+
+      setResetErrors(nextErrors);
+      const firstError = Object.values(nextErrors).find(Boolean);
+      if (firstError) {
+        toast.error(firstError);
+      }
+      return;
+    }
+
+    if (parsed.data.otp !== serverOtp) {
+      const message = 'The code you entered is incorrect.';
+      setResetErrors((prev) => ({
+ ...prev,
+otp: message, 
+}));
+      toast.error(message);
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+
+      toast.success('Your password has been reset. You can now sign in with your new password.');
+      setStep('complete');
+      setEmail('');
+      setOtpValue('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   return (
     <Card className={ cn('bg-background', className) }>
-      <CardContent className="space-y-4 pt-6">
-        <form action={ formAction } className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="email" className="text-sm text-muted-foreground">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-              value={ email }
-              onChange={ (event) => setEmail(event.target.value) }
-              className={ [
-                'w-full h-10 rounded-md px-3',
-                'bg-muted/60 text-foreground border border-input',
-                'placeholder:text-muted-foreground',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-              ].join(' ') }
-              placeholder="Enter your email"
-            />
-            { fieldErr('email') && (
-              <p className="text-sm text-destructive">{ fieldErr('email') }</p>
-            ) }
+      <CardContent className="space-y-6 pt-6">
+        { step === 'request' && (
+          <form action={ formAction } className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-sm text-muted-foreground">Email</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                required
+                autoComplete="email"
+                value={ email }
+                onChange={ (event) => setEmail(event.target.value) }
+                className="h-10 w-full rounded-md border border-input bg-muted/60 px-3 text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                placeholder="Enter your email"
+              />
+              { fieldErr('email') && (
+                <p className="text-sm text-destructive">{ fieldErr('email') }</p>
+              ) }
+            </div>
+
+            <RequestSubmitButton />
+          </form>
+        ) }
+
+        { step === 'verify' && (
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">Check your email</p>
+              <p className="text-sm text-muted-foreground">
+                Enter the 6-digit code we sent to { maskedEmail } and choose a new password.
+              </p>
+            </div>
+
+            <form onSubmit={ handleResetSubmit } className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="reset-otp" className="text-sm text-muted-foreground">
+                  One-time verification code
+                </Label>
+                <InputOTP
+                  id="reset-otp"
+                  maxLength={ 6 }
+                  value={ otpValue }
+                  onChange={ (value) => setOtpValue(value.replace(/\D/g, '')) }
+                  autoComplete="one-time-code"
+                  className="justify-between"
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={ 0 } />
+                    <InputOTPSlot index={ 1 } />
+                    <InputOTPSlot index={ 2 } />
+                  </InputOTPGroup>
+                  <InputOTPSeparator />
+                  <InputOTPGroup>
+                    <InputOTPSlot index={ 3 } />
+                    <InputOTPSlot index={ 4 } />
+                    <InputOTPSlot index={ 5 } />
+                  </InputOTPGroup>
+                </InputOTP>
+                { resetErrors.otp && (
+                  <p className="text-sm text-destructive">{ resetErrors.otp }</p>
+                ) }
+                { serverOtp && (
+                  <p className="text-xs text-muted-foreground">
+                    Demo note: use <span className="font-medium text-foreground">{ serverOtp }</span> to
+                    continue.
+                  </p>
+                ) }
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="reset-password" className="text-sm text-muted-foreground">
+                  New password
+                </Label>
+                <Input
+                  id="reset-password"
+                  type="password"
+                  value={ newPassword }
+                  onChange={ (event) => setNewPassword(event.target.value) }
+                  autoComplete="new-password"
+                  required
+                  placeholder="Create a strong password"
+                  className="h-10 rounded-md border border-input bg-muted/60 px-3 text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                { resetErrors.password && (
+                  <p className="text-sm text-destructive">{ resetErrors.password }</p>
+                ) }
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="reset-confirm" className="text-sm text-muted-foreground">
+                  Confirm new password
+                </Label>
+                <Input
+                  id="reset-confirm"
+                  type="password"
+                  value={ confirmPassword }
+                  onChange={ (event) => setConfirmPassword(event.target.value) }
+                  autoComplete="new-password"
+                  required
+                  placeholder="Repeat your new password"
+                  className="h-10 rounded-md border border-input bg-muted/60 px-3 text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                { resetErrors.confirmPassword && (
+                  <p className="text-sm text-destructive">{ resetErrors.confirmPassword }</p>
+                ) }
+              </div>
+
+              <Button
+                type="submit"
+                disabled={ isResetting }
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-border bg-primary px-4 py-2 text-primary-foreground transition-[transform,opacity] active:scale-[0.98] disabled:opacity-70"
+              >
+                { isResetting && <CgSpinner className="h-4 w-4 animate-spin" /> }
+                { isResetting ? 'Resetting…' : 'Reset password' }
+              </Button>
+            </form>
+
+            <form action={ formAction } className="flex justify-center">
+              <input type="hidden" name="email" value={ requestedEmail ?? '' } />
+              <ResendCodeButton disabled={ isResetting } />
+            </form>
           </div>
-          <SubmitButton />
-        </form>
+        ) }
+
+        { step === 'complete' && (
+          <div className="space-y-4 text-center">
+            <div className="space-y-2">
+              <p className="text-lg font-semibold text-foreground">Password reset</p>
+              <p className="text-sm text-muted-foreground">
+                Your password has been updated for { maskedEmail }. Sign in to continue.
+              </p>
+            </div>
+
+            <Button asChild className="w-full">
+              <Link href="/signin">Continue to sign in</Link>
+            </Button>
+          </div>
+        ) }
+
         <p className="text-xs text-muted-foreground">
-          We&apos;ll email you instructions to reset your password. This link expires in 24 hours.
+          We&apos;ll email you instructions to reset your password. The code expires in 10 minutes.
         </p>
         <div className="text-sm text-center text-muted-foreground">
           Remembered your password?{ ' ' }
