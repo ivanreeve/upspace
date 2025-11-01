@@ -13,7 +13,7 @@ export async function POST() {
 
     if (!url || !anonKey) {
       console.error('Missing Supabase configuration. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.');
-      return NextResponse.json({ message: 'Server configuration error.' }, { status: 500 });
+      return NextResponse.json({ message: 'Server configuration error.', }, { status: 500, });
     }
 
     const supabase = createServerClient(url, anonKey, {
@@ -33,17 +33,19 @@ export async function POST() {
       },
     });
 
-    const { data, error: sessionError } = await supabase.auth.getSession();
+    const {
+ data, error: sessionError, 
+} = await supabase.auth.getSession();
 
     if (sessionError) {
       console.error('Failed to read Supabase session in sync-profile route', sessionError);
-      return NextResponse.json({ message: 'Unable to verify session.' }, { status: 500 });
+      return NextResponse.json({ message: 'Unable to verify session.', }, { status: 500, });
     }
 
     const session = data.session;
 
     if (!session) {
-      return NextResponse.json({ message: 'Not authenticated.' }, { status: 401 });
+      return NextResponse.json({ message: 'Not authenticated.', }, { status: 401, });
     }
 
     await ensureUserProfile({
@@ -54,9 +56,9 @@ export async function POST() {
       metadata: session.user.user_metadata ?? {},
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, });
   } catch (error) {
     console.error('Unhandled sync-profile error', error);
-    return NextResponse.json({ message: 'Unable to sync profile right now.' }, { status: 500 });
+    return NextResponse.json({ message: 'Unable to sync profile right now.', }, { status: 500, });
   }
 }

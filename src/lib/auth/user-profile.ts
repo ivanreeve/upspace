@@ -26,9 +26,7 @@ export async function ensureUserProfile({
   metadata,
   strictHandle = false,
 }: EnsureUserProfileOptions) {
-  const existing = await prisma.user.findFirst({
-    where: { auth_user_id: authUserId },
-  });
+  const existing = await prisma.user.findFirst({ where: { auth_user_id: authUserId, }, });
 
   if (existing) {
     return existing;
@@ -143,8 +141,8 @@ async function resolveHandle({
 
 async function isHandleAvailable(handle: string) {
   const existing = await prisma.user.findFirst({
-    where: { handle },
-    select: { user_id: true },
+    where: { handle, },
+    select: { user_id: true, },
   });
 
   return !existing;
