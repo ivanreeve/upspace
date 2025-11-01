@@ -1,9 +1,9 @@
 'use server';
 
-import { AuthError } from 'next-auth';
+import { AuthApiError } from '@supabase/supabase-js';
 import { z } from 'zod';
 
-import { signIn } from '@/lib/auth';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 const schema = z.object({
   email: z.string().email('Provide a valid email.'),
@@ -18,6 +18,7 @@ export type LoginState = {
 };
 
 export async function loginAction(_prev: LoginState, formData: FormData): Promise<LoginState> {
+  
   const data = {
     email: String(formData.get('email') ?? ''),
     password: String(formData.get('password') ?? ''),
@@ -38,29 +39,27 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   const callbackUrl = String(formData.get('callbackUrl') ?? '/dashboard');
 
   try {
-    const redirectTarget = await signIn('credentials', {
+    const supabase = await createSupabaseServerClient();
+
+    const { error, } = await supabase.auth.signInWithPassword({
       email: parsed.data.email,
       password: parsed.data.password,
-      redirect: false,
-      redirectTo: callbackUrl,
     });
 
-    const redirectTo =
-      typeof redirectTarget === 'string'
-        ? redirectTarget
-        : redirectTarget?.toString() ?? callbackUrl;
-
-    return {
-      ok: true,
-      redirectTo,
-    };
-  } catch (error) {
-    if (error instanceof AuthError) {
-      if (error.type === 'CredentialsSignin') {
-        return {
-          ok: false,
-          message: 'Invalid email or password.',
-        };
+    if (error) {
+      if (error instanceof AuthApiError) {
+        if (error.status === 400) {
+          return {
+            ok: false,
+            message: 'Invalid email or password.',
+          };
+        }
+        if (error.status === 403) {
+          return {
+            ok: false,
+            message: 'Confirm your email address before signing in.',
+          };
+        }
       }
 
       return {
@@ -69,6 +68,15 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
       };
     }
 
-    throw error;
+    return {
+      ok: true,
+      redirectTo: callbackUrl,
+    };
+  } catch (error) {
+    console.error('Failed to sign in with Supabase', error);
+    return {
+      ok: false,
+      message: 'Unable to sign in. Please try again.',
+    };
   }
 }

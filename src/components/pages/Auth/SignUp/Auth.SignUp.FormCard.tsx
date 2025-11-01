@@ -147,7 +147,6 @@ export function SignUpFormCard() {
         body: JSON.stringify({
           email: formValues.email,
           password: formValues.password,
-          first_name: formValues.email.split('@')[0],
           handle: formValues.email.split('@')[0],
         }),
       });
@@ -158,7 +157,7 @@ export function SignUpFormCard() {
         return;
       }
 
-      toast.success('Account created. Redirecting you to onboarding…');
+      toast.success('Account created.');
       router.push('/onboarding');
     } finally {
       setIsSubmitting(false);

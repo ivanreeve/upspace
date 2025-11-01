@@ -10,17 +10,6 @@ datasource db {
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model account {
-  account_id  BigInt         @id @default(autoincrement())
-  user_id     BigInt?
-  created_at  DateTime       @default(now()) @db.Timestamptz(6)
-  provider    auth_provider?
-  provider_id String?
-  updated_at  DateTime?      @default(now()) @db.Timestamptz(6)
-  user        user?          @relation(fields: [user_id], references: [user_id], onDelete: Restrict)
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model amenity {
   amenity_id BigInt    @id @unique @default(autoincrement())
   name       String    @db.VarChar
@@ -170,22 +159,22 @@ model transaction {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model user {
-  first_name  String?
-  email       String     @unique
-  birthday    DateTime?  @db.Date
-  is_disabled Boolean    @default(false)
-  created_at  DateTime   @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamptz(6)
-  updated_at  DateTime   @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamptz(6)
-  user_id     BigInt     @id @unique @default(autoincrement())
-  role        user_role  @default(customer)
-  middle_name String?
-  last_name   String?
-  handle      String
-  avatar      String?
-  account     account[]
-  booking     booking[]
-  bookmark    bookmark[]
-  space       space[]
+  first_name   String?
+  birthday     DateTime?  @db.Date
+  is_disabled  Boolean    @default(false)
+  created_at   DateTime   @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamptz(6)
+  updated_at   DateTime   @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamptz(6)
+  user_id      BigInt     @id @unique @default(autoincrement())
+  role         user_role  @default(customer)
+  middle_name  String?
+  last_name    String?
+  handle       String
+  avatar       String?
+  is_onboard   Boolean    @default(false)
+  auth_user_id String     @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  booking      booking[]
+  bookmark     bookmark[]
+  space        space[]
 }
 
 enum auth_provider {
