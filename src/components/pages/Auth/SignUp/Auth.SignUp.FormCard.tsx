@@ -140,6 +140,24 @@ export function SignUpFormCard() {
         return;
       }
 
+      // Create the user in the database
+      const res = await fetch('/api/v1/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify({
+          email: formValues.email,
+          password: formValues.password,
+          first_name: formValues.email.split('@')[0],
+          handle: formValues.email.split('@')[0],
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: 'Unable to create user.', }));
+        toast.error(data.message ?? 'Unable to create user.');
+        return;
+      }
+
       toast.success('Account created. Redirecting you to onboarding…');
       router.push('/onboarding');
     } finally {
