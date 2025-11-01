@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import SignInCard from '@/components/auth/SignInCard';
 
 export const metadata: Metadata = {
-  title: 'Sign In • Upspace',
+  title: 'Sign In - Upspace',
   description: 'Access your Upspace account to manage bookings and spaces.',
 };
 
