@@ -168,10 +168,10 @@ model user {
   role         user_role  @default(customer)
   middle_name  String?
   last_name    String?
-  handle       String
+  handle       String     @unique
   avatar       String?
   is_onboard   Boolean    @default(false)
-  auth_user_id String     @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  auth_user_id String     @unique @db.Uuid
   booking      booking[]
   bookmark     bookmark[]
   space        space[]

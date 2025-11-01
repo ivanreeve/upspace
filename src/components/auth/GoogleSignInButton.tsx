@@ -28,12 +28,11 @@ export default function GoogleSignInButton({
         setLoading(true);
         try {
           const supabase = getSupabaseBrowserClient();
-          const redirectTo =
-            callbackUrl.startsWith('http')
-              ? callbackUrl
-              : `${window.location.origin}${
-                callbackUrl.startsWith('/') ? callbackUrl : `/${callbackUrl}`
-              }`;
+          const origin = window.location.origin;
+          const nextUrl = callbackUrl.startsWith('http')
+            ? callbackUrl
+            : `${origin}${callbackUrl.startsWith('/') ? callbackUrl : `/${callbackUrl}`}`;
+          const redirectTo = `${origin}/api/auth/callback?next=${encodeURIComponent(nextUrl)}`;
 
           const { error, } = await supabase.auth.signInWithOAuth({
             provider: 'google',
