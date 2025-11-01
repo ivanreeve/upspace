@@ -4,6 +4,7 @@ import Credentials from 'next-auth/providers/credentials';
 import { z } from 'zod';
 
 import { verifyPassword } from './password';
+import { prisma } from './prisma';
 
 import { findMockUserByEmail } from '@/data/mock-users';
 
@@ -55,6 +56,43 @@ export const {
     })
   ],
   callbacks: {
+    async signIn({
+ user, account, profile, 
+}) {
+      try {
+        if (account?.provider === 'google') {
+          const email = user?.email ?? (typeof profile === 'object' && profile && 'email' in profile ? (profile as any).email : null);
+          if (!email) return false;
+
+          const existing = await prisma.user.findUnique({
+ where: { email, },
+select: { user_id: true, }, 
+});
+          if (!existing) {
+            await prisma.$transaction(async (tx) => {
+              const created = await tx.user.create({
+                data: {
+                  email,
+                  handle: email.split('@')[0],
+                  avatar: user?.image || null,
+                },
+              });
+              await tx.account.create({
+                data: {
+                  user_id: created.user_id,
+                  provider: 'google',
+                  provider_id: account?.providerAccountId ?? user?.id ?? email,
+                },
+              });
+            });
+          }
+        }
+        return true;
+      } catch (e) {
+        console.error('signIn callback failed', e);
+        return false;
+      }
+    },
     async jwt({
  token, user, profile, account, 
 }) {
