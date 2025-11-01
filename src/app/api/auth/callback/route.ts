@@ -10,7 +10,10 @@ function getSupabaseEnv() {
     throw new Error('Missing Supabase configuration. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.');
   }
 
-  return { url, anonKey };
+  return {
+ url,
+anonKey, 
+};
 }
 
 export async function GET(request: NextRequest) {
@@ -29,7 +32,9 @@ export async function GET(request: NextRequest) {
   const response = NextResponse.redirect(redirectUrl);
 
   try {
-    const { url, anonKey } = getSupabaseEnv();
+    const {
+ url, anonKey, 
+} = getSupabaseEnv();
     const supabase = createServerClient(url, anonKey, {
       cookies: {
         getAll() {
@@ -47,7 +52,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { error, } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
       console.error('Failed to exchange auth code for session', error);
     }
