@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
       // simple equals filters
       city: z.string().min(1).optional(),
       region: z.string().min(1).optional(),
-      country: z.string().min(1).optional(),
+      country_code: z.string().min(1).optional(),
       postal_code: z.string().min(1).optional(),
       user_id: z.string().regex(/^\d+$/).optional(),
 
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
       cursor: searchParams.get('cursor') ?? undefined,
       city: searchParams.get('city') ?? undefined,
       region: searchParams.get('region') ?? undefined,
-      country: searchParams.get('country') ?? undefined,
+      country_code: searchParams.get('country_code') ?? undefined,
       postal_code: searchParams.get('postal_code') ?? undefined,
       user_id: searchParams.get('user_id') ?? undefined,
       q: searchParams.get('q') ?? undefined,
@@ -90,7 +90,7 @@ export async function GET(req: NextRequest) {
       cursor,
       city,
       region,
-      country,
+      country_code,
       postal_code,
       user_id,
       q,
@@ -125,12 +125,12 @@ mode: 'insensitive' as const,
 mode: 'insensitive' as const, 
 }, 
 });
-    if (country) and.push({
- country: {
- equals: country,
-mode: 'insensitive' as const, 
-}, 
-});
+    if (country_code) and.push({
+      country_code: {
+        equals: country_code,
+        mode: 'insensitive' as const,
+      },
+    });
     if (postal_code) and.push({
  postal_code: {
  equals: postal_code,
@@ -179,7 +179,7 @@ mode: 'insensitive' as const,
 }, 
 },
           {
- country: {
+ country_code: {
  contains: q,
 mode: 'insensitive' as const, 
 }, 
@@ -253,7 +253,13 @@ mode: 'insensitive' as const,
 
     // Minimum capacity via related areas
     if (typeof min_capacity === 'number') {
-      and.push({ area: { some: { capacity: { gte: BigInt(min_capacity), }, }, }, });
+      and.push({
+        area: {
+          some: {
+            max_capacity: { gte: BigInt(min_capacity), },
+          },
+        },
+      });
     }
 
     // Bookmarked by a specific user
@@ -264,18 +270,13 @@ mode: 'insensitive' as const,
     // Availability by day_of_week
     const days = (available_days ?? '')
       .split(',')
-      .map(s => s.trim())
-      .filter(Boolean);
+      .map((s) => Number.parseInt(s.trim(), 10))
+      .filter((n) => Number.isInteger(n));
     if (days.length > 0) {
       and.push({
         space_availability: {
           some: {
-            OR: days.map((day) => ({
-              day_of_week: {
-                equals: day,
-                mode: 'insensitive' as const,
-              },
-            })),
+            day_of_week: { in: days, },
           },
         },
       });
@@ -287,13 +288,23 @@ mode: 'insensitive' as const,
       if (typeof min_rate_price === 'number') priceCond.gte = min_rate_price;
       if (typeof max_rate_price === 'number') priceCond.lte = max_rate_price;
       const rateCond: any = {};
-      if (rate_time_unit) rateCond.time_unit = {
+      if (rate_time_unit) {
+        rateCond.time_unit = {
  equals: rate_time_unit,
 mode: 'insensitive' as const, 
 };
+      }
       if (Object.keys(priceCond).length > 0) rateCond.price = priceCond;
 
-      and.push({ area: { some: { rate: { some: rateCond, }, }, }, });
+      if (Object.keys(rateCond).length > 0) {
+        and.push({
+          area: {
+            some: {
+              price_rate: { some: rateCond, },
+            },
+          },
+        });
+      }
     }
 
     const where = and.length > 0 ? { AND: and, } : {};
@@ -342,7 +353,7 @@ mode: 'insensitive' as const,
             url: true,
           },
         }),
-        prisma.rate.findMany({
+        prisma.price_rate.findMany({
           where: { area: { space_id: { in: spaceIds, }, }, },
           select: {
             price: true,
@@ -436,7 +447,7 @@ export async function POST(req: NextRequest) {
     address_subunit: z.string().min(1).max(200),
     city: z.string().min(1).max(200),
     region: z.string().min(1).max(200),
-    country: z.string().min(1).max(200),
+    country_code: z.string().min(2).max(2),
     postal_code: z.string().min(1).max(50),
   });
 
@@ -457,7 +468,7 @@ export async function POST(req: NextRequest) {
         address_subunit: parsed.data.address_subunit,
         city: parsed.data.city,
         region: parsed.data.region,
-        country: parsed.data.country,
+        country_code: parsed.data.country_code,
         postal_code: parsed.data.postal_code,
         created_at: now,
         updated_at: now,
@@ -471,7 +482,7 @@ export async function POST(req: NextRequest) {
         address_subunit: true,
         city: true,
         region: true,
-        country: true,
+        country_code: true,
         postal_code: true,
         created_at: true,
         updated_at: true,
@@ -487,7 +498,7 @@ export async function POST(req: NextRequest) {
       address_subunit: created.address_subunit,
       city: created.city,
       region: created.region,
-      country: created.country,
+      country_code: created.country_code,
       postal_code: created.postal_code,
       created_at: created.created_at instanceof Date ? created.created_at.toISOString() : created.created_at,
       updated_at: created.updated_at instanceof Date ? created.updated_at.toISOString() : created.updated_at,

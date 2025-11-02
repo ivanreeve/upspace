@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 
 import { prisma } from '@/lib/prisma';
-import { getSpaceDetail } from '@/lib/queries/space';
+import { getSpaceDetail } from '@/lib/api/space';
 import MarketplaceSpaceDetail from '@/components/pages/Marketplace/SpaceDetail/Marketplace.SpaceDetail';
 import NavBar from '@/components/ui/navbar';
 import { Footer } from '@/components/ui/footer';
@@ -20,14 +20,19 @@ export async function generateMetadata({ params, }: Props): Promise<Metadata> {
 
 export default async function SpaceDetailPage({ params, }: Props) {
   if (!/^\d+$/.test(params.space_id)) notFound();
-  const spaceId = BigInt(params.space_id);
-  const space = await getSpaceDetail(spaceId);
-  if (!space) notFound();
-  return (
-    <>
-      <NavBar />
-      <MarketplaceSpaceDetail space={ space as any } />
-      <Footer />
-    </>
-  );
+  try {
+    const space = await getSpaceDetail(params.space_id);
+    if (!space) {
+      notFound();
+    }
+    return (
+      <>
+        <NavBar />
+        <MarketplaceSpaceDetail space={ space } />
+        <Footer />
+      </>
+    );
+  } catch {
+    notFound();
+  }
 }

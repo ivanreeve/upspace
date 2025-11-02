@@ -1,34 +1,26 @@
-const mondayFirstDays = [
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-  'Sunday'
-] as const;
+import type { SpaceAvailability } from '@/lib/api/space';
 
-type Availability = {
-  availability_id: bigint;
-  day_of_week: string;
-  opening_time: Date | string;
-  closing_time: Date | string;
-};
+const mondayFirstOrder = [1, 2, 3, 4, 5, 6, 0];
 
-function formatTimeHHmm(date: Date | string) {
-  const d = typeof date === 'string' ? new Date(date) : date;
+function formatTimeHHmm(value: Date | string) {
+  const d = typeof value === 'string' ? new Date(value) : value;
+  if (Number.isNaN(d.getTime())) return '–';
   const h = d.getUTCHours().toString().padStart(2, '0');
   const m = d.getUTCMinutes().toString().padStart(2, '0');
   return `${h}:${m}`;
 }
 
 export default function Availability({ items, }: {
-  items: Availability[];
+  items: SpaceAvailability[];
 }) {
   const rows = [...(items ?? [])].sort(
-    (a, b) =>
-      mondayFirstDays.indexOf(a.day_of_week as (typeof mondayFirstDays)[number]) -
-      mondayFirstDays.indexOf(b.day_of_week as (typeof mondayFirstDays)[number])
+    (a, b) => {
+      const aIdx = mondayFirstOrder.indexOf(a.day_index);
+      const bIdx = mondayFirstOrder.indexOf(b.day_index);
+      const normalizedA = aIdx === -1 ? mondayFirstOrder.length : aIdx;
+      const normalizedB = bIdx === -1 ? mondayFirstOrder.length : bIdx;
+      return normalizedA - normalizedB;
+    }
   );
 
   if (rows.length === 0) {
@@ -54,13 +46,13 @@ export default function Availability({ items, }: {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         { rows.map((slot) => (
           <article
-            key={ slot.availability_id.toString() }
+            key={ slot.availability_id ?? slot.day_label }
             className="space-y-3 rounded-2xl border bg-background/70 p-4 shadow-sm"
           >
             <header className="flex items-center justify-between">
-              <h3 className="text-base text-foreground">{ slot.day_of_week }</h3>
+              <h3 className="text-base text-foreground">{ slot.day_label }</h3>
               <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-foreground">
-                { formatTimeHHmm(slot.opening_time) } - { formatTimeHHmm(slot.closing_time) }
+                { formatTimeHHmm(slot.opening) } - { formatTimeHHmm(slot.closing) }
               </span>
             </header>
             <p className="text-sm text-muted-foreground">

@@ -1,5 +1,7 @@
 import Image from 'next/image';
 
+import type { SpaceArea } from '@/lib/api/space';
+
 const FALLBACK_AREA_IMAGES = [
   'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=900&q=80',
   'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=900&q=80',
@@ -13,28 +15,13 @@ const FALLBACK_AREA_IMAGES = [
   'https://images.unsplash.com/photo-1596496050233-5ff7c4d01874?auto=format&fit=crop&w=900&q=80'
 ] as const;
 
-type Rate = { rate_id: bigint; time_unit: string; price: any };
-type AreaImage = { image_id: bigint; url: string };
-type Area = {
-  area_id: bigint;
-  name: string;
-  capacity: bigint;
-  image: AreaImage[];
-  rate_rate_area_idToarea: Rate[];
-};
-
-function formatPrice(price: Rate['price']) {
+function formatPrice(price: number | null) {
   if (price == null) return 'N/A';
-  if (typeof price === 'string') return price;
-  if (typeof price === 'number') return price.toString();
-  if (typeof (price as unknown as { toString?: () => string }).toString === 'function') {
-    return (price as unknown as { toString: () => string }).toString();
-  }
-  return String(price);
+  return `₱${Math.round(price).toLocaleString()}`;
 }
 
 export default function Areas({ areas, }: {
-  areas: Area[];
+  areas: SpaceArea[];
 }) {
   if (!areas || areas.length === 0) {
     return (
@@ -61,15 +48,25 @@ export default function Areas({ areas, }: {
             FALLBACK_AREA_IMAGES[(index + fallbackIndex) % FALLBACK_AREA_IMAGES.length]
           );
           const sourceImages =
-            area.image && area.image.length > 0
-              ? area.image.slice(0, 4).map((img) => img.url)
+            area.images && area.images.length > 0
+              ? area.images.slice(0, 4).map((img) => img.url)
               : [];
 
           const displayImages = [...sourceImages, ...fallbackCycle].slice(0, 4);
+          const capacityLabel = (() => {
+            const { min_capacity, max_capacity, } = area;
+            if (min_capacity != null && max_capacity != null) {
+              if (min_capacity === max_capacity) return max_capacity.toString();
+              return `${min_capacity} - ${max_capacity}`;
+            }
+            if (max_capacity != null) return max_capacity.toString();
+            if (min_capacity != null) return min_capacity.toString();
+            return 'N/A';
+          })();
 
           return (
             <article
-              key={ area.area_id.toString() }
+              key={ area.area_id ?? `${index}` }
               className="space-y-6 rounded-3xl border bg-background/70 p-6 shadow-sm"
             >
               <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -80,14 +77,14 @@ export default function Areas({ areas, }: {
                   <h3 className="text-xl text-foreground">{ area.name }</h3>
                 </div>
                 <span className="inline-flex min-w-[140px] items-center justify-center rounded-full border px-4 py-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Capacity { area.capacity.toString() }
+                  Capacity { capacityLabel }
                 </span>
               </header>
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 { displayImages.map((src, imageIndex) => (
                   <figure
-                    key={ `${area.area_id.toString()}-${imageIndex}` }
+                    key={ `${area.area_id ?? index}-${imageIndex}` }
                     className="overflow-hidden rounded-2xl"
                   >
                     <Image
@@ -104,17 +101,17 @@ export default function Areas({ areas, }: {
 
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold text-foreground/80">Current Rates</h4>
-                { area.rate_rate_area_idToarea.length === 0 ? (
+                { area.price_rates.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No rates set for this area.</p>
                 ) : (
                   <ul className="grid gap-2 text-sm text-foreground/80 md:grid-cols-2">
-                    { area.rate_rate_area_idToarea.map((rate) => (
+                    { area.price_rates.map((rate, rateIndex) => (
                       <li
-                        key={ rate.rate_id.toString() }
+                        key={ rate.rate_id ?? `${area.area_id ?? index}-rate-${rateIndex}` }
                         className="flex items-center justify-between rounded-xl border px-4 py-3"
                       >
                         <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                          { rate.time_unit }
+                          { rate.time_unit ?? 'N/A' }
                         </span>
                         <span className="font-medium text-foreground">{ formatPrice(rate.price) }</span>
                       </li>

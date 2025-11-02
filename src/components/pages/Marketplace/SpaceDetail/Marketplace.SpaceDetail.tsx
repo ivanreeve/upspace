@@ -7,40 +7,25 @@ import Location from './Marketplace.SpaceDetail.Location';
 import Areas from './Marketplace.SpaceDetail.Areas';
 import Availability from './Marketplace.SpaceDetail.Availability';
 
-type Amenity = { amenity_id: bigint; name: string };
-type Rate = { rate_id: bigint; time_unit: string; price: any };
-type AreaImage = { image_id: bigint; url: string };
-type Area = {
-  area_id: bigint;
-  name: string;
-  capacity: bigint;
-  image: AreaImage[];
-  rate_rate_area_idToarea: Rate[];
-};
-type AvailabilitySlot = {
-  availability_id: bigint;
-  day_of_week: string;
-  opening_time: Date | string;
-  closing_time: Date | string;
-};
+import type { SpaceDetail } from '@/lib/api/space';
 
-type Space = {
-  space_id: bigint;
-  name: string;
-  overview?: string | null;
-  unit_number: string;
-  street: string;
-  address_subunit: string;
-  city: string;
-  region: string;
-  country: string;
-  postal_code: string;
-  amenity: Amenity[];
-  area: Area[];
-  space_availability: AvailabilitySlot[];
-};
+const getCountryDisplayName = (() => {
+  let formatter: Intl.DisplayNames | null = null;
+  return (code?: string | null) => {
+    if (!code) return '';
+    try {
+      if (!formatter) {
+        formatter = new Intl.DisplayNames(['en'], { type: 'region' });
+      }
+      return formatter.of(code) ?? code;
+    } catch {
+      return code;
+    }
+  };
+})();
 
-export default function MarketplaceSpaceDetail({ space, }: { space: Space }) {
+export default function MarketplaceSpaceDetail({ space, }: { space: SpaceDetail }) {
+  const countryName = getCountryDisplayName(space.country_code);
   const locationParts = [space.city, space.region].filter(Boolean);
   const location = locationParts.length > 0 ? locationParts.join(', ') : 'Global City, Taguig';
   const addressDetails = [
@@ -49,24 +34,28 @@ export default function MarketplaceSpaceDetail({ space, }: { space: Space }) {
       value: [space.unit_number, space.street, space.address_subunit].filter(Boolean).join(', '),
     },
     {
- label: 'City / Region',
-value: location, 
-},
+      label: 'City / Region',
+      value: location,
+    },
     {
- label: 'Country',
-value: space.country, 
-},
+      label: 'Country',
+      value: countryName || space.country_code,
+    },
     {
- label: 'Postal Code',
-value: space.postal_code, 
-}
+      label: 'Postal Code',
+      value: space.postal_code,
+    }
   ].filter((detail) => detail.value && detail.value.trim().length > 0);
 
   const rating = {
     score: 5,
     count: 7,
   };
-  const hostName = 'Trisha M.';
+  const hostName = space.host?.full_name
+    || [space.host?.first_name, space.host?.last_name].filter(Boolean).join(' ')
+    || 'Space Host';
+
+  const galleryImages = space.images.length > 0 ? space.images : undefined;
 
   const reviewHighlights = [
     {
@@ -135,7 +124,7 @@ value: 4.7,
       <div className="mx-auto max-w-[1440px] space-y-16 px-4 py-12">
         <Header name={ space.name } rating={ rating } location={ location } />
 
-        <Gallery />
+        <Gallery images={ galleryImages } />
 
         <Host hostName={ hostName } />
 
@@ -163,15 +152,15 @@ value: 4.7,
           ) }
         </section>
 
-        <Areas areas={ space.area ?? [] } />
+        <Areas areas={ space.areas ?? [] } />
 
-        <Availability items={ space.space_availability ?? [] } />
+        <Availability items={ space.availability ?? [] } />
 
-        <Amenities amenities={ space.amenity } />
+        <Amenities amenities={ space.amenities } />
 
         <Reviews rating={ rating } highlights={ reviewHighlights } testimonials={ testimonials } />
 
-        <Location city={ space.city } region={ space.region } country={ space.country } />
+        <Location city={ space.city } region={ space.region } country={ countryName || space.country_code } />
       </div>
     </main>
   );

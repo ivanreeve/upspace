@@ -16,7 +16,7 @@ export type ListSpacesParams = Partial<{
   q: string;
   city: string;
   region: string;
-  country: string;
+  country_code: string;
   amenities: string[]; // names
   amenities_mode: 'all' | 'any';
   min_rate_price: number;
@@ -41,7 +41,7 @@ export async function listSpaces(
   if (params.q) sp.set('q', params.q);
   if (params.city) sp.set('city', params.city);
   if (params.region) sp.set('region', params.region);
-  if (params.country) sp.set('country', params.country);
+  if (params.country_code) sp.set('country_code', params.country_code);
   if (params.amenities?.length) sp.set('amenities', params.amenities.join(','));
   if (params.amenities_mode) sp.set('amenities_mode', params.amenities_mode);
   if (params.min_rate_price != null) sp.set('min_rate_price', String(params.min_rate_price));

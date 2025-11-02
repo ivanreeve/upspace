@@ -1,7 +1,7 @@
-type Amenity = { amenity_id: bigint; name: string };
+import type { SpaceAmenity } from '@/lib/api/space';
 
 export default function Amenities({ amenities, }: {
-  amenities: Amenity[];
+  amenities: SpaceAmenity[];
 }) {
   const amenityNames = amenities.length > 0 ? amenities.map((a) => a.name) : [
     'Wifi',

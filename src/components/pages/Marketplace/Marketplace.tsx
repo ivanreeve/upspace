@@ -20,7 +20,6 @@ import { cn } from '@/lib/utils';
 import { useSpaces } from '@/lib/queries/spaces';
 
 const NEAR_ME_PAGE_SIZE = 8;
-const DEFAULT_QUERY_LIMIT = 48;
 
 function cloneFilterState(value: MarketplaceFilterState): MarketplaceFilterState {
   const amenities = Array.isArray(value.amenities) ? value.amenities : [];
@@ -50,7 +49,7 @@ export default function Marketplace() {
 
   const queryParams = React.useMemo<ListSpacesParams>(() => {
     const params: ListSpacesParams = {
-      limit: DEFAULT_QUERY_LIMIT,
+      limit: NEAR_ME_PAGE_SIZE,
       sort: 'name',
       order: 'asc',
     };
@@ -79,16 +78,41 @@ export default function Marketplace() {
     isError,
     isFetching,
     isPending,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   } = useSpaces(queryParams);
 
-  const spaces: SpaceCardData[] = data?.data ?? [];
+  const pages = data?.pages ?? [];
 
-  const filtered = appliedFilters.minRating <= DEFAULT_MIN_RATING
-    ? spaces
-    : spaces.filter((item) => {
-      const rating = typeof item.rating === 'number' ? item.rating : 0;
-      return rating >= appliedFilters.minRating;
+  const filteredPages = React.useMemo(() => {
+    if (appliedFilters.minRating <= DEFAULT_MIN_RATING) {
+      return pages;
+    }
+    return pages.map((page) => ({
+      ...page,
+      data: page.data.filter((item) => {
+        const rating = typeof item.rating === 'number' ? item.rating : 0;
+        return rating >= appliedFilters.minRating;
+      }),
+    }));
+  }, [appliedFilters.minRating, pages]);
+
+  const totalFetchedPages = filteredPages.length;
+  const totalNearMePages = totalFetchedPages + (hasNextPage ? 1 : 0);
+  const currentPageIndex = totalFetchedPages === 0 ? 0 : Math.min(nearMePage, totalFetchedPages - 1);
+  const nearMe: SpaceCardData[] = filteredPages[currentPageIndex]?.data ?? [];
+  const currentPage = currentPageIndex + 1;
+
+  const recommended = React.useMemo<SpaceCardData[]>(() => {
+    if (filteredPages.length === 0) return [];
+    const items: SpaceCardData[] = [];
+    filteredPages.forEach((page, idx) => {
+      if (idx === currentPageIndex) return;
+      items.push(...page.data);
     });
+    return items;
+  }, [currentPageIndex, filteredPages]);
 
   const applyFilters = React.useCallback((next?: MarketplaceFilterState) => {
     const source = next ? cloneFilterState(next) : cloneFilterState(state);
@@ -96,30 +120,11 @@ export default function Marketplace() {
     setNearMePage(0);
   }, [state]);
 
-  React.useEffect(() => {
-    setNearMePage(0);
-  }, [filtered]);
-
-  const totalNearMePages = Math.ceil(filtered.length / NEAR_ME_PAGE_SIZE);
-  React.useEffect(() => {
-    if (totalNearMePages === 0) {
-      if (nearMePage !== 0) setNearMePage(0);
-      return;
-    }
-    const maxPage = Math.max(totalNearMePages - 1, 0);
-    if (nearMePage > maxPage) {
-      setNearMePage(maxPage);
-    }
-  }, [nearMePage, totalNearMePages]);
-
-  const startIndex = nearMePage * NEAR_ME_PAGE_SIZE;
-  const endIndex = startIndex + NEAR_ME_PAGE_SIZE;
-  const nearMe = filtered.slice(startIndex, endIndex);
-  const recommended = filtered.slice(endIndex);
   const showPagination = totalNearMePages > 1;
-  const canGoPrev = nearMePage > 0;
-  const canGoNext = nearMePage < totalNearMePages - 1;
-  const currentPage = nearMePage + 1;
+  const canGoPrev = currentPageIndex > 0;
+  const canGoNext = totalFetchedPages > 0
+    ? (currentPageIndex < totalFetchedPages - 1) || (currentPageIndex === totalFetchedPages - 1 && hasNextPage)
+    : false;
 
   const paginationRange = React.useMemo(() => {
     if (!showPagination) return [];
@@ -166,12 +171,33 @@ export default function Marketplace() {
     return pages;
   }, [currentPage, showPagination, totalNearMePages]);
 
-  const goToPage = React.useCallback((pageNumber: number) => {
-    setNearMePage(Math.max(pageNumber - 1, 0));
-  }, []);
+  const goToPage = React.useCallback(async (pageNumber: number) => {
+    const targetIndex = Math.max(pageNumber - 1, 0);
+    if (targetIndex < totalFetchedPages) {
+      setNearMePage(targetIndex);
+      return;
+    }
+    if (!hasNextPage || isFetchingNextPage) return;
+    await fetchNextPage();
+    setNearMePage(targetIndex);
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, totalFetchedPages]);
+
+  const handleNext = React.useCallback(async () => {
+    if (currentPageIndex < totalFetchedPages - 1) {
+      setNearMePage(currentPageIndex + 1);
+      return;
+    }
+    if (!hasNextPage || isFetchingNextPage) return;
+    await fetchNextPage();
+    setNearMePage(totalFetchedPages);
+  }, [currentPageIndex, fetchNextPage, hasNextPage, isFetchingNextPage, totalFetchedPages]);
+
+  const handlePrev = React.useCallback(() => {
+    setNearMePage(Math.max(currentPageIndex - 1, 0));
+  }, [currentPageIndex]);
 
   const isLoading = isPending && !data;
-  const showSkeleton = isLoading || (isFetching && spaces.length === 0);
+  const showSkeleton = isLoading || (isFetching && totalFetchedPages === 0);
 
   return (
     <div className="px-4 max-w-[1440px] mx-auto py-10">
@@ -202,7 +228,7 @@ export default function Marketplace() {
           >
             <button
               type="button"
-              onClick={ () => setNearMePage((page) => Math.max(page - 1, 0)) }
+              onClick={ handlePrev }
               disabled={ !canGoPrev }
               className="flex items-center gap-1 text-sm font-medium text-foreground transition hover:text-primary disabled:pointer-events-none disabled:text-muted-foreground"
             >
@@ -229,7 +255,7 @@ export default function Marketplace() {
                   <button
                     key={ item }
                     type="button"
-                    onClick={ () => goToPage(item) }
+                    onClick={ () => { void goToPage(item); } }
                     aria-current={ isActive ? 'page' : undefined }
                     className={ cn(
                       buttonVariants({
@@ -248,8 +274,8 @@ export default function Marketplace() {
 
             <button
               type="button"
-              onClick={ () => setNearMePage((page) => Math.min(page + 1, totalNearMePages - 1)) }
-              disabled={ !canGoNext }
+              onClick={ () => { void handleNext(); } }
+              disabled={ !canGoNext || isFetchingNextPage }
               className="flex items-center gap-1 text-sm font-medium text-foreground transition hover:text-primary disabled:pointer-events-none disabled:text-muted-foreground"
             >
               Next
@@ -259,18 +285,6 @@ export default function Marketplace() {
         ) : null }
       </section>
 
-      <section className="mt-10">
-        <h2 className="text-xl font-semibold mb-4">Recommended for you</h2>
-        { isError ? (
-          <div className="text-sm text-destructive">
-            Failed to load spaces. { error instanceof Error ? error.message : 'Please try again.' }
-          </div>
-        ) : showSkeleton ? (
-          <SkeletonGrid />
-        ) : (
-          <CardsGrid items={ recommended } />
-        ) }
-      </section>
 
       <BackToTopButton />
     </div>
