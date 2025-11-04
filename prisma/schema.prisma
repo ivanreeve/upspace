@@ -24,6 +24,8 @@ model account {
 model amenity {
   amenity_id BigInt    @id @unique @default(autoincrement())
   name       String    @db.VarChar
+  amenity_id BigInt    @id @unique @default(autoincrement())
+  name       String    @db.VarChar
   space_id   BigInt
   created_at DateTime  @default(now()) @db.Timestamptz(6)
   updated_at DateTime? @default(now()) @db.Timestamptz(6)
@@ -43,10 +45,23 @@ model area {
   booking      booking[]
   image        image[]
   price_rate   price_rate[]
+  area_id      BigInt       @id @unique @default(autoincrement())
+  space_id     BigInt
+  name         String       @db.VarChar
+  max_capacity BigInt
+  min_capacity BigInt
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?    @default(now()) @db.Timestamptz(6)
+  space        space        @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
+  booking      booking[]
+  image        image[]
+  price_rate   price_rate[]
 }
 
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model booking {
+  booking_id      BigInt         @id @unique @default(autoincrement())
   booking_id      BigInt         @id @unique @default(autoincrement())
   user_id         BigInt
   space_id        BigInt
@@ -81,7 +96,7 @@ model image {
   image_id      BigInt   @id @unique @default(autoincrement())
   space_id      BigInt
   area_id       BigInt
-  url           String   @db.VarChar
+  url           String
   display_order BigInt
   is_primary    Float
   created_at    DateTime @db.Timestamptz(6)
@@ -90,6 +105,14 @@ model image {
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model price_rate {
+  rate_id    BigInt    @id(map: "rate_pkey") @unique(map: "rate_rate_id_key") @default(autoincrement())
+  area_id    BigInt
+  time_unit  String    @db.VarChar
+  price      Decimal   @db.Decimal
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+  area       area      @relation(fields: [area_id], references: [area_id], onDelete: NoAction, onUpdate: NoAction, map: "rate_area_id_fkey")
 model price_rate {
   rate_id    BigInt    @id(map: "rate_pkey") @unique(map: "rate_rate_id_key") @default(autoincrement())
   area_id    BigInt
@@ -118,6 +141,11 @@ model space {
   lat                Decimal                   @db.Decimal(9, 6)
   long               Decimal                   @db.Decimal(9, 6)
   location           Unsupported("geography")?
+  description        String?
+  country_code       String                    @db.Char(2)
+  lat                Decimal                   @db.Decimal(9, 6)
+  long               Decimal                   @db.Decimal(9, 6)
+  location           Unsupported("geography")?
   amenity            amenity[]
   area               area[]
   booking            booking[]
@@ -128,10 +156,32 @@ model space {
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model space_availability {
   availability_id BigInt    @id @unique @default(autoincrement())
+  availability_id BigInt    @id @unique @default(autoincrement())
   space_id        BigInt
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime? @default(now()) @db.Timestamptz(6)
+  opening         DateTime  @db.Timestamptz(6)
+  closing         DateTime  @db.Timestamptz(6)
+  day_of_week     Int       @db.SmallInt
+  space           space     @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([space_id, day_of_week], map: "uniq_space_day")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model spatial_ref_sys {
+  srid      Int     @id
+  auth_name String? @db.VarChar(256)
+  auth_srid Int?
+  srtext    String? @db.VarChar(2048)
+  proj4text String? @db.VarChar(2048)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
   created_at      DateTime  @default(now()) @db.Timestamptz(6)
   updated_at      DateTime? @default(now()) @db.Timestamptz(6)
   opening         DateTime  @db.Timestamptz(6)
@@ -155,7 +205,18 @@ model spatial_ref_sys {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model transaction {
   transaction_id  BigInt    @id @unique @default(autoincrement())
+  transaction_id  BigInt    @id @unique @default(autoincrement())
   booking_id      BigInt
+  is_live         Boolean   @default(false)
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  idempotency_key String    @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  updated_at      DateTime? @default(now()) @db.Timestamptz(6)
+  gateway_data    Json      @unique
+  payment_method  gateway
+  currency_iso3   String    @default("PHP") @db.Char(3)
+  amount_minor    BigInt?
+  fee_minor       BigInt?
+  booking         booking   @relation(fields: [booking_id], references: [booking_id], onDelete: NoAction, onUpdate: NoAction)
   is_live         Boolean   @default(false)
   created_at      DateTime  @default(now()) @db.Timestamptz(6)
   idempotency_key String    @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
