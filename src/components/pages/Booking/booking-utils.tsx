@@ -10,14 +10,18 @@ export type BookingArea = {
   id: string;
   name: string;
   capacity: number;
+  minCapacity: number | null;
+  maxCapacity: number | null;
   heroImage?: string | null;
   rates: BookingAreaRate[];
 };
 
 export type AvailabilityRecord = {
-  day_of_week: string;
-  opening_time: string | Date;
-  closing_time: string | Date;
+  day_of_week: string | number | bigint;
+  opening?: string | Date;
+  closing?: string | Date;
+  opening_time?: string | Date;
+  closing_time?: string | Date;
 };
 
 export type AvailabilityWindow = {
@@ -28,13 +32,13 @@ export type AvailabilityWindow = {
 export type AvailabilityMap = Record<number, AvailabilityWindow[]>;
 
 const DAY_TO_INDEX: Record<string, number> = {
-  sunday: 0,
-  monday: 1,
-  tuesday: 2,
-  wednesday: 3,
-  thursday: 4,
-  friday: 5,
-  saturday: 6,
+  monday: 0,
+  tuesday: 1,
+  wednesday: 2,
+  thursday: 3,
+  friday: 4,
+  saturday: 5,
+  sunday: 6,
 };
 
 export type PricingDetails = {
@@ -87,11 +91,13 @@ export function normalizeAvailability(records: AvailabilityRecord[]): Availabili
   };
 
   for (const record of records ?? []) {
-    const index = DAY_TO_INDEX[record.day_of_week?.trim().toLowerCase() ?? ''];
-    if (typeof index !== 'number') continue;
+    const rawIndex = resolveDayIndex(record.day_of_week);
+    if (rawIndex == null) continue;
 
-    const start = toMinutes(record.opening_time);
-    const end = toMinutes(record.closing_time);
+    const index = ((rawIndex + 1) % 7) as keyof AvailabilityMap;
+
+    const start = toMinutes(record.opening ?? record.opening_time);
+    const end = toMinutes(record.closing ?? record.closing_time);
     if (start == null || end == null || start >= end) continue;
 
     map[index].push({
@@ -362,10 +368,34 @@ export function parseTimeInputToMinutes(value: string): number | null {
   return hours * 60 + minutes;
 }
 
+const AVAILABILITY_TIMEZONE =
+  (typeof process !== 'undefined' &&
+    (process.env.NEXT_PUBLIC_AVAILABILITY_TIMEZONE ??
+      process.env.AVAILABILITY_TIMEZONE)) ||
+  'Asia/Manila';
+
 function toMinutes(value: string | Date): number | null {
   if (!value) return null;
   if (value instanceof Date) {
     if (!Number.isFinite(value.getTime())) return null;
+    try {
+      const formatter = new Intl.DateTimeFormat('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        timeZone: AVAILABILITY_TIMEZONE,
+      });
+      const parts = formatter.formatToParts(value);
+      const hoursPart = parts.find((part) => part.type === 'hour');
+      const minutesPart = parts.find((part) => part.type === 'minute');
+      const hours = Number.parseInt(hoursPart?.value ?? '', 10);
+      const minutes = Number.parseInt(minutesPart?.value ?? '', 10);
+      if (Number.isFinite(hours) && Number.isFinite(minutes)) {
+        return hours * 60 + minutes;
+      }
+    } catch {
+      // ignore and fallback to UTC computation
+    }
     const hours = value.getUTCHours();
     const minutes = value.getUTCMinutes();
     return hours * 60 + minutes;
@@ -413,6 +443,36 @@ function mergeWindows(windows: AvailabilityWindow[]): AvailabilityWindow[] {
   }
 
   return merged;
+}
+
+function resolveDayIndex(value: AvailabilityRecord['day_of_week']): number | null {
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return null;
+    const bounded = ((Math.trunc(value) % 7) + 7) % 7;
+    return bounded;
+  }
+
+  if (typeof value === 'bigint') {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return null;
+    const bounded = ((Math.trunc(numeric) % 7) + 7) % 7;
+    return bounded;
+  }
+
+  const raw = value?.toString().trim().toLowerCase();
+  if (!raw) return null;
+
+  if (DAY_TO_INDEX[raw as keyof typeof DAY_TO_INDEX] != null) {
+    return DAY_TO_INDEX[raw as keyof typeof DAY_TO_INDEX];
+  }
+
+  const numeric = Number.parseInt(raw, 10);
+  if (Number.isFinite(numeric)) {
+    const bounded = ((Math.trunc(numeric) % 7) + 7) % 7;
+    return bounded;
+  }
+
+  return null;
 }
 
 function parseRateUnit(unit: string): ParsedRateUnit | null {

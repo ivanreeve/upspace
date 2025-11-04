@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils';
 import {
   formatAvailabilityWindow,
   formatTimeDisplay,
-  minutesToTimeValue,
   parseTimeInputToMinutes,
   type AvailabilityWindow
 } from '@/components/pages/Booking/booking-utils';
@@ -54,69 +53,61 @@ export function TimePicker({
 
   const showInvalid = invalid || !selectionWithinAvailability;
 
-  const availabilityTimes = useMemo(() => {
-    if (!availabilityWindows.length) return null;
-    const set = new Set<string>();
-    availabilityWindows.forEach((window) => {
-      const start = Math.max(0, Math.min(1440, window.start));
-      const end = Math.max(0, Math.min(1439, window.end));
-      for (let minute = start; minute <= end; minute += 1) {
-        set.add(minutesToTimeValue(minute));
-      }
-    });
-    return set;
-  }, [availabilityWindows]);
-
   const hourOptions = useMemo(() => {
     return HOURS.map((hour) => {
-      if (!availabilityTimes) {
+      if (!availabilityWindows.length) {
         return {
- hour,
-disabled: false, 
-};
+          hour,
+          disabled: false,
+        };
       }
       if (!tempPeriod) {
         const hasAnyPeriod = PERIODS.some((period) =>
-          hasAvailabilityForHour(hour, period, availabilityTimes)
+          hasAvailabilityForHour(hour, period, availabilityWindows)
         );
         return {
- hour,
-disabled: !hasAnyPeriod, 
-};
+          hour,
+          disabled: !hasAnyPeriod,
+        };
       }
       const availableForSelectedPeriod = hasAvailabilityForHour(
         hour,
         tempPeriod,
-        availabilityTimes
+        availabilityWindows
       );
       return {
         hour,
         disabled: !availableForSelectedPeriod,
       };
     });
-  }, [availabilityTimes, tempPeriod]);
+  }, [availabilityWindows, tempPeriod]);
 
   const minuteOptions = useMemo(() => {
     return MINUTES.map((minute) => {
       if (tempHour == null || tempPeriod == null) {
         return {
- minute,
-disabled: true, 
-};
+          minute,
+          disabled: true,
+        };
       }
-      if (!availabilityTimes) {
+      if (!availabilityWindows.length) {
         return {
- minute,
-disabled: false, 
-};
+          minute,
+          disabled: false,
+        };
       }
-      const timeValue = toTimeValueFrom12(tempHour, tempPeriod, minute);
+      const isAllowed = isMinuteWithinWindows(
+        tempHour,
+        tempPeriod,
+        minute,
+        availabilityWindows
+      );
       return {
         minute,
-        disabled: !availabilityTimes.has(timeValue),
+        disabled: !isAllowed,
       };
     });
-  }, [tempHour, tempPeriod, availabilityTimes]);
+  }, [tempHour, tempPeriod, availabilityWindows]);
 
   const availabilitySummary = useMemo(() => {
     if (!availabilityWindows.length) return null;
@@ -152,14 +143,16 @@ disabled: false,
 
   useEffect(() => {
     if (!open) return;
-    if (tempHour == null || tempPeriod == null || !availabilityTimes) return;
-    const hasAvailableMinutes = getMinutesForHour(tempHour, tempPeriod, availabilityTimes).length > 0;
+    if (tempHour == null || tempPeriod == null) return;
+    if (!availabilityWindows.length) return;
+    const hasAvailableMinutes =
+      getMinutesForHour(tempHour, tempPeriod, availabilityWindows).length > 0;
     if (!hasAvailableMinutes) {
       setTempHour(null);
       setTempMinute(null);
       setTempPeriod(null);
     }
-  }, [availabilityTimes, open, tempHour, tempPeriod]);
+  }, [availabilityWindows, open, tempHour, tempPeriod]);
 
   const handlePeriodSelect = (period: Period) => {
     setTempPeriod(period);
@@ -170,7 +163,11 @@ disabled: false,
       return;
     }
 
-    const minutesForHour = getMinutesForHour(tempHour, period, availabilityTimes);
+    const minutesForHour = getMinutesForHour(
+      tempHour,
+      period,
+      availabilityWindows
+    );
     if (minutesForHour.length === 0) {
       setTempMinute(null);
       onChange('');
@@ -197,13 +194,19 @@ disabled: false,
 
     let period = tempPeriod;
     if (!period) {
-      period = availabilityTimes
-        ? PERIODS.find((candidate) => hasAvailabilityForHour(hour, candidate, availabilityTimes)) ?? 'AM'
+      period = availabilityWindows.length
+        ? PERIODS.find((candidate) =>
+            hasAvailabilityForHour(hour, candidate, availabilityWindows)
+          ) ?? 'AM'
         : 'AM';
       setTempPeriod(period);
     }
 
-    const minutesForHour = getMinutesForHour(hour, period, availabilityTimes);
+    const minutesForHour = getMinutesForHour(
+      hour,
+      period,
+      availabilityWindows
+    );
 
     let nextMinute: number | null = tempMinute;
     if (nextMinute == null || !minutesForHour.includes(nextMinute)) {
@@ -299,8 +302,10 @@ disabled: false,
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Period</p>
             <div className="mt-2 grid grid-cols-2 gap-2">
               { PERIODS.map((period) => {
-                const periodUnavailable = availabilityTimes
-                  ? !HOURS.some((hour) => hasAvailabilityForHour(hour, period, availabilityTimes))
+                const periodUnavailable = availabilityWindows.length
+                  ? !HOURS.some((hour) =>
+                      hasAvailabilityForHour(hour, period, availabilityWindows)
+                    )
                   : false;
                 return (
                   <button
@@ -421,21 +426,42 @@ function isWithinAvailability(time: string, windows: AvailabilityWindow[]) {
   return windows.some((window) => minutes >= window.start && minutes <= window.end);
 }
 
-function hasAvailabilityForHour(hour: number, period: Period, availabilityTimes: Set<string>) {
-  const hour24 = to24Hour(hour, period);
-  return MINUTES.some((minute) => availabilityTimes.has(to24HourValue(hour24, minute)));
+function hasAvailabilityForHour(
+  hour: number,
+  period: Period,
+  windows: AvailabilityWindow[]
+) {
+  if (!windows.length) return true;
+  return MINUTES.some((minute) =>
+    isMinuteWithinWindows(hour, period, minute, windows)
+  );
 }
 
 function getMinutesForHour(
   hour: number,
   period: Period,
-  availabilityTimes: Set<string> | null
+  windows: AvailabilityWindow[]
 ): number[] {
-  if (!availabilityTimes) {
+  if (!windows.length) {
     return [...MINUTES];
   }
+  return MINUTES.filter((minute) =>
+    isMinuteWithinWindows(hour, period, minute, windows)
+  );
+}
+
+function isMinuteWithinWindows(
+  hour: number,
+  period: Period,
+  minute: number,
+  windows: AvailabilityWindow[]
+) {
+  if (!windows.length) return true;
   const hour24 = to24Hour(hour, period);
-  return MINUTES.filter((minute) => availabilityTimes.has(to24HourValue(hour24, minute)));
+  const totalMinutes = hour24 * 60 + minute;
+  return windows.some(
+    (window) => totalMinutes >= window.start && totalMinutes <= window.end
+  );
 }
 
 function to24HourValue(hour: number, minute: number) {

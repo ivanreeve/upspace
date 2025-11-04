@@ -64,20 +64,21 @@ type BookingResponse = {
     booking_id: string;
     user_id: string;
     space_id: string;
+    area_id: string;
     expires_at: string;
     status_code: string;
     reservation_date: string;
-    arrival_time: string;
-    stay_hours: string;
-    num_guests: string;
-    booked_at: string;
+    arrival_time: string | null;
+    from: string | null;
+    to: string | null;
+    guest_count: string;
     booking_type: string;
-    id_invoice: string;
     created_at: string;
-    updated_at: string;
+    updated_at: string | null;
     idempotency_key: string;
     total_amount: string;
     payment_method: string | null;
+    duration_hours: number;
     pricing: {
       total: string;
       perGuest: string | null;
@@ -97,6 +98,7 @@ type BookingResponse = {
     user: {
       name: string;
       email: string;
+      handle?: string;
     };
   };
   summary: {
@@ -186,8 +188,17 @@ export function BookingFlow({
       rawGuests ?? form.getValues('guests');
     const value =
       typeof candidate === 'string' ? Number(candidate) : candidate;
-    return Number.isFinite(value) && value != null ? value : 0;
-  }, [rawGuests, form]);
+    if (!Number.isFinite(value) || value == null) return 0;
+    const minGuests = Math.max(1, selectedArea?.minCapacity ?? 1);
+    const maxGuests =
+      selectedArea?.maxCapacity != null
+        ? Math.max(minGuests, selectedArea.maxCapacity)
+        : null;
+    if (maxGuests != null) {
+      return Math.min(Math.max(value, minGuests), maxGuests);
+    }
+    return Math.max(value, minGuests);
+  }, [rawGuests, form, selectedArea]);
 
   const { hourOptions, } = useMemo(
     () => buildRateOptions(selectedArea, DEFAULT_HOUR_OPTIONS),
@@ -217,6 +228,40 @@ export function BookingFlow({
   }, [selectedArea, hourOptions, stayHours, form]);
 
   useEffect(() => {
+    const parseGuests = (value: unknown) => {
+      if (typeof value === 'number') return value;
+      if (typeof value === 'string') {
+        const parsed = Number.parseInt(value, 10);
+        return Number.isFinite(parsed) ? parsed : null;
+      }
+      return null;
+    };
+
+    const minGuests = Math.max(1, selectedArea?.minCapacity ?? 1);
+    const maxGuests =
+      selectedArea?.maxCapacity != null
+        ? Math.max(minGuests, selectedArea.maxCapacity)
+        : null;
+
+    const current = parseGuests(form.getValues('guests'));
+    let next = current ?? minGuests;
+
+    if (!Number.isFinite(next)) {
+      next = minGuests;
+    }
+    if (next < minGuests) {
+      next = minGuests;
+    }
+    if (maxGuests != null && next > maxGuests) {
+      next = maxGuests;
+    }
+
+    if (current == null || next !== current) {
+      form.setValue('guests', next);
+    }
+  }, [selectedArea, form]);
+
+  useEffect(() => {
     const current = form.getValues('arrivalTime');
     if (!current) return;
     if (!selectedDate || !isTimeWithinAvailability(selectedDate, current, availabilityMap)) {
@@ -244,6 +289,26 @@ export function BookingFlow({
     const area = areaOptions.find((option) => option.id === values.areaId);
     if (!area) {
       toast.error('Selected area is no longer available. Please choose a different one.');
+      return;
+    }
+
+    const minGuests = Math.max(1, area.minCapacity ?? 1);
+    const maxGuests =
+      area.maxCapacity != null ? Math.max(minGuests, area.maxCapacity) : null;
+
+    if (values.guests < minGuests || (maxGuests != null && values.guests > maxGuests)) {
+      form.setError('guests', {
+        type: 'validate',
+        message:
+          maxGuests != null
+            ? `Guests must be between ${minGuests} and ${maxGuests}.`
+            : `Guests must be at least ${minGuests}.`,
+      });
+      toast.error(
+        maxGuests != null
+          ? `Guest count must be between ${minGuests} and ${maxGuests}.`
+          : `Guest count must be at least ${minGuests}.`
+      );
       return;
     }
 

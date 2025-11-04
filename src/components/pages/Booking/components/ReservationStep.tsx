@@ -113,6 +113,13 @@ export function ReservationStep({
   const selectedImage = selectedArea?.heroImage ?? null;
   const availabilityLabel = availabilitySummary.label;
   const availabilityMessage = availabilitySummary.message;
+  const rawMinGuests = selectedArea?.minCapacity ?? 1;
+  const rawMaxGuests = selectedArea?.maxCapacity ?? null;
+  const minGuestsAllowed = Math.max(1, rawMinGuests);
+  const maxGuestsAllowed =
+    rawMaxGuests != null
+      ? Math.max(minGuestsAllowed, rawMaxGuests)
+      : Math.max(minGuestsAllowed, 200);
 
   const isDateDisabled = useCallback(
     (date: Date) => {
@@ -297,7 +304,12 @@ export function ReservationStep({
           <FormItem>
             <FormLabel>Number of Guests</FormLabel>
             <FormControl>
-              <Input type="number" min={ 1 } max={ 200 } { ...field } />
+              <Input
+                type="number"
+                min={ minGuestsAllowed }
+                max={ maxGuestsAllowed }
+                { ...field }
+              />
             </FormControl>
             <FormMessage />
           </FormItem>

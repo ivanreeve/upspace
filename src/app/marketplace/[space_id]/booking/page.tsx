@@ -26,7 +26,14 @@ export default async function MarketplaceSpaceBookingPage({ params, }: Props) {
   const bookingAreas = (space.area ?? []).map((area) => ({
     id: area.area_id.toString(),
     name: area.name,
-    capacity: Number(area.capacity),
+    capacity: Number(
+      area.capacity ??
+        area.max_capacity ??
+        area.min_capacity ??
+        0
+    ),
+    minCapacity: area.min_capacity != null ? Number(area.min_capacity) : null,
+    maxCapacity: area.max_capacity != null ? Number(area.max_capacity) : null,
     heroImage: area.image?.[0]?.url ?? null,
     rates: (area.rate_rate_area_idToarea ?? []).map((rate) => ({
       id: rate.rate_id.toString(),

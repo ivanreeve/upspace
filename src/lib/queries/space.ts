@@ -12,7 +12,7 @@ export async function getSpaceDetail(spaceId: bigint) {
       area: {
         orderBy: { name: 'asc', },
         include: {
-          rate: { orderBy: { rate_id: 'asc', }, },
+          price_rate: { orderBy: { rate_id: 'asc', }, },
           image: { orderBy: { display_order: 'asc', }, },
         },
       },
@@ -24,7 +24,7 @@ export async function getSpaceDetail(spaceId: bigint) {
 
   const areaWithAlias = (space.area ?? []).map((area) => ({
     ...area,
-    rate_rate_area_idToarea: area.rate,
+    rate_rate_area_idToarea: area.price_rate,
   }));
 
   return {

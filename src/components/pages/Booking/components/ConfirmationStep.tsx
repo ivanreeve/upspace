@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { format } from 'date-fns';
 
 
 import type { ReviewSummary } from '../booking-utils';
@@ -13,10 +14,12 @@ type ConfirmationStepProps = {
   result: {
     booking: {
       area: { name: string };
-      arrival_time: string;
+      arrival_time: string | null;
       reservation_date: string;
-      stay_hours: string;
-      num_guests: string;
+      from: string | null;
+      to: string | null;
+      duration_hours: number;
+      guest_count: string;
       total_amount: string;
       user: { name: string; email: string };
       pricing: {
@@ -47,9 +50,12 @@ export function ConfirmationStep({
   spaceHref,
 }: ConfirmationStepProps) {
   const stayHoursRaw =
-    review?.stayHours ?? Number.parseInt(result.booking.stay_hours ?? '0', 10);
+    review?.stayHours ??
+    (Number.isFinite(result.booking.duration_hours)
+      ? result.booking.duration_hours
+      : Number.parseInt(String(result.booking.duration_hours ?? 0), 10));
   const guestsRaw =
-    review?.guests ?? Number.parseInt(result.booking.num_guests ?? '0', 10);
+    review?.guests ?? Number.parseInt(result.booking.guest_count ?? '0', 10);
   const stayHours = Number.isFinite(stayHoursRaw) ? stayHoursRaw : 0;
   const guests = Number.isFinite(guestsRaw) ? guestsRaw : 0;
   const totalAmount = Number.parseFloat(result.summary.totalAmount);
@@ -69,10 +75,11 @@ export function ConfirmationStep({
     result.summary.pricingLabel ??
     result.booking.pricing?.label ??
     'See host confirmation for pricing breakdown';
-  const reservationLabel = formatReservationDisplay(
-    result.booking.reservation_date,
-    result.booking.arrival_time
-  );
+  const arrivalTimeValue =
+    result.booking.arrival_time ?? result.booking.from ?? '';
+  const reservationLabel = arrivalTimeValue
+    ? formatReservationDisplay(result.booking.reservation_date, arrivalTimeValue)
+    : format(new Date(result.booking.reservation_date), 'MMMM d, yyyy');
   const usesHourlyMultiplier =
     review?.usesHourlyMultiplier ??
     result.booking.pricing?.usesHourlyMultiplier ??
