@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CgSpinner } from 'react-icons/cg';
 import { toast } from 'sonner';
@@ -66,6 +66,7 @@ export function SignUpFormCard() {
   const router = useRouter();
 
   const [step, setStep] = useState<'credentials' | 'otp'>('credentials');
+  const otpFormRef = useRef<HTMLFormElement>(null);
   const [formValues, setFormValues] = useState({
     email: '',
     password: '',
@@ -110,6 +111,29 @@ export function SignUpFormCard() {
 
     setIsSubmitting(true);
     try {
+      const res = await fetch('/api/v1/auth/signup/check-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify({ email: parsed.data.email, }),
+      });
+
+      if (res.status === 409) {
+        const data = await res.json().catch(() => ({ message: 'User already exists', }));
+        const message = data.message ?? 'User already exists';
+        setFieldErrors((prev) => ({
+ ...prev,
+email: message, 
+}));
+        toast.error(message);
+        return;
+      }
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: 'Unable to verify email.', }));
+        toast.error(data.message ?? 'Unable to verify email.');
+        return;
+      }
+
       await new Promise((resolve) => setTimeout(resolve, 700));
       const otp = generateOtp();
       setGeneratedOtp(otp);
@@ -282,7 +306,7 @@ export function SignUpFormCard() {
             </Button>
           </form>
         ) : (
-          <form onSubmit={ handleOtpSubmit } className="space-y-4">
+          <form ref={ otpFormRef } onSubmit={ handleOtpSubmit } className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="sign-up-otp" className="text-muted-foreground text-sm">
                 One-time verification code
@@ -292,6 +316,11 @@ export function SignUpFormCard() {
                 maxLength={ 6 }
                 value={ otpValue }
                 onChange={ (value) => setOtpValue(value.replace(/\D/g, '').slice(0, 6)) }
+                onComplete={ () => {
+                  if (!isSubmitting) {
+                    otpFormRef.current?.requestSubmit();
+                  }
+                } }
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 containerClassName="justify-between"

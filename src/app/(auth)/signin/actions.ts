@@ -43,12 +43,14 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     };
   }
 
-  const callbackUrl = String(formData.get('callbackUrl') ?? '/dashboard');
+  const callbackUrl = String(formData.get('callbackUrl') ?? '/');
 
   try {
     const supabase = await createSupabaseServerClient();
 
-    const { error, } = await supabase.auth.signInWithPassword({
+    const {
+ data: signInData, error, 
+} = await supabase.auth.signInWithPassword({
       email: parsed.data.email,
       password: parsed.data.password,
     });
@@ -75,9 +77,48 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
       };
     }
 
+    const authedUser = signInData?.user;
+
+    if (!authedUser) {
+      console.warn('Supabase sign-in succeeded but returned no user payload');
+      return {
+        ok: true,
+        redirectTo: callbackUrl,
+      };
+    }
+
+    const {
+ data: profile, error: profileError, 
+} = await supabase
+      .from('user')
+      .select('is_onboard, role')
+      .eq('auth_user_id', authedUser.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error('Failed to fetch user onboarding state after sign-in', profileError);
+    }
+
+    const shouldOnboard = Boolean(profileError) || !profile?.is_onboard;
+
+    if (shouldOnboard) {
+      return {
+        ok: true,
+        redirectTo: '/onboarding',
+      };
+    }
+
+    const roleRedirectMap: Record<string, string> = {
+      customer: '/marketplace',
+      partner: '/spaces',
+      admin: '/admin',
+    };
+
+    const roleRedirect = profile?.role ? roleRedirectMap[profile.role] : undefined;
+
     return {
       ok: true,
-      redirectTo: callbackUrl,
+      redirectTo: roleRedirect ?? callbackUrl,
     };
   } catch (error) {
     console.error('Failed to sign in with Supabase', error);

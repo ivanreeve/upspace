@@ -20,7 +20,7 @@ export default function SignInPage() {
           </p>
         </div>
 
-        <SignInCard callbackUrl="/dashboard" className="w-full" />
+        <SignInCard callbackUrl="/" className="w-full" />
       </div>
     </main>
   );

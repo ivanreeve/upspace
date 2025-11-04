@@ -37,7 +37,7 @@ function SubmitButton() {
 }
 
 export default function EmailPasswordForm({
-  callbackUrl = '/dashboard',
+  callbackUrl = '/',
   forgotHref = '/forgot-password',
 }: { callbackUrl?: string; forgotHref?: string }) {
   // Controlled inputs to mirror the form state locally.

@@ -58,7 +58,7 @@ export async function POST(request: Request) {
 
       if (isDuplicate) {
         return NextResponse.json(
-          { message: 'An account with this email already exists.', },
+          { message: 'User already exists', },
           { status: 409, }
         );
       }

@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 export default function SignInCard({
-  callbackUrl = '/dashboard',
+  callbackUrl = '/',
   forgotHref = '/forgot-password',
   className,
 }: {
