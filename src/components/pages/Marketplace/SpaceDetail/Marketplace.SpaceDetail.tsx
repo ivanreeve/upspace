@@ -15,7 +15,7 @@ const getCountryDisplayName = (() => {
     if (!code) return '';
     try {
       if (!formatter) {
-        formatter = new Intl.DisplayNames(['en'], { type: 'region' });
+        formatter = new Intl.DisplayNames(['en'], { type: 'region', });
       }
       return formatter.of(code) ?? code;
     } catch {

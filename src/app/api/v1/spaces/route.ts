@@ -253,13 +253,7 @@ mode: 'insensitive' as const,
 
     // Minimum capacity via related areas
     if (typeof min_capacity === 'number') {
-      and.push({
-        area: {
-          some: {
-            max_capacity: { gte: BigInt(min_capacity), },
-          },
-        },
-      });
+      and.push({ area: { some: { max_capacity: { gte: BigInt(min_capacity), }, }, }, });
     }
 
     // Bookmarked by a specific user
@@ -273,13 +267,7 @@ mode: 'insensitive' as const,
       .map((s) => Number.parseInt(s.trim(), 10))
       .filter((n) => Number.isInteger(n));
     if (days.length > 0) {
-      and.push({
-        space_availability: {
-          some: {
-            day_of_week: { in: days, },
-          },
-        },
-      });
+      and.push({ space_availability: { some: { day_of_week: { in: days, }, }, }, });
     }
 
     // Rate-based price/time-unit filter via areas -> rates
@@ -297,13 +285,7 @@ mode: 'insensitive' as const,
       if (Object.keys(priceCond).length > 0) rateCond.price = priceCond;
 
       if (Object.keys(rateCond).length > 0) {
-        and.push({
-          area: {
-            some: {
-              price_rate: { some: rateCond, },
-            },
-          },
-        });
+        and.push({ area: { some: { price_rate: { some: rateCond, }, }, }, });
       }
     }
 
@@ -363,14 +345,12 @@ mode: 'insensitive' as const,
       ])
       : [[], []];
 
-    const imagesBySpace = new Map<string, string[]>();
+    const imageBySpace = new Map<string, string>();
     for (const img of images) {
       const id = img.space_id.toString();
-      const list = imagesBySpace.get(id);
-      if (list) {
-        list.push(img.url);
-      } else {
-        imagesBySpace.set(id, [img.url]);
+      if (!imageBySpace.has(id)) {
+        // Image query is ordered by primary flag then display order, so the first hit is the preferred preview
+        imageBySpace.set(id, img.url);
       }
     }
 
@@ -403,7 +383,10 @@ max: price,
         city: space.city,
         region: space.region,
         address: addressParts.join(', '),
-        images: imagesBySpace.get(id) ?? [],
+        images: (() => {
+          const primary = imageBySpace.get(id);
+          return primary ? [primary] : [];
+        })(),
         price_min: price?.min ?? null,
         price_max: price?.max ?? null,
         rating: 4.5, // TODO: replace with computed average once available

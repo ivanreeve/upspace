@@ -54,7 +54,9 @@ export default function Areas({ areas, }: {
 
           const displayImages = [...sourceImages, ...fallbackCycle].slice(0, 4);
           const capacityLabel = (() => {
-            const { min_capacity, max_capacity, } = area;
+            const {
+ min_capacity, max_capacity, 
+} = area;
             if (min_capacity != null && max_capacity != null) {
               if (min_capacity === max_capacity) return max_capacity.toString();
               return `${min_capacity} - ${max_capacity}`;

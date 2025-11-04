@@ -161,7 +161,7 @@ export async function GET(_req: NextRequest, { params, }: Params) {
             orderBy: [
               { is_primary: 'desc', },
               { display_order: 'asc', },
-              { created_at: 'asc', },
+              { created_at: 'asc', }
             ],
           },
           price_rate: {
@@ -171,7 +171,7 @@ export async function GET(_req: NextRequest, { params, }: Params) {
               price: true,
             },
             orderBy: [
-              { created_at: 'asc', },
+              { created_at: 'asc', }
             ],
           },
         },
@@ -195,7 +195,7 @@ export async function GET(_req: NextRequest, { params, }: Params) {
         orderBy: [
           { is_primary: 'desc', },
           { display_order: 'asc', },
-          { created_at: 'asc', },
+          { created_at: 'asc', }
         ],
       },
       user: {

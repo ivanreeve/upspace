@@ -1,19 +1,24 @@
-import { keepPreviousData, queryOptions, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 
 import { listSpaces, type ListSpacesParams } from '@/lib/api/spaces';
 
 export const spacesQueryKey = (params: ListSpacesParams = {}) => ['spaces', params] as const;
 
-export const spacesQueryOptions = (params: ListSpacesParams = {}) =>
-  queryOptions({
-    queryKey: spacesQueryKey(params),
-    queryFn: ({ signal, }) => {
-      const options = signal ? { signal, } : undefined;
-      return listSpaces(params, options);
-    },
-    placeholderData: keepPreviousData,
-  });
-
 export function useSpaces(params: ListSpacesParams = {}) {
-  return useQuery(spacesQueryOptions(params));
+  return useInfiniteQuery({
+    queryKey: spacesQueryKey(params),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    queryFn: ({
+ pageParam = null, signal, 
+}) => {
+      const cursor = pageParam ?? null;
+      const requestParams: ListSpacesParams = {
+        ...params,
+        cursor,
+      };
+      const options = signal ? { signal, } : undefined;
+      return listSpaces(requestParams, options);
+    },
+  });
 }
