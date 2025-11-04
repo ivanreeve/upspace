@@ -363,7 +363,7 @@ export function BookingFlow({
         amount: reviewData.totalAmount,
       };
 
-      const response = await fetch(`/api/marketplace/${spaceId}/booking`, {
+      const response = await fetch(`/api/v1/spaces/${spaceId}/booking`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', },
         body: JSON.stringify(payload),
