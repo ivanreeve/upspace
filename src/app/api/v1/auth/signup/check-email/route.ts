@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 
     if (existingUser.length > 0) {
       return NextResponse.json(
-        { message: 'User with that email already exists, please log in', },
+        { message: 'User already exists', },
         { status: 409, }
       );
     }
