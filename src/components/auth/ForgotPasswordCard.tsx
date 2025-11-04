@@ -12,8 +12,8 @@ import { CgSpinner } from 'react-icons/cg';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
-import type { ForgotPasswordState } from '@/app/(auth)/forgot-password/actions';
-import { requestPasswordResetAction } from '@/app/(auth)/forgot-password/actions';
+import type { ForgotPasswordState, ResetPasswordResult } from '@/app/(auth)/forgot-password/actions';
+import { requestPasswordResetAction, resetPasswordWithOtpAction } from '@/app/(auth)/forgot-password/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -160,7 +160,7 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
     event.preventDefault();
     setResetErrors({});
 
-    if (!serverOtp || !requestedEmail) {
+    if (!requestedEmail) {
       toast.error('Request a new code to continue.');
       setStep('request');
       return;
@@ -186,19 +186,27 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
       return;
     }
 
-    if (parsed.data.otp !== serverOtp) {
-      const message = 'The code you entered is incorrect.';
-      setResetErrors((prev) => ({
- ...prev,
-otp: message, 
-}));
-      toast.error(message);
-      return;
-    }
-
     setIsResetting(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      const result: ResetPasswordResult = await resetPasswordWithOtpAction({
+        email: requestedEmail,
+        otp: parsed.data.otp,
+        password: parsed.data.password,
+      });
+
+      if (!result.ok) {
+        setResetErrors((prev) => ({
+          ...prev,
+          otp: result.errors?.otp?.[0] ?? prev.otp,
+          password: result.errors?.password?.[0] ?? prev.password,
+        }));
+
+        if (result.message) {
+          toast.error(result.message);
+        }
+
+        return;
+      }
 
       toast.success('Your password has been reset. You can now sign in with your new password.');
       setStep('complete');
@@ -206,6 +214,9 @@ otp: message,
       setOtpValue('');
       setNewPassword('');
       setConfirmPassword('');
+    } catch (error) {
+      console.error('Password reset failed', error);
+      toast.error('Unable to reset password. Please try again.');
     } finally {
       setIsResetting(false);
     }
