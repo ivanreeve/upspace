@@ -4,42 +4,55 @@ import type { Metadata } from 'next';
 import { BookingFlow } from '@/components/pages/Booking/booking';
 import NavBar from '@/components/ui/navbar';
 import { Footer } from '@/components/ui/footer';
-import { getSpaceDetail } from '@/lib/queries/space';
+import { getSpaceDetail } from '@/lib/api/space';
 
 type Props = { params: { space_id: string } };
 
 export async function generateMetadata({ params, }: Props): Promise<Metadata> {
   if (!/^\d+$/.test(params.space_id)) return { title: 'Space Not Found - UpSpace', };
 
-  const space = await getSpaceDetail(BigInt(params.space_id));
-  return { title: space ? `Book ${space.name} - UpSpace` : 'Space Not Found - UpSpace', };
+  try {
+    const space = await getSpaceDetail(params.space_id);
+    return { title: space ? `Book ${space.name} - UpSpace` : 'Space Not Found - UpSpace', };
+  } catch {
+    return { title: 'Space Not Found - UpSpace', };
+  }
 }
 
 export default async function MarketplaceSpaceBookingPage({ params, }: Props) {
   if (!/^\d+$/.test(params.space_id)) notFound();
 
-  const spaceId = BigInt(params.space_id);
-  const space = await getSpaceDetail(spaceId);
+  let space;
+  try {
+    space = await getSpaceDetail(params.space_id);
+  } catch {
+    space = null;
+  }
   if (!space) notFound();
 
-  const locationParts = [space.city, space.region, space.country].filter(Boolean);
-  const bookingAreas = (space.area ?? []).map((area) => ({
-    id: area.area_id.toString(),
+  const countryName = getCountryDisplayName(space.country_code);
+  const locationParts = [space.city, space.region, countryName || space.country_code].filter(Boolean);
+  const bookingAreas = (space.areas ?? []).map((area, index) => ({
+    id: area.area_id ?? `area-${index}`,
     name: area.name,
     capacity: Number(
-      area.capacity ??
-        area.max_capacity ??
+      area.max_capacity ??
         area.min_capacity ??
         0
     ),
     minCapacity: area.min_capacity != null ? Number(area.min_capacity) : null,
     maxCapacity: area.max_capacity != null ? Number(area.max_capacity) : null,
-    heroImage: area.image?.[0]?.url ?? null,
-    rates: (area.rate_rate_area_idToarea ?? []).map((rate) => ({
-      id: rate.rate_id.toString(),
-      timeUnit: rate.time_unit,
+    heroImage: area.images?.[0]?.url ?? null,
+    rates: (area.price_rates ?? []).map((rate, rateIndex) => ({
+      id: rate.rate_id ?? `rate-${index}-${rateIndex}`,
+      timeUnit: rate.time_unit ?? '',
       price: normalizePrice(rate.price),
     })),
+  }));
+  const availability = (space.availability ?? []).map((slot) => ({
+    day_of_week: slot.day_index ?? slot.day_label,
+    opening: slot.opening,
+    closing: slot.closing,
   }));
 
   return (
@@ -60,11 +73,11 @@ export default async function MarketplaceSpaceBookingPage({ params, }: Props) {
           </header>
 
           <BookingFlow
-            spaceId={ space.space_id.toString() }
+            spaceId={ (space.space_id ?? params.space_id).toString() }
             spaceName={ space.name }
             spaceLocation={ locationParts.join(', ') }
             areaOptions={ bookingAreas }
-            availability={ space.space_availability ?? [] }
+            availability={ availability }
           />
         </div>
       </main>
@@ -83,3 +96,18 @@ function normalizePrice(price: any) {
   }
   return '0';
 }
+
+const getCountryDisplayName = (() => {
+  let formatter: Intl.DisplayNames | null = null;
+  return (code?: string | null) => {
+    if (!code) return '';
+    try {
+      if (!formatter) {
+        formatter = new Intl.DisplayNames(['en'], { type: 'region', });
+      }
+      return formatter.of(code) ?? code;
+    } catch {
+      return code;
+    }
+  };
+})();

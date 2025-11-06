@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
+import { useMutation } from '@tanstack/react-query';
 
 import {
   AvailabilityRecord,
@@ -112,6 +113,16 @@ type BookingResponse = {
   };
 };
 
+type CreateBookingPayload = {
+  areaId: string;
+  reservationDate: string;
+  stayHours: number;
+  guests: number;
+  arrivalTime: string;
+  paymentMethod: 'paymongo';
+  amount: number;
+};
+
 const DEFAULT_HOUR_OPTIONS = Array.from({ length: 12, }, (_, idx) => {
   const value = idx + 1;
   return {
@@ -137,7 +148,43 @@ export function BookingFlow({
   const [step, setStep] = useState<BookingStep>(1);
   const [reviewData, setReviewData] = useState<ReviewSummary | null>(null);
   const [result, setResult] = useState<BookingResponse | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const bookingMutation = useMutation<BookingResponse, Error, CreateBookingPayload>({
+    mutationKey: ['space-booking', spaceId],
+    mutationFn: async (payload) => {
+      const response = await fetch(`/api/v1/spaces/${spaceId}/booking`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify(payload),
+      });
+
+      const contentType = response.headers.get('content-type') ?? '';
+      const canParseJson = contentType.includes('application/json');
+      const body = canParseJson ? await response.json().catch(() => null) : null;
+
+      if (!response.ok) {
+        const message =
+          typeof body?.error === 'string'
+            ? body.error
+            : 'Unable to create booking. Please try again.';
+        throw new Error(message);
+      }
+
+      if (!body) {
+        throw new Error('Booking succeeded but response was empty.');
+      }
+
+      return body as BookingResponse;
+    },
+    onSuccess: (data) => {
+      setResult(data);
+      toast.success('Booking created. Awaiting verification!');
+      setStep(3);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Unable to create booking. Please try again.');
+    },
+  });
+  const isProcessing = bookingMutation.isPending;
 
   const availabilityMap: AvailabilityMap = useMemo(
     () => normalizeAvailability(availability ?? []),
@@ -351,46 +398,20 @@ export function BookingFlow({
       return;
     }
 
-    setIsProcessing(true);
+    const payload: CreateBookingPayload = {
+      areaId: area.id,
+      reservationDate: format(reviewData.reservationDate, 'yyyy-MM-dd'),
+      stayHours: reviewData.stayHours,
+      guests: reviewData.guests,
+      arrivalTime: reviewData.arrivalTime,
+      paymentMethod: 'paymongo',
+      amount: reviewData.totalAmount,
+    };
+
     try {
-      const payload = {
-        areaId: area.id,
-        reservationDate: format(reviewData.reservationDate, 'yyyy-MM-dd'),
-        stayHours: reviewData.stayHours,
-        guests: reviewData.guests,
-        arrivalTime: reviewData.arrivalTime,
-        paymentMethod: 'paymongo' as const,
-        amount: reviewData.totalAmount,
-      };
-
-      const response = await fetch(`/api/v1/spaces/${spaceId}/booking`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
-        const message =
-          typeof errorBody?.error === 'string'
-            ? errorBody.error
-            : 'Unable to create booking. Please try again.';
-        toast.error(message);
-        return;
-      }
-
-      const data = (await response.json()) as BookingResponse;
-      setResult(data);
-      toast.success('Booking created. Awaiting verification!');
-      setStep(3);
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Unexpected error while confirming booking.'
-      );
-    } finally {
-      setIsProcessing(false);
+      await bookingMutation.mutateAsync(payload);
+    } catch {
+      // Error handled via onError callback.
     }
   };
 
@@ -405,6 +426,7 @@ export function BookingFlow({
     setReviewData(null);
     setResult(null);
     setStep(1);
+    bookingMutation.reset();
   };
 
   return (

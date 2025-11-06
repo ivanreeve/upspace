@@ -1,11 +1,21 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 
-import { listSpaces, type ListSpacesParams } from '@/lib/api/spaces';
+import {
+  listSpaces,
+  type ListSpacesParams,
+  type ListSpacesResponse
+} from '@/lib/api/spaces';
 
 export const spacesQueryKey = (params: ListSpacesParams = {}) => ['spaces', params] as const;
 
 export function useSpaces(params: ListSpacesParams = {}) {
-  return useInfiniteQuery({
+  return useInfiniteQuery<
+    ListSpacesResponse,
+    Error,
+    ListSpacesResponse,
+    ReturnType<typeof spacesQueryKey>,
+    string | null
+  >({
     queryKey: spacesQueryKey(params),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,

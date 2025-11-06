@@ -184,20 +184,6 @@ export async function GET(_req: NextRequest, { params, }: Params) {
           closing: true,
         },
       },
-      other_image: {
-        select: {
-          image_id: true,
-          url: true,
-          is_primary: true,
-          display_order: true,
-          created_at: true,
-        },
-        orderBy: [
-          { is_primary: 'desc', },
-          { display_order: 'asc', },
-          { created_at: 'asc', }
-        ],
-      },
       user: {
         select: {
           user_id: true,
@@ -212,7 +198,25 @@ export async function GET(_req: NextRequest, { params, }: Params) {
     return NextResponse.json({ error: 'Space not found', }, { status: 404, });
   }
 
-  return NextResponse.json({ data: serializeSpaceDetail(row), }, { status: 200, });
+  const galleryImages = await prisma.image.findMany({
+    where: { space_id: id, },
+    select: {
+      image_id: true,
+      url: true,
+      is_primary: true,
+      display_order: true,
+      created_at: true,
+    },
+    orderBy: [
+      { is_primary: 'desc', },
+      { display_order: 'asc', },
+      { created_at: 'asc', }
+    ],
+  });
+
+  return NextResponse.json({
+    data: serializeSpaceDetail({ ...row, other_image: galleryImages, }),
+  }, { status: 200, });
 }
 
 
