@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import Header from './Marketplace.SpaceDetail.Header';
 import Gallery from './Marketplace.SpaceDetail.Gallery';
 import Host from './Marketplace.SpaceDetail.Host';
@@ -8,6 +10,7 @@ import Areas from './Marketplace.SpaceDetail.Areas';
 import Availability from './Marketplace.SpaceDetail.Availability';
 
 import type { SpaceDetail } from '@/lib/api/space';
+import { Button } from '@/components/ui/button';
 
 const getCountryDisplayName = (() => {
   let formatter: Intl.DisplayNames | null = null;
@@ -28,6 +31,7 @@ export default function MarketplaceSpaceDetail({ space, }: { space: SpaceDetail 
   const countryName = getCountryDisplayName(space.country_code);
   const locationParts = [space.city, space.region].filter(Boolean);
   const location = locationParts.length > 0 ? locationParts.join(', ') : 'Global City, Taguig';
+  const bookingHref = space.space_id ? `/marketplace/${space.space_id}/booking` : null;
   const addressDetails = [
     {
       label: 'Street Address',
@@ -123,6 +127,16 @@ value: 4.7,
     <main className="bg-background">
       <div className="mx-auto max-w-[1440px] space-y-16 px-4 py-12">
         <Header name={ space.name } rating={ rating } location={ location } />
+
+        { bookingHref && (
+          <div className="flex justify-end">
+            <Button asChild size="lg">
+              <Link href={ bookingHref }>
+                Book this space
+              </Link>
+            </Button>
+          </div>
+        ) }
 
         <Gallery images={ galleryImages } />
 
