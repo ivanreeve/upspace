@@ -130,11 +130,11 @@ export async function resetPasswordWithOtpAction(payload: {
     const email = parsed.data.email.toLowerCase();
     const otp = parsed.data.otp.trim();
 
-    const { error: verifyError } = await supabase.auth.verifyOtp({
+    const { error: verifyError, } = await supabase.auth.verifyOtp({
       type: 'recovery',
       email,
       token: otp,
-    },);
+    });
 
     if (verifyError) {
       console.warn('Supabase OTP verification failed', verifyError);
@@ -146,9 +146,7 @@ export async function resetPasswordWithOtpAction(payload: {
       };
     }
 
-    const { error: updateError } = await supabase.auth.updateUser({
-      password: parsed.data.password,
-    },);
+    const { error: updateError, } = await supabase.auth.updateUser({ password: parsed.data.password, });
 
     if (updateError) {
       console.error('Supabase password update failed', updateError);
@@ -158,7 +156,7 @@ export async function resetPasswordWithOtpAction(payload: {
       };
     }
 
-    const { error: signOutError } = await supabase.auth.signOut();
+    const { error: signOutError, } = await supabase.auth.signOut();
     if (signOutError) {
       console.warn('Supabase sign-out after password reset failed', signOutError);
     }
