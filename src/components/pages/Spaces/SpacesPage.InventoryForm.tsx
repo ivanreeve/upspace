@@ -65,13 +65,13 @@ export function SpacesInventoryForm() {
             </p>
           </div>
         </div>
-        <Button type="button" onClick={openCreateSpaceDialog} className="inline-flex items-center gap-2">
+        <Button type="button" onClick={ openCreateSpaceDialog } className="inline-flex items-center gap-2">
           <FiPlus className="size-4" aria-hidden="true" />
           Add space
         </Button>
       </div>
 
-      {spaces.length === 0 ? (
+      { spaces.length === 0 ? (
         <Card className="border-dashed border-border/70 bg-background/60">
           <CardHeader>
             <CardTitle>No spaces yet</CardTitle>
@@ -91,43 +91,43 @@ export function SpacesInventoryForm() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tableRows.map((space) => (
-                <TableRow key={space.id} className="cursor-pointer transition hover:bg-muted/40">
+              { tableRows.map((space) => (
+                <TableRow key={ space.id } className="cursor-pointer transition hover:bg-muted/40">
                   <TableCell className="font-medium">
                     <div className="flex flex-col">
-                      <span>{space.name}</span>
+                      <span>{ space.name }</span>
                       <span className="text-xs text-muted-foreground">
-                        Added {new Date(space.created_at).toLocaleDateString(undefined, {
+                        Added { new Date(space.created_at).toLocaleDateString(undefined, {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',
-                        })}
+                        }) }
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{space.location}</TableCell>
+                  <TableCell className="text-muted-foreground">{ space.location }</TableCell>
                   <TableCell>
-                    <Badge variant={space.status === 'Live' ? 'secondary' : 'outline'}>{space.status}</Badge>
+                    <Badge variant={ space.status === 'Live' ? 'secondary' : 'outline' }>{ space.status }</Badge>
                   </TableCell>
-                  <TableCell>{space.areas}</TableCell>
+                  <TableCell>{ space.areas }</TableCell>
                   <TableCell className="text-right">
                     <Button asChild size="sm" variant="outline">
-                      <Link href={`/spaces/${space.id}`}>Open</Link>
+                      <Link href={ `/spaces/${space.id}` }>Open</Link>
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))}
+              )) }
             </TableBody>
           </Table>
         </div>
-      )}
+      ) }
 
       <SpaceDialog
-        open={spaceDialogOpen}
+        open={ spaceDialogOpen }
         mode="create"
-        initialValues={spaceDialogValues}
-        onOpenChange={setSpaceDialogOpen}
-        onSubmit={handleCreateSpace}
+        initialValues={ spaceDialogValues }
+        onOpenChange={ setSpaceDialogOpen }
+        onSubmit={ handleCreateSpace }
       />
     </section>
   );
