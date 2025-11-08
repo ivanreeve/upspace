@@ -10,6 +10,7 @@ import {
   SchemaReference,
   SpaceDialog,
   SpaceFormValues,
+  areaRecordToFormValues,
   createAreaFormDefaults,
   createSpaceFormDefaults,
   spaceRecordToFormValues
@@ -27,6 +28,7 @@ import {
 } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useSpacesStore } from '@/stores/useSpacesStore';
+import { AreaRecord } from '@/data/spaces';
 
 
 type SpaceDetailsPanelProps = {
@@ -41,11 +43,13 @@ export function SpaceDetailsPanel({
   const space = useSpacesStore((state) => state.spaces.find((entry) => entry.id === spaceId));
   const updateSpace = useSpacesStore((state) => state.updateSpace);
   const createArea = useSpacesStore((state) => state.createArea);
+  const updateArea = useSpacesStore((state) => state.updateArea);
 
   const [spaceDialogOpen, setSpaceDialogOpen] = useState(false);
   const [spaceDialogValues, setSpaceDialogValues] = useState<SpaceFormValues>(createSpaceFormDefaults());
   const [areaDialogOpen, setAreaDialogOpen] = useState(false);
   const [areaDialogValues, setAreaDialogValues] = useState<AreaFormValues>(createAreaFormDefaults());
+  const [editingAreaId, setEditingAreaId] = useState<string | null>(null);
 
   const handleEditSpace = () => {
     if (!space) return;
@@ -62,15 +66,36 @@ export function SpaceDetailsPanel({
 
   const handleAddArea = () => {
     if (!space) return;
+    setEditingAreaId(null);
     setAreaDialogValues(createAreaFormDefaults());
     setAreaDialogOpen(true);
   };
 
+  const handleEditArea = (area: AreaRecord) => {
+    if (!space) return;
+    setEditingAreaId(area.id);
+    setAreaDialogValues(areaRecordToFormValues(area));
+    setAreaDialogOpen(true);
+  };
+
+  const handleAreaDialogOpenChange = (open: boolean) => {
+    setAreaDialogOpen(open);
+    if (!open) {
+      setEditingAreaId(null);
+      setAreaDialogValues(createAreaFormDefaults());
+    }
+  };
+
   const handleAreaSubmit = (values: AreaFormValues) => {
     if (!space) return;
-    createArea(space.id, values);
-    toast.success(`${values.name} added.`);
-    setAreaDialogOpen(false);
+    if (editingAreaId) {
+      updateArea(space.id, editingAreaId, values);
+      toast.success(`${values.name} updated.`);
+    } else {
+      createArea(space.id, values);
+      toast.success(`${values.name} added.`);
+    }
+    handleAreaDialogOpenChange(false);
   };
 
   if (!space) {
@@ -134,7 +159,7 @@ export function SpaceDetailsPanel({
             ) : (
               space.areas.map((area) => (
                 <div key={ area.id } className="rounded-lg border border-border/60 p-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-start justify-between gap-3">
                     <div>
                       <h4 className="text-base font-semibold">{ area.name }</h4>
                       <p className="text-xs text-muted-foreground">
@@ -145,15 +170,29 @@ year: 'numeric',
 }) }
                       </p>
                     </div>
-                    <Badge variant="secondary" className="flex items-center gap-1">
-                      <FiLayers className="size-3" aria-hidden="true" />
-                      { area.min_capacity }-{ area.max_capacity } pax
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={ () => handleEditArea(area) }
+                        className="text-xs"
+                      >
+                        <FiEdit className="size-3" aria-hidden="true" />
+                        Edit
+                      </Button>
+                    </div>
                   </div>
                   <dl className="mt-3 grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
                     <div>
                       <dt className="uppercase tracking-wide">Capacity range</dt>
                       <dd className="text-foreground">{ area.min_capacity } to { area.max_capacity } seats</dd>
+                      <div className="mt-2">
+                        <Badge variant="secondary" className="flex items-center gap-1 text-xs">
+                          <FiLayers className="size-3" aria-hidden="true" />
+                          { area.min_capacity }-{ area.max_capacity } pax
+                        </Badge>
+                      </div>
                     </div>
                     <div>
                       <dt className="uppercase tracking-wide">Base rate</dt>
@@ -182,8 +221,9 @@ maximumFractionDigits: 2,
 
       <AreaDialog
         open={ areaDialogOpen }
+        mode={ editingAreaId ? 'edit' : 'create' }
         initialValues={ areaDialogValues }
-        onOpenChange={ setAreaDialogOpen }
+        onOpenChange={ handleAreaDialogOpenChange }
         onSubmit={ handleAreaSubmit }
       />
     </>

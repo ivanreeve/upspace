@@ -393,6 +393,7 @@ type AreaDialogProps = {
   initialValues: AreaFormValues;
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: AreaFormValues) => void;
+  mode?: 'create' | 'edit';
 };
 
 export function AreaDialog({
@@ -400,6 +401,7 @@ export function AreaDialog({
   initialValues,
   onOpenChange,
   onSubmit,
+  mode = 'create',
 }: AreaDialogProps) {
   const form = useForm<AreaFormValues>({
     resolver: zodResolver(areaSchema),
@@ -416,7 +418,7 @@ export function AreaDialog({
     <Dialog open={ open } onOpenChange={ onOpenChange }>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add area</DialogTitle>
+          <DialogTitle>{ mode === 'edit' ? 'Edit area' : 'Add area' }</DialogTitle>
           <DialogDescription>Maps to <code>prisma.area</code> and <code>price_rate</code>.</DialogDescription>
         </DialogHeader>
         <Form { ...form }>
@@ -541,7 +543,7 @@ export function AreaDialog({
               <Button type="button" variant="outline" onClick={ close }>
                 Cancel
               </Button>
-              <Button type="submit">Save area</Button>
+              <Button type="submit">{ mode === 'edit' ? 'Update area' : 'Save area' }</Button>
             </DialogFooter>
           </form>
         </Form>

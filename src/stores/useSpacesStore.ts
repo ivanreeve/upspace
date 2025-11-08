@@ -13,6 +13,7 @@ type SpacesState = {
   createSpace: (payload: SpaceInput) => string;
   updateSpace: (spaceId: string, payload: SpaceInput) => void;
   createArea: (spaceId: string, payload: AreaInput) => void;
+  updateArea: (spaceId: string, areaId: string, payload: AreaInput) => void;
 };
 
 const cloneSpaceInput = (payload: SpaceInput): SpaceInput => ({ ...payload, });
@@ -60,6 +61,25 @@ export const useSpacesStore = create<SpacesState>((set) => ({
           ? {
               ...space,
               areas: [...space.areas, newArea],
+            }
+          : space
+      ),
+    }));
+  },
+  updateArea: (spaceId, areaId, payload) => {
+    set((state) => ({
+      spaces: state.spaces.map((space) =>
+        space.id === spaceId
+          ? {
+              ...space,
+              areas: space.areas.map((area) =>
+                area.id === areaId
+                  ? {
+                      ...area,
+                      ...cloneAreaInput(payload),
+                    }
+                  : area
+              ),
             }
           : space
       ),

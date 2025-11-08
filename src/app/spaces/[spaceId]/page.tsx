@@ -1,16 +1,17 @@
 'use client';
 
+import { FiArrowLeft } from 'react-icons/fi';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
 import { SpaceDetailsPanel } from '@/components/pages/Spaces/SpaceDetailsPanel';
 import { Button } from '@/components/ui/button';
 import {
-Card,
-CardContent,
-CardDescription,
-CardHeader,
-CardTitle
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
 } from '@/components/ui/card';
 import { useSpacesStore } from '@/stores/useSpacesStore';
 
@@ -29,7 +30,10 @@ export default function SpaceDetailRoute() {
           <p className="text-base text-muted-foreground">Review the stored attributes below, edit them, or add new areas.</p>
         </div>
         <Button asChild variant="outline">
-          <Link href="/spaces">Back to spaces</Link>
+          <Link href="/spaces" className="inline-flex items-center gap-2">
+            <FiArrowLeft className="size-4" aria-hidden="true" />
+            Back to spaces
+          </Link>
         </Button>
       </div>
 
@@ -43,7 +47,10 @@ export default function SpaceDetailRoute() {
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <Link href="/spaces">Return to spaces</Link>
+              <Link href="/spaces" className="inline-flex items-center gap-2">
+                <FiArrowLeft className="size-4" aria-hidden="true" />
+                Return to spaces
+              </Link>
             </Button>
           </CardContent>
         </Card>
