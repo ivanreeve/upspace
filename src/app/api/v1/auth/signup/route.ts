@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     const otpIsValid = await verifySignupOtp(email, otp);
     if (!otpIsValid) {
       return NextResponse.json(
-        { message: 'The verification code is incorrect or has expired.' },
+        { message: 'The verification code is incorrect or has expired.', },
         { status: 400, }
       );
     }

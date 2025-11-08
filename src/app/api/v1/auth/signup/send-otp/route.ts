@@ -16,7 +16,7 @@ export async function POST(request: Request) {
         message: 'Invalid email payload.',
         errors: parsed.error.flatten().fieldErrors,
       },
-      { status: 400 }
+      { status: 400, }
     );
   }
 
@@ -31,17 +31,17 @@ export async function POST(request: Request) {
     `;
 
     if (existingUser.length > 0) {
-      return NextResponse.json({ message: 'User already exists' }, { status: 409 });
+      return NextResponse.json({ message: 'User already exists', }, { status: 409, });
     }
 
     await requestSignupOtp(email);
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, });
   } catch (error) {
     console.error('Failed to send signup OTP', error);
     return NextResponse.json(
-      { message: 'Unable to send verification code right now.' },
-      { status: 500 }
+      { message: 'Unable to send verification code right now.', },
+      { status: 500, }
     );
   }
 }

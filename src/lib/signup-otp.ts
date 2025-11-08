@@ -21,7 +21,7 @@ export async function requestSignupOtp(email: string) {
 
   await prisma.$transaction(async (tx) => {
     // We don't have a reliable unique constraint for upsert, so replace any existing record manually.
-    await tx.signup_otps.deleteMany({ where: { email } });
+    await tx.signup_otps.deleteMany({ where: { email, }, });
     await tx.signup_otps.create({
       data: {
         email,
@@ -43,14 +43,14 @@ export async function requestSignupOtp(email: string) {
 
 export async function verifySignupOtp(email: string, otp: string) {
   const entry = await prisma.signup_otps.findFirst({
-    where: { email },
-    orderBy: { created_at: 'desc' },
+    where: { email, },
+    orderBy: { created_at: 'desc', },
   });
   if (!entry) {
     return false;
   }
 
-  const { expires_at: expiresAt } = entry;
+  const { expires_at: expiresAt, } = entry;
   if (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() < Date.now()) {
     return false;
   }
@@ -79,5 +79,5 @@ export async function verifySignupOtp(email: string, otp: string) {
 }
 
 export async function clearSignupOtp(email: string) {
-  await prisma.signup_otps.deleteMany({ where: { email } });
+  await prisma.signup_otps.deleteMany({ where: { email, }, });
 }
