@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
-const PUBLIC_PATHS = new Set<string>(['/', '/signin', '/signup', '/forgot-password']);
+const PUBLIC_PATHS = new Set<string>(['/', '/signup', '/forgot-password']);
 const IGNORED_PREFIXES = ['/api', '/_next', '/static', '/assets'];
+const ONBOARDING_PATH = '/onboarding';
 
 export async function middleware(request: NextRequest) {
   const { pathname, } = request.nextUrl;
@@ -40,10 +41,18 @@ export async function middleware(request: NextRequest) {
     const { session, } = data;
 
     if (!session) {
-      return PUBLIC_PATHS.has(pathname) ? response : NextResponse.next();
+      if (PUBLIC_PATHS.has(pathname)) {
+        return response;
+      }
+
+      const homeUrl = new URL('/', request.url);
+      return NextResponse.redirect(homeUrl);
     }
 
-    if (pathname.startsWith('/onboarding')) {
+    const isOnboardingPath =
+      pathname === ONBOARDING_PATH || pathname.startsWith(`${ONBOARDING_PATH}/`);
+
+    if (isOnboardingPath) {
       return response;
     }
 
@@ -60,9 +69,11 @@ export async function middleware(request: NextRequest) {
       return response;
     }
 
-    if (!profile?.is_onboard) {
-      const onboardingUrl = new URL('/onboarding', request.url);
-      return NextResponse.redirect(onboardingUrl);
+    if (!profile?.is_onboard && !isOnboardingPath) {
+      const onboardingUrl = new URL(ONBOARDING_PATH, request.url);
+      response.headers.set('location', onboardingUrl.toString());
+      response.status = 307;
+      return response;
     }
   } catch (error) {
     console.error('Supabase middleware error', error);

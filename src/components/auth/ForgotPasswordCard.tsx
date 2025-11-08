@@ -359,7 +359,7 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
             </div>
 
             <Button asChild className="w-full">
-              <Link href="/signin">Continue to sign in</Link>
+              <Link href="/">Continue to sign in</Link>
             </Button>
           </div>
         ) }
