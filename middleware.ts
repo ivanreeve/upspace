@@ -6,6 +6,11 @@ import { isAuthSessionMissingError } from '@supabase/supabase-js';
 const PUBLIC_PATHS = new Set<string>(['/', '/signup', '/forgot-password']);
 const IGNORED_PREFIXES = ['/api', '/_next', '/static', '/assets'];
 const ONBOARDING_PATH = '/onboarding';
+const ROLE_REDIRECT_MAP: Record<string, string> = {
+  customer: '/marketplace',
+  partner: '/spaces',
+  admin: '/admin',
+};
 
 export async function middleware(request: NextRequest) {
   const { pathname, } = request.nextUrl;
@@ -70,15 +75,11 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(homeUrl);
     }
 
-    if (isOnboardingPath) {
-      return response;
-    }
-
     const {
- data: profile, error, 
-} = await supabase
+      data: profile, error,
+    } = await supabase
       .from('user')
-      .select('is_onboard')
+      .select('is_onboard, role')
       .eq('auth_user_id', user.id)
       .maybeSingle();
 
@@ -87,9 +88,23 @@ export async function middleware(request: NextRequest) {
       return response;
     }
 
-    if (!profile?.is_onboard && !isOnboardingPath) {
+    if (!profile?.is_onboard) {
+      if (isOnboardingPath) {
+        return response;
+      }
+
       const onboardingUrl = new URL(ONBOARDING_PATH, request.url);
       return NextResponse.redirect(onboardingUrl);
+    }
+
+    const redirectTarget =
+      profile?.role && ROLE_REDIRECT_MAP[profile.role]
+        ? ROLE_REDIRECT_MAP[profile.role]
+        : '/marketplace';
+
+    if ((PUBLIC_PATHS.has(pathname) || isOnboardingPath) && redirectTarget) {
+      const targetUrl = new URL(redirectTarget, request.url);
+      return NextResponse.redirect(targetUrl);
     }
   } catch (error) {
     console.error('Supabase middleware error', error);
