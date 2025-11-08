@@ -1,0 +1,551 @@
+'use client';
+
+import { useEffect } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+
+import {
+  AREA_INPUT_DEFAULT,
+  AreaRecord,
+  SPACE_INPUT_DEFAULT,
+  SpaceRecord
+} from '@/data/spaces';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage
+} from '@/components/ui/form';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+
+const rateUnits = ['hour', 'day', 'week'] as const;
+
+export const spaceSchema = z.object({
+  name: z.string().min(1, 'Space name is required.'),
+  description: z
+    .string()
+    .min(20, 'Describe the space in at least 20 characters.')
+    .max(500, 'Keep the description under 500 characters.'),
+  unit_number: z.string().min(1, 'Unit or suite number is required.'),
+  address_subunit: z.string().min(1, 'Address subunit is required (e.g., floor).'),
+  street: z.string().min(1, 'Street is required.'),
+  city: z.string().min(1, 'City is required.'),
+  region: z.string().min(1, 'Region / state is required.'),
+  postal_code: z.string().min(3, 'Postal code is required.'),
+  country_code: z
+    .string()
+    .length(2, 'Use the 2-letter ISO country code.')
+    .regex(/^[A-Za-z]{2}$/, 'Only alphabetic characters are allowed.'),
+  lat: z
+    .coerce
+    .number({ message: 'Latitude is required.', })
+    .min(-90, 'Latitude must be >= -90.')
+    .max(90, 'Latitude must be <= 90.'),
+  long: z
+    .coerce
+    .number({ message: 'Longitude is required.', })
+    .min(-180, 'Longitude must be >= -180.')
+    .max(180, 'Longitude must be <= 180.'),
+});
+
+export const areaSchema = z
+  .object({
+    name: z.string().min(1, 'Area name is required.'),
+    min_capacity: z
+      .coerce
+      .number({ message: 'Provide the minimum capacity.', })
+      .int()
+      .min(1, 'Minimum capacity must be at least 1 seat.'),
+    max_capacity: z
+      .coerce
+      .number({ message: 'Provide the maximum capacity.', })
+      .int()
+      .min(1, 'Maximum capacity must be at least 1 seat.'),
+    rate_time_unit: z.enum(rateUnits, { required_error: 'Select a billing cadence.', }),
+    rate_amount: z.coerce.number({ message: 'Provide a rate amount.', }).positive('Rate must be greater than zero.'),
+  })
+  .refine((values) => values.max_capacity >= values.min_capacity, {
+    path: ['max_capacity'],
+    message: 'Max capacity must be greater than or equal to min capacity.',
+  });
+
+export type SpaceFormValues = z.infer<typeof spaceSchema>;
+export type AreaFormValues = z.infer<typeof areaSchema>;
+
+export const createSpaceFormDefaults = (): SpaceFormValues => ({ ...SPACE_INPUT_DEFAULT, });
+
+export const createAreaFormDefaults = (): AreaFormValues => ({ ...AREA_INPUT_DEFAULT, });
+
+export const spaceRecordToFormValues = (space: SpaceRecord): SpaceFormValues => ({
+  name: space.name,
+  description: space.description,
+  unit_number: space.unit_number,
+  address_subunit: space.address_subunit,
+  street: space.street,
+  city: space.city,
+  region: space.region,
+  postal_code: space.postal_code,
+  country_code: space.country_code,
+  lat: space.lat,
+  long: space.long,
+});
+
+export const areaRecordToFormValues = (area: AreaRecord): AreaFormValues => ({
+  name: area.name,
+  min_capacity: area.min_capacity,
+  max_capacity: area.max_capacity,
+  rate_time_unit: area.rate_time_unit,
+  rate_amount: area.rate_amount,
+});
+
+type SchemaReferenceProps = {
+  table: 'space' | 'area' | 'price_rate';
+  column: string;
+};
+
+export function SchemaReference({
+  table,
+  column,
+}: SchemaReferenceProps) {
+  return (
+    <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+      { table }.{ column }
+    </span>
+  );
+}
+
+type SpaceDialogProps = {
+  open: boolean;
+  mode: 'create' | 'edit';
+  initialValues: SpaceFormValues;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (values: SpaceFormValues) => void;
+};
+
+export function SpaceDialog({
+  open,
+  mode,
+  initialValues,
+  onOpenChange,
+  onSubmit,
+}: SpaceDialogProps) {
+  const form = useForm<SpaceFormValues>({
+    resolver: zodResolver(spaceSchema),
+    defaultValues: initialValues,
+  });
+
+  useEffect(() => {
+    form.reset(initialValues);
+  }, [initialValues, form]);
+
+  const close = () => onOpenChange(false);
+
+  return (
+    <Dialog open={ open } onOpenChange={ onOpenChange }>
+      <DialogContent className="sm:max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>{ mode === 'create' ? 'Add a new space' : 'Edit space' }</DialogTitle>
+          <DialogDescription>Fields map directly to <code>prisma.space</code>.</DialogDescription>
+        </DialogHeader>
+        <Form { ...form }>
+          <form className="space-y-6" onSubmit={ form.handleSubmit(onSubmit) }>
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField
+                control={ form.control }
+            name="name"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel className="flex items-center justify-between">
+                  <span>Space name</span>
+                  <SchemaReference table="space" column="name" />
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="Atlas Loft" { ...field } />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            ) }
+          />
+          <FormField
+            control={ form.control }
+            name="unit_number"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel className="flex items-center justify-between">
+                  <span>Unit / suite</span>
+                  <SchemaReference table="space" column="unit_number" />
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="Suite 120" { ...field } />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            ) }
+          />
+        </div>
+        <FormField
+          control={ form.control }
+          name="description"
+          render={ ({ field, }) => (
+            <FormItem>
+              <FormLabel className="flex items-center justify-between">
+                <span>Overview</span>
+                <SchemaReference table="space" column="description" />
+              </FormLabel>
+              <FormControl>
+                <Textarea rows={ 4 } placeholder="Describe the building, vibe, and suitable use cases." { ...field } />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          ) }
+        />
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField
+            control={ form.control }
+            name="address_subunit"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel className="flex items-center justify-between">
+                  <span>Address subunit</span>
+                  <SchemaReference table="space" column="address_subunit" />
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="Floor 3" { ...field } />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            ) }
+          />
+          <FormField
+            control={ form.control }
+            name="street"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel className="flex items-center justify-between">
+                  <span>Street</span>
+                  <SchemaReference table="space" column="street" />
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="123 Mission St" { ...field } />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            ) }
+          />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField
+            control={ form.control }
+            name="city"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel className="flex items-center justify-between">
+                  <span>City</span>
+                  <SchemaReference table="space" column="city" />
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="San Francisco" { ...field } />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            ) }
+          />
+          <FormField
+            control={ form.control }
+            name="region"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel className="flex items-center justify-between">
+                  <span>Region / state</span>
+                  <SchemaReference table="space" column="region" />
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="CA" { ...field } />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            ) }
+          />
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <FormField
+            control={ form.control }
+            name="postal_code"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel className="flex items-center justify-between">
+                  <span>Postal code</span>
+                  <SchemaReference table="space" column="postal_code" />
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="94105" { ...field } />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            ) }
+          />
+          <FormField
+            control={ form.control }
+            name="country_code"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel className="flex items-center justify-between">
+                  <span>Country</span>
+                  <SchemaReference table="space" column="country_code" />
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="US"
+                    maxLength={ 2 }
+                    { ...field }
+                    value={ field.value?.toUpperCase() ?? '' }
+                    onChange={ (event) => field.onChange(event.target.value.toUpperCase()) }
+                  />
+                </FormControl>
+                <FormDescription>ISO 3166-1 alpha-2 code.</FormDescription>
+                <FormMessage />
+              </FormItem>
+            ) }
+          />
+          <FormField
+            control={ form.control }
+            name="lat"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel className="flex items-center justify-between">
+                  <span>Latitude</span>
+                  <SchemaReference table="space" column="lat" />
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.000001"
+                    placeholder="37.791212"
+                    value={ field.value ?? '' }
+                    onChange={ (event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value)) }
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            ) }
+          />
+            </div>
+            <FormField
+              control={ form.control }
+              name="long"
+          render={ ({ field, }) => (
+            <FormItem>
+              <FormLabel className="flex items-center justify-between">
+                <span>Longitude</span>
+                <SchemaReference table="space" column="long" />
+              </FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  step="0.000001"
+                  placeholder="-122.392756"
+                  value={ field.value ?? '' }
+                  onChange={ (event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value)) }
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          ) }
+        />
+            <DialogFooter className="flex-col gap-2 sm:flex-row">
+              <Button type="button" variant="outline" onClick={ close }>
+                Cancel
+              </Button>
+              <Button type="submit">
+                { mode === 'create' ? 'Save space' : 'Update space' }
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type AreaDialogProps = {
+  open: boolean;
+  initialValues: AreaFormValues;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (values: AreaFormValues) => void;
+};
+
+export function AreaDialog({
+  open,
+  initialValues,
+  onOpenChange,
+  onSubmit,
+}: AreaDialogProps) {
+  const form = useForm<AreaFormValues>({
+    resolver: zodResolver(areaSchema),
+    defaultValues: initialValues,
+  });
+
+  useEffect(() => {
+    form.reset(initialValues);
+  }, [initialValues, form]);
+
+  const close = () => onOpenChange(false);
+
+  return (
+    <Dialog open={ open } onOpenChange={ onOpenChange }>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add area</DialogTitle>
+          <DialogDescription>Maps to <code>prisma.area</code> and <code>price_rate</code>.</DialogDescription>
+        </DialogHeader>
+        <Form { ...form }>
+          <form className="space-y-4" onSubmit={ form.handleSubmit(onSubmit) }>
+            <FormField
+              control={ form.control }
+              name="name"
+          render={ ({ field, }) => (
+            <FormItem>
+              <FormLabel className="flex items-center justify-between">
+                <span>Area name</span>
+                <SchemaReference table="area" column="name" />
+              </FormLabel>
+              <FormControl>
+                <Input placeholder="Boardroom A" { ...field } />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          ) }
+        />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField
+            control={ form.control }
+            name="min_capacity"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel className="flex items-center justify-between">
+                  <span>Min capacity</span>
+                  <SchemaReference table="area" column="min_capacity" />
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min={ 1 }
+                    placeholder="2"
+                    value={ field.value ?? '' }
+                    onChange={ (event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value)) }
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            ) }
+          />
+          <FormField
+            control={ form.control }
+            name="max_capacity"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel className="flex items-center justify-between">
+                  <span>Max capacity</span>
+                  <SchemaReference table="area" column="max_capacity" />
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min={ 1 }
+                    placeholder="12"
+                    value={ field.value ?? '' }
+                    onChange={ (event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value)) }
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            ) }
+          />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField
+            control={ form.control }
+            name="rate_time_unit"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel className="flex items-center justify-between">
+                  <span>Billing cadence</span>
+                  <SchemaReference table="price_rate" column="time_unit" />
+                </FormLabel>
+                <Select value={ field.value } onValueChange={ field.onChange }>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select cadence" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    { rateUnits.map((unit) => (
+                      <SelectItem key={ unit } value={ unit }>
+                        { unit === 'hour' && 'Hourly' }
+                        { unit === 'day' && 'Daily' }
+                        { unit === 'week' && 'Weekly' }
+                      </SelectItem>
+                    )) }
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            ) }
+          />
+          <FormField
+            control={ form.control }
+            name="rate_amount"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel className="flex items-center justify-between">
+                  <span>Rate (USD)</span>
+                  <SchemaReference table="price_rate" column="price" />
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min={ 0 }
+                    step="0.01"
+                    placeholder="150"
+                    value={ field.value ?? '' }
+                    onChange={ (event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value)) }
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            ) }
+          />
+            </div>
+            <DialogFooter className="flex-col gap-2 sm:flex-row">
+              <Button type="button" variant="outline" onClick={ close }>
+                Cancel
+              </Button>
+              <Button type="submit">Save area</Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
