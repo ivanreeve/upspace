@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 
-import NavBar from '@/components/ui/navbar';
 import OnboardingExperience from './OnboardingExperience';
+
+import NavBar from '@/components/ui/navbar';
 
 export const metadata: Metadata = {
   title: 'Onboarding - Upspace',

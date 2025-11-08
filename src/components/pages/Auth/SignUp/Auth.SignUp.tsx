@@ -1,9 +1,10 @@
 import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
 import { SignUpFormCard } from './Auth.SignUp.FormCard';
 import { SignUpIntro } from './Auth.SignUp.Intro';
 
+import { Button } from '@/components/ui/button';
 import NavBar from '@/components/ui/navbar';
 
 export default function AuthSignUp() {
@@ -15,7 +16,10 @@ export default function AuthSignUp() {
           <div className="flex w-full max-w-2xl flex-col gap-8">
             <div className="flex w-full justify-start">
               <Button variant="ghost" size="sm" asChild>
-                <Link href="/">Go back</Link>
+                <Link href="/" className="flex items-center gap-2">
+                  <ArrowLeft className="size-4" />
+                  Go back
+                </Link>
               </Button>
             </div>
             <SignUpIntro />
