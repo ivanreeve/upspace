@@ -1,10 +1,13 @@
 'use server';
 
-import { AuthApiError } from '@supabase/supabase-js';
-import { z } from 'zod';
+import { createHash, randomInt, timingSafeEqual } from 'node:crypto';
 
+import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
+
+import { prisma } from '@/lib/prisma';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { sendOtpEmail } from '@/lib/email';
 
 const requestSchema = z.object({ email: z.string().email('Provide a valid email.'), });
 
@@ -40,6 +43,72 @@ export type ResetPasswordResult = {
   errors?: Partial<Record<'otp' | 'password', string[]>>;
 };
 
+const OTP_EXPIRATION_MS = 10 * 60 * 1000;
+
+type PasswordResetMetadata = {
+  hash: string;
+  expires_at: string;
+};
+
+function generateOtpCode() {
+  return randomInt(0, 1_000_000).toString().padStart(6, '0');
+}
+
+function hashOtp(otp: string, userId: string) {
+  return createHash('sha256').update(`${userId}|${otp}`).digest('hex');
+}
+
+async function setPasswordResetMetadata(userId: string, hash: string, expiresAt: Date) {
+  const entry = JSON.stringify({
+    password_reset: {
+      hash,
+      expires_at: expiresAt.toISOString(),
+    },
+  });
+
+  await prisma.$executeRaw`
+    UPDATE auth.users
+    SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || ${entry}::jsonb
+    WHERE id = ${userId}::uuid
+  `;
+}
+
+async function clearPasswordResetMetadata(userId: string) {
+  await prisma.$executeRaw`
+    UPDATE auth.users
+    SET raw_user_meta_data = (COALESCE(raw_user_meta_data, '{}'::jsonb) - 'password_reset')
+    WHERE id = ${userId}::uuid
+  `;
+}
+
+async function findAuthUserByEmail(email: string) {
+  const rows = await prisma.$queryRaw<
+    Array<{ id: string; user_metadata: Prisma.JsonValue | null }>
+  >`
+    SELECT id, raw_user_meta_data AS user_metadata
+    FROM auth.users
+    WHERE LOWER(email) = ${email}
+    LIMIT 1
+  `;
+
+  return rows[0] ?? null;
+}
+
+function parsePasswordResetMetadata(value: unknown): PasswordResetMetadata | null {
+  if (!value || typeof value !== 'object') return null;
+
+  const candidate = value as Record<string, unknown>;
+  const hash = typeof candidate.hash === 'string' ? candidate.hash : undefined;
+  const expiresAt = typeof candidate.expires_at === 'string' ? candidate.expires_at : undefined;
+
+  if (!hash || !expiresAt) return null;
+
+  return {
+    hash,
+    expires_at: expiresAt,
+  };
+}
+
 export async function requestPasswordResetAction(
   _prev: ForgotPasswordState,
   formData: FormData
@@ -62,43 +131,44 @@ export async function requestPasswordResetAction(
   const normalizedEmail = parsed.data.email.toLowerCase();
 
   try {
-    const supabaseAdmin = getSupabaseAdminClient();
-    const {
-      data,
-      error,
-    } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'recovery',
-      email: normalizedEmail,
-    });
-
-    if (error) {
-      if (
-        error instanceof AuthApiError &&
-        (error.status === 400 || error.status === 422)
-      ) {
-        console.warn('Password reset requested for non-existent email', { email: normalizedEmail, });
-        return {
-          ok: true,
-          mode: 'sent',
-          email: normalizedEmail,
-          message: DEFAULT_SUCCESS_MESSAGE,
-        };
-      }
-
-      throw error;
+    const user = await findAuthUserByEmail(normalizedEmail);
+    if (!user) {
+      return {
+        ok: true,
+        mode: 'sent',
+        email: normalizedEmail,
+        message: DEFAULT_SUCCESS_MESSAGE,
+      };
     }
 
-    const otp = data?.properties?.email_otp ?? undefined;
+    const otp = generateOtpCode();
+    const expiresAt = new Date(Date.now() + OTP_EXPIRATION_MS);
+    const hashed = hashOtp(otp, user.id);
+
+    await setPasswordResetMetadata(user.id, hashed, expiresAt);
+    try {
+      await sendOtpEmail({
+        to: normalizedEmail,
+        otp,
+        expiresAt,
+      });
+    } catch (error) {
+      console.error('Failed to send password reset email', error);
+      await clearPasswordResetMetadata(user.id).catch(() => null);
+      return {
+        ok: false,
+        message: 'Unable to send reset code. Please try again later.',
+      };
+    }
 
     return {
       ok: true,
       mode: 'sent',
       email: normalizedEmail,
-      otp,
       message: DEFAULT_SUCCESS_MESSAGE,
     };
   } catch (error) {
-    console.error('Failed to generate Supabase password reset link', error);
+    console.error('Failed to send password reset code', error);
     return {
       ok: false,
       message: 'Unable to send reset code. Please try again later.',
@@ -126,39 +196,108 @@ export async function resetPasswordWithOtpAction(payload: {
   }
 
   try {
-    const supabase = await createSupabaseServerClient();
-    const email = parsed.data.email.toLowerCase();
-    const otp = parsed.data.otp.trim();
+    const normalizedEmail = parsed.data.email.toLowerCase();
+    const user = await findAuthUserByEmail(normalizedEmail);
 
-    const { error: verifyError, } = await supabase.auth.verifyOtp({
-      type: 'recovery',
-      email,
-      token: otp,
-    });
-
-    if (verifyError) {
-      console.warn('Supabase OTP verification failed', verifyError);
+    if (!user) {
       const message = 'The code you entered is incorrect or has expired.';
+      /* eslint-disable object-curly-newline */
       return {
         ok: false,
         message,
-        errors: { otp: [message], },
+        errors: {
+          otp: [message],
+        },
       };
+      /* eslint-enable object-curly-newline */
     }
 
-    const { error: updateError, } = await supabase.auth.updateUser({ password: parsed.data.password, });
+    const metadata = parsePasswordResetMetadata(user.user_metadata);
+    if (!metadata) {
+      const message = 'The code you entered is incorrect or has expired.';
+      /* eslint-disable object-curly-newline */
+      return {
+        ok: false,
+        message,
+        errors: {
+          otp: [message],
+        },
+      };
+      /* eslint-enable object-curly-newline */
+    }
+
+    const expiresAt = new Date(metadata.expires_at);
+    if (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() < Date.now()) {
+      const message = 'The code you entered is incorrect or has expired.';
+      /* eslint-disable object-curly-newline */
+      return {
+        ok: false,
+        message,
+        errors: {
+          otp: [message],
+        },
+      };
+      /* eslint-enable object-curly-newline */
+    }
+
+    const hashed = hashOtp(parsed.data.otp, user.id);
+    let expectedHashBuffer: Buffer;
+    let providedHashBuffer: Buffer;
+
+    try {
+      expectedHashBuffer = Buffer.from(metadata.hash, 'hex');
+      providedHashBuffer = Buffer.from(hashed, 'hex');
+    } catch (error) {
+      const message = 'The code you entered is incorrect or has expired.';
+      /* eslint-disable object-curly-newline */
+      return {
+        ok: false,
+        message,
+        errors: {
+          otp: [message],
+        },
+      };
+      /* eslint-enable object-curly-newline */
+    }
+
+    if (
+      expectedHashBuffer.length !== providedHashBuffer.length ||
+      !timingSafeEqual(expectedHashBuffer, providedHashBuffer)
+    ) {
+      const message = 'The code you entered is incorrect or has expired.';
+      /* eslint-disable object-curly-newline */
+      return {
+        ok: false,
+        message,
+        errors: {
+          otp: [message],
+        },
+      };
+      /* eslint-enable object-curly-newline */
+    }
+
+    const supabaseAdmin = getSupabaseAdminClient();
+    const { error: updateError, } = await supabaseAdmin.auth.admin.updateUserById(
+      user.id,
+      /* eslint-disable object-curly-newline */
+      {
+        password: parsed.data.password,
+      }
+    );
+    /* eslint-enable object-curly-newline */
 
     if (updateError) {
-      console.error('Supabase password update failed', updateError);
+      console.error('Failed to update password via Supabase', updateError);
       return {
         ok: false,
         message: 'Unable to reset password right now. Please try again.',
       };
     }
 
-    const { error: signOutError, } = await supabase.auth.signOut();
-    if (signOutError) {
-      console.warn('Supabase sign-out after password reset failed', signOutError);
+    try {
+      await clearPasswordResetMetadata(user.id);
+    } catch (error) {
+      console.warn('Failed to clear password reset metadata', error);
     }
 
     return {

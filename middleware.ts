@@ -8,6 +8,8 @@ const ONBOARDING_PATH = '/onboarding';
 
 export async function middleware(request: NextRequest) {
   const { pathname, } = request.nextUrl;
+  const isOnboardingPath =
+    pathname === ONBOARDING_PATH || pathname.startsWith(`${ONBOARDING_PATH}/`);
 
   if (IGNORED_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
     return NextResponse.next();
@@ -41,6 +43,11 @@ export async function middleware(request: NextRequest) {
     const { session, } = data;
 
     if (!session) {
+      if (isOnboardingPath) {
+        const homeUrl = new URL('/', request.url);
+        return NextResponse.redirect(homeUrl);
+      }
+
       if (PUBLIC_PATHS.has(pathname)) {
         return response;
       }
@@ -48,9 +55,6 @@ export async function middleware(request: NextRequest) {
       const homeUrl = new URL('/', request.url);
       return NextResponse.redirect(homeUrl);
     }
-
-    const isOnboardingPath =
-      pathname === ONBOARDING_PATH || pathname.startsWith(`${ONBOARDING_PATH}/`);
 
     if (isOnboardingPath) {
       return response;

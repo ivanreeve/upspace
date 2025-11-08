@@ -63,12 +63,12 @@ export default function Home() {
       <h2>Avatar - Ivan Github Account</h2>
       <Avatar>
         <AvatarImage src="https://avatars.githubusercontent.com/u/74288935?v=4" />
-        <AvatarFallback>IR</AvatarFallback>
+        <AvatarFallback>US</AvatarFallback>
       </Avatar>
 
       <h2>Avatar - Fallback</h2>
       <Avatar>
-        <AvatarFallback>IR</AvatarFallback>
+        <AvatarFallback>US</AvatarFallback>
       </Avatar>
     </div>
   );
