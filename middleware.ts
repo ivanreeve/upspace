@@ -46,8 +46,8 @@ export async function middleware(request: NextRequest) {
     });
 
     const {
- data: userData, error: userError, 
-} = await supabase.auth.getUser();
+      data: userData, error: userError,
+    } = await supabase.auth.getUser();
     const isMissingSessionError =
       userError &&
       (isAuthSessionMissingError(userError) ||

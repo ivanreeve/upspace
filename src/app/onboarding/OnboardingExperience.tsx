@@ -1,0 +1,250 @@
+'use client';
+
+import { useState, type ChangeEvent, type FormEvent } from 'react';
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+
+const roleOptions = [
+  {
+    value: 'partner',
+    title: 'Partner',
+    description: 'Manage spaces, onboard teammates, and keep your inventory visible to the community.',
+  },
+  {
+    value: 'customer',
+    title: 'Customer',
+    description: 'Book ready-to-use rooms, see availability in one glance, and keep your projects on track.',
+  }
+] as const;
+
+type RoleOption = (typeof roleOptions)[number]['value'];
+
+type FormState = {
+  firstName: string;
+  middleName: string;
+  lastName: string;
+};
+
+type StatusState = {
+  type: 'idle' | 'error' | 'success';
+  message: string;
+};
+
+export default function OnboardingExperience() {
+  const [formState, setFormState] = useState<FormState>({
+    firstName: '',
+    middleName: '',
+    lastName: '',
+  });
+  const [selectedRole, setSelectedRole] = useState<RoleOption | ''>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [status, setStatus] = useState<StatusState>({
+ type: 'idle',
+message: '', 
+});
+
+  const handleInputChange =
+    (field: keyof FormState) => (event: ChangeEvent<HTMLInputElement>) => {
+      setFormState((prev) => ({
+        ...prev,
+        [field]: event.target.value,
+      }));
+    };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setStatus({
+ type: 'idle',
+message: '', 
+});
+
+    const trimmedFirst = formState.firstName.trim();
+    const trimmedLast = formState.lastName.trim();
+
+    if (!trimmedFirst || !trimmedLast) {
+      setStatus({
+        type: 'error',
+        message: 'Please provide both your first and last names so we can address you properly.',
+      });
+      return;
+    }
+
+    if (!selectedRole) {
+      setStatus({
+        type: 'error',
+        message: 'Select whether you are joining as a partner or a customer before we save your profile.',
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch('/api/onboarding/info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify({
+          firstName: trimmedFirst,
+          middleName: formState.middleName.trim(),
+          lastName: trimmedLast,
+          role: selectedRole,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.message ?? 'Unable to persist your onboarding details at the moment.');
+      }
+
+      setStatus({
+        type: 'success',
+        message: 'Nice! We saved your name and role. You will stay on onboarding until the rest of the flow is ready.',
+      });
+    } catch (error) {
+      console.error('Failed to save onboarding information', error);
+      setStatus({
+        type: 'error',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Something went wrong while saving your details. Please try again.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <main className="min-h-screen bg-background px-4 py-10 sm:py-16">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-12">
+        <header className="space-y-3 text-center sm:text-left">
+          <h2 className="text-xs uppercase tracking-[0.4em] text-muted-foreground">Onboarding · Step 1</h2>
+          <h1 className="text-3xl font-semibold leading-tight text-foreground sm:text-4xl">
+            Are you joining Upspace as a partner or customer?
+          </h1>
+          <p className="text-base text-muted-foreground sm:text-lg">
+            Help us start your journey on the right foot. First we need your name and the role you expect to use
+            Upspace for.
+          </p>
+        </header>
+
+        <section className="space-y-10 rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm shadow-slate-900/5 sm:p-10">
+          <div className="space-y-4">
+            <h2 className="text-2xl font-semibold text-foreground">Your details</h2>
+                <p className="text-sm text-muted-foreground">
+                  Fill out the name fields below. You can add a middle name if you&apos;d like, but first and last are mandatory.
+                </p>
+          </div>
+
+          <form onSubmit={ handleSubmit } className="space-y-8">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First name</Label>
+                <Input
+                  id="firstName"
+                  name="firstName"
+                  placeholder="Alex"
+                  value={ formState.firstName }
+                  onChange={ handleInputChange('firstName') }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="middleName">Middle name</Label>
+                <Input
+                  id="middleName"
+                  name="middleName"
+                  placeholder="Marie"
+                  value={ formState.middleName }
+                  onChange={ handleInputChange('middleName') }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last name</Label>
+                <Input
+                  id="lastName"
+                  name="lastName"
+                  placeholder="Garcia"
+                  value={ formState.lastName }
+                  onChange={ handleInputChange('lastName') }
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div>
+                  <Label className="text-base">Select your primary role</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Depending on your selection, we tailor the experience once onboarding is fully live.
+                  </p>
+                </div>
+                <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Required</span>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                { roleOptions.map((option) => {
+                  const active = selectedRole === option.value;
+                  return (
+                    <button
+                      key={ option.value }
+                      type="button"
+                      aria-pressed={ active }
+                      onClick={ () => setSelectedRole(option.value) }
+                      className={ cn(
+                        'flex h-full w-full flex-col justify-between rounded-2xl border p-5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                        active
+                          ? 'border-primary bg-primary/10 shadow-lg'
+                          : 'border-border bg-background/80 hover:border-secondary'
+                      ) }
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-lg font-semibold text-foreground">{ option.title }</p>
+                        </div>
+                        <span
+                          className={ cn(
+                            'flex h-6 w-6 items-center justify-center rounded-full border text-xs font-semibold',
+                            active ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
+                          ) }
+                        >
+                          { active ? '✓' : '' }
+                        </span>
+                      </div>
+                      <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{ option.description }</p>
+                    </button>
+                  );
+                }) }
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Button type="submit" className="w-full" disabled={ isSubmitting }>
+                { isSubmitting ? 'Saving...' : 'Save name & role' }
+              </Button>
+              { status.message && (
+                <p
+                  aria-live="polite"
+                  className={ cn(
+                    'text-sm',
+                    status.type === 'success'
+                      ? 'text-success-green'
+                      : status.type === 'error'
+                        ? 'text-destructive'
+                        : 'text-muted-foreground'
+                  ) }
+                >
+                  { status.message }
+                </p>
+              ) }
+            </div>
+          </form>
+        </section>
+      </div>
+    </main>
+  );
+}
