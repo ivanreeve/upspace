@@ -35,6 +35,7 @@ export type ForgotPasswordState = {
   otp?: string;
   message?: string;
   errors?: Record<string, string[]>;
+  expiresAt?: string;
 };
 
 export type ResetPasswordResult = {
@@ -98,8 +99,12 @@ function parsePasswordResetMetadata(value: unknown): PasswordResetMetadata | nul
   if (!value || typeof value !== 'object') return null;
 
   const candidate = value as Record<string, unknown>;
-  const hash = typeof candidate.hash === 'string' ? candidate.hash : undefined;
-  const expiresAt = typeof candidate.expires_at === 'string' ? candidate.expires_at : undefined;
+  const metadata = candidate.password_reset;
+  if (!metadata || typeof metadata !== 'object') return null;
+
+  const details = metadata as Record<string, unknown>;
+  const hash = typeof details.hash === 'string' ? details.hash : undefined;
+  const expiresAt = typeof details.expires_at === 'string' ? details.expires_at : undefined;
 
   if (!hash || !expiresAt) return null;
 
@@ -166,6 +171,7 @@ export async function requestPasswordResetAction(
       mode: 'sent',
       email: normalizedEmail,
       message: DEFAULT_SUCCESS_MESSAGE,
+      expiresAt: expiresAt.toISOString(),
     };
   } catch (error) {
     console.error('Failed to send password reset code', error);

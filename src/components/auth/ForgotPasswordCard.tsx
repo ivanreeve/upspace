@@ -107,6 +107,7 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
   const [email, setEmail] = useState('');
   const [requestedEmail, setRequestedEmail] = useState<string | null>(null);
   const [serverOtp, setServerOtp] = useState<string | null>(null);
+  const [codeExpiresAt, setCodeExpiresAt] = useState<string | null>(null);
 
   const [otpValue, setOtpValue] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -119,6 +120,20 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
     [requestedEmail, email]
   );
 
+  const codeExpirationDate = useMemo(() => {
+    if (!codeExpiresAt) return null;
+    const date = new Date(codeExpiresAt);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }, [codeExpiresAt]);
+
+  const formattedCodeExpiration = useMemo(() => {
+    if (!codeExpirationDate) return null;
+    return new Intl.DateTimeFormat('en-US', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(codeExpirationDate);
+  }, [codeExpirationDate]);
+
   const [state, formAction] =
     useActionState<ForgotPasswordState, FormData>(requestPasswordResetAction, initialState);
 
@@ -127,6 +142,7 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
 
     setRequestedEmail(state.email ?? null);
     setServerOtp(state.otp ?? null);
+    setCodeExpiresAt(state.expiresAt ?? null);
     setStep('verify');
     setOtpValue('');
     setNewPassword('');
@@ -163,6 +179,7 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
     if (!requestedEmail) {
       toast.error('Request a new code to continue.');
       setStep('request');
+      setCodeExpiresAt(null);
       return;
     }
 
@@ -365,7 +382,15 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
         ) }
 
         <p className="text-xs text-muted-foreground">
-          We&apos;ll email you instructions to reset your password. The code expires in 10 minutes.
+          We&apos;ll email you instructions to reset your password.
+          { formattedCodeExpiration ? (
+            <>
+              {' '}
+              The verification code is valid until { formattedCodeExpiration }.
+            </>
+          ) : (
+            ' The code expires in 10 minutes.'
+          ) }
         </p>
         <div className="text-sm text-center text-muted-foreground">
           Remembered your password?{ ' ' }
