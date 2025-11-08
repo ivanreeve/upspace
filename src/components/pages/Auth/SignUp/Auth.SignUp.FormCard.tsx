@@ -52,14 +52,6 @@ const otpSchema = z.object({
     .regex(/^\d{6}$/, 'Enter the 6-digit code we emailed to you.'),
 });
 
-function generateOtp() {
-  let otp = '';
-  for (let index = 0; index < 6; index += 1) {
-    otp += Math.floor(Math.random() * 10);
-  }
-  return otp;
-}
-
 type FormErrors = Partial<Record<'email' | 'password' | 'confirmPassword', string>>;
 
 export function SignUpFormCard() {
@@ -75,7 +67,6 @@ export function SignUpFormCard() {
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const [otpValue, setOtpValue] = useState('');
   const [otpError, setOtpError] = useState<string | null>(null);
-  const [generatedOtp, setGeneratedOtp] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const maskedEmail = useMemo(() => {
@@ -121,9 +112,9 @@ export function SignUpFormCard() {
         const data = await res.json().catch(() => ({ message: 'User already exists', }));
         const message = data.message ?? 'User already exists';
         setFieldErrors((prev) => ({
- ...prev,
-email: message, 
-}));
+          ...prev,
+          email: message,
+        }));
         toast.error(message);
         return;
       }
@@ -134,9 +125,20 @@ email: message,
         return;
       }
 
+      const otpRes = await fetch('/api/v1/auth/signup/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify({ email: parsed.data.email, }),
+      });
+
+      if (!otpRes.ok) {
+        const data = await otpRes.json().catch(() => null);
+        toast.error(data?.message ?? 'Unable to send verification code.');
+        return;
+      }
+
       await new Promise((resolve) => setTimeout(resolve, 700));
-      const otp = generateOtp();
-      setGeneratedOtp(otp);
+      setOtpValue('');
       setStep('otp');
       toast.success(`A verification code was sent to ${parsed.data.email}.`);
     } finally {
@@ -156,24 +158,8 @@ email: message,
       return;
     }
 
-    if (!generatedOtp) {
-      setOtpError('Request a new code to continue.');
-      toast.error('Request a new code to continue.');
-      setStep('credentials');
-      return;
-    }
-
     setIsSubmitting(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-
-      if (parsed.data.otp !== generatedOtp) {
-        setOtpError('The code you entered is incorrect.');
-        toast.error('The code you entered is incorrect.');
-        return;
-      }
-
-      // Create the user in the database
       const res = await fetch('/api/v1/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', },
@@ -181,12 +167,17 @@ email: message,
           email: formValues.email,
           password: formValues.password,
           handle: formValues.email.split('@')[0],
+          otp: parsed.data.otp,
         }),
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({ message: 'Unable to create user.', }));
-        toast.error(data.message ?? 'Unable to create user.');
+        const data = await res.json().catch(() => null);
+        const message = data?.message ?? 'Unable to create user.';
+        if (res.status === 400) {
+          setOtpError(message);
+        }
+        toast.error(message);
         return;
       }
 
@@ -201,10 +192,20 @@ email: message,
     if (step !== 'otp') return;
     setIsSubmitting(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 700));
-      const otp = generateOtp();
-      setGeneratedOtp(otp);
+      const res = await fetch('/api/v1/auth/signup/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify({ email: formValues.email, }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        toast.error(data?.message ?? 'Unable to resend verification code.');
+        return;
+      }
+
       setOtpValue('');
+      setOtpError(null);
       toast.success('We sent you a new verification code.');
     } finally {
       setIsSubmitting(false);
@@ -338,12 +339,6 @@ email: message,
                 </InputOTPGroup>
               </InputOTP>
               { otpError && <p className="text-sm text-destructive">{ otpError }</p> }
-              { generatedOtp && (
-                <p className="text-xs text-muted-foreground">
-                  Demo note: Use <span className="font-medium text-foreground">{ generatedOtp }</span> to
-                  continue.
-                </p>
-              ) }
             </div>
 
             <Button

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { isAuthSessionMissingError } from '@supabase/supabase-js';
 
 const PUBLIC_PATHS = new Set<string>(['/', '/signup', '/forgot-password']);
 const IGNORED_PREFIXES = ['/api', '/_next', '/static', '/assets'];
@@ -42,11 +43,17 @@ export async function middleware(request: NextRequest) {
     const {
  data: userData, error: userError, 
 } = await supabase.auth.getUser();
-    if (userError) {
+    const isMissingSessionError =
+      userError &&
+      (isAuthSessionMissingError(userError) ||
+        userError.name === 'AuthSessionMissingError' ||
+        userError.message?.includes('Auth session missing'));
+
+    if (userError && !isMissingSessionError) {
       console.error('Failed to verify auth user in middleware', userError);
       return response;
     }
-    const user = userData?.user;
+    const user = isMissingSessionError ? null : userData?.user;
     console.log('Middleware user data:', userData);
 
     if (!user) {

@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import { ensureUserProfile } from '@/lib/auth/user-profile';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
+import { clearSignupOtp, verifySignupOtp } from '@/lib/signup-otp';
 
 const bodySchema = z.object({
   email: z.string().email(),
@@ -21,6 +22,7 @@ const bodySchema = z.object({
     .min(1)
     .max(64)
     .regex(/^[a-z0-9._-]+$/i, 'Handle may include letters, numbers, dots, underscores, and dashes.'),
+  otp: z.string().trim().regex(/^[0-9]{6}$/, 'Enter the 6-digit code we emailed to you.'),
 });
 
 export async function POST(request: Request) {
@@ -40,8 +42,19 @@ export async function POST(request: Request) {
   const email = parsed.data.email.trim().toLowerCase();
   const password = parsed.data.password;
   const handle = parsed.data.handle.trim().toLowerCase();
+  const otp = parsed.data.otp;
 
   try {
+    const otpIsValid = await verifySignupOtp(email, otp);
+    if (!otpIsValid) {
+      return NextResponse.json(
+        { message: 'The verification code is incorrect or has expired.' },
+        { status: 400, }
+      );
+    }
+
+    await clearSignupOtp(email);
+
     const supabaseAdmin = getSupabaseAdminClient();
 
     const created = await supabaseAdmin.auth.admin.createUser({

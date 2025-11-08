@@ -12,7 +12,7 @@ datasource db {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model amenity {
   amenity_id BigInt    @id @unique @default(autoincrement())
-  name       String    @db.VarChar
+  name       String
   space_id   BigInt
   created_at DateTime  @default(now()) @db.Timestamptz(6)
   updated_at DateTime? @default(now()) @db.Timestamptz(6)
@@ -23,7 +23,7 @@ model amenity {
 model area {
   area_id      BigInt       @id @unique @default(autoincrement())
   space_id     BigInt
-  name         String       @db.VarChar
+  name         String
   max_capacity BigInt
   min_capacity BigInt
   created_at   DateTime     @default(now()) @db.Timestamptz(6)
@@ -105,11 +105,20 @@ model image {
 model price_rate {
   rate_id    BigInt    @id(map: "rate_pkey") @unique(map: "rate_rate_id_key") @default(autoincrement())
   area_id    BigInt
-  time_unit  String    @db.VarChar
+  time_unit  String
   price      Decimal   @db.Decimal
   created_at DateTime  @default(now()) @db.Timestamptz(6)
   updated_at DateTime? @default(now()) @db.Timestamptz(6)
   area       area      @relation(fields: [area_id], references: [area_id], onDelete: NoAction, onUpdate: NoAction, map: "rate_area_id_fkey")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model signup_otps {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email      String   @unique
+  hash       String
+  expires_at DateTime @db.Timestamptz(6)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
