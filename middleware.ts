@@ -63,11 +63,6 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(homeUrl);
     }
 
-    if (PUBLIC_PATHS.has(pathname)) {
-      const onboardingUrl = new URL(ONBOARDING_PATH, request.url);
-      return NextResponse.redirect(onboardingUrl);
-    }
-
     if (isOnboardingPath) {
       return response;
     }

@@ -8,7 +8,6 @@ import { TbSparkles } from 'react-icons/tb';
 import { LuBookOpenText, LuUsers } from 'react-icons/lu';
 import { FaQuestion } from 'react-icons/fa6';
 import { FiSidebar, FiLogOut } from 'react-icons/fi';
-import type { Session } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 
 import { ThemeSwitcher } from './theme-switcher';
@@ -37,6 +36,7 @@ import {
   SheetTrigger
 } from '@/components/ui/sheet';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { useSession } from '@/components/auth/SessionProvider';
 
 export type NavItem = {
   href: string;
@@ -93,39 +93,13 @@ export default function NavBar({
 }: NavBarProps) {
   const navRef = React.useRef<HTMLElement>(null);
   const [isOpen, setIsOpen] = React.useState(false);
-  const [session, setSession] = React.useState<Session | null>(null);
-  const [isSessionResolved, setIsSessionResolved] = React.useState(false);
+  const {
+ session, isLoading: isSessionLoading, 
+} = useSession();
+  const isSessionResolved = !isSessionLoading;
   const router = useRouter();
 
   const closeMenu = React.useCallback(() => setIsOpen(false), []);
-
-  React.useEffect(() => {
-    let mounted = true;
-    const supabase = getSupabaseBrowserClient();
-
-    supabase.auth.getSession()
-      .then(({ data, }) => {
-        if (!mounted) return;
-        setSession(data.session ?? null);
-        setIsSessionResolved(true);
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setSession(null);
-        setIsSessionResolved(true);
-      });
-
-    const { data: { subscription, }, } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      if (!mounted) return;
-      setSession(newSession);
-      setIsSessionResolved(true);
-    });
-
-    return () => {
-      mounted = false;
-      subscription?.unsubscribe();
-    };
-  }, []);
 
   const handleNavLinkClick = React.useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>, href: string, shouldCloseMenu?: boolean) => {
@@ -211,7 +185,6 @@ export default function NavBar({
       return;
     }
 
-    setSession(null);
     router.refresh();
   }, [router]);
 

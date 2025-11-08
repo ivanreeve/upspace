@@ -3,6 +3,7 @@ import './globals.css';
 import { ThemeProvider } from 'next-themes';
 
 import { AuthProfileSync } from '@/components/auth/AuthProfileSync';
+import { SessionProvider } from '@/components/auth/SessionProvider';
 import { Toaster } from '@/components/ui/sonner';
 import { ServiceWorkerRegistration } from '@/components/common/ServiceWorkerRegistration';
 
@@ -43,17 +44,19 @@ export default function RootLayout({ children, }: Readonly<{
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <AuthProfileSync />
-          { children }
-          <Toaster />
-          <ServiceWorkerRegistration />
-        </ThemeProvider>
+        <SessionProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <AuthProfileSync />
+            { children }
+            <Toaster />
+            <ServiceWorkerRegistration />
+          </ThemeProvider>
+        </SessionProvider>
       </body>
     </html>
   );

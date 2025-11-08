@@ -2,39 +2,36 @@
 
 import { useEffect, useRef } from 'react';
 
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { useSession } from '@/components/auth/SessionProvider';
+import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
 
 export function AuthProfileSync() {
-  const invoked = useRef(false);
+  const {
+ session, isLoading, 
+} = useSession();
+  const syncedUserRef = useRef<string | null>(null);
+  const authFetch = useAuthenticatedFetch();
 
   useEffect(() => {
-    if (invoked.current) return;
-    invoked.current = true;
+    if (isLoading) return;
+    if (!session) {
+      syncedUserRef.current = null;
+      return;
+    }
+    if (syncedUserRef.current === session.user.id) return;
 
+    syncedUserRef.current = session.user.id;
     const controller = new AbortController();
-    const supabase = getSupabaseBrowserClient();
-    let isActive = true;
-
-    supabase.auth.getSession()
-      .then(({ data, }) => {
-        if (!isActive || !data.session) return;
-
-        fetch('/api/v1/auth/sync-profile', {
-          method: 'POST',
-          signal: controller.signal,
-        }).catch(() => {
-          // Silently ignore errors; this request will be retried on navigation.
-        });
-      })
-      .catch(() => {
-        // Ignore session errors; we simply skip the sync when unauthenticated.
-      });
-
+    authFetch('/api/v1/auth/sync-profile', {
+      method: 'POST',
+      signal: controller.signal,
+    }).catch(() => {
+      // Silently ignore errors; this request will be retried on navigation.
+    });
     return () => {
-      isActive = false;
       controller.abort();
     };
-  }, []);
+  }, [authFetch, isLoading, session]);
 
   return null;
 }
