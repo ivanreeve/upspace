@@ -385,7 +385,7 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
           We&apos;ll email you instructions to reset your password.
           { formattedCodeExpiration ? (
             <>
-              {' '}
+              { ' ' }
               The verification code is valid until { formattedCodeExpiration }.
             </>
           ) : (
