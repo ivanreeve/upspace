@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { FiPlus } from 'react-icons/fi';
 import { toast } from 'sonner';
 
-import { SpaceDetailsPanel } from './SpaceDetailsPanel';
 import { SpaceDialog, SpaceFormValues, createSpaceFormDefaults } from './SpaceForms';
 
 import { Badge } from '@/components/ui/badge';
@@ -25,30 +24,14 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
-import { cn } from '@/lib/utils';
 import { useSpacesStore } from '@/stores/useSpacesStore';
 
 export function SpacesInventoryForm() {
   const spaces = useSpacesStore((state) => state.spaces);
   const createSpace = useSpacesStore((state) => state.createSpace);
 
-  const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [spaceDialogOpen, setSpaceDialogOpen] = useState(false);
   const [spaceDialogValues, setSpaceDialogValues] = useState<SpaceFormValues>(createSpaceFormDefaults());
-
-  useEffect(() => {
-    if (spaces.length === 0) {
-      setSelectedSpaceId(null);
-      return;
-    }
-    setSelectedSpaceId((prev) => {
-      if (!prev) {
-        return spaces[0]?.id ?? null;
-      }
-      const stillExists = spaces.some((space) => space.id === prev);
-      return stillExists ? prev : spaces[0]?.id ?? null;
-    });
-  }, [spaces]);
 
   const openCreateSpaceDialog = () => {
     setSpaceDialogValues(createSpaceFormDefaults());
@@ -56,9 +39,8 @@ export function SpacesInventoryForm() {
   };
 
   const handleCreateSpace = (values: SpaceFormValues) => {
-    const newSpaceId = createSpace(values);
+    createSpace(values);
     setSpaceDialogOpen(false);
-    setSelectedSpaceId(newSpaceId);
     toast.success(`${values.name} created.`);
   };
 
@@ -109,56 +91,36 @@ export function SpacesInventoryForm() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              { tableRows.map((space) => {
-                const isSelected = space.id === selectedSpaceId;
-                return (
-                  <TableRow
-                    key={ space.id }
-                    data-state={ isSelected ? 'selected' : undefined }
-                    className={ cn(
-                      'cursor-pointer transition hover:bg-muted/40',
-                      isSelected && 'bg-muted'
-                    ) }
-                    aria-selected={ isSelected }
-                    onClick={ () => setSelectedSpaceId(space.id) }
-                  >
-                    <TableCell className="font-medium">
-                      <div className="flex flex-col">
-                        <span>{ space.name }</span>
-                        <span className="text-xs text-muted-foreground">
-                          Added { new Date(space.created_at).toLocaleDateString(undefined, {
- month: 'short',
-day: 'numeric',
-year: 'numeric', 
-}) }
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{ space.location }</TableCell>
-                    <TableCell>
-                      <Badge variant={ space.status === 'Live' ? 'secondary' : 'outline' }>{ space.status }</Badge>
-                    </TableCell>
-                    <TableCell>{ space.areas }</TableCell>
-                    <TableCell className="text-right">
-                      <Button asChild size="sm" variant="outline">
-                        <Link href={ `/spaces/${space.id}` }>Open</Link>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              }) }
+              { tableRows.map((space) => (
+                <TableRow key={ space.id } className="cursor-pointer transition hover:bg-muted/40">
+                  <TableCell className="font-medium">
+                    <div className="flex flex-col">
+                      <span>{ space.name }</span>
+                      <span className="text-xs text-muted-foreground">
+                        Added { new Date(space.created_at).toLocaleDateString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        }) }
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{ space.location }</TableCell>
+                  <TableCell>
+                    <Badge variant={ space.status === 'Live' ? 'secondary' : 'outline' }>{ space.status }</Badge>
+                  </TableCell>
+                  <TableCell>{ space.areas }</TableCell>
+                  <TableCell className="text-right">
+                    <Button asChild size="sm" variant="outline">
+                      <Link href={ `/spaces/${space.id}` }>Open</Link>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              )) }
             </TableBody>
           </Table>
         </div>
       ) }
-
-      <div className="space-y-4">
-        <div className="space-y-1">
-          <h3 className="text-2xl font-semibold tracking-tight">Space details</h3>
-          <p className="text-sm text-muted-foreground">Click any row above to inspect and edit the stored data, or open the standalone page via the “Open” button.</p>
-        </div>
-        <SpaceDetailsPanel spaceId={ selectedSpaceId } />
-      </div>
 
       <SpaceDialog
         open={ spaceDialogOpen }

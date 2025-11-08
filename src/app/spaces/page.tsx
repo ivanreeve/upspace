@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 import SpacesPage from '@/components/pages/Spaces/SpacesPage';
-import { SpacesNavBar } from '@/components/pages/Spaces/SpacesNavBar';
+import NavBar from '@/components/ui/navbar';
 import { Footer } from '@/components/ui/footer';
 
 export const metadata: Metadata = {
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function SpacesRoute() {
   return (
     <>
-      <SpacesNavBar />
+      <NavBar />
       <SpacesPage />
       <Footer />
     </>
