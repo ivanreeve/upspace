@@ -34,26 +34,26 @@ export async function POST() {
     });
 
     const {
- data, error: sessionError, 
-} = await supabase.auth.getSession();
+ data: userData, error: userError, 
+} = await supabase.auth.getUser();
 
-    if (sessionError) {
-      console.error('Failed to read Supabase session in sync-profile route', sessionError);
+    if (userError) {
+      console.error('Failed to verify Supabase user in sync-profile route', userError);
       return NextResponse.json({ message: 'Unable to verify session.', }, { status: 500, });
     }
 
-    const session = data.session;
+    const user = userData?.user;
 
-    if (!session) {
+    if (!user) {
       return NextResponse.json({ message: 'Not authenticated.', }, { status: 401, });
     }
 
     await ensureUserProfile({
-      authUserId: session.user.id,
+      authUserId: user.id,
       preferredHandle: null,
-      avatarUrl: session.user.user_metadata?.avatar_url ?? null,
-      email: session.user.email ?? null,
-      metadata: session.user.user_metadata ?? {},
+      avatarUrl: user.user_metadata?.avatar_url ?? null,
+      email: user.email ?? null,
+      metadata: user.user_metadata ?? {},
     });
 
     return NextResponse.json({ ok: true, });

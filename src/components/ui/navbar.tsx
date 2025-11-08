@@ -94,6 +94,7 @@ export default function NavBar({
   const navRef = React.useRef<HTMLElement>(null);
   const [isOpen, setIsOpen] = React.useState(false);
   const [session, setSession] = React.useState<Session | null>(null);
+  const [isSessionResolved, setIsSessionResolved] = React.useState(false);
   const router = useRouter();
 
   const closeMenu = React.useCallback(() => setIsOpen(false), []);
@@ -106,15 +107,18 @@ export default function NavBar({
       .then(({ data, }) => {
         if (!mounted) return;
         setSession(data.session ?? null);
+        setIsSessionResolved(true);
       })
       .catch(() => {
         if (!mounted) return;
         setSession(null);
+        setIsSessionResolved(true);
       });
 
     const { data: { subscription, }, } = supabase.auth.onAuthStateChange((_event, newSession) => {
       if (!mounted) return;
       setSession(newSession);
+      setIsSessionResolved(true);
     });
 
     return () => {
@@ -189,7 +193,7 @@ export default function NavBar({
       icon: FaQuestion,
     }
   ];
-  const shouldShowNavLinks = !session;
+  const shouldShowNavLinks = isSessionResolved && !session;
   const resolvedMenuItems = shouldShowNavLinks ? (menuItems ?? defaultMenuItems) : [];
 
   const avatarUrl = session?.user?.user_metadata?.avatar_url

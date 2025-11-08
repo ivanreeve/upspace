@@ -39,10 +39,17 @@ export async function middleware(request: NextRequest) {
       },
     });
 
-    const { data, } = await supabase.auth.getSession();
-    const { session, } = data;
+    const {
+ data: userData, error: userError, 
+} = await supabase.auth.getUser();
+    if (userError) {
+      console.error('Failed to verify auth user in middleware', userError);
+      return response;
+    }
+    const user = userData?.user;
+    console.log('Middleware user data:', userData);
 
-    if (!session) {
+    if (!user) {
       if (isOnboardingPath) {
         const homeUrl = new URL('/', request.url);
         return NextResponse.redirect(homeUrl);
@@ -56,6 +63,11 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(homeUrl);
     }
 
+    if (PUBLIC_PATHS.has(pathname)) {
+      const onboardingUrl = new URL(ONBOARDING_PATH, request.url);
+      return NextResponse.redirect(onboardingUrl);
+    }
+
     if (isOnboardingPath) {
       return response;
     }
@@ -65,7 +77,7 @@ export async function middleware(request: NextRequest) {
 } = await supabase
       .from('user')
       .select('is_onboard')
-      .eq('auth_user_id', session.user.id)
+      .eq('auth_user_id', user.id)
       .maybeSingle();
 
     if (error) {
@@ -75,9 +87,7 @@ export async function middleware(request: NextRequest) {
 
     if (!profile?.is_onboard && !isOnboardingPath) {
       const onboardingUrl = new URL(ONBOARDING_PATH, request.url);
-      response.headers.set('location', onboardingUrl.toString());
-      response.status = 307;
-      return response;
+      return NextResponse.redirect(onboardingUrl);
     }
   } catch (error) {
     console.error('Supabase middleware error', error);
