@@ -6,6 +6,7 @@ import { ChevronDownIcon } from 'lucide-react';
 import { CgSpinner } from 'react-icons/cg';
 import { FaCheck } from 'react-icons/fa';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -54,6 +55,7 @@ export default function OnboardingExperience() {
   const [birthday, setBirthday] = useState<Date | undefined>(undefined);
   const [isBirthdayOpen, setBirthdayOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
 
   const handleInputChange =
     (field: keyof FormState) => (event: ChangeEvent<HTMLInputElement>) => {
@@ -101,6 +103,12 @@ export default function OnboardingExperience() {
 
       const successMessage = 'Nice! We saved your name and role.';
       toast.success(successMessage);
+
+      const ROLE_REDIRECT_MAP: Record<RoleOption, string> = { 
+        customer: '/marketplace',
+        partner: '/spaces', 
+      };
+      router.replace(ROLE_REDIRECT_MAP[selectedRole]);
     } catch (error) {
       console.error('Failed to save onboarding information', error);
       const errorMessage =
