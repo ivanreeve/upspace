@@ -8,6 +8,7 @@ const onboardingSchema = z.object({
   middleName: z.string().trim().optional(),
   lastName: z.string().trim().min(1, 'Last name is required.'),
   role: z.enum(['partner', 'customer']),
+  birthday: z.string().datetime().optional(),
 });
 
 export async function POST(request: Request) {
@@ -25,8 +26,9 @@ export async function POST(request: Request) {
 
     const supabase = await createSupabaseServerClient();
     const {
- data: authData, error: authError, 
-} = await supabase.auth.getUser();
+      data: authData,
+      error: authError,
+    } = await supabase.auth.getUser();
 
     if (authError) {
       console.error('Failed to read Supabase session in onboarding route', authError);
@@ -38,12 +40,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Authentication required.', }, { status: 401, });
     }
 
+    const birthdayValue = parsed.data.birthday
+      ? new Date(parsed.data.birthday).toISOString().split('T')[0]
+      : null;
+
     const { error: updateError, } = await supabase
       .from('user')
       .update({
         first_name: parsed.data.firstName,
         middle_name: parsed.data.middleName?.length ? parsed.data.middleName : null,
         last_name: parsed.data.lastName,
+        birthday: birthdayValue,
         role: parsed.data.role,
         is_onboard: false,
       })

@@ -1,10 +1,13 @@
 'use client';
 
+import { ChevronDownIcon } from 'lucide-react';
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
 const roleOptions = [
@@ -40,11 +43,13 @@ export default function OnboardingExperience() {
     lastName: '',
   });
   const [selectedRole, setSelectedRole] = useState<RoleOption | ''>('');
+  const [birthday, setBirthday] = useState<Date | undefined>(undefined);
+  const [isBirthdayOpen, setBirthdayOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState<StatusState>({
- type: 'idle',
-message: '', 
-});
+    type: 'idle',
+    message: '',
+  });
 
   const handleInputChange =
     (field: keyof FormState) => (event: ChangeEvent<HTMLInputElement>) => {
@@ -57,9 +62,9 @@ message: '',
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setStatus({
- type: 'idle',
-message: '', 
-});
+      type: 'idle',
+      message: '',
+    });
 
     const trimmedFirst = formState.firstName.trim();
     const trimmedLast = formState.lastName.trim();
@@ -91,6 +96,7 @@ message: '',
           middleName: formState.middleName.trim(),
           lastName: trimmedLast,
           role: selectedRole,
+          birthday: birthday ? birthday.toISOString() : undefined,
         }),
       });
 
@@ -101,7 +107,8 @@ message: '',
 
       setStatus({
         type: 'success',
-        message: 'Nice! We saved your name and role. You will stay on onboarding until the rest of the flow is ready.',
+        message:
+          'Nice! We saved your onboarding details and role. You will stay on onboarding until the rest of the flow is ready.',
       });
     } catch (error) {
       console.error('Failed to save onboarding information', error);
@@ -134,13 +141,13 @@ message: '',
         <section className="space-y-10 rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm shadow-slate-900/5 sm:p-10">
           <div className="space-y-4">
             <h2 className="text-2xl font-semibold text-foreground">Your details</h2>
-                <p className="text-sm text-muted-foreground">
-                  Fill out the name fields below. You can add a middle name if you&apos;d like, but first and last are mandatory.
-                </p>
+            <p className="text-sm text-muted-foreground">
+              Fill out the name fields below. You can add a middle name if you&apos;d like, but first and last are mandatory.
+            </p>
           </div>
 
           <form onSubmit={ handleSubmit } className="space-y-8">
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First name</Label>
                 <Input
@@ -172,6 +179,38 @@ message: '',
                   onChange={ handleInputChange('lastName') }
                   required
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="birthday">Birthday</Label>
+                <Popover open={ isBirthdayOpen } onOpenChange={ setBirthdayOpen }>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      id="birthday"
+                      aria-label="Select birthday"
+                      className="w-full justify-between font-normal text-left"
+                    >
+                      { birthday ? birthday.toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      }) : 'Add birthday' }
+                      <ChevronDownIcon className="size-4" aria-hidden="true" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={ birthday }
+                      captionLayout="dropdown"
+                      onSelect={ (date) => {
+                        setBirthday(date ?? undefined);
+                        setBirthdayOpen(false);
+                      } }
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
 
@@ -224,7 +263,7 @@ message: '',
 
             <div className="flex flex-col gap-2">
               <Button type="submit" className="w-full" disabled={ isSubmitting }>
-                { isSubmitting ? 'Saving...' : 'Save name & role' }
+                { isSubmitting ? 'Saving...' : 'Save profile details' }
               </Button>
               { status.message && (
                 <p
