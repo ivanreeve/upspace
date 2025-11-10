@@ -25,6 +25,13 @@ const roleOptions = [
   }
 ] as const;
 
+function formatBirthday(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 type RoleOption = (typeof roleOptions)[number]['value'];
 
 type FormState = {
@@ -98,7 +105,7 @@ export default function OnboardingExperience() {
           middleName: formState.middleName.trim(),
           lastName: trimmedLast,
           role: selectedRole,
-          birthday: birthday ? birthday.toISOString() : undefined,
+          birthday: birthday ? formatBirthday(birthday) : undefined,
         }),
       });
 

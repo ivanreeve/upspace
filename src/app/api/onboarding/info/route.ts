@@ -1,14 +1,25 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
+import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+
+const BIRTHDAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
 
 const onboardingSchema = z.object({
   firstName: z.string().trim().min(1, 'First name is required.'),
   middleName: z.string().trim().optional(),
   lastName: z.string().trim().min(1, 'Last name is required.'),
   role: z.enum(['partner', 'customer']),
-  birthday: z.string().datetime().optional(),
+  birthday: z
+    .string()
+    .regex(BIRTHDAY_PATTERN, 'Enter your birthday in YYYY-MM-DD format.')
+    .refine((value) => {
+      const parsed = new Date(`${value}T00:00:00Z`);
+      return !Number.isNaN(parsed.getTime());
+    }, 'Provide a valid birthday.')
+    .optional(),
 });
 
 export async function POST(request: Request) {
@@ -40,27 +51,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Authentication required.', }, { status: 401, });
     }
 
-    const birthdayValue = parsed.data.birthday
-      ? new Date(parsed.data.birthday).toISOString().split('T')[0]
+    const birthdayDate = parsed.data.birthday
+      ? new Date(`${parsed.data.birthday}T00:00:00Z`)
       : null;
 
-    const { error: updateError, } = await supabase
-      .from('user')
-      .update({
-        first_name: parsed.data.firstName,
-        middle_name: parsed.data.middleName?.length ? parsed.data.middleName : null,
-        last_name: parsed.data.lastName,
-        birthday: birthdayValue,
-        role: parsed.data.role,
-        is_onboard: false,
-      })
-      .eq('auth_user_id', authUser.id);
-
-    if (updateError) {
-      console.error('Failed to save onboarding info', updateError);
+    try {
+      await prisma.user.update({
+        where: { auth_user_id: authUser.id },
+        data: {
+          first_name: parsed.data.firstName,
+          middle_name: parsed.data.middleName?.length ? parsed.data.middleName : null,
+          last_name: parsed.data.lastName,
+          birthday: birthdayDate,
+          role: parsed.data.role,
+          is_onboard: true,
+        },
+      });
+    } catch (dbError) {
+      console.error('Failed to save onboarding info', dbError);
       return NextResponse.json(
         { message: 'Unable to persist your onboarding information at the moment.', },
-        { status: 500, }
+        { status: 500 }
       );
     }
 
