@@ -84,6 +84,5 @@ Before creating a PR:
 
 ## For AI Agents (Codex)
 
-1. **Read this file first**: Review this `AGENTS.md` and any nested versions in subdirectories before making changes.
-2. **Keep conventions**: Maintain existing patterns and standards with minimal diff churn.
-3. **Run checks**: Use linting and type-checking commands before proposing changes.
+1. **Keep conventions**: Maintain existing patterns and standards with minimal diff churn.
+2. **Run checks**: Use linting and type-checking commands before proposing changes.
