@@ -4,7 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { isAuthSessionMissingError } from '@supabase/supabase-js';
 
 const PUBLIC_PATHS = new Set<string>(['/', '/signup', '/forgot-password']);
-const IGNORED_PREFIXES = ['/api', '/_next', '/static', '/assets'];
+const IGNORED_PREFIXES = ['/api', '/_next', '/static', '/assets', '/img'];
 const ONBOARDING_PATH = '/onboarding';
 const ROLE_REDIRECT_MAP: Record<string, string> = {
   customer: '/marketplace',
@@ -112,4 +112,4 @@ export async function middleware(request: NextRequest) {
   return response;
 }
 
-export const config = { matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'], };
+export const config = { matcher: ['/((?!_next/static|_next/image|favicon.ico|img).*)'], };

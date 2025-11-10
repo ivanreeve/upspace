@@ -286,3 +286,23 @@
 .toast-success-color * {
   color: var(--success-green) !important;
 }
+
+.role-card-selected {
+  box-shadow:
+    0 10px 15px -3px rgba(15, 23, 42, 0.07),
+    0 4px 6px -4px rgba(15, 23, 42, 0.05),
+    inset 0 0 0 2px var(--secondary),
+    inset 0 0 35px 0 var(--secondary);
+  position: relative;
+}
+
+.role-card-selected::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 0 35px 0 var(--secondary);
+  z-index: 5;
+  mix-blend-mode: screen;
+}

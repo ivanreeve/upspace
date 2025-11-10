@@ -4,6 +4,7 @@ import { useState, type ChangeEvent, type FormEvent } from 'react';
 import Image from 'next/image';
 import { ChevronDownIcon } from 'lucide-react';
 import { CgSpinner } from 'react-icons/cg';
+import { FaCheck } from 'react-icons/fa';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -159,16 +160,16 @@ export default function OnboardingExperience() {
             </p>
           </div>
 
-          <form onSubmit={ handleSubmit } className="space-y-8">
+          <form onSubmit={handleSubmit} className="space-y-8">
             <div className="grid gap-4 sm:grid-cols-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First name</Label>
                 <Input
                   id="firstName"
                   name="firstName"
-                  placeholder="Alex"
-                  value={ formState.firstName }
-                  onChange={ handleInputChange('firstName') }
+                  placeholder="First Name"
+                  value={formState.firstName}
+                  onChange={handleInputChange('firstName')}
                   required
                 />
               </div>
@@ -177,9 +178,9 @@ export default function OnboardingExperience() {
                 <Input
                   id="middleName"
                   name="middleName"
-                  placeholder="Marie"
-                  value={ formState.middleName }
-                  onChange={ handleInputChange('middleName') }
+                  placeholder="Middle Name"
+                  value={formState.middleName}
+                  onChange={handleInputChange('middleName')}
                 />
               </div>
               <div className="space-y-2">
@@ -187,15 +188,15 @@ export default function OnboardingExperience() {
                 <Input
                   id="lastName"
                   name="lastName"
-                  placeholder="Garcia"
-                  value={ formState.lastName }
-                  onChange={ handleInputChange('lastName') }
+                  placeholder="Surname"
+                  value={formState.lastName}
+                  onChange={handleInputChange('lastName')}
                   required
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="birthday">Birthday</Label>
-                <Popover open={ isBirthdayOpen } onOpenChange={ setBirthdayOpen }>
+                <Popover open={isBirthdayOpen} onOpenChange={setBirthdayOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       type="button"
@@ -204,23 +205,23 @@ export default function OnboardingExperience() {
                       aria-label="Select birthday"
                       className="w-full justify-between font-normal text-left"
                     >
-                      { birthday ? birthday.toLocaleDateString(undefined, {
+                      {birthday ? birthday.toLocaleDateString(undefined, {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',
-                      }) : 'Add birthday' }
+                      }) : 'Add birthday'}
                       <ChevronDownIcon className="size-4" aria-hidden="true" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto overflow-hidden p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={ birthday }
+                      selected={birthday}
                       captionLayout="dropdown"
-                      onSelect={ (date) => {
+                      onSelect={(date) => {
                         setBirthday(date ?? undefined);
                         setBirthdayOpen(false);
-                      } }
+                      }}
                     />
                   </PopoverContent>
                 </Popover>
@@ -239,24 +240,24 @@ export default function OnboardingExperience() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                { roleOptions.map((option) => {
+                {roleOptions.map((option) => {
                   const active = selectedRole === option.value;
                   return (
                     <button
-                      key={ option.value }
+                      key={option.value}
                       type="button"
-                      aria-pressed={ active }
-                      onClick={ () => setSelectedRole(option.value) }
-                      className={ cn(
-                        'relative flex h-full w-full flex-col justify-between overflow-hidden rounded-2xl border p-5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                      aria-pressed={active}
+                      onClick={() => setSelectedRole(option.value)}
+                      className={cn(
+                        'relative cursor-pointer flex h-full w-full flex-col justify-between overflow-hidden border-2 p-5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                         active
-                          ? 'border-primary shadow-lg'
+                          ? 'border-secondary role-card-selected'
                           : 'border-border hover:border-secondary'
-                      ) }
-                      style={ { minHeight: '14rem', } }
+                      )}
+                      style={{ minHeight: '14rem', }}
                     >
                       <Image
-                        src={ option.image }
+                        src={option.image}
                         alt=""
                         fill
                         sizes="(max-width: 640px) 100vw, 50vw"
@@ -264,26 +265,26 @@ export default function OnboardingExperience() {
                         aria-hidden="true"
                       />
                       <div
-                        className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(2,6,23,0.6)_0%,rgba(2,6,23,0.35)_40%,rgba(15,23,42,0.1)_80%)]"
+                        className="pointer-events-none backdrop-blur-xs absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.7)_0%,rgba(0,0,0,0.7)_40%,rgba(0,0,0,0.7)_80%)]"
                         aria-hidden="true"
                       />
                       <div className="relative z-10 flex items-center justify-between gap-3">
                         <div>
-                          <p className="text-lg font-semibold text-white">{ option.title }</p>
+                          <p className="text-lg font-semibold text-white font-sf">{option.title}</p>
                         </div>
                         <span
-                          className={ cn(
+                          className={cn(
                             'flex h-6 w-6 items-center justify-center rounded-full border text-xs font-semibold bg-background/80',
-                            active ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
-                          ) }
+                            active ? 'border-secondary bg-secondary text-primary-foreground' : 'border-border text-muted-foreground'
+                          )}
                         >
-                          { active ? '✓' : '' }
+                          {active ? <FaCheck className="size-3" aria-hidden="true" /> : null}
                         </span>
                       </div>
-                      <p className="relative z-10 mt-4 text-sm leading-relaxed text-white/90">{ option.description }</p>
+                      <p className="relative z-10 mt-4 text-sm leading-relaxed text-white/90">{option.description}</p>
                     </button>
                   );
-                }) }
+                })}
               </div>
             </div>
 
@@ -291,26 +292,26 @@ export default function OnboardingExperience() {
               <Button
                 type="submit"
                 className="w-full justify-center gap-2"
-                disabled={ isSubmitting }
+                disabled={isSubmitting}
               >
-                { isSubmitting && <CgSpinner className="h-4 w-4 animate-spin" aria-hidden="true" /> }
-                <span>{ isSubmitting ? 'Saving...' : 'Save profile details' }</span>
+                {isSubmitting && <CgSpinner className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                <span>{isSubmitting ? 'Saving...' : 'Save profile details'}</span>
               </Button>
-              { status.message && (
+              {status.message && (
                 <p
                   aria-live="polite"
-                  className={ cn(
+                  className={cn(
                     'text-sm',
                     status.type === 'success'
                       ? 'text-success-green'
                       : status.type === 'error'
                         ? 'text-destructive'
                         : 'text-muted-foreground'
-                  ) }
+                  )}
                 >
-                  { status.message }
+                  {status.message}
                 </p>
-              ) }
+              )}
             </div>
           </form>
         </section>
