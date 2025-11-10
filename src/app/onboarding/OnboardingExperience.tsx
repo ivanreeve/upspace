@@ -159,7 +159,7 @@ export default function OnboardingExperience() {
             </p>
           </div>
 
-          <form onSubmit={ handleSubmit } className="space-y-8">
+          <form onSubmit={handleSubmit} className="space-y-8">
             <div className="space-y-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <div>
@@ -168,28 +168,27 @@ export default function OnboardingExperience() {
                     Depending on your selection, we tailor the experience once onboarding is fully live.
                   </p>
                 </div>
-                <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Required</span>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                { roleOptions.map((option) => {
+                {roleOptions.map((option) => {
                   const active = selectedRole === option.value;
                   return (
                     <button
-                      key={ option.value }
+                      key={option.value}
                       type="button"
-                      aria-pressed={ active }
-                      onClick={ () => setSelectedRole(option.value) }
-                      className={ cn(
+                      aria-pressed={active}
+                      onClick={() => setSelectedRole(option.value)}
+                      className={cn(
                         'relative cursor-pointer flex h-full w-full flex-col justify-between overflow-hidden border-2 p-5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                         active
                           ? 'border-secondary role-card-selected'
                           : 'border-border hover:border-secondary'
-                      ) }
-                      style={ { minHeight: '14rem', } }
+                      )}
+                      style={{ minHeight: '14rem', }}
                     >
                       <Image
-                        src={ option.image }
+                        src={option.image}
                         alt=""
                         fill
                         sizes="(max-width: 640px) 100vw, 50vw"
@@ -202,21 +201,21 @@ export default function OnboardingExperience() {
                       />
                       <div className="relative z-10 flex items-center justify-between gap-3">
                         <div>
-                          <p className="text-lg font-semibold text-white font-sf">{ option.title }</p>
+                          <p className="text-lg font-semibold text-white font-sf">{option.title}</p>
                         </div>
                         <span
-                          className={ cn(
+                          className={cn(
                             'flex h-6 w-6 items-center justify-center rounded-full border text-xs font-semibold bg-background/80',
                             active ? 'border-secondary bg-secondary text-primary-foreground' : 'border-border text-muted-foreground'
-                          ) }
+                          )}
                         >
-                          { active ? <FaCheck className="size-3" aria-hidden="true" /> : null }
+                          {active ? <FaCheck className="size-3" aria-hidden="true" /> : null}
                         </span>
                       </div>
-                      <p className="relative z-10 mt-4 font-sf text-sm leading-relaxed text-white/90">{ option.description }</p>
+                      <p className="relative z-10 mt-4 font-sf text-sm leading-relaxed text-white/90">{option.description}</p>
                     </button>
                   );
-                }) }
+                })}
               </div>
             </div>
 
@@ -227,8 +226,8 @@ export default function OnboardingExperience() {
                   id="firstName"
                   name="firstName"
                   placeholder="First Name"
-                  value={ formState.firstName }
-                  onChange={ handleInputChange('firstName') }
+                  value={formState.firstName}
+                  onChange={handleInputChange('firstName')}
                   required
                 />
               </div>
@@ -238,8 +237,8 @@ export default function OnboardingExperience() {
                   id="middleName"
                   name="middleName"
                   placeholder="Middle Name"
-                  value={ formState.middleName }
-                  onChange={ handleInputChange('middleName') }
+                  value={formState.middleName}
+                  onChange={handleInputChange('middleName')}
                 />
               </div>
               <div className="space-y-2">
@@ -248,14 +247,14 @@ export default function OnboardingExperience() {
                   id="lastName"
                   name="lastName"
                   placeholder="Surname"
-                  value={ formState.lastName }
-                  onChange={ handleInputChange('lastName') }
+                  value={formState.lastName}
+                  onChange={handleInputChange('lastName')}
                   required
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="birthday">Birthday</Label>
-                <Popover open={ isBirthdayOpen } onOpenChange={ setBirthdayOpen }>
+                <Popover open={isBirthdayOpen} onOpenChange={setBirthdayOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       type="button"
@@ -264,23 +263,23 @@ export default function OnboardingExperience() {
                       aria-label="Select birthday"
                       className="w-full justify-between font-normal text-left"
                     >
-                      { birthday ? birthday.toLocaleDateString(undefined, {
+                      {birthday ? birthday.toLocaleDateString(undefined, {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',
-                      }) : 'Add birthday' }
+                      }) : 'Add birthday'}
                       <ChevronDownIcon className="size-4" aria-hidden="true" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto overflow-hidden p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={ birthday }
+                      selected={birthday}
                       captionLayout="dropdown"
-                      onSelect={ (date) => {
+                      onSelect={(date) => {
                         setBirthday(date ?? undefined);
                         setBirthdayOpen(false);
-                      } }
+                      }}
                     />
                   </PopoverContent>
                 </Popover>
@@ -291,26 +290,26 @@ export default function OnboardingExperience() {
               <Button
                 type="submit"
                 className="w-full justify-center gap-2"
-                disabled={ isSubmitting }
+                disabled={isSubmitting}
               >
-                { isSubmitting && <CgSpinner className="h-4 w-4 animate-spin" aria-hidden="true" /> }
-                <span>{ isSubmitting ? 'Saving...' : 'Save profile details' }</span>
+                {isSubmitting && <CgSpinner className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                <span>{isSubmitting ? 'Saving...' : 'Save profile details'}</span>
               </Button>
-              { status.message && (
+              {status.message && (
                 <p
                   aria-live="polite"
-                  className={ cn(
+                  className={cn(
                     'text-sm',
                     status.type === 'success'
                       ? 'text-success-green'
                       : status.type === 'error'
                         ? 'text-destructive'
                         : 'text-muted-foreground'
-                  ) }
+                  )}
                 >
-                  { status.message }
+                  {status.message}
                 </p>
-              ) }
+              )}
             </div>
           </form>
         </section>
