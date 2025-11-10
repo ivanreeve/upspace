@@ -11,9 +11,9 @@ export const metadata: Metadata = {
 
 export default function OnboardingPage() {
   return (
-    <>
+    <div className="flex min-h-screen flex-col bg-background overflow-hidden">
       <NavBar variant="logo-only" />
       <OnboardingExperience />
-    </>
+    </div>
   );
 }
