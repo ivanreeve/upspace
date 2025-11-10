@@ -57,7 +57,7 @@ export async function POST(request: Request) {
 
     try {
       await prisma.user.update({
-        where: { auth_user_id: authUser.id },
+        where: { auth_user_id: authUser.id, },
         data: {
           first_name: parsed.data.firstName,
           middle_name: parsed.data.middleName?.length ? parsed.data.middleName : null,
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       console.error('Failed to save onboarding info', dbError);
       return NextResponse.json(
         { message: 'Unable to persist your onboarding information at the moment.', },
-        { status: 500 }
+        { status: 500, }
       );
     }
 

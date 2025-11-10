@@ -59,7 +59,6 @@ export async function middleware(request: NextRequest) {
       return response;
     }
     const user = isMissingSessionError ? null : userData?.user;
-    console.log('Middleware user data:', userData);
 
     if (!user) {
       if (isOnboardingPath) {
