@@ -141,7 +141,7 @@ export default function OnboardingExperience() {
   return (
     <main className="flex-1 overflow-y-auto bg-background px-4 pb-10 sm:py-16">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-12">
-        <header className="space-y-3 text-center sm:text-left">
+        <header className="space-y-3 text-center sm:text-left hidden sm:block">
           <h1 className="text-3xl font-semibold leading-tight text-foreground sm:text-4xl">
             Are you joining Upspace as a partner or customer?
           </h1>
