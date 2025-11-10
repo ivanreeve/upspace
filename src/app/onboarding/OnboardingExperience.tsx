@@ -44,11 +44,6 @@ type FormState = {
   lastName: string;
 };
 
-type StatusState = {
-  type: 'idle' | 'error' | 'success';
-  message: string;
-};
-
 export default function OnboardingExperience() {
   const [formState, setFormState] = useState<FormState>({
     firstName: '',
@@ -59,10 +54,6 @@ export default function OnboardingExperience() {
   const [birthday, setBirthday] = useState<Date | undefined>(undefined);
   const [isBirthdayOpen, setBirthdayOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [status, setStatus] = useState<StatusState>({
-    type: 'idle',
-    message: '',
-  });
 
   const handleInputChange =
     (field: keyof FormState) => (event: ChangeEvent<HTMLInputElement>) => {
@@ -74,27 +65,17 @@ export default function OnboardingExperience() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setStatus({
-      type: 'idle',
-      message: '',
-    });
 
     const trimmedFirst = formState.firstName.trim();
     const trimmedLast = formState.lastName.trim();
 
     if (!trimmedFirst || !trimmedLast) {
-      setStatus({
-        type: 'error',
-        message: 'Please provide both your first and last names so we can address you properly.',
-      });
+      toast.error('Please provide both your first and last names so we can address you properly.');
       return;
     }
 
     if (!selectedRole) {
-      setStatus({
-        type: 'error',
-        message: 'Select whether you are joining as a partner or a customer before we save your profile.',
-      });
+      toast.error('Select whether you are joining as a partner or a customer before we save your profile.');
       return;
     }
 
@@ -120,19 +101,13 @@ export default function OnboardingExperience() {
 
       const successMessage = 'Nice! We saved your name and role.';
       toast.success(successMessage);
-      setStatus({
-        type: 'success',
-        message: successMessage,
-      });
     } catch (error) {
       console.error('Failed to save onboarding information', error);
-      setStatus({
-        type: 'error',
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Something went wrong while saving your details. Please try again.',
-      });
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Something went wrong while saving your details. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -295,21 +270,6 @@ export default function OnboardingExperience() {
                 { isSubmitting && <CgSpinner className="h-4 w-4 animate-spin" aria-hidden="true" /> }
                 <span>{ isSubmitting ? 'Saving...' : 'Save profile details' }</span>
               </Button>
-              { status.message && (
-                <p
-                  aria-live="polite"
-                  className={ cn(
-                    'text-sm',
-                    status.type === 'success'
-                      ? 'text-success-green'
-                      : status.type === 'error'
-                        ? 'text-destructive'
-                        : 'text-muted-foreground'
-                  ) }
-                >
-                  { status.message }
-                </p>
-              ) }
             </div>
           </form>
         </section>
