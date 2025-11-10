@@ -1,7 +1,9 @@
 'use client';
 
-import { ChevronDownIcon } from 'lucide-react';
 import { useState, type ChangeEvent, type FormEvent } from 'react';
+import { ChevronDownIcon } from 'lucide-react';
+import { CgSpinner } from 'react-icons/cg';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -105,10 +107,11 @@ export default function OnboardingExperience() {
         throw new Error(data?.message ?? 'Unable to persist your onboarding details at the moment.');
       }
 
+      const successMessage = 'Nice! We saved your name and role.';
+      toast.success(successMessage);
       setStatus({
         type: 'success',
-        message:
-          'Nice! We saved your onboarding details and role. You will stay on onboarding until the rest of the flow is ready.',
+        message: successMessage,
       });
     } catch (error) {
       console.error('Failed to save onboarding information', error);
@@ -262,8 +265,13 @@ export default function OnboardingExperience() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <Button type="submit" className="w-full" disabled={ isSubmitting }>
-                { isSubmitting ? 'Saving...' : 'Save profile details' }
+              <Button
+                type="submit"
+                className="w-full justify-center gap-2"
+                disabled={ isSubmitting }
+              >
+                { isSubmitting && <CgSpinner className="h-4 w-4 animate-spin" aria-hidden="true" /> }
+                <span>{ isSubmitting ? 'Saving...' : 'Save profile details' }</span>
               </Button>
               { status.message && (
                 <p
