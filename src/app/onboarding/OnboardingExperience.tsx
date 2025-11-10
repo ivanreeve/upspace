@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type ChangeEvent, type FormEvent } from 'react';
+import Image from 'next/image';
 import { ChevronDownIcon } from 'lucide-react';
 import { CgSpinner } from 'react-icons/cg';
 import { toast } from 'sonner';
@@ -17,11 +18,13 @@ const roleOptions = [
     value: 'partner',
     title: 'Partner',
     description: 'Manage spaces, onboard teammates, and keep your inventory visible to the community.',
+    image: '/img/onboarding-partner-bg.jpeg',
   },
   {
     value: 'customer',
     title: 'Customer',
     description: 'Book ready-to-use rooms, see availability in one glance, and keep your projects on track.',
+    image: '/img/onboarding-customer-bg.jpeg',
   }
 ] as const;
 
@@ -245,26 +248,39 @@ export default function OnboardingExperience() {
                       aria-pressed={ active }
                       onClick={ () => setSelectedRole(option.value) }
                       className={ cn(
-                        'flex h-full w-full flex-col justify-between rounded-2xl border p-5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                        'relative flex h-full w-full flex-col justify-between overflow-hidden rounded-2xl border p-5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                         active
-                          ? 'border-primary bg-primary/10 shadow-lg'
-                          : 'border-border bg-background/80 hover:border-secondary'
+                          ? 'border-primary shadow-lg'
+                          : 'border-border hover:border-secondary'
                       ) }
+                      style={ { minHeight: '14rem', } }
                     >
-                      <div className="flex items-center justify-between gap-3">
+                      <Image
+                        src={ option.image }
+                        alt=""
+                        fill
+                        sizes="(max-width: 640px) 100vw, 50vw"
+                        className="pointer-events-none object-cover"
+                        aria-hidden="true"
+                      />
+                      <div
+                        className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(2,6,23,0.6)_0%,rgba(2,6,23,0.35)_40%,rgba(15,23,42,0.1)_80%)]"
+                        aria-hidden="true"
+                      />
+                      <div className="relative z-10 flex items-center justify-between gap-3">
                         <div>
-                          <p className="text-lg font-semibold text-foreground">{ option.title }</p>
+                          <p className="text-lg font-semibold text-white">{ option.title }</p>
                         </div>
                         <span
                           className={ cn(
-                            'flex h-6 w-6 items-center justify-center rounded-full border text-xs font-semibold',
+                            'flex h-6 w-6 items-center justify-center rounded-full border text-xs font-semibold bg-background/80',
                             active ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
                           ) }
                         >
                           { active ? '✓' : '' }
                         </span>
                       </div>
-                      <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{ option.description }</p>
+                      <p className="relative z-10 mt-4 text-sm leading-relaxed text-white/90">{ option.description }</p>
                     </button>
                   );
                 }) }
