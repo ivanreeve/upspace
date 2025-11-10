@@ -7,8 +7,8 @@ import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
 
 export function AuthProfileSync() {
   const {
- session, isLoading, 
-} = useSession();
+    session, isLoading,
+  } = useSession();
   const syncedUserRef = useRef<string | null>(null);
   const authFetch = useAuthenticatedFetch();
 
@@ -26,7 +26,6 @@ export function AuthProfileSync() {
       method: 'POST',
       signal: controller.signal,
     }).catch(() => {
-      // Silently ignore errors; this request will be retried on navigation.
     });
     return () => {
       controller.abort();
