@@ -4,6 +4,7 @@ import { AuthApiError } from '@supabase/supabase-js';
 import { z } from 'zod';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { ROLE_REDIRECT_MAP } from '@/lib/constants';
 
 const schema = z
   .object({
@@ -108,13 +109,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
       };
     }
 
-    const roleRedirectMap: Record<string, string> = {
-      customer: '/marketplace',
-      partner: '/spaces',
-      admin: '/admin',
-    };
-
-    const roleRedirect = profile?.role ? roleRedirectMap[profile.role] : undefined;
+    const roleRedirect = profile?.role ? ROLE_REDIRECT_MAP[profile.role] : undefined;
 
     return {
       ok: true,

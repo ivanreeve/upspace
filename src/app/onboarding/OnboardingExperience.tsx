@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { ROLE_REDIRECT_MAP } from '@/lib/constants';
 
 const roleOptions = [
   {
@@ -103,11 +104,6 @@ export default function OnboardingExperience() {
 
       const successMessage = 'Nice! We saved your name and role.';
       toast.success(successMessage);
-
-      const ROLE_REDIRECT_MAP: Record<RoleOption, string> = { 
-        customer: '/marketplace',
-        partner: '/spaces', 
-      };
       router.replace(ROLE_REDIRECT_MAP[selectedRole]);
     } catch (error) {
       console.error('Failed to save onboarding information', error);

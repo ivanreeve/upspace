@@ -3,14 +3,12 @@ import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { isAuthSessionMissingError } from '@supabase/supabase-js';
 
-const PUBLIC_PATHS = new Set<string>(['/', '/signup', '/forgot-password']);
-const IGNORED_PREFIXES = ['/api', '/_next', '/static', '/assets', '/img'];
-const ONBOARDING_PATH = '/onboarding';
-const ROLE_REDIRECT_MAP: Record<string, string> = {
-  customer: '/marketplace',
-  partner: '/spaces',
-  admin: '/admin',
-};
+import {
+  IGNORED_PREFIXES,
+  ONBOARDING_PATH,
+  PUBLIC_PATHS,
+  ROLE_REDIRECT_MAP,
+} from '@/lib/constants';
 
 export async function middleware(request: NextRequest) {
   const { pathname, } = request.nextUrl;
