@@ -135,7 +135,7 @@ export default function OnboardingExperience() {
         </header>
 
         <section className="space-y-10 rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm shadow-slate-900/5 sm:p-10">
-          <div className="space-y-4">
+          <div className="space-y-4 mb-4">
             <h2 className="text-2xl font-semibold text-foreground">Your details</h2>
             <p className="text-sm text-muted-foreground">
               Fill out the name fields below. You can add a middle name if you&apos;d like, but first and last are mandatory.
