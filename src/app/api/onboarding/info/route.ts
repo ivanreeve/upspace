@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { ALLOWED_USER_ROLES } from '@/lib/user-roles';
 
 const BIRTHDAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -11,7 +12,7 @@ const onboardingSchema = z.object({
   firstName: z.string().trim().min(1, 'First name is required.'),
   middleName: z.string().trim().optional(),
   lastName: z.string().trim().min(1, 'Last name is required.'),
-  role: z.enum(['partner', 'customer']),
+  role: z.enum(ALLOWED_USER_ROLES),
   birthday: z
     .string()
     .regex(BIRTHDAY_PATTERN, 'Enter your birthday in YYYY-MM-DD format.')

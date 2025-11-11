@@ -15,21 +15,12 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { ROLE_REDIRECT_MAP } from '@/lib/constants';
+import { ALLOWED_USER_ROLES, ROLE_DETAILS, type AllowedUserRole } from '@/lib/user-roles';
 
-const roleOptions = [
-  {
-    value: 'partner',
-    title: 'Partner',
-    description: 'Manage spaces, onboard teammates, and keep your inventory visible to the community.',
-    image: '/img/onboarding-partner-bg.jpeg',
-  },
-  {
-    value: 'customer',
-    title: 'Customer',
-    description: 'Book ready-to-use rooms, see availability in one glance, and keep your projects on track.',
-    image: '/img/onboarding-customer-bg.jpeg',
-  }
-] as const;
+const roleOptions = ALLOWED_USER_ROLES.map((value) => ({
+  value,
+  ...ROLE_DETAILS[value],
+})) as const;
 
 function formatBirthday(date: Date) {
   const year = date.getFullYear();
@@ -38,7 +29,7 @@ function formatBirthday(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-type RoleOption = (typeof roleOptions)[number]['value'];
+type RoleOption = AllowedUserRole;
 
 type FormState = {
   firstName: string;
