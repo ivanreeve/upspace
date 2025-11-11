@@ -22,6 +22,7 @@ PostgreSQL with required extensions:
 - **Patterns**: Prefer async/await over promises. No floating promises.
 - **Validation**: Use Zod for runtime validation of inputs and API payloads.
 - **DRY Principle**: Avoid code duplication. Extract repeated logic into reusable utilities, hooks, or components. Maintain a single source of truth for shared behavior, constants, and business logic.
+- **State Management**: Use React Query for "business data" that changes frequently and benefits from caching and prefetching.
 
 ### UI Development
 
