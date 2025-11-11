@@ -20,7 +20,7 @@ import { ALLOWED_USER_ROLES, ROLE_DETAILS, type AllowedUserRole } from '@/lib/us
 const roleOptions = ALLOWED_USER_ROLES.map((value) => ({
   value,
   ...ROLE_DETAILS[value],
-})) as const;
+}));
 
 function formatBirthday(date: Date) {
   const year = date.getFullYear();
