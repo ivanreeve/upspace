@@ -7,7 +7,7 @@ import {
   IGNORED_PREFIXES,
   ONBOARDING_PATH,
   PUBLIC_PATHS,
-  ROLE_REDIRECT_MAP,
+  ROLE_REDIRECT_MAP
 } from '@/lib/constants';
 
 export async function middleware(request: NextRequest) {
