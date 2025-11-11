@@ -92,9 +92,18 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
  data: profile, error: profileError, 
 } = await supabase
       .from('user')
-      .select('is_onboard, role')
+      .select('is_onboard, role, is_disabled')
       .eq('auth_user_id', authedUser.id)
       .maybeSingle();
+
+    if (profile?.is_disabled) {
+      await supabase.auth.signOut();
+
+      return {
+        ok: false,
+        message: 'Your account has been disabled. Contact support for help.',
+      };
+    }
 
     if (profileError) {
       console.error('Failed to fetch user onboarding state after sign-in', profileError);
