@@ -6,7 +6,7 @@ generator client {
 datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")
-  extensions = [postgis, uuid_ossp(map: "uuid-ossp", schema: "extensions")]
+  extensions = [uuid_ossp(map: "uuid-ossp", schema: "extensions")]
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -123,27 +123,26 @@ model signup_otps {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model space {
-  space_id           BigInt                    @id @unique @default(autoincrement())
+  space_id           BigInt               @id @unique @default(autoincrement())
   name               String
   unit_number        String
   street             String
   address_subunit    String
   city               String
   region             String
-  created_at         DateTime                  @db.Timestamptz(6)
-  updated_at         DateTime                  @db.Timestamptz(6)
+  created_at         DateTime             @db.Timestamptz(6)
+  updated_at         DateTime             @db.Timestamptz(6)
   postal_code        String
   user_id            BigInt
   description        String?
-  country_code       String                    @db.Char(2)
-  lat                Decimal                   @db.Decimal(9, 6)
-  long               Decimal                   @db.Decimal(9, 6)
-  location           Unsupported("geography")?
+  country_code       String               @db.Char(2)
+  lat                Decimal              @db.Decimal(9, 6)
+  long               Decimal              @db.Decimal(9, 6)
   amenity            amenity[]
   area               area[]
   booking            booking[]
   bookmark           bookmark[]
-  user               user                      @relation(fields: [user_id], references: [user_id])
+  user               user                 @relation(fields: [user_id], references: [user_id])
   space_availability space_availability[]
 }
 
@@ -160,15 +159,6 @@ model space_availability {
   space           space     @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([space_id, day_of_week], map: "uniq_space_day")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model spatial_ref_sys {
-  srid      Int     @id
-  auth_name String? @db.VarChar(256)
-  auth_srid Int?
-  srtext    String? @db.VarChar(2048)
-  proj4text String? @db.VarChar(2048)
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
