@@ -69,6 +69,11 @@ export default function SpaceCreateRoute() {
 
   const normalize = (value?: string) => (value ?? '').trim();
 
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const canAddMoreImages = selectedImages.length < MAX_IMAGE_COUNT;
+
   const isStepOneComplete =
     normalize(nameValue).length > 0 &&
     richTextPlainTextLength(descriptionValue ?? '') >= 20 &&
@@ -84,10 +89,6 @@ export default function SpaceCreateRoute() {
     normalize(countryCodeValue).length === 2;
 
   const [currentStep, setCurrentStep] = useState<1 | 2>(1);
-  const [selectedImages, setSelectedImages] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  const imageInputRef = useRef<HTMLInputElement | null>(null);
-  const canAddMoreImages = selectedImages.length < MAX_IMAGE_COUNT;
 
   const goToNextStep = async () => {
     const canProceed = await form.trigger(['name', 'description']);

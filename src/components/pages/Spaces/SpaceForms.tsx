@@ -343,7 +343,7 @@ function DescriptionEditor(props: DescriptionEditorProps) {
       <div className="bg-background px-3 py-3">
         <EditorContent
           editor={ editor }
-          className="min-h-[220px] border-none focus-visible:outline-none"
+          className="h-[500px] w-full overflow-auto border-none focus-visible:outline-none"
         />
       </div>
     </div>
