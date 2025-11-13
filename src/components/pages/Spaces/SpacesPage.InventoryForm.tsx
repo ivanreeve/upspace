@@ -1,17 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { FiPlus } from 'react-icons/fi';
-import { toast } from 'sonner';
-
-import { SpaceDialog, SpaceFormValues, createSpaceFormDefaults } from './SpaceForms';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle
@@ -28,21 +24,6 @@ import { useSpacesStore } from '@/stores/useSpacesStore';
 
 export function SpacesInventoryForm() {
   const spaces = useSpacesStore((state) => state.spaces);
-  const createSpace = useSpacesStore((state) => state.createSpace);
-
-  const [spaceDialogOpen, setSpaceDialogOpen] = useState(false);
-  const [spaceDialogValues, setSpaceDialogValues] = useState<SpaceFormValues>(createSpaceFormDefaults());
-
-  const openCreateSpaceDialog = () => {
-    setSpaceDialogValues(createSpaceFormDefaults());
-    setSpaceDialogOpen(true);
-  };
-
-  const handleCreateSpace = (values: SpaceFormValues) => {
-    createSpace(values);
-    setSpaceDialogOpen(false);
-    toast.success(`${values.name} created.`);
-  };
 
   const tableRows = useMemo(() => spaces.map((space) => ({
     id: space.id,
@@ -61,13 +42,15 @@ export function SpacesInventoryForm() {
           <div className="space-y-1">
             <h2 className="text-3xl font-semibold tracking-tight">Your spaces</h2>
             <p className="text-base text-muted-foreground">
-              Review every listing in a single table. Use the plus button to open the schema-aligned form for new entries.
+              Review every listing in a single table. Use the plus button to open the dedicated space creation page.
             </p>
           </div>
         </div>
-        <Button type="button" onClick={ openCreateSpaceDialog } className="inline-flex items-center gap-2">
-          <FiPlus className="size-4" aria-hidden="true" />
-          Add space
+        <Button asChild className="inline-flex items-center gap-2">
+          <Link href="/spaces/create" className="inline-flex items-center gap-2">
+            <FiPlus className="size-4" aria-hidden="true" />
+            Add space
+          </Link>
         </Button>
       </div>
 
@@ -122,13 +105,6 @@ export function SpacesInventoryForm() {
         </div>
       ) }
 
-      <SpaceDialog
-        open={ spaceDialogOpen }
-        mode="create"
-        initialValues={ spaceDialogValues }
-        onOpenChange={ setSpaceDialogOpen }
-        onSubmit={ handleCreateSpace }
-      />
     </section>
   );
 }

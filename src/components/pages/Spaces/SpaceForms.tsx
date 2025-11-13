@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useForm, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 import { FiLock } from 'react-icons/fi';
 
@@ -124,6 +124,233 @@ export const areaRecordToFormValues = (area: AreaRecord): AreaFormValues => ({
   rate_amount: area.rate_amount,
 });
 
+type SpaceFormFieldsProps = {
+  form: UseFormReturn<SpaceFormValues>;
+};
+
+export function SpaceFormFields({ form, }: SpaceFormFieldsProps) {
+  return (
+    <>
+      <FormField
+        control={ form.control }
+        name="name"
+        render={ ({ field, }) => (
+          <FormItem>
+            <FormLabel>Space name</FormLabel>
+            <FormControl>
+              <Input placeholder="Study Corner" { ...field } />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        ) }
+      />
+      <div className="grid gap-4 md:grid-cols-2">
+        <FormField
+          control={ form.control }
+          name="unit_number"
+          render={ ({ field, }) => (
+            <FormItem>
+              <FormLabel>Unit / Suite</FormLabel>
+              <FormControl>
+                <Input placeholder="Unit Number" { ...field } />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          ) }
+        />
+        <FormField
+          control={ form.control }
+          name="address_subunit"
+          render={ ({ field, }) => (
+            <FormItem>
+              <FormLabel>Address subunit</FormLabel>
+              <FormControl>
+                <Input placeholder="2F" { ...field } />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          ) }
+        />
+      </div>
+      <FormField
+        control={ form.control }
+        name="description"
+        render={ ({ field, }) => (
+          <FormItem>
+            <FormLabel>Description</FormLabel>
+            <FormControl>
+              <Textarea rows={ 4 } placeholder="Describe the space, vibe, or suitable use cases..." { ...field } />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        ) }
+      />
+      <div className="grid gap-4 md:grid-cols-2">
+        <FormField
+          control={ form.control }
+          name="street"
+          render={ ({ field, }) => (
+            <FormItem>
+              <FormLabel>Street</FormLabel>
+              <FormControl>
+                <Input placeholder="661 San Marcelino" { ...field } />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          ) }
+        />
+        <FormField
+          control={ form.control }
+          name="city"
+          render={ ({ field, }) => (
+            <FormItem>
+              <FormLabel>City</FormLabel>
+              <FormControl>
+                <Input placeholder="Manila" { ...field } />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          ) }
+        />
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <FormField
+          control={ form.control }
+          name="region"
+          render={ ({ field, }) => (
+            <FormItem>
+              <FormLabel>Region / State</FormLabel>
+              <FormControl>
+                <Input placeholder="NCR" { ...field } />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          ) }
+        />
+        <FormField
+          control={ form.control }
+          name="postal_code"
+          render={ ({ field, }) => (
+            <FormItem>
+              <FormLabel>Postal code</FormLabel>
+              <FormControl>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="\d{4}"
+                  maxLength={ 4 }
+                  placeholder="1000"
+                  { ...field }
+                  onChange={ (event) => {
+                    const digits = event.target.value.replace(/\D/g, '');
+                    field.onChange(digits.slice(0, 4));
+                  } }
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          ) }
+        />
+        <FormField
+          control={ form.control }
+          name="country_code"
+          render={ ({ field, }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2">
+                <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
+                <span>Country</span>
+              </FormLabel>
+              <FormControl>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Input
+                      placeholder="PH"
+                      maxLength={ 2 }
+                      { ...field }
+                      readOnly
+                      value={ field.value?.toUpperCase() ?? '' }
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Currently available for coworking spaces in the Philippines.
+                  </TooltipContent>
+                </Tooltip>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          ) }
+        />
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <FormField
+          control={ form.control }
+          name="lat"
+          render={ ({ field, }) => (
+            <FormItem>
+              <FormLabel>
+                <div className="flex items-center gap-2">
+                  <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
+                  <span>Latitude</span>
+                </div>
+              </FormLabel>
+              <FormControl>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Input
+                      type="number"
+                      step="0.000001"
+                      placeholder="37.791212"
+                      { ...field }
+                      readOnly
+                      value={ field.value ?? '' }
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Latitude and longitude are determined by the address.
+                  </TooltipContent>
+                </Tooltip>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          ) }
+        />
+        <FormField
+          control={ form.control }
+          name="long"
+          render={ ({ field, }) => (
+            <FormItem>
+              <FormLabel>
+                <div className="flex items-center gap-2">
+                  <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
+                  <span>Longitude</span>
+                </div>
+              </FormLabel>
+              <FormControl>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Input
+                      type="number"
+                      step="0.000001"
+                      placeholder="-122.392756"
+                      { ...field }
+                      readOnly
+                      value={ field.value ?? '' }
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Latitude and longitude are determined by the address.
+                  </TooltipContent>
+                </Tooltip>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          ) }
+        />
+      </div>
+    </>
+  );
+}
+
 type SchemaReferenceProps = {
   table: 'space' | 'area' | 'price_rate';
   column: string;
@@ -177,222 +404,7 @@ export function SpaceDialog({
         </DialogHeader>
         <Form { ...form }>
           <form className="space-y-6" onSubmit={ form.handleSubmit(onSubmit) }>
-            <FormField
-              control={ form.control }
-              name="name"
-              render={ ({ field, }) => (
-                <FormItem>
-                  <FormLabel>Space name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Study Corner" { ...field } />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              ) }
-            />
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                control={ form.control }
-                name="unit_number"
-                render={ ({ field, }) => (
-                  <FormItem>
-                    <FormLabel>Unit / Suite</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Unit Number" { ...field } />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                ) }
-              />
-              <FormField
-                control={ form.control }
-                name="address_subunit"
-                render={ ({ field, }) => (
-                  <FormItem>
-                    <FormLabel>Address subunit</FormLabel>
-                    <FormControl>
-                      <Input placeholder="2F" { ...field } />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                ) }
-              />
-            </div>
-            <FormField
-              control={ form.control }
-              name="description"
-              render={ ({ field, }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea rows={ 4 } placeholder="Describe the space, vibe, or suitable use cases..." { ...field } />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              ) }
-            />
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                control={ form.control }
-                name="street"
-                render={ ({ field, }) => (
-                  <FormItem>
-                    <FormLabel>Street</FormLabel>
-                    <FormControl>
-                      <Input placeholder="661 San Marcelino" { ...field } />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                ) }
-              />
-              <FormField
-                control={ form.control }
-                name="city"
-                render={ ({ field, }) => (
-                  <FormItem>
-                    <FormLabel>City</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Manila" { ...field } />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                ) }
-              />
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              <FormField
-                control={ form.control }
-                name="region"
-                render={ ({ field, }) => (
-                  <FormItem>
-                    <FormLabel>Region / State</FormLabel>
-                    <FormControl>
-                      <Input placeholder="NCR" { ...field } />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                ) }
-              />
-              <FormField
-                control={ form.control }
-                name="postal_code"
-                render={ ({ field, }) => (
-                  <FormItem>
-                    <FormLabel>Postal code</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="\d{4}"
-                        maxLength={ 4 }
-                        placeholder="1000"
-                        { ...field }
-                        onChange={ (event) => {
-                          const digits = event.target.value.replace(/\D/g, '');
-                          field.onChange(digits.slice(0, 4));
-                        } }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                ) }
-              />
-              <FormField
-                control={ form.control }
-                name="country_code"
-                render={ ({ field, }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
-                      <span>Country</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Input
-                            placeholder="PH"
-                            maxLength={ 2 }
-                            { ...field }
-                            readOnly
-                            value={ field.value?.toUpperCase() ?? '' }
-                          />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          Currently available for coworking spaces in the Philippines.
-                        </TooltipContent>
-                      </Tooltip>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                ) }
-              />
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                control={ form.control }
-                name="lat"
-                render={ ({ field, }) => (
-                  <FormItem>
-                    <FormLabel>
-                      <div className="flex items-center gap-2">
-                        <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
-                        <span>Latitude</span>
-                      </div>
-                    </FormLabel>
-                    <FormControl>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Input
-                            type="number"
-                            step="0.000001"
-                            placeholder="37.791212"
-                            { ...field }
-                            readOnly
-                            value={ field.value ?? '' }
-                          />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          Latitude and longitude are determined by the address.
-                        </TooltipContent>
-                      </Tooltip>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                ) }
-              />
-              <FormField
-                control={ form.control }
-                name="long"
-                render={ ({ field, }) => (
-                  <FormItem>
-                    <FormLabel>
-                      <div className="flex items-center gap-2">
-                        <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
-                        <span>Longitude</span>
-                      </div>
-                    </FormLabel>
-                    <FormControl>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Input
-                            type="number"
-                            step="0.000001"
-                            placeholder="-122.392756"
-                            { ...field }
-                            readOnly
-                            value={ field.value ?? '' }
-                          />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          Latitude and longitude are determined by the address.
-                        </TooltipContent>
-                      </Tooltip>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                ) }
-              />
-            </div>
+            <SpaceFormFields form={ form } />
             <DialogFooter className="flex-col gap-2 sm:flex-row">
               <Button type="button" variant="outline" onClick={ close }>
                 Cancel
