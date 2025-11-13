@@ -1,9 +1,15 @@
 'use client';
 
-import { ChangeEvent, useRef, useState } from 'react';
+import {
+  ChangeEvent,
+  useEffect,
+  useRef,
+  useState
+} from 'react';
+import Image from 'next/image';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { FiArrowLeft, FiArrowRight } from 'react-icons/fi';
+import { FiArrowLeft, FiArrowRight, FiX } from 'react-icons/fi';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -45,7 +51,7 @@ export default function SpaceCreateRoute() {
     cityValue,
     regionValue,
     postalCodeValue,
-    countryCodeValue,
+    countryCodeValue
   ] = form.watch([
     'name',
     'description',
@@ -55,13 +61,15 @@ export default function SpaceCreateRoute() {
     'city',
     'region',
     'postal_code',
-    'country_code',
+    'country_code'
   ]);
 
   const normalize = (value?: string) => (value ?? '').trim();
 
   const isStepOneComplete =
-    normalize(nameValue).length > 0 && normalize(descriptionValue).length >= 20;
+    normalize(nameValue).length > 0 &&
+    normalize(descriptionValue).length >= 20 &&
+    selectedImages.length > 0;
 
   const isStepTwoComplete =
     normalize(unitNumberValue).length > 0 &&
@@ -74,14 +82,22 @@ export default function SpaceCreateRoute() {
 
   const [currentStep, setCurrentStep] = useState<1 | 2>(1);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   const goToNextStep = async () => {
     const canProceed = await form.trigger(['name', 'description']);
 
-    if (canProceed) {
-      setCurrentStep(2);
+    if (!canProceed) {
+      return;
     }
+
+    if (selectedImages.length === 0) {
+      toast.error('Upload at least one photo before continuing.');
+      return;
+    }
+
+    setCurrentStep(2);
   };
 
   const handleImageSelection = (event: ChangeEvent<HTMLInputElement>) => {
@@ -91,6 +107,24 @@ export default function SpaceCreateRoute() {
 
     setSelectedImages(Array.from(event.target.files));
   };
+
+  const handleRemoveImage = (index: number) => {
+    setSelectedImages((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  useEffect(() => {
+    const previews = selectedImages.map((file) => URL.createObjectURL(file));
+    setImagePreviews(previews);
+
+    return () => {
+      previews.forEach(URL.revokeObjectURL);
+    };
+  }, [selectedImages]);
+
+  const previewItems = selectedImages.map((file, index) => ({
+    file,
+    url: imagePreviews[index],
+  }));
 
   const handleSubmit = (values: SpaceFormValues) => {
     const spaceId = createSpace(values);
@@ -121,7 +155,7 @@ export default function SpaceCreateRoute() {
         <Card className="mt-8 border-border/70 bg-background/80">
           <CardHeader>
             <CardTitle>Space information</CardTitle>
-            <CardDescription>Start with the space basics and optional photos, then complete the canonical address on the next page.</CardDescription>
+            <CardDescription>Start with the space basics and at least one photo, then complete the canonical address on the next page.</CardDescription>
           </CardHeader>
           <CardContent>
             <Form { ...form }>
@@ -148,15 +182,50 @@ export default function SpaceCreateRoute() {
                         <p className="mt-1 text-sm text-muted-foreground">
                           Add visuals now or revisit this section after the address step.
                         </p>
-                        <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                          { selectedImages.length === 0 ? (
-                            <span>No files selected yet.</span>
+                        <div className="mt-3">
+                          { previewItems.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">No files selected yet.</p>
                           ) : (
-                            selectedImages.map((file, index) => (
-                              <span key={ `${file.name}-${index}` } className="rounded-full border border-border/60 px-3 py-1">
-                                { file.name }
-                              </span>
-                            ))
+                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                              { previewItems.map((preview, index) => {
+                                const {
+                                  file,
+                                  url,
+                                } = preview;
+
+                                return (
+                                  <div
+                                    key={ `${file.name}-${index}` }
+                                    className="relative flex flex-col gap-1 rounded-lg border border-border/60 bg-background/80 p-1"
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={ () => handleRemoveImage(index) }
+                                      className="absolute right-1 bottom-1 z-10 inline-flex h-6 w-6 items-center justify-center rounded-full border border-border/60 bg-background/60 text-muted-foreground transition hover:bg-background"
+                                      aria-label={ `Remove ${file.name}` }
+                                    >
+                                      <FiX aria-hidden="true" className="size-3" />
+                                    </button>
+                                    { url ? (
+                                      <Image
+                                        src={ url }
+                                        alt={ `Preview of ${file.name}` }
+                                        width={ 400 }
+                                        height={ 280 }
+                                        className="h-28 w-full rounded-md object-cover"
+                                        sizes="(max-width: 640px) 100vw, 33vw"
+                                        unoptimized
+                                      />
+                                    ) : (
+                                      <div className="flex h-28 items-center justify-center rounded-md bg-muted/20 text-[10px] text-muted-foreground">
+                                        Preparing preview...
+                                      </div>
+                                    ) }
+                                    <span className="truncate text-[11px] text-muted-foreground">{ file.name }</span>
+                                  </div>
+                                );
+                              }) }
+                            </div>
                           ) }
                         </div>
                         <div className="mt-4 flex items-center gap-3">
