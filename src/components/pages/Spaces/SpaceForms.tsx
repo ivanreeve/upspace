@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { FiInfo, FiLock } from 'react-icons/fi';
+import { FiLock } from 'react-icons/fi';
 
 import {
   AREA_INPUT_DEFAULT,
@@ -305,29 +305,22 @@ export function SpaceDialog({
                     <FormLabel className="flex items-center gap-2">
                       <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
                       <span>Country</span>
+                    </FormLabel>
+                    <FormControl>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            className="grid h-6 w-6 place-items-center rounded-full border border-border text-muted-foreground transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                          >
-                            <FiInfo className="size-3" aria-hidden="true" />
-                            <span className="sr-only">Country availability information</span>
-                          </button>
+                          <Input
+                            placeholder="PH"
+                            maxLength={ 2 }
+                            { ...field }
+                            readOnly
+                            value={ field.value?.toUpperCase() ?? '' }
+                          />
                         </TooltipTrigger>
                         <TooltipContent>
                           Currently available for coworking spaces in the Philippines.
                         </TooltipContent>
                       </Tooltip>
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="PH"
-                        maxLength={ 2 }
-                        { ...field }
-                        readOnly
-                        value={ field.value?.toUpperCase() ?? '' }
-                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -344,31 +337,24 @@ export function SpaceDialog({
                       <div className="flex items-center gap-2">
                         <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
                         <span>Latitude</span>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              className="grid h-6 w-6 place-items-center rounded-full border border-border text-muted-foreground transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                            >
-                              <FiInfo className="size-3" aria-hidden="true" />
-                              <span className="sr-only">Latitude availability information</span>
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            Latitude and longitude are determined by the address.
-                          </TooltipContent>
-                        </Tooltip>
                       </div>
                     </FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        step="0.000001"
-                        placeholder="37.791212"
-                        { ...field }
-                        readOnly
-                        value={ field.value ?? '' }
-                      />
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Input
+                            type="number"
+                            step="0.000001"
+                            placeholder="37.791212"
+                            { ...field }
+                            readOnly
+                            value={ field.value ?? '' }
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Latitude and longitude are determined by the address.
+                        </TooltipContent>
+                      </Tooltip>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -383,31 +369,24 @@ export function SpaceDialog({
                       <div className="flex items-center gap-2">
                         <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
                         <span>Longitude</span>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              className="grid h-6 w-6 place-items-center rounded-full border border-border text-muted-foreground transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                            >
-                              <FiInfo className="size-3" aria-hidden="true" />
-                              <span className="sr-only">Longitude availability information</span>
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            Latitude and longitude are determined by the address.
-                          </TooltipContent>
-                        </Tooltip>
                       </div>
                     </FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        step="0.000001"
-                        placeholder="-122.392756"
-                        { ...field }
-                        readOnly
-                        value={ field.value ?? '' }
-                      />
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Input
+                            type="number"
+                            step="0.000001"
+                            placeholder="-122.392756"
+                            { ...field }
+                            readOnly
+                            value={ field.value ?? '' }
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Latitude and longitude are determined by the address.
+                        </TooltipContent>
+                      </Tooltip>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
