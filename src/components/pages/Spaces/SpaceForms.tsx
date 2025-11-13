@@ -128,7 +128,7 @@ type SpaceFormFieldsProps = {
   form: UseFormReturn<SpaceFormValues>;
 };
 
-export function SpaceFormFields({ form, }: SpaceFormFieldsProps) {
+export function SpaceDetailsFields({ form, }: SpaceFormFieldsProps) {
   return (
     <>
       <FormField
@@ -144,6 +144,26 @@ export function SpaceFormFields({ form, }: SpaceFormFieldsProps) {
           </FormItem>
         ) }
       />
+      <FormField
+        control={ form.control }
+        name="description"
+        render={ ({ field, }) => (
+          <FormItem>
+            <FormLabel>Description</FormLabel>
+            <FormControl>
+              <Textarea rows={ 4 } placeholder="Describe the space, vibe, or suitable use cases..." { ...field } />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        ) }
+      />
+    </>
+  );
+}
+
+export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
+  return (
+    <>
       <div className="grid gap-4 md:grid-cols-2">
         <FormField
           control={ form.control }
@@ -172,19 +192,6 @@ export function SpaceFormFields({ form, }: SpaceFormFieldsProps) {
           ) }
         />
       </div>
-      <FormField
-        control={ form.control }
-        name="description"
-        render={ ({ field, }) => (
-          <FormItem>
-            <FormLabel>Description</FormLabel>
-            <FormControl>
-              <Textarea rows={ 4 } placeholder="Describe the space, vibe, or suitable use cases..." { ...field } />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        ) }
-      />
       <div className="grid gap-4 md:grid-cols-2">
         <FormField
           control={ form.control }
@@ -347,6 +354,15 @@ export function SpaceFormFields({ form, }: SpaceFormFieldsProps) {
           ) }
         />
       </div>
+    </>
+  );
+}
+
+export function SpaceFormFields({ form, }: SpaceFormFieldsProps) {
+  return (
+    <>
+      <SpaceDetailsFields form={ form } />
+      <SpaceAddressFields form={ form } />
     </>
   );
 }
