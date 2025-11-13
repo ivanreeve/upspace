@@ -3,7 +3,7 @@
 import { ChangeEvent, useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { FiArrowLeft } from 'react-icons/fi';
+import { FiArrowLeft, FiArrowRight } from 'react-icons/fi';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -35,6 +35,42 @@ export default function SpaceCreateRoute() {
     resolver: zodResolver(spaceSchema),
     defaultValues: createSpaceFormDefaults(),
   });
+
+  const [
+    nameValue,
+    descriptionValue,
+    unitNumberValue,
+    addressSubunitValue,
+    streetValue,
+    cityValue,
+    regionValue,
+    postalCodeValue,
+    countryCodeValue,
+  ] = form.watch([
+    'name',
+    'description',
+    'unit_number',
+    'address_subunit',
+    'street',
+    'city',
+    'region',
+    'postal_code',
+    'country_code',
+  ]);
+
+  const normalize = (value?: string) => (value ?? '').trim();
+
+  const isStepOneComplete =
+    normalize(nameValue).length > 0 && normalize(descriptionValue).length >= 20;
+
+  const isStepTwoComplete =
+    normalize(unitNumberValue).length > 0 &&
+    normalize(addressSubunitValue).length > 0 &&
+    normalize(streetValue).length > 0 &&
+    normalize(cityValue).length > 0 &&
+    normalize(regionValue).length > 0 &&
+    normalize(postalCodeValue).length === 4 &&
+    normalize(countryCodeValue).length === 2;
 
   const [currentStep, setCurrentStep] = useState<1 | 2>(1);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
@@ -156,15 +192,24 @@ export default function SpaceCreateRoute() {
                   </Button>
                   <div className="flex items-center gap-2">
                     { currentStep === 1 ? (
-                      <Button type="button" onClick={ goToNextStep }>
+                      <Button type="button" disabled={ !isStepOneComplete } onClick={ goToNextStep }>
                         Next
+                        <FiArrowRight className="size-4" aria-hidden="true" />
                       </Button>
                     ) : (
                       <>
-                        <Button type="button" variant="outline" onClick={ () => setCurrentStep(1) }>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={ !isStepOneComplete }
+                          onClick={ () => setCurrentStep(1) }
+                        >
+                          <FiArrowLeft className="size-4" aria-hidden="true" />
                           Back
                         </Button>
-                        <Button type="submit">Save space</Button>
+                        <Button type="submit" disabled={ !isStepTwoComplete }>
+                          Save space
+                        </Button>
                       </>
                     ) }
                   </div>
