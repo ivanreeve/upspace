@@ -1,10 +1,22 @@
 'use client';
 
-import { useEffect } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FocusEvent,
+  type KeyboardEvent
+} from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm, type UseFormReturn } from 'react-hook-form';
+import { ControllerRenderProps, useForm, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
-import { FiLock } from 'react-icons/fi';
+import {
+  FiBold,
+  FiItalic,
+  FiList,
+  FiLock,
+  FiSlash
+} from 'react-icons/fi';
 
 import {
   AREA_INPUT_DEFAULT,
@@ -42,6 +54,45 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const rateUnits = ['hour', 'day', 'week'] as const;
+
+const wrapSelectionWith = (wrapper: string) => (value: string) => `${wrapper}${value}${wrapper}`;
+
+const formatHeaderLevel = (value: string, level: number) => {
+  const prefix = '#'.repeat(level);
+
+  return value
+    .split('\n')
+    .map((line) => `${prefix} ${line.replace(/^\s*#{1,6}\s*/, '').trimEnd()}`)
+    .join('\n');
+};
+
+const formatList = (value: string, ordered: boolean) =>
+  value
+    .split('\n')
+    .map((line, index) => {
+      const cleaned = line.replace(/^\s*(?:[-*+]|\d+\.)\s*/, '');
+      const prefix = ordered ? `${index + 1}. ` : '- ';
+      return `${prefix}${cleaned}`;
+    })
+    .join('\n');
+
+const inlineFormattingActions = [
+  {
+    label: 'Bold',
+    formatter: wrapSelectionWith('**'),
+    icon: <FiBold aria-hidden="true" className="size-4" />,
+  },
+  {
+    label: 'Italic',
+    formatter: wrapSelectionWith('*'),
+    icon: <FiItalic aria-hidden="true" className="size-4" />,
+  },
+  {
+    label: 'Strikethrough',
+    formatter: wrapSelectionWith('~~'),
+    icon: <FiSlash aria-hidden="true" className="size-4" />,
+  }
+];
 
 export const spaceSchema = z.object({
   name: z.string().min(1, 'Space name is required.'),
@@ -124,6 +175,179 @@ export const areaRecordToFormValues = (area: AreaRecord): AreaFormValues => ({
   rate_amount: area.rate_amount,
 });
 
+type TextSelection = {
+  start: number;
+  end: number;
+};
+
+type DescriptionTextareaProps = {
+  field: ControllerRenderProps<SpaceFormValues, 'description'>;
+};
+
+function DescriptionTextarea({ field, }: DescriptionTextareaProps) {
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [selectionRange, setSelectionRange] = useState<TextSelection | null>(null);
+
+  const {
+    ref,
+    onBlur,
+    ...inputProps
+  } = field;
+
+  const setTextareaRef = (element: HTMLTextAreaElement | null) => {
+    textareaRef.current = element;
+
+    if (typeof ref === 'function') {
+      ref(element);
+    } else if (ref && 'current' in ref) {
+      (ref as { current: HTMLTextAreaElement | null }).current = element;
+    }
+  };
+
+  const updateSelectionRange = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      setSelectionRange(null);
+      return;
+    }
+
+    const {
+      selectionStart,
+      selectionEnd,
+    } = textarea;
+    if (
+      selectionStart === null ||
+      selectionEnd === null ||
+      selectionStart === selectionEnd
+    ) {
+      setSelectionRange(null);
+      return;
+    }
+
+    setSelectionRange({
+      start: selectionStart,
+      end: selectionEnd,
+    });
+  };
+
+  const handleBlur = (event: FocusEvent<HTMLTextAreaElement>) => {
+    onBlur?.(event);
+    setSelectionRange(null);
+  };
+
+  const handleMouseUp = () => {
+    requestAnimationFrame(updateSelectionRange);
+  };
+
+  const handleKeyUp = (_event: KeyboardEvent<HTMLTextAreaElement>) => {
+    updateSelectionRange();
+  };
+
+  const applyFormatting = (formatter: (value: string) => string) => {
+    if (!textareaRef.current || !selectionRange) {
+      return;
+    }
+
+    const currentValue = field.value ?? '';
+    const before = currentValue.slice(0, selectionRange.start);
+    const selection = currentValue.slice(selectionRange.start, selectionRange.end);
+    const after = currentValue.slice(selectionRange.end);
+    const formattedSelection = formatter(selection);
+    const updatedValue = `${before}${formattedSelection}${after}`;
+
+    inputProps.onChange?.(updatedValue);
+
+    const nextStart = before.length;
+    const nextEnd = nextStart + formattedSelection.length;
+
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus({ preventScroll: true, });
+      textareaRef.current?.setSelectionRange(nextStart, nextEnd);
+    });
+
+    setSelectionRange({
+      start: nextStart,
+      end: nextEnd,
+    });
+  };
+
+  return (
+    <div className="relative">
+      { selectionRange && (
+        <div
+          role="toolbar"
+          aria-label="Description formatting options"
+          className="mb-2 flex flex-wrap items-center gap-1 rounded-md border border-border/70 bg-background/80 px-2 py-1 text-xs shadow-sm"
+        >
+          <div className="flex items-center gap-1">
+            { inlineFormattingActions.map((action) => (
+              <Button
+                key={ action.label }
+                variant="ghost"
+                size="icon"
+                type="button"
+                aria-label={ action.label }
+                onClick={ () => applyFormatting(action.formatter) }
+                className="text-muted-foreground"
+              >
+                { action.icon }
+              </Button>
+            )) }
+          </div>
+          <div className="flex items-center gap-1 border-l border-border/40 px-2">
+            { [1, 2, 3].map((level) => (
+              <Button
+                key={ `header-${ level }` }
+                variant="ghost"
+                size="sm"
+                type="button"
+                aria-label={ `Apply H${ level } heading` }
+                className="px-2 text-[11px] font-semibold uppercase tracking-[0.08em]"
+                onClick={ () => applyFormatting((value) => formatHeaderLevel(value, level)) }
+              >
+                H{ level }
+              </Button>
+            )) }
+          </div>
+          <div className="flex items-center gap-1 border-l border-border/40 px-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              type="button"
+              aria-label="Convert to bullet list"
+              className="text-muted-foreground"
+              onClick={ () => applyFormatting((value) => formatList(value, false)) }
+            >
+              <FiList aria-hidden="true" className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              aria-label="Convert to numbered list"
+              className="px-2 text-[11px] font-semibold"
+              onClick={ () => applyFormatting((value) => formatList(value, true)) }
+            >
+              1.
+            </Button>
+          </div>
+        </div>
+      ) }
+      <Textarea
+        { ...inputProps }
+        ref={ setTextareaRef }
+        rows={ 12 }
+        className="min-h-[220px]"
+        placeholder="Describe the space, vibe, or suitable use cases..."
+        onBlur={ handleBlur }
+        onMouseUp={ handleMouseUp }
+        onSelect={ updateSelectionRange }
+        onKeyUp={ handleKeyUp }
+      />
+    </div>
+  );
+}
+
 type SpaceFormFieldsProps = {
   form: UseFormReturn<SpaceFormValues>;
 };
@@ -151,7 +375,7 @@ export function SpaceDetailsFields({ form, }: SpaceFormFieldsProps) {
           <FormItem>
             <FormLabel>Description</FormLabel>
             <FormControl>
-              <Textarea rows={ 4 } placeholder="Describe the space, vibe, or suitable use cases..." { ...field } />
+              <DescriptionTextarea field={ field } />
             </FormControl>
             <FormMessage />
           </FormItem>

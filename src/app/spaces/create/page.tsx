@@ -33,6 +33,8 @@ import {
 import NavBar from '@/components/ui/navbar';
 import { useSpacesStore } from '@/stores/useSpacesStore';
 
+const MAX_IMAGE_COUNT = 5;
+
 export default function SpaceCreateRoute() {
   const router = useRouter();
   const createSpace = useSpacesStore((state) => state.createSpace);
@@ -84,6 +86,7 @@ export default function SpaceCreateRoute() {
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const canAddMoreImages = selectedImages.length < MAX_IMAGE_COUNT;
 
   const goToNextStep = async () => {
     const canProceed = await form.trigger(['name', 'description']);
@@ -105,7 +108,28 @@ export default function SpaceCreateRoute() {
       return;
     }
 
-    setSelectedImages(Array.from(event.target.files));
+    const incomingFiles = Array.from(event.target.files);
+    if (incomingFiles.length === 0) {
+      return;
+    }
+
+    setSelectedImages((prev) => {
+      const next = [...prev];
+
+      for (const file of incomingFiles) {
+        if (next.length >= MAX_IMAGE_COUNT) {
+          toast.error(`You can upload up to ${MAX_IMAGE_COUNT} photos.`);
+          break;
+        }
+
+        next.push(file);
+      }
+
+      return next;
+    });
+
+    // Reset the input so the same file can be reselected if needed.
+    event.target.value = '';
   };
 
   const handleRemoveImage = (index: number) => {
@@ -180,7 +204,7 @@ export default function SpaceCreateRoute() {
                           <span className="text-xs uppercase tracking-wide text-muted-foreground">Required</span>
                         </div>
                         <p className="mt-1 text-sm text-muted-foreground">
-                          Add visuals now or revisit this section after the address step.
+                          Add visuals now or revisit this section after the address step. <span className="font-semibold text-foreground">Maximum { MAX_IMAGE_COUNT } photos.</span>
                         </p>
                         <div className="mt-3">
                           { previewItems.length === 0 ? (
@@ -241,11 +265,13 @@ export default function SpaceCreateRoute() {
                             type="button"
                             variant="outline"
                             onClick={ () => imageInputRef.current?.click() }
+                            disabled={ !canAddMoreImages }
                           >
                             Select photos
                           </Button>
                           <span className="text-sm text-muted-foreground">
-                            { selectedImages.length } selected
+                            { selectedImages.length } / { MAX_IMAGE_COUNT } selected
+                            { !canAddMoreImages ? ' · Remove a photo to add another.' : '' }
                           </span>
                         </div>
                       </div>
