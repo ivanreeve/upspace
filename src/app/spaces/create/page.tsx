@@ -30,6 +30,7 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card';
+import { richTextPlainTextLength } from '@/lib/rich-text';
 import NavBar from '@/components/ui/navbar';
 import { useSpacesStore } from '@/stores/useSpacesStore';
 
@@ -70,7 +71,7 @@ export default function SpaceCreateRoute() {
 
   const isStepOneComplete =
     normalize(nameValue).length > 0 &&
-    normalize(descriptionValue).length >= 20 &&
+    richTextPlainTextLength(descriptionValue ?? '') >= 20 &&
     selectedImages.length > 0;
 
   const isStepTwoComplete =

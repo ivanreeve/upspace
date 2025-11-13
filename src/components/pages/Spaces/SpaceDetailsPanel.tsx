@@ -27,6 +27,7 @@ import {
   CardTitle
 } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { sanitizeRichText } from '@/lib/rich-text';
 import { useSpacesStore } from '@/stores/useSpacesStore';
 import { AreaRecord } from '@/data/spaces';
 
@@ -135,7 +136,14 @@ export function SpaceDetailsPanel({
             { renderField('Longitude', space.long.toString(), 'space', 'long') }
           </CardContent>
           <CardFooter>
-            <p className="text-sm text-muted-foreground">{ space.description }</p>
+            { space.description ? (
+              <div
+                className="text-sm text-muted-foreground leading-relaxed"
+                dangerouslySetInnerHTML={ { __html: sanitizeRichText(space.description), } }
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">No description yet.</p>
+            ) }
           </CardFooter>
         </Card>
 

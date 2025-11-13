@@ -1,22 +1,13 @@
 'use client';
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  type FocusEvent,
-  type KeyboardEvent
-} from 'react';
+import { useEffect, useRef } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ControllerRenderProps, useForm, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
-import {
-  FiBold,
-  FiItalic,
-  FiList,
-  FiLock,
-  FiSlash
-} from 'react-icons/fi';
+import { FiLock } from 'react-icons/fi';
+import { EditorContent, useEditor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Placeholder from '@tiptap/extension-placeholder';
 
 import {
   AREA_INPUT_DEFAULT,
@@ -50,56 +41,45 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { richTextPlainTextLength, sanitizeRichText } from '@/lib/rich-text';
 
 const rateUnits = ['hour', 'day', 'week'] as const;
 
-const wrapSelectionWith = (wrapper: string) => (value: string) => `${wrapper}${value}${wrapper}`;
+const normalizeEditorHtml = (value?: string) => {
+  if (!value) {
+    return '';
+  }
 
-const formatHeaderLevel = (value: string, level: number) => {
-  const prefix = '#'.repeat(level);
+  const trimmed = value.trim();
+  if (trimmed === '<p><br></p>' || trimmed === '<div><br></div>') {
+    return '';
+  }
 
-  return value
-    .split('\n')
-    .map((line) => `${prefix} ${line.replace(/^\s*#{1,6}\s*/, '').trimEnd()}`)
-    .join('\n');
+  return sanitizeRichText(value);
 };
 
-const formatList = (value: string, ordered: boolean) =>
-  value
-    .split('\n')
-    .map((line, index) => {
-      const cleaned = line.replace(/^\s*(?:[-*+]|\d+\.)\s*/, '');
-      const prefix = ordered ? `${index + 1}. ` : '- ';
-      return `${prefix}${cleaned}`;
-    })
-    .join('\n');
-
-const inlineFormattingActions = [
-  {
-    label: 'Bold',
-    formatter: wrapSelectionWith('**'),
-    icon: <FiBold aria-hidden="true" className="size-4" />,
-  },
-  {
-    label: 'Italic',
-    formatter: wrapSelectionWith('*'),
-    icon: <FiItalic aria-hidden="true" className="size-4" />,
-  },
-  {
-    label: 'Strikethrough',
-    formatter: wrapSelectionWith('~~'),
-    icon: <FiSlash aria-hidden="true" className="size-4" />,
-  }
-];
+const DESCRIPTION_EDITOR_PLACEHOLDER = 'Describe the space, vibe, or suitable use cases...';
+const DESCRIPTION_EDITOR_STYLES = [
+  'prose prose-sm max-w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0 focus-visible:ring-offset-background',
+  '[&_p]:m-0',
+  '[&_h1]:m-0 [&_h1]:text-2xl [&_h1]:font-semibold',
+  '[&_h2]:m-0 [&_h2]:text-xl [&_h2]:font-semibold',
+  '[&_h3]:m-0 [&_h3]:text-lg [&_h3]:font-semibold',
+  '[&_ul]:list-disc [&_ul]:pl-6 [&_ul]:marker:text-muted-foreground',
+  '[&_ol]:list-decimal [&_ol]:pl-6 [&_li]:my-1'
+].join(' ');
 
 export const spaceSchema = z.object({
   name: z.string().min(1, 'Space name is required.'),
   description: z
-    .string()
-    .min(20, 'Describe the space in at least 20 characters.')
-    .max(500, 'Keep the description under 500 characters.'),
+    .preprocess(
+      (value) => (typeof value === 'string' ? sanitizeRichText(value) : ''),
+      z
+        .string()
+        .refine((value) => richTextPlainTextLength(value) >= 20, 'Describe the space in at least 20 characters.')
+        .refine((value) => richTextPlainTextLength(value) <= 500, 'Keep the description under 500 characters.')
+    ),
   unit_number: z.string().min(1, 'Unit or suite number is required.'),
   address_subunit: z.string().min(1, 'Address subunit is required (e.g., floor).'),
   street: z.string().min(1, 'Street is required.'),
@@ -155,7 +135,7 @@ export const createAreaFormDefaults = (): AreaFormValues => ({ ...AREA_INPUT_DEF
 
 export const spaceRecordToFormValues = (space: SpaceRecord): SpaceFormValues => ({
   name: space.name,
-  description: space.description,
+  description: sanitizeRichText(space.description),
   unit_number: space.unit_number,
   address_subunit: space.address_subunit,
   street: space.street,
@@ -175,175 +155,197 @@ export const areaRecordToFormValues = (area: AreaRecord): AreaFormValues => ({
   rate_amount: area.rate_amount,
 });
 
-type TextSelection = {
-  start: number;
-  end: number;
-};
-
-type DescriptionTextareaProps = {
+type DescriptionEditorProps = {
   field: ControllerRenderProps<SpaceFormValues, 'description'>;
 };
 
-function DescriptionTextarea({ field, }: DescriptionTextareaProps) {
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const [selectionRange, setSelectionRange] = useState<TextSelection | null>(null);
+function DescriptionEditor(props: DescriptionEditorProps) {
+  const { field, } = props;
+  const handlersRef = useRef({
+    onChange: field.onChange,
+    onBlur: field.onBlur,
+  });
 
-  const {
-    ref,
-    onBlur,
-    ...inputProps
-  } = field;
+  const editor = useEditor({
+    immediatelyRender: false,
+    extensions: [
+      StarterKit.configure({ heading: { levels: [1, 2, 3], }, }),
+      Placeholder.configure({ placeholder: DESCRIPTION_EDITOR_PLACEHOLDER, })
+    ],
+    content: field.value ?? '',
+    editorProps: {
+      attributes: {
+        class: DESCRIPTION_EDITOR_STYLES,
+        role: 'textbox',
+        'aria-label': 'Space description',
+      },
+    },
+    onUpdate: ({ editor, }) => {
+      handlersRef.current.onChange(normalizeEditorHtml(editor.getHTML()));
+    },
+    onBlur: () => {
+      handlersRef.current.onBlur?.();
+    },
+  });
 
-  const setTextareaRef = (element: HTMLTextAreaElement | null) => {
-    textareaRef.current = element;
+  useEffect(() => {
+    handlersRef.current = {
+      onChange: field.onChange,
+      onBlur: field.onBlur,
+    };
+  }, [field]);
 
-    if (typeof ref === 'function') {
-      ref(element);
-    } else if (ref && 'current' in ref) {
-      (ref as { current: HTMLTextAreaElement | null }).current = element;
-    }
-  };
-
-  const updateSelectionRange = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) {
-      setSelectionRange(null);
+  useEffect(() => {
+    if (!editor) {
       return;
     }
 
-    const {
-      selectionStart,
-      selectionEnd,
-    } = textarea;
-    if (
-      selectionStart === null ||
-      selectionEnd === null ||
-      selectionStart === selectionEnd
-    ) {
-      setSelectionRange(null);
+    const normalizedValue = field.value ?? '';
+    const normalizedCurrent = normalizeEditorHtml(editor.getHTML());
+
+    if (normalizedValue === normalizedCurrent) {
       return;
     }
 
-    setSelectionRange({
-      start: selectionStart,
-      end: selectionEnd,
-    });
-  };
-
-  const handleBlur = (event: FocusEvent<HTMLTextAreaElement>) => {
-    onBlur?.(event);
-    setSelectionRange(null);
-  };
-
-  const handleMouseUp = () => {
-    requestAnimationFrame(updateSelectionRange);
-  };
-
-  const handleKeyUp = (_event: KeyboardEvent<HTMLTextAreaElement>) => {
-    updateSelectionRange();
-  };
-
-  const applyFormatting = (formatter: (value: string) => string) => {
-    if (!textareaRef.current || !selectionRange) {
-      return;
+    if (normalizedValue) {
+      editor.commands.setContent(normalizedValue, false);
+    } else {
+      editor.commands.clearContent();
     }
+  }, [editor, field.value]);
 
-    const currentValue = field.value ?? '';
-    const before = currentValue.slice(0, selectionRange.start);
-    const selection = currentValue.slice(selectionRange.start, selectionRange.end);
-    const after = currentValue.slice(selectionRange.end);
-    const formattedSelection = formatter(selection);
-    const updatedValue = `${before}${formattedSelection}${after}`;
+  if (!editor) {
+    return (
+      <div className="rounded-md border border-border/70">
+        <div className="min-h-[220px]" />
+      </div>
+    );
+  }
 
-    inputProps.onChange?.(updatedValue);
-
-    const nextStart = before.length;
-    const nextEnd = nextStart + formattedSelection.length;
-
-    requestAnimationFrame(() => {
-      textareaRef.current?.focus({ preventScroll: true, });
-      textareaRef.current?.setSelectionRange(nextStart, nextEnd);
-    });
-
-    setSelectionRange({
-      start: nextStart,
-      end: nextEnd,
-    });
+  const toggleHeading = (level?: number) => {
+    if (level) {
+      editor.chain().focus().toggleHeading({ level, }).run();
+    } else {
+      editor.chain().focus().setParagraph().run();
+    }
   };
+
+  const toggleOrderedList = () => {
+    editor.chain().focus().toggleOrderedList().run();
+  };
+
+  const toggleBulletList = () => {
+    editor.chain().focus().toggleBulletList().run();
+  };
+
+  const toggleBold = () => {
+    editor.chain().focus().toggleBold().run();
+  };
+
+  const toggleItalic = () => {
+    editor.chain().focus().toggleItalic().run();
+  };
+
+  const toggleStrike = () => {
+    editor.chain().focus().toggleStrike().run();
+  };
+
+  const clearFormatting = () => {
+    editor.chain().focus().unsetAllMarks().clearNodes().run();
+  };
+
+  const isHeadingActive = (level?: number) =>
+    level ? editor.isActive('heading', { level, }) : editor.isActive('paragraph');
 
   return (
-    <div className="relative">
-      { selectionRange && (
-        <div
-          role="toolbar"
-          aria-label="Description formatting options"
-          className="mb-2 flex flex-wrap items-center gap-1 rounded-md border border-border/70 bg-background/80 px-2 py-1 text-xs shadow-sm"
-        >
-          <div className="flex items-center gap-1">
-            { inlineFormattingActions.map((action) => (
+    <div className="rounded-md border border-border/70">
+      <div className="border-b border-border/70 bg-muted px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2" role="toolbar" aria-label="Description formatting tools">
+          { (['Normal', 'H1', 'H2', 'H3'] as const).map((label, index) => {
+            const headingLevel = index === 0 ? undefined : index;
+            return (
               <Button
-                key={ action.label }
-                variant="ghost"
-                size="icon"
+                key={ label }
                 type="button"
-                aria-label={ action.label }
-                onClick={ () => applyFormatting(action.formatter) }
-                className="text-muted-foreground"
-              >
-                { action.icon }
-              </Button>
-            )) }
-          </div>
-          <div className="flex items-center gap-1 border-l border-border/40 px-2">
-            { [1, 2, 3].map((level) => (
-              <Button
-                key={ `header-${ level }` }
-                variant="ghost"
                 size="sm"
-                type="button"
-                aria-label={ `Apply H${ level } heading` }
-                className="px-2 text-[11px] font-semibold uppercase tracking-[0.08em]"
-                onClick={ () => applyFormatting((value) => formatHeaderLevel(value, level)) }
+                variant={ isHeadingActive(headingLevel) ? 'outline' : 'ghost' }
+                className="min-w-[3rem] font-normal"
+                onClick={ () => toggleHeading(headingLevel) }
+                aria-pressed={ isHeadingActive(headingLevel) }
+                aria-label={ headingLevel ? `Heading ${headingLevel}` : 'Normal text' }
               >
-                H{ level }
+                { label }
               </Button>
-            )) }
-          </div>
-          <div className="flex items-center gap-1 border-l border-border/40 px-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              type="button"
-              aria-label="Convert to bullet list"
-              className="text-muted-foreground"
-              onClick={ () => applyFormatting((value) => formatList(value, false)) }
-            >
-              <FiList aria-hidden="true" className="size-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              type="button"
-              aria-label="Convert to numbered list"
-              className="px-2 text-[11px] font-semibold"
-              onClick={ () => applyFormatting((value) => formatList(value, true)) }
-            >
-              1.
-            </Button>
-          </div>
+            );
+          }) }
+          <Button
+            type="button"
+            size="sm"
+            variant={ editor.isActive('bold') ? 'outline' : 'ghost' }
+            onClick={ toggleBold }
+            aria-pressed={ editor.isActive('bold') }
+            aria-label="Bold"
+          >
+            B
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={ editor.isActive('italic') ? 'outline' : 'ghost' }
+            onClick={ toggleItalic }
+            aria-pressed={ editor.isActive('italic') }
+            aria-label="Italic"
+          >
+            I
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={ editor.isActive('strike') ? 'outline' : 'ghost' }
+            onClick={ toggleStrike }
+            aria-pressed={ editor.isActive('strike') }
+            aria-label="Strikethrough"
+          >
+            S
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={ editor.isActive('bulletList') ? 'outline' : 'ghost' }
+            onClick={ toggleBulletList }
+            aria-pressed={ editor.isActive('bulletList') }
+            aria-label="Bullet list"
+          >
+            Bullet list
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={ editor.isActive('orderedList') ? 'outline' : 'ghost' }
+            onClick={ toggleOrderedList }
+            aria-pressed={ editor.isActive('orderedList') }
+            aria-label="Numbered list"
+          >
+            Numbered list
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="text-sm font-normal"
+            onClick={ clearFormatting }
+            aria-label="Clear formatting"
+          >
+            Clear
+          </Button>
         </div>
-      ) }
-      <Textarea
-        { ...inputProps }
-        ref={ setTextareaRef }
-        rows={ 12 }
-        className="min-h-[220px]"
-        placeholder="Describe the space, vibe, or suitable use cases..."
-        onBlur={ handleBlur }
-        onMouseUp={ handleMouseUp }
-        onSelect={ updateSelectionRange }
-        onKeyUp={ handleKeyUp }
-      />
+      </div>
+      <div className="bg-background px-3 py-3">
+        <EditorContent
+          editor={ editor }
+          className="min-h-[220px]"
+        />
+      </div>
     </div>
   );
 }
@@ -375,7 +377,7 @@ export function SpaceDetailsFields({ form, }: SpaceFormFieldsProps) {
           <FormItem>
             <FormLabel>Description</FormLabel>
             <FormControl>
-              <DescriptionTextarea field={ field } />
+              <DescriptionEditor field={ field } />
             </FormControl>
             <FormMessage />
           </FormItem>
