@@ -54,7 +54,10 @@ export const spaceSchema = z.object({
   street: z.string().min(1, 'Street is required.'),
   city: z.string().min(1, 'City is required.'),
   region: z.string().min(1, 'Region / state is required.'),
-  postal_code: z.string().min(3, 'Postal code is required.'),
+  postal_code: z
+    .string()
+    .min(1, 'Postal code is required.')
+    .regex(/^\d{4}$/, 'Postal code must be exactly 4 digits.'),
   country_code: z
     .string()
     .length(2, 'Use the 2-letter ISO country code.')
@@ -168,244 +171,250 @@ export function SpaceDialog({
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{ mode === 'create' ? 'Add a new space' : 'Edit space' }</DialogTitle>
-          <DialogDescription>Fields map directly to <code>prisma.space</code>.</DialogDescription>
+          <DialogDescription>
+            Fill the required address and location details
+          </DialogDescription>
         </DialogHeader>
         <Form { ...form }>
           <form className="space-y-6" onSubmit={ form.handleSubmit(onSubmit) }>
-        <div className="grid gap-4 md:grid-cols-2">
-          <FormField
-            control={ form.control }
-            name="name"
-            render={ ({ field, }) => (
-              <FormItem>
-                <FormLabel>Space name</FormLabel>
-                <FormControl>
-                  <Input placeholder="Atlas Loft" { ...field } />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            ) }
-          />
-          <FormField
-            control={ form.control }
-            name="unit_number"
-            render={ ({ field, }) => (
-              <FormItem>
-                <FormLabel>Unit / suite</FormLabel>
-                <FormControl>
-                  <Input placeholder="Suite 120" { ...field } />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            ) }
-          />
-        </div>
-        <FormField
-          control={ form.control }
-          name="description"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel>Overview</FormLabel>
-              <FormControl>
-                <Textarea rows={ 4 } placeholder="Describe the building, vibe, and suitable use cases." { ...field } />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          ) }
-        />
-        <div className="grid gap-4 md:grid-cols-2">
-          <FormField
-            control={ form.control }
-            name="address_subunit"
-            render={ ({ field, }) => (
-              <FormItem>
-                <FormLabel>Address subunit</FormLabel>
-                <FormControl>
-                  <Input placeholder="Floor 3" { ...field } />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            ) }
-          />
-          <FormField
-            control={ form.control }
-            name="street"
-            render={ ({ field, }) => (
-              <FormItem>
-                <FormLabel>Street</FormLabel>
-                <FormControl>
-                  <Input placeholder="123 Mission St" { ...field } />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            ) }
-          />
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <FormField
-            control={ form.control }
-            name="city"
-            render={ ({ field, }) => (
-              <FormItem>
-                <FormLabel>City</FormLabel>
-                <FormControl>
-                  <Input placeholder="San Francisco" { ...field } />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            ) }
-          />
-          <FormField
-            control={ form.control }
-            name="region"
-            render={ ({ field, }) => (
-              <FormItem>
-                <FormLabel>Region / state</FormLabel>
-                <FormControl>
-                  <Input placeholder="CA" { ...field } />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            ) }
-          />
-        </div>
-        <div className="grid gap-4 md:grid-cols-3">
-          <FormField
-            control={ form.control }
-            name="postal_code"
-            render={ ({ field, }) => (
-              <FormItem>
-                <FormLabel>Postal code</FormLabel>
-                <FormControl>
-                  <Input placeholder="94105" { ...field } />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            ) }
-          />
-          <FormField
-            control={ form.control }
-            name="country_code"
-            render={ ({ field, }) => (
-              <FormItem>
-                <FormLabel className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
-                    <span>Country</span>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="grid h-6 w-6 place-items-center rounded-full border border-border text-muted-foreground transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                        >
-                          <FiInfo className="size-3" aria-hidden="true" />
-                          <span className="sr-only">Country availability information</span>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        Currently available for coworking spaces in the Philippines.
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    ISO 3166-1 alpha-2 code
-                  </span>
-                </FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="PH"
-                    maxLength={ 2 }
-                    { ...field }
-                    readOnly
-                    value={ field.value?.toUpperCase() ?? '' }
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            ) }
-          />
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <FormField
-            control={ form.control }
-            name="lat"
-            render={ ({ field, }) => (
-              <FormItem>
-                <FormLabel>
-                  <div className="flex items-center gap-2">
-                    <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
-                    <span>Latitude</span>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="grid h-6 w-6 place-items-center rounded-full border border-border text-muted-foreground transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                        >
-                          <FiInfo className="size-3" aria-hidden="true" />
-                          <span className="sr-only">Latitude availability information</span>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        Latitude and longitude are determined by the address.
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                </FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    step="0.000001"
-                    placeholder="37.791212"
-                    { ...field }
-                    readOnly
-                    value={ field.value ?? '' }
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            ) }
-          />
-          <FormField
-            control={ form.control }
-            name="long"
-            render={ ({ field, }) => (
-              <FormItem>
-                <FormLabel>
-                  <div className="flex items-center gap-2">
-                    <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
-                    <span>Longitude</span>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="grid h-6 w-6 place-items-center rounded-full border border-border text-muted-foreground transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                        >
-                          <FiInfo className="size-3" aria-hidden="true" />
-                          <span className="sr-only">Longitude availability information</span>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        Latitude and longitude are determined by the address.
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                </FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    step="0.000001"
-                    placeholder="-122.392756"
-                    { ...field }
-                    readOnly
-                    value={ field.value ?? '' }
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            ) }
-          />
-        </div>
-        <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <FormField
+              control={ form.control }
+              name="name"
+              render={ ({ field, }) => (
+                <FormItem>
+                  <FormLabel>Space name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Study Corner" { ...field } />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              ) }
+            />
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField
+                control={ form.control }
+                name="unit_number"
+                render={ ({ field, }) => (
+                  <FormItem>
+                    <FormLabel>Unit / Suite</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Unit Number" { ...field } />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                ) }
+              />
+              <FormField
+                control={ form.control }
+                name="address_subunit"
+                render={ ({ field, }) => (
+                  <FormItem>
+                    <FormLabel>Address subunit</FormLabel>
+                    <FormControl>
+                      <Input placeholder="2F" { ...field } />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                ) }
+              />
+            </div>
+            <FormField
+              control={ form.control }
+              name="description"
+              render={ ({ field, }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea rows={ 4 } placeholder="Describe the space, vibe, or suitable use cases..." { ...field } />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              ) }
+            />
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField
+                control={ form.control }
+                name="street"
+                render={ ({ field, }) => (
+                  <FormItem>
+                    <FormLabel>Street</FormLabel>
+                    <FormControl>
+                      <Input placeholder="661 San Marcelino" { ...field } />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                ) }
+              />
+              <FormField
+                control={ form.control }
+                name="city"
+                render={ ({ field, }) => (
+                  <FormItem>
+                    <FormLabel>City</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Manila" { ...field } />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                ) }
+              />
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <FormField
+                control={ form.control }
+                name="region"
+                render={ ({ field, }) => (
+                  <FormItem>
+                    <FormLabel>Region / State</FormLabel>
+                    <FormControl>
+                      <Input placeholder="NCR" { ...field } />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                ) }
+              />
+              <FormField
+                control={ form.control }
+                name="postal_code"
+                render={ ({ field, }) => (
+                  <FormItem>
+                    <FormLabel>Postal code</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="\d{4}"
+                        maxLength={ 4 }
+                        placeholder="1000"
+                        { ...field }
+                        onChange={ (event) => {
+                          const digits = event.target.value.replace(/\D/g, '');
+                          field.onChange(digits.slice(0, 4));
+                        } }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                ) }
+              />
+              <FormField
+                control={ form.control }
+                name="country_code"
+                render={ ({ field, }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
+                      <span>Country</span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="grid h-6 w-6 place-items-center rounded-full border border-border text-muted-foreground transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                          >
+                            <FiInfo className="size-3" aria-hidden="true" />
+                            <span className="sr-only">Country availability information</span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Currently available for coworking spaces in the Philippines.
+                        </TooltipContent>
+                      </Tooltip>
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="PH"
+                        maxLength={ 2 }
+                        { ...field }
+                        readOnly
+                        value={ field.value?.toUpperCase() ?? '' }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                ) }
+              />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField
+                control={ form.control }
+                name="lat"
+                render={ ({ field, }) => (
+                  <FormItem>
+                    <FormLabel>
+                      <div className="flex items-center gap-2">
+                        <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
+                        <span>Latitude</span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              className="grid h-6 w-6 place-items-center rounded-full border border-border text-muted-foreground transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                            >
+                              <FiInfo className="size-3" aria-hidden="true" />
+                              <span className="sr-only">Latitude availability information</span>
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Latitude and longitude are determined by the address.
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.000001"
+                        placeholder="37.791212"
+                        { ...field }
+                        readOnly
+                        value={ field.value ?? '' }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                ) }
+              />
+              <FormField
+                control={ form.control }
+                name="long"
+                render={ ({ field, }) => (
+                  <FormItem>
+                    <FormLabel>
+                      <div className="flex items-center gap-2">
+                        <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
+                        <span>Longitude</span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              className="grid h-6 w-6 place-items-center rounded-full border border-border text-muted-foreground transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                            >
+                              <FiInfo className="size-3" aria-hidden="true" />
+                              <span className="sr-only">Longitude availability information</span>
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Latitude and longitude are determined by the address.
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.000001"
+                        placeholder="-122.392756"
+                        { ...field }
+                        readOnly
+                        value={ field.value ?? '' }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                ) }
+              />
+            </div>
+            <DialogFooter className="flex-col gap-2 sm:flex-row">
               <Button type="button" variant="outline" onClick={ close }>
                 Cancel
               </Button>
