@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { FiInfo } from 'react-icons/fi';
 
 import {
   AREA_INPUT_DEFAULT,
@@ -38,6 +39,7 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const rateUnits = ['hour', 'day', 'week'] as const;
 
@@ -170,16 +172,13 @@ export function SpaceDialog({
         </DialogHeader>
         <Form { ...form }>
           <form className="space-y-6" onSubmit={ form.handleSubmit(onSubmit) }>
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                control={ form.control }
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField
+            control={ form.control }
             name="name"
             render={ ({ field, }) => (
               <FormItem>
-                <FormLabel className="flex items-center justify-between">
-                  <span>Space name</span>
-                  <SchemaReference table="space" column="name" />
-                </FormLabel>
+                <FormLabel>Space name</FormLabel>
                 <FormControl>
                   <Input placeholder="Atlas Loft" { ...field } />
                 </FormControl>
@@ -192,10 +191,7 @@ export function SpaceDialog({
             name="unit_number"
             render={ ({ field, }) => (
               <FormItem>
-                <FormLabel className="flex items-center justify-between">
-                  <span>Unit / suite</span>
-                  <SchemaReference table="space" column="unit_number" />
-                </FormLabel>
+                <FormLabel>Unit / suite</FormLabel>
                 <FormControl>
                   <Input placeholder="Suite 120" { ...field } />
                 </FormControl>
@@ -209,10 +205,7 @@ export function SpaceDialog({
           name="description"
           render={ ({ field, }) => (
             <FormItem>
-              <FormLabel className="flex items-center justify-between">
-                <span>Overview</span>
-                <SchemaReference table="space" column="description" />
-              </FormLabel>
+              <FormLabel>Overview</FormLabel>
               <FormControl>
                 <Textarea rows={ 4 } placeholder="Describe the building, vibe, and suitable use cases." { ...field } />
               </FormControl>
@@ -226,10 +219,7 @@ export function SpaceDialog({
             name="address_subunit"
             render={ ({ field, }) => (
               <FormItem>
-                <FormLabel className="flex items-center justify-between">
-                  <span>Address subunit</span>
-                  <SchemaReference table="space" column="address_subunit" />
-                </FormLabel>
+                <FormLabel>Address subunit</FormLabel>
                 <FormControl>
                   <Input placeholder="Floor 3" { ...field } />
                 </FormControl>
@@ -242,10 +232,7 @@ export function SpaceDialog({
             name="street"
             render={ ({ field, }) => (
               <FormItem>
-                <FormLabel className="flex items-center justify-between">
-                  <span>Street</span>
-                  <SchemaReference table="space" column="street" />
-                </FormLabel>
+                <FormLabel>Street</FormLabel>
                 <FormControl>
                   <Input placeholder="123 Mission St" { ...field } />
                 </FormControl>
@@ -260,10 +247,7 @@ export function SpaceDialog({
             name="city"
             render={ ({ field, }) => (
               <FormItem>
-                <FormLabel className="flex items-center justify-between">
-                  <span>City</span>
-                  <SchemaReference table="space" column="city" />
-                </FormLabel>
+                <FormLabel>City</FormLabel>
                 <FormControl>
                   <Input placeholder="San Francisco" { ...field } />
                 </FormControl>
@@ -276,10 +260,7 @@ export function SpaceDialog({
             name="region"
             render={ ({ field, }) => (
               <FormItem>
-                <FormLabel className="flex items-center justify-between">
-                  <span>Region / state</span>
-                  <SchemaReference table="space" column="region" />
-                </FormLabel>
+                <FormLabel>Region / state</FormLabel>
                 <FormControl>
                   <Input placeholder="CA" { ...field } />
                 </FormControl>
@@ -294,10 +275,7 @@ export function SpaceDialog({
             name="postal_code"
             render={ ({ field, }) => (
               <FormItem>
-                <FormLabel className="flex items-center justify-between">
-                  <span>Postal code</span>
-                  <SchemaReference table="space" column="postal_code" />
-                </FormLabel>
+                <FormLabel>Postal code</FormLabel>
                 <FormControl>
                   <Input placeholder="94105" { ...field } />
                 </FormControl>
@@ -311,69 +289,120 @@ export function SpaceDialog({
             render={ ({ field, }) => (
               <FormItem>
                 <FormLabel className="flex items-center justify-between">
-                  <span>Country</span>
-                  <SchemaReference table="space" column="country_code" />
+                  <div className="flex items-center gap-2">
+                    <span>Country</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="grid h-6 w-6 place-items-center rounded-full border border-border text-muted-foreground transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                        >
+                          <FiInfo className="size-3" aria-hidden="true" />
+                          <span className="sr-only">Country availability information</span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Currently available for coworking spaces in the Philippines.
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    ISO 3166-1 alpha-2 code
+                  </span>
                 </FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="US"
+                    placeholder="PH"
                     maxLength={ 2 }
                     { ...field }
+                    readOnly
                     value={ field.value?.toUpperCase() ?? '' }
-                    onChange={ (event) => field.onChange(event.target.value.toUpperCase()) }
                   />
                 </FormControl>
-                <FormDescription>ISO 3166-1 alpha-2 code.</FormDescription>
                 <FormMessage />
               </FormItem>
             ) }
           />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
           <FormField
             control={ form.control }
             name="lat"
             render={ ({ field, }) => (
               <FormItem>
-                <FormLabel className="flex items-center justify-between">
-                  <span>Latitude</span>
-                  <SchemaReference table="space" column="lat" />
+                <FormLabel>
+                  <div className="flex items-center gap-2">
+                    <span>Latitude</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="grid h-6 w-6 place-items-center rounded-full border border-border text-muted-foreground transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                        >
+                          <FiInfo className="size-3" aria-hidden="true" />
+                          <span className="sr-only">Latitude availability information</span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Latitude and longitude are determined by the address.
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                 </FormLabel>
                 <FormControl>
                   <Input
                     type="number"
                     step="0.000001"
                     placeholder="37.791212"
+                    { ...field }
+                    readOnly
                     value={ field.value ?? '' }
-                    onChange={ (event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value)) }
                   />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             ) }
           />
-            </div>
-            <FormField
-              control={ form.control }
-              name="long"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel className="flex items-center justify-between">
-                <span>Longitude</span>
-                <SchemaReference table="space" column="long" />
-              </FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  step="0.000001"
-                  placeholder="-122.392756"
-                  value={ field.value ?? '' }
-                  onChange={ (event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value)) }
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          ) }
-        />
-            <DialogFooter className="flex-col gap-2 sm:flex-row">
+          <FormField
+            control={ form.control }
+            name="long"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel>
+                  <div className="flex items-center gap-2">
+                    <span>Longitude</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="grid h-6 w-6 place-items-center rounded-full border border-border text-muted-foreground transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                        >
+                          <FiInfo className="size-3" aria-hidden="true" />
+                          <span className="sr-only">Longitude availability information</span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Latitude and longitude are determined by the address.
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.000001"
+                    placeholder="-122.392756"
+                    { ...field }
+                    readOnly
+                    value={ field.value ?? '' }
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            ) }
+          />
+        </div>
+        <DialogFooter className="flex-col gap-2 sm:flex-row">
               <Button type="button" variant="outline" onClick={ close }>
                 Cancel
               </Button>
