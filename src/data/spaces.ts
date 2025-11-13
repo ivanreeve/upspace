@@ -43,7 +43,7 @@ export const SPACE_INPUT_DEFAULT: SpaceInput = {
   city: '',
   region: '',
   postal_code: '',
-  country_code: 'US',
+  country_code: 'PH',
   lat: 0,
   long: 0,
 };
