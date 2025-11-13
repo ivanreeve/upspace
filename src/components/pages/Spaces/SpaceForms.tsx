@@ -61,7 +61,7 @@ const normalizeEditorHtml = (value?: string) => {
 
 const DESCRIPTION_EDITOR_PLACEHOLDER = 'Describe the space, vibe, or suitable use cases...';
 const DESCRIPTION_EDITOR_STYLES = [
-  'prose prose-sm max-w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0 focus-visible:ring-offset-background',
+  'prose prose-sm max-w-full focus-visible:outline-none',
   '[&_p]:m-0',
   '[&_h1]:m-0 [&_h1]:text-2xl [&_h1]:font-semibold',
   '[&_h2]:m-0 [&_h2]:text-xl [&_h2]:font-semibold',
@@ -343,7 +343,7 @@ function DescriptionEditor(props: DescriptionEditorProps) {
       <div className="bg-background px-3 py-3">
         <EditorContent
           editor={ editor }
-          className="min-h-[220px]"
+          className="min-h-[220px] border-none focus-visible:outline-none"
         />
       </div>
     </div>
