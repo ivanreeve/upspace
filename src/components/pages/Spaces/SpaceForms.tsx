@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { FiInfo } from 'react-icons/fi';
+import { FiInfo, FiLock } from 'react-icons/fi';
 
 import {
   AREA_INPUT_DEFAULT,
@@ -290,6 +290,7 @@ export function SpaceDialog({
               <FormItem>
                 <FormLabel className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
+                    <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
                     <span>Country</span>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -332,6 +333,7 @@ export function SpaceDialog({
               <FormItem>
                 <FormLabel>
                   <div className="flex items-center gap-2">
+                    <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
                     <span>Latitude</span>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -370,6 +372,7 @@ export function SpaceDialog({
               <FormItem>
                 <FormLabel>
                   <div className="flex items-center gap-2">
+                    <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
                     <span>Longitude</span>
                     <Tooltip>
                       <TooltipTrigger asChild>
