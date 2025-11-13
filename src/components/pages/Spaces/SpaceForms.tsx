@@ -5,6 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ControllerRenderProps, useForm, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 import { FiLock } from 'react-icons/fi';
+import type { ChainedCommands, Command } from '@tiptap/core';
+import { TextSelection } from '@tiptap/pm/state';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -222,20 +224,84 @@ function DescriptionEditor(props: DescriptionEditorProps) {
     );
   }
 
-  const toggleHeading = (level?: number) => {
-    if (level) {
-      editor.chain().focus().toggleHeading({ level, }).run();
-    } else {
-      editor.chain().focus().setParagraph().run();
+  const splitSelectionToBlockBoundaries: Command = ({
+    tr,
+    dispatch,
+  }) => {
+    const { selection, } = tr;
+
+    if (!(selection instanceof TextSelection) || selection.empty) {
+      return true;
     }
+
+    let {
+      from,
+      to,
+    } = selection;
+    let modified = false;
+
+    const selectionEndsMidBlock = () => {
+      const $to = tr.doc.resolve(to);
+      return (
+        $to.parent.isTextblock &&
+        $to.parentOffset > 0 &&
+        $to.parentOffset < $to.parent.content.size
+      );
+    };
+
+    const selectionStartsMidBlock = () => {
+      const $from = tr.doc.resolve(from);
+      return $from.parent.isTextblock && $from.parentOffset > 0;
+    };
+
+    if (selectionEndsMidBlock()) {
+      tr.split(to);
+      from = tr.mapping.map(from, 1);
+      to = tr.mapping.map(to, 1);
+      modified = true;
+    }
+
+    if (selectionStartsMidBlock()) {
+      tr.split(from);
+      from = tr.mapping.map(from, 1);
+      to = tr.mapping.map(to, 1);
+      modified = true;
+    }
+
+    if (modified) {
+      tr.setSelection(TextSelection.create(tr.doc, from, to));
+    }
+
+    if (dispatch) {
+      dispatch(tr);
+    }
+
+    return true;
+  };
+
+  const runBlockCommand = (execute: (chain: ChainedCommands) => ChainedCommands) => {
+    const shouldNormalizeSelection =
+      editor.state.selection instanceof TextSelection && !editor.state.selection.empty;
+
+    let chain = editor.chain().focus();
+
+    if (shouldNormalizeSelection) {
+      chain = chain.command(splitSelectionToBlockBoundaries);
+    }
+
+    execute(chain).run();
+  };
+
+  const toggleHeading = (level?: number) => {
+    runBlockCommand((chain) => (level ? chain.toggleHeading({ level, }) : chain.setParagraph()));
   };
 
   const toggleOrderedList = () => {
-    editor.chain().focus().toggleOrderedList().run();
+    runBlockCommand((chain) => chain.toggleOrderedList());
   };
 
   const toggleBulletList = () => {
-    editor.chain().focus().toggleBulletList().run();
+    runBlockCommand((chain) => chain.toggleBulletList());
   };
 
   const toggleBold = () => {
