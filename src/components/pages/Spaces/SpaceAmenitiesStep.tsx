@@ -162,7 +162,7 @@ export function SpaceAmenitiesStep({ form, }: SpaceAmenitiesStepProps) {
           <FormItem>
             <FormLabel>Included amenities</FormLabel>
             <FormDescription>Select at least two of the core amenities and services offered in this space.</FormDescription>
-            <div className="mt-4 space-y-4">
+            <div className="mt-4 flex h-[70vh] min-h-0 flex-col gap-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                 <div className="flex-1">
                   <Label htmlFor="amenities-search" className="sr-only">
@@ -205,7 +205,7 @@ export function SpaceAmenitiesStep({ form, }: SpaceAmenitiesStepProps) {
                 </div>
               </div>
 
-              <ScrollArea className="max-h-[65vh] w-full">
+              <ScrollArea className="w-full flex-1">
                 <div className="space-y-6 pr-4">
                   { isLoading ? (
                     <AmenitiesSkeleton />
