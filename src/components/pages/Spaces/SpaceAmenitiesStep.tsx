@@ -1,9 +1,14 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
-import { FiAlertCircle, FiList, FiRefreshCw } from 'react-icons/fi';
+import {
+  FiAlertCircle,
+  FiList,
+  FiRefreshCw,
+  FiSearch
+} from 'react-icons/fi';
 
 import { SpaceFormValues } from './SpaceForms';
 
@@ -16,8 +21,16 @@ import {
   FormLabel,
   FormMessage
 } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AMENITY_CATEGORY_DISPLAY_MAP } from '@/lib/amenity/amenity_category_display_map';
 import { AMENITY_ICON_MAPPINGS } from '@/lib/amenity/amenity_icon_mappings';
@@ -41,6 +54,8 @@ type SpaceAmenitiesStepProps = {
 const orderedCategories = Object.keys(AMENITY_CATEGORY_DISPLAY_MAP);
 
 export function SpaceAmenitiesStep({ form, }: SpaceAmenitiesStepProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const {
     data,
     isLoading,
@@ -94,6 +109,37 @@ export function SpaceAmenitiesStep({ form, }: SpaceAmenitiesStepProps) {
     return ordered;
   }, [data]);
 
+  const categoryOptions = useMemo(
+    () =>
+      groupedAmenities.map((group) => ({
+        value: group.key,
+        label: group.label,
+      })),
+    [groupedAmenities]
+  );
+
+  const filteredAmenities = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const baseGroups =
+      categoryFilter === 'all'
+        ? groupedAmenities
+        : groupedAmenities.filter((group) => group.key === categoryFilter);
+
+    if (!normalizedQuery) return baseGroups;
+
+    return baseGroups
+      .map((group) => ({
+        ...group,
+        amenities: group.amenities.filter((amenity) =>
+          amenity.name.toLowerCase().includes(normalizedQuery)
+        ),
+      }))
+      .filter((group) => group.amenities.length > 0);
+  }, [categoryFilter, groupedAmenities, searchQuery]);
+
+  const hasActiveSearch = searchQuery.trim().length > 0;
+  const isCategoryFiltered = categoryFilter !== 'all';
+
   return (
     <FormField
       control={ form.control }
@@ -116,64 +162,114 @@ export function SpaceAmenitiesStep({ form, }: SpaceAmenitiesStepProps) {
           <FormItem>
             <FormLabel>Included amenities</FormLabel>
             <FormDescription>Select at least two of the core amenities and services offered in this space.</FormDescription>
-            <ScrollArea className="mt-4 max-h-[65vh] w-full">
-              <div className="space-y-6 pr-4">
-                { isLoading ? (
-                  <AmenitiesSkeleton />
-                ) : isError ? (
-                  <AmenitiesErrorState onRetry={ refetch } />
-                ) : groupedAmenities.length === 0 ? (
-                  <EmptyAmenitiesState />
-                ) : (
-                  groupedAmenities.map((group) => (
-                    <section key={ group.key } className="space-y-3">
-                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                        <h3 className="text-base font-semibold text-foreground">{ group.label }</h3>
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                          { group.amenities.length } option{ group.amenities.length === 1 ? '' : 's' }
-                        </p>
-                      </div>
-                      <ul className="space-y-2">
-                        { group.amenities.map((amenity) => {
-                          const checkboxId = `amenity-${amenity.id}`;
-                          const Icon = amenity.identifier
-                            ? AMENITY_ICON_MAPPINGS[amenity.identifier] ?? FiList
-                            : FiList;
-                          const checked = selected.includes(amenity.id);
-
-                          return (
-                            <li key={ amenity.id }>
-                              <div
-                                className={ cn(
-                                  'rounded-xl border border-border/60 bg-background/50 px-4 py-3 transition hover:border-primary/50',
-                                  checked && 'border-primary bg-primary/5 shadow-sm'
-                                ) }
-                              >
-                                <div className="flex items-center gap-3">
-                                  <Checkbox
-                                    id={ checkboxId }
-                                    checked={ checked }
-                                    onCheckedChange={ (state) => handleCheckedChange(amenity.id, state === true) }
-                                    aria-label={ `Toggle amenity ${amenity.name}` }
-                                  />
-                                  <Label
-                                    htmlFor={ checkboxId }
-                                    className="flex w-full cursor-pointer items-center gap-3 text-base font-medium text-foreground"
-                                  >
-                                    <Icon className="size-4 text-foreground" aria-hidden="true" />
-                                    <span>{ amenity.name }</span>
-                                  </Label>
-                                </div>
-                              </div>
-                            </li>
-                          );
-                        }) }
-                      </ul>
-                    </section>
-                  ))
-                ) }
+            <div className="mt-4 space-y-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                <div className="flex-1">
+                  <Label htmlFor="amenities-search" className="sr-only">
+                    Search amenities
+                  </Label>
+                  <div className="relative">
+                    <FiSearch className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                    <Input
+                      id="amenities-search"
+                      type="search"
+                      placeholder="Search amenities"
+                      value={ searchQuery }
+                      onChange={ (event) => setSearchQuery(event.target.value) }
+                      aria-label="Search amenities"
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+                <div className="sm:w-56">
+                  <Label htmlFor="amenities-category-filter" className="sr-only">
+                    Filter amenities by category
+                  </Label>
+                  <Select value={ categoryFilter } onValueChange={ setCategoryFilter }>
+                    <SelectTrigger
+                      id="amenities-category-filter"
+                      className="w-full"
+                      aria-label="Filter amenities by category"
+                    >
+                      <SelectValue placeholder="All categories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All categories</SelectItem>
+                      { categoryOptions.map((category) => (
+                        <SelectItem key={ category.value } value={ category.value }>
+                          { category.label }
+                        </SelectItem>
+                      )) }
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </ScrollArea>
+
+              <ScrollArea className="max-h-[65vh] w-full">
+                <div className="space-y-6 pr-4">
+                  { isLoading ? (
+                    <AmenitiesSkeleton />
+                  ) : isError ? (
+                    <AmenitiesErrorState onRetry={ refetch } />
+                  ) : groupedAmenities.length === 0 ? (
+                    <EmptyAmenitiesState />
+                  ) : filteredAmenities.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      { hasActiveSearch || isCategoryFiltered
+                        ? 'No amenities match your filters.'
+                        : 'No amenities available.' }
+                    </p>
+                  ) : (
+                    filteredAmenities.map((group) => (
+                      <section key={ group.key } className="space-y-3">
+                        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                          <h3 className="text-base font-semibold text-foreground">{ group.label }</h3>
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            { group.amenities.length } option{ group.amenities.length === 1 ? '' : 's' }
+                          </p>
+                        </div>
+                        <ul className="space-y-2">
+                          { group.amenities.map((amenity) => {
+                            const checkboxId = `amenity-${amenity.id}`;
+                            const Icon = amenity.identifier
+                              ? AMENITY_ICON_MAPPINGS[amenity.identifier] ?? FiList
+                              : FiList;
+                            const checked = selected.includes(amenity.id);
+
+                            return (
+                              <li key={ amenity.id }>
+                                <div
+                                  className={ cn(
+                                    'rounded-xl border border-border/60 bg-background/50 px-4 py-3 transition hover:border-primary/50',
+                                    checked && 'border-primary bg-primary/5 shadow-sm'
+                                  ) }
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <Checkbox
+                                      id={ checkboxId }
+                                      checked={ checked }
+                                      onCheckedChange={ (state) => handleCheckedChange(amenity.id, state === true) }
+                                      aria-label={ `Toggle amenity ${amenity.name}` }
+                                    />
+                                    <Label
+                                      htmlFor={ checkboxId }
+                                      className="flex w-full cursor-pointer items-center gap-3 text-base font-medium text-foreground"
+                                    >
+                                      <Icon className="size-4 text-foreground" aria-hidden="true" />
+                                      <span>{ amenity.name }</span>
+                                    </Label>
+                                  </div>
+                                </div>
+                              </li>
+                            );
+                          }) }
+                        </ul>
+                      </section>
+                    ))
+                  ) }
+                </div>
+              </ScrollArea>
+            </div>
             <p className="text-sm text-muted-foreground">
               { selected.length } selected · choose at least two to continue.
             </p>
