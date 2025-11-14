@@ -17,6 +17,7 @@ import {
   FormMessage
 } from '@/components/ui/form';
 import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AMENITY_CATEGORY_DISPLAY_MAP } from '@/lib/amenity/amenity_category_display_map';
 import { AMENITY_ICON_MAPPINGS } from '@/lib/amenity/amenity_icon_mappings';
@@ -115,62 +116,64 @@ export function SpaceAmenitiesStep({ form, }: SpaceAmenitiesStepProps) {
           <FormItem>
             <FormLabel>Included amenities</FormLabel>
             <FormDescription>Select at least two of the core amenities and services offered in this space.</FormDescription>
-            <div className="mt-4 space-y-6">
-              { isLoading ? (
-                <AmenitiesSkeleton />
-              ) : isError ? (
-                <AmenitiesErrorState onRetry={ refetch } />
-              ) : groupedAmenities.length === 0 ? (
-                <EmptyAmenitiesState />
-              ) : (
-                groupedAmenities.map((group) => (
-                  <section key={ group.key } className="space-y-3">
-                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                      <h3 className="text-base font-semibold text-foreground">{ group.label }</h3>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                        { group.amenities.length } option{ group.amenities.length === 1 ? '' : 's' }
-                      </p>
-                    </div>
-                    <ul className="space-y-2">
-                      { group.amenities.map((amenity) => {
-                        const checkboxId = `amenity-${amenity.id}`;
-                        const Icon = amenity.identifier
-                          ? AMENITY_ICON_MAPPINGS[amenity.identifier] ?? FiList
-                          : FiList;
-                        const checked = selected.includes(amenity.id);
+            <ScrollArea className="mt-4 max-h-[65vh] w-full">
+              <div className="space-y-6 pr-4">
+                { isLoading ? (
+                  <AmenitiesSkeleton />
+                ) : isError ? (
+                  <AmenitiesErrorState onRetry={ refetch } />
+                ) : groupedAmenities.length === 0 ? (
+                  <EmptyAmenitiesState />
+                ) : (
+                  groupedAmenities.map((group) => (
+                    <section key={ group.key } className="space-y-3">
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                        <h3 className="text-base font-semibold text-foreground">{ group.label }</h3>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                          { group.amenities.length } option{ group.amenities.length === 1 ? '' : 's' }
+                        </p>
+                      </div>
+                      <ul className="space-y-2">
+                        { group.amenities.map((amenity) => {
+                          const checkboxId = `amenity-${amenity.id}`;
+                          const Icon = amenity.identifier
+                            ? AMENITY_ICON_MAPPINGS[amenity.identifier] ?? FiList
+                            : FiList;
+                          const checked = selected.includes(amenity.id);
 
-                        return (
-                          <li key={ amenity.id }>
-                            <div
-                              className={ cn(
-                                'rounded-xl border border-border/60 bg-background/50 px-4 py-3 transition hover:border-primary/50',
-                                checked && 'border-primary bg-primary/5 shadow-sm'
-                              ) }
-                            >
-                              <div className="flex items-center gap-3">
-                                <Checkbox
-                                  id={ checkboxId }
-                                  checked={ checked }
-                                  onCheckedChange={ (state) => handleCheckedChange(amenity.id, state === true) }
-                                  aria-label={ `Toggle amenity ${amenity.name}` }
-                                />
-                                <Label
-                                  htmlFor={ checkboxId }
-                                  className="flex w-full cursor-pointer items-center gap-3 text-base font-medium text-foreground"
-                                >
-                                  <Icon className="size-4 text-foreground" aria-hidden="true" />
-                                  <span>{ amenity.name }</span>
-                                </Label>
+                          return (
+                            <li key={ amenity.id }>
+                              <div
+                                className={ cn(
+                                  'rounded-xl border border-border/60 bg-background/50 px-4 py-3 transition hover:border-primary/50',
+                                  checked && 'border-primary bg-primary/5 shadow-sm'
+                                ) }
+                              >
+                                <div className="flex items-center gap-3">
+                                  <Checkbox
+                                    id={ checkboxId }
+                                    checked={ checked }
+                                    onCheckedChange={ (state) => handleCheckedChange(amenity.id, state === true) }
+                                    aria-label={ `Toggle amenity ${amenity.name}` }
+                                  />
+                                  <Label
+                                    htmlFor={ checkboxId }
+                                    className="flex w-full cursor-pointer items-center gap-3 text-base font-medium text-foreground"
+                                  >
+                                    <Icon className="size-4 text-foreground" aria-hidden="true" />
+                                    <span>{ amenity.name }</span>
+                                  </Label>
+                                </div>
                               </div>
-                            </div>
-                          </li>
-                        );
-                      }) }
-                    </ul>
-                  </section>
-                ))
-              ) }
-            </div>
+                            </li>
+                          );
+                        }) }
+                      </ul>
+                    </section>
+                  ))
+                ) }
+              </div>
+            </ScrollArea>
             <p className="text-sm text-muted-foreground">
               { selected.length } selected · choose at least two to continue.
             </p>
