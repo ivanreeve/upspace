@@ -231,7 +231,7 @@ export default function SpaceCreateRoute() {
                                     <button
                                       type="button"
                                       onClick={ () => handleRemoveImage(index) }
-                                      className="absolute right-1 bottom-1 z-10 inline-flex h-6 w-6 items-center justify-center rounded-full border border-border/60 bg-background/60 text-muted-foreground transition hover:bg-background"
+                                      className="cursor-pointer absolute right-0 top-0 z-10 inline-flex h-6 w-6 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full border border-border/60 bg-background/60 text-muted-foreground transition hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                                       aria-label={ `Remove ${file.name}` }
                                     >
                                       <FiX aria-hidden="true" className="size-3" />
