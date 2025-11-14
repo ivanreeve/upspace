@@ -8,7 +8,7 @@ import {
 } from 'react';
 import Image from 'next/image';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { FiArrowLeft, FiArrowRight, FiX } from 'react-icons/fi';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -46,26 +46,30 @@ export default function SpaceCreateRoute() {
   });
 
   const [
-    nameValue,
-    descriptionValue,
-    unitNumberValue,
-    addressSubunitValue,
-    streetValue,
-    cityValue,
-    regionValue,
-    postalCodeValue,
-    countryCodeValue
-  ] = form.watch([
-    'name',
-    'description',
-    'unit_number',
-    'address_subunit',
-    'street',
-    'city',
-    'region',
-    'postal_code',
-    'country_code'
-  ]);
+    nameValue = '',
+    descriptionValue = '',
+    unitNumberValue = '',
+    addressSubunitValue = '',
+    streetValue = '',
+    cityValue = '',
+    regionValue = '',
+    postalCodeValue = '',
+    countryCodeValue = ''
+  ] = useWatch({
+    control: form.control,
+    name: [
+      'name',
+      'description',
+      'unit_number',
+      'address_subunit',
+      'street',
+      'city',
+      'region',
+      'postal_code',
+      'country_code'
+    ],
+    defaultValue: ['', '', '', '', '', '', '', '', ''],
+  });
 
   const normalize = (value?: string) => (value ?? '').trim();
 
