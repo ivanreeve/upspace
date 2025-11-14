@@ -202,15 +202,11 @@ export default function SpaceCreateRoute() {
         </div>
 
         <Card className="mt-8 border-border/70 bg-background/80">
-          <CardHeader>
-            <CardTitle>Space information</CardTitle>
-            <CardDescription>Start with the space basics and at least one photo, define the included amenities, then complete the canonical address.</CardDescription>
-          </CardHeader>
           <CardContent>
             <Form { ...form }>
               <form className="space-y-6" onSubmit={ form.handleSubmit(handleSubmit) }>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between rounded-md border border-border/70 bg-muted/5 px-4 py-2 text-sm text-muted-foreground">
+                  <div className="flex items-center justify-between rounded-md bg-muted/5 py-2 text-sm text-muted-foreground">
                     <span>Step { currentStep } of 3</span>
                     <div className="flex gap-1">
                       { [1, 2, 3].map((stepNumber) => (
