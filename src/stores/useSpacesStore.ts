@@ -16,7 +16,10 @@ type SpacesState = {
   updateArea: (spaceId: string, areaId: string, payload: AreaInput) => void;
 };
 
-const cloneSpaceInput = (payload: SpaceInput): SpaceInput => ({ ...payload, });
+const cloneSpaceInput = (payload: SpaceInput): SpaceInput => ({
+  ...payload,
+  amenities: [...payload.amenities],
+});
 
 const cloneAreaInput = (payload: AreaInput): AreaInput => ({ ...payload, });
 

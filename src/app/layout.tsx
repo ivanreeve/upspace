@@ -4,8 +4,9 @@ import { ThemeProvider } from 'next-themes';
 
 import { AuthProfileSync } from '@/components/auth/AuthProfileSync';
 import { SessionProvider } from '@/components/auth/SessionProvider';
-import { Toaster } from '@/components/ui/sonner';
 import { ServiceWorkerRegistration } from '@/components/common/ServiceWorkerRegistration';
+import { QueryProvider } from '@/components/providers/QueryProvider';
+import { Toaster } from '@/components/ui/sonner';
 
 export const metadata: Metadata = {
   title: 'UpSpace',
@@ -45,17 +46,19 @@ export default function RootLayout({ children, }: Readonly<{
     <html lang="en" suppressHydrationWarning>
       <body>
         <SessionProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="dark"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <AuthProfileSync />
-            { children }
-            <Toaster />
-            <ServiceWorkerRegistration />
-          </ThemeProvider>
+          <QueryProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="dark"
+              enableSystem
+              disableTransitionOnChange
+            >
+              <AuthProfileSync />
+              { children }
+              <Toaster />
+              <ServiceWorkerRegistration />
+            </ThemeProvider>
+          </QueryProvider>
         </SessionProvider>
       </body>
     </html>

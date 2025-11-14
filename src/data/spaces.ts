@@ -12,6 +12,7 @@ export type SpaceInput = {
   country_code: string;
   lat: number;
   long: number;
+  amenities: string[];
 };
 
 export type AreaInput = {
@@ -46,6 +47,7 @@ export const SPACE_INPUT_DEFAULT: SpaceInput = {
   country_code: 'PH',
   lat: 0,
   long: 0,
+  amenities: [],
 };
 
 export const AREA_INPUT_DEFAULT: AreaInput = {
@@ -70,6 +72,7 @@ export const INITIAL_SPACES: SpaceRecord[] = [
     country_code: 'US',
     lat: 37.791212,
     long: -122.392756,
+    amenities: ['amenity-meeting-room', 'amenity-free-coffee'],
     status: 'Live',
     created_at: '2025-02-10T10:00:00.000Z',
     areas: [
@@ -97,6 +100,7 @@ export const INITIAL_SPACES: SpaceRecord[] = [
     country_code: 'US',
     lat: 40.71978,
     long: -73.9615,
+    amenities: ['amenity-podcast-booth', 'amenity-yoga-room'],
     status: 'Pending',
     created_at: '2025-03-01T13:15:00.000Z',
     areas: [
@@ -133,6 +137,7 @@ export const INITIAL_SPACES: SpaceRecord[] = [
     country_code: 'US',
     lat: 44.98857,
     long: -93.27121,
+    amenities: ['amenity-daylight', 'amenity-modular'],
     status: 'Draft',
     created_at: '2025-03-05T08:45:00.000Z',
     areas: [],

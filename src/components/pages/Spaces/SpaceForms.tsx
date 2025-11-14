@@ -83,6 +83,9 @@ export const spaceSchema = z.object({
         .refine((value) => richTextPlainTextLength(value) >= 20, 'Describe the space in at least 20 characters.')
         .refine((value) => richTextPlainTextLength(value) <= 500, 'Keep the description under 500 characters.')
     ),
+  amenities: z
+    .array(z.string().min(1))
+    .min(2, 'Select at least two amenities.'),
   unit_number: z.string().min(1, 'Unit or suite number is required.'),
   address_subunit: z.string().min(1, 'Address subunit is required (e.g., floor).'),
   street: z.string().min(1, 'Street is required.'),
@@ -132,7 +135,10 @@ export const areaSchema = z
 export type SpaceFormValues = z.infer<typeof spaceSchema>;
 export type AreaFormValues = z.infer<typeof areaSchema>;
 
-export const createSpaceFormDefaults = (): SpaceFormValues => ({ ...SPACE_INPUT_DEFAULT, });
+export const createSpaceFormDefaults = (): SpaceFormValues => ({
+  ...SPACE_INPUT_DEFAULT,
+  amenities: [...SPACE_INPUT_DEFAULT.amenities],
+});
 
 export const createAreaFormDefaults = (): AreaFormValues => ({ ...AREA_INPUT_DEFAULT, });
 
@@ -148,6 +154,7 @@ export const spaceRecordToFormValues = (space: SpaceRecord): SpaceFormValues => 
   country_code: space.country_code,
   lat: space.lat,
   long: space.long,
+  amenities: [...space.amenities],
 });
 
 export const areaRecordToFormValues = (area: AreaRecord): AreaFormValues => ({

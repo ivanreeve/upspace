@@ -17,10 +17,11 @@ import { toast } from 'sonner';
 import {
   SpaceAddressFields,
   SpaceDetailsFields,
+  SpaceFormValues,
   createSpaceFormDefaults,
-  spaceSchema,
-  SpaceFormValues
+  spaceSchema
 } from '@/components/pages/Spaces/SpaceForms';
+import { SpaceAmenitiesStep } from '@/components/pages/Spaces/SpaceAmenitiesStep';
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
 import {
@@ -71,6 +72,12 @@ export default function SpaceCreateRoute() {
     defaultValue: ['', '', '', '', '', '', '', '', ''],
   });
 
+  const selectedAmenities = useWatch({
+    control: form.control,
+    name: 'amenities',
+    defaultValue: [],
+  }) ?? [];
+
   const normalize = (value?: string) => (value ?? '').trim();
 
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
@@ -78,12 +85,14 @@ export default function SpaceCreateRoute() {
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const canAddMoreImages = selectedImages.length < MAX_IMAGE_COUNT;
 
-  const isStepOneComplete =
+  const isBasicsStepComplete =
     normalize(nameValue).length > 0 &&
     richTextPlainTextLength(descriptionValue ?? '') >= 20 &&
     selectedImages.length > 0;
 
-  const isStepTwoComplete =
+  const isAmenitiesStepComplete = selectedAmenities.length >= 2;
+
+  const isAddressStepComplete =
     normalize(unitNumberValue).length > 0 &&
     normalize(addressSubunitValue).length > 0 &&
     normalize(streetValue).length > 0 &&
@@ -92,9 +101,9 @@ export default function SpaceCreateRoute() {
     normalize(postalCodeValue).length === 4 &&
     normalize(countryCodeValue).length === 2;
 
-  const [currentStep, setCurrentStep] = useState<1 | 2>(1);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
-  const goToNextStep = async () => {
+  const goToAmenitiesStep = async () => {
     const canProceed = await form.trigger(['name', 'description']);
 
     if (!canProceed) {
@@ -107,6 +116,16 @@ export default function SpaceCreateRoute() {
     }
 
     setCurrentStep(2);
+  };
+
+  const goToAddressStep = async () => {
+    const canProceed = await form.trigger('amenities');
+
+    if (!canProceed) {
+      return;
+    }
+
+    setCurrentStep(3);
   };
 
   const handleImageSelection = (event: ChangeEvent<HTMLInputElement>) => {
@@ -185,16 +204,16 @@ export default function SpaceCreateRoute() {
         <Card className="mt-8 border-border/70 bg-background/80">
           <CardHeader>
             <CardTitle>Space information</CardTitle>
-            <CardDescription>Start with the space basics and at least one photo, then complete the canonical address on the next page.</CardDescription>
+            <CardDescription>Start with the space basics and at least one photo, define the included amenities, then complete the canonical address.</CardDescription>
           </CardHeader>
           <CardContent>
             <Form { ...form }>
               <form className="space-y-6" onSubmit={ form.handleSubmit(handleSubmit) }>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between rounded-md border border-border/70 bg-muted/5 px-4 py-2 text-sm text-muted-foreground">
-                    <span>Step { currentStep } of 2</span>
+                    <span>Step { currentStep } of 3</span>
                     <div className="flex gap-1">
-                      { [1, 2].map((stepNumber) => (
+                      { [1, 2, 3].map((stepNumber) => (
                         <span
                           key={ stepNumber }
                           className={ `h-1.5 w-10 rounded-full transition ${currentStep >= stepNumber ? 'bg-primary' : 'bg-border/30'}` }
@@ -210,7 +229,7 @@ export default function SpaceCreateRoute() {
                           <span className="text-xs uppercase tracking-wide text-muted-foreground">Required</span>
                         </div>
                         <p className="mt-1 text-sm text-muted-foreground">
-                          Add visuals now or revisit this section after the address step. <span className="font-semibold text-foreground">Maximum { MAX_IMAGE_COUNT } photos.</span>
+                          Add visuals now or revisit this section before finalizing the address step. <span className="font-semibold text-foreground">Maximum { MAX_IMAGE_COUNT } photos.</span>
                         </p>
                         <div className="mt-3">
                           { previewItems.length === 0 ? (
@@ -283,6 +302,8 @@ export default function SpaceCreateRoute() {
                       </div>
                       <SpaceDetailsFields form={ form } />
                     </>
+                  ) : currentStep === 2 ? (
+                    <SpaceAmenitiesStep form={ form } />
                   ) : (
                     <SpaceAddressFields form={ form } />
                   ) }
@@ -292,23 +313,39 @@ export default function SpaceCreateRoute() {
                     Cancel
                   </Button>
                   <div className="flex items-center gap-2">
-                    { currentStep === 1 ? (
-                      <Button type="button" disabled={ !isStepOneComplete } onClick={ goToNextStep }>
+                    { currentStep === 1 && (
+                      <Button type="button" disabled={ !isBasicsStepComplete } onClick={ goToAmenitiesStep }>
                         Next
                         <FiArrowRight className="size-4" aria-hidden="true" />
                       </Button>
-                    ) : (
+                    ) }
+                    { currentStep === 2 && (
                       <>
                         <Button
                           type="button"
                           variant="outline"
-                          disabled={ !isStepOneComplete }
                           onClick={ () => setCurrentStep(1) }
                         >
                           <FiArrowLeft className="size-4" aria-hidden="true" />
                           Back
                         </Button>
-                        <Button type="submit" disabled={ !isStepTwoComplete }>
+                        <Button type="button" disabled={ !isAmenitiesStepComplete } onClick={ goToAddressStep }>
+                          Next
+                          <FiArrowRight className="size-4" aria-hidden="true" />
+                        </Button>
+                      </>
+                    ) }
+                    { currentStep === 3 && (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={ () => setCurrentStep(2) }
+                        >
+                          <FiArrowLeft className="size-4" aria-hidden="true" />
+                          Back
+                        </Button>
+                        <Button type="submit" disabled={ !isAddressStepComplete }>
                           Save space
                         </Button>
                       </>
