@@ -4,7 +4,8 @@ import { useEffect, useRef } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ControllerRenderProps, useForm, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
-import { FiLock } from 'react-icons/fi';
+import { FiLock, FiList, FiSlash } from 'react-icons/fi';
+import { LuListOrdered } from 'react-icons/lu';
 import type { ChainedCommands, Command } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
 import { EditorContent, useEditor } from '@tiptap/react';
@@ -382,7 +383,8 @@ function DescriptionEditor(props: DescriptionEditorProps) {
             aria-pressed={ editor.isActive('bulletList') }
             aria-label="Bullet list"
           >
-            Bullet list
+            <FiList className="size-4" aria-hidden="true" />
+            <span className="sr-only">Bullet list</span>
           </Button>
           <Button
             type="button"
@@ -392,7 +394,8 @@ function DescriptionEditor(props: DescriptionEditorProps) {
             aria-pressed={ editor.isActive('orderedList') }
             aria-label="Numbered list"
           >
-            Numbered list
+            <LuListOrdered className="size-4" aria-hidden="true" />
+            <span className="sr-only">Numbered list</span>
           </Button>
           <Button
             type="button"
@@ -402,7 +405,8 @@ function DescriptionEditor(props: DescriptionEditorProps) {
             onClick={ clearFormatting }
             aria-label="Clear formatting"
           >
-            Clear
+            <FiSlash className="size-4" aria-hidden="true" />
+            <span className="sr-only">Clear formatting</span>
           </Button>
         </div>
       </div>
