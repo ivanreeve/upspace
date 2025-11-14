@@ -158,7 +158,7 @@ export function SpaceAmenitiesStep({ form, }: SpaceAmenitiesStepProps) {
                                   htmlFor={ checkboxId }
                                   className="flex w-full cursor-pointer items-center gap-3 text-base font-medium text-foreground"
                                 >
-                                  <Icon className="size-4 text-primary" aria-hidden="true" />
+                                  <Icon className="size-4 text-foreground" aria-hidden="true" />
                                   <span>{ amenity.name }</span>
                                 </Label>
                               </div>
