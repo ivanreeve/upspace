@@ -1,5 +1,92 @@
-
-
+import { AiFillPrinter, AiOutlineAudioMuted } from 'react-icons/ai';
+import { BiNetworkChart, BiSolidCabinet, BiSolidStoreAlt } from 'react-icons/bi';
+import { BsGrid1X2Fill, BsPersonLinesFill, BsPersonVideo3 } from 'react-icons/bs';
+import { CgCommunity } from 'react-icons/cg';
+import {
+  FaBatteryThreeQuarters,
+  FaChalkboardTeacher,
+  FaCoffee,
+  FaDog,
+  FaEthernet,
+  FaFireExtinguisher,
+  FaKey,
+  FaLock,
+  FaNetworkWired,
+  FaParking,
+  FaPhone,
+  FaPlug,
+  FaShower,
+  FaThermometerEmpty,
+  FaToilet,
+  FaTools,
+  FaWheelchair,
+  FaVolumeMute
+} from 'react-icons/fa';
+import { FaVanShuttle, FaLocationCrosshairs, FaGlassWaterDroplet } from 'react-icons/fa6';
+import { GiNightSleep } from 'react-icons/gi';
+import {
+GrBraille,
+GrLounge,
+GrWorkshop,
+GrYoga
+} from 'react-icons/gr';
+import { ImBooks, ImExit } from 'react-icons/im';
+import { IoIosPeople } from 'react-icons/io';
+import {
+IoCardSharp,
+IoShareSocialSharp,
+IoVolumeLowSharp,
+IoWater
+} from 'react-icons/io5';
+import {
+  MdAir,
+  MdCable,
+  MdCleaningServices,
+  MdDirectionsBike,
+  MdDocumentScanner,
+  MdGrass,
+  MdLocalBar,
+  MdMeetingRoom,
+  MdMoreTime,
+  MdNoiseControlOff,
+  MdOutgoingMail,
+  MdOutlineDoNotDisturbOnTotalSilence,
+  MdOutlineLocalLaundryService,
+  MdOutlineNetworkWifi3Bar,
+  MdOutlinePets,
+  MdOutlineSecurity,
+  MdOutlineSmartDisplay,
+  MdOutlineSmokeFree,
+  MdOutlineVpnLock,
+  MdOutlineWbTwilight,
+  MdRememberMe,
+  MdRestaurant,
+  MdRoomPreferences,
+  MdWorkspacesOutline
+} from 'react-icons/md';
+import {
+PiBowlSteamFill,
+PiCigaretteFill,
+PiCoinVerticalFill,
+PiLockersFill
+} from 'react-icons/pi';
+import {
+  RiBattery2ChargeFill,
+  RiBilliardsFill,
+  RiFingerprintFill,
+  RiFridgeFill,
+  RiSofaFill,
+  RiTeamFill,
+  RiTvFill
+} from 'react-icons/ri';
+import {
+  TbAlarmSmoke,
+  TbArrowRampLeft,
+  TbChargingPileFilled,
+  TbDeviceCctvFilled,
+  TbMicrowaveFilled,
+  TbPackages
+} from 'react-icons/tb';
 
 export const AMENITY_ICON_MAPPINGS: Record<string, any> = {
   showers: FaShower,
