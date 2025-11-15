@@ -13,11 +13,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 
 import type { ForgotPasswordState, ResetPasswordResult } from '@/app/(auth)/forgot-password/actions';
-import {
-  requestPasswordResetAction,
-  resetPasswordWithOtpAction,
-  validateResetOtpAction
-} from '@/app/(auth)/forgot-password/actions';
+import { requestPasswordResetAction, resetPasswordWithOtpAction, validateResetOtpAction } from '@/app/(auth)/forgot-password/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

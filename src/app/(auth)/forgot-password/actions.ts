@@ -58,9 +58,7 @@ function invalidOtpResponse() {
   return {
     ok: false as const,
     message: INVALID_OTP_MESSAGE,
-    errors: {
-      otp: [INVALID_OTP_MESSAGE],
-    },
+    errors: { otp: [INVALID_OTP_MESSAGE], },
   };
 }
 
@@ -105,9 +103,7 @@ async function findAuthUserByEmail(email: string) {
       auth_user_id: authUser.id,
       is_disabled: false,
     },
-    select: {
-      user_id: true,
-    },
+    select: { user_id: true, },
   });
 
   if (!registeredProfile) return null;
@@ -139,9 +135,7 @@ const otpSchema = z.object({
   otp: z.string().trim().regex(/^\d{6}$/, 'Enter the 6-digit code we emailed to you.'),
 });
 
-const resetSchema = otpSchema.extend({
-  password: passwordSchema,
-});
+const resetSchema = otpSchema.extend({ password: passwordSchema, });
 
 type VerifiedOtpResult =
   | {
@@ -221,9 +215,7 @@ export async function requestPasswordResetAction(
     if (!user) {
       return {
         ok: false,
-        errors: {
-          email: ['No account found with that email address.'],
-        },
+        errors: { email: ['No account found with that email address.'], },
         message: 'Enter the email you use for your Upspace account.',
       };
     }
@@ -279,9 +271,7 @@ export async function validateResetOtpAction(payload: {
     return {
       ok: false,
       message: 'Fix the highlighted fields.',
-      errors: {
-        otp: fieldErrors.otp,
-      },
+      errors: { otp: fieldErrors.otp, },
     };
   }
 
@@ -300,9 +290,7 @@ export async function validateResetOtpAction(payload: {
     return {
       ok: false,
       message: INVALID_OTP_MESSAGE,
-      errors: {
-        otp: [INVALID_OTP_MESSAGE],
-      },
+      errors: { otp: [INVALID_OTP_MESSAGE], },
     };
   }
 }
