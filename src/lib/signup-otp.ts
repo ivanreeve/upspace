@@ -28,9 +28,7 @@ export async function requestSignupOtp(email: string) {
   const existingOtp = await prisma.signup_otps.findFirst({
     where: { email, },
     orderBy: { created_at: 'desc', },
-    select: {
-      created_at: true,
-    },
+    select: { created_at: true, },
   });
 
   if (existingOtp?.created_at) {
