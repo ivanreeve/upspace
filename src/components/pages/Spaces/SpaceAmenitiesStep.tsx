@@ -206,7 +206,11 @@ export function SpaceAmenitiesStep({ form, }: SpaceAmenitiesStepProps) {
               </div>
 
               <div className="flex min-h-0 flex-col">
-                <ScrollArea className="h-[65vh] w-full">
+                <ScrollArea
+                  className="h-[400px] w-full"
+                  onWheel={ (event) => event.stopPropagation() }
+                  onTouchMove={ (event) => event.stopPropagation() }
+                >
                   <div className="space-y-6 pr-4">
                     { isLoading ? (
                       <AmenitiesSkeleton />
@@ -241,7 +245,7 @@ export function SpaceAmenitiesStep({ form, }: SpaceAmenitiesStepProps) {
                                 <li key={ amenity.id }>
                                   <div
                                     className={ cn(
-                                      'rounded-xl border border-border/60 bg-background/50 px-4 py-3 transition hover:border-primary/50',
+                                      'rounded-sm border border-border/60 bg-background/50 px-4 py-3 transition hover:border-primary/50',
                                       checked && 'border-primary bg-primary/5 shadow-sm'
                                     ) }
                                   >

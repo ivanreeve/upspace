@@ -13,7 +13,11 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 
 import type { ForgotPasswordState, ResetPasswordResult } from '@/app/(auth)/forgot-password/actions';
-import { requestPasswordResetAction, resetPasswordWithOtpAction } from '@/app/(auth)/forgot-password/actions';
+import {
+  requestPasswordResetAction,
+  resetPasswordWithOtpAction,
+  validateResetOtpAction
+} from '@/app/(auth)/forgot-password/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -114,6 +118,8 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
   const [confirmPassword, setConfirmPassword] = useState('');
   const [resetErrors, setResetErrors] = useState<ResetErrors>({});
   const [isResetting, setIsResetting] = useState(false);
+  const [isOtpVerified, setIsOtpVerified] = useState(false);
+  const [otpVerificationPending, setOtpVerificationPending] = useState(false);
 
   const maskedEmail = useMemo(
     () => maskEmail(requestedEmail ?? email),
@@ -148,6 +154,7 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
     setNewPassword('');
     setConfirmPassword('');
     setResetErrors({});
+    setIsOtpVerified(false);
 
     toast.success(
       state.message ?? 'We sent a 6-digit verification code to your email address.'
@@ -169,6 +176,89 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
       toast.error(message);
     });
   }, [state]);
+
+  useEffect(() => {
+    setIsOtpVerified(false);
+
+    if (!requestedEmail) {
+      setOtpVerificationPending(false);
+      return;
+    }
+
+    if (otpValue.length !== 6) {
+      setOtpVerificationPending(false);
+      setResetErrors((prev) => ({
+        ...prev,
+        otp: undefined,
+      }));
+      return;
+    }
+
+    const parsedOtp = z
+      .string()
+      .trim()
+      .regex(/^\d{6}$/, 'Enter the 6-digit code we emailed to you.')
+      .safeParse(otpValue);
+
+    if (!parsedOtp.success) {
+      setOtpVerificationPending(false);
+      return;
+    }
+
+    let isActive = true;
+
+    const verifyOtp = async () => {
+      setOtpVerificationPending(true);
+      setResetErrors((prev) => ({
+        ...prev,
+        otp: undefined,
+      }));
+
+      try {
+        const result = await validateResetOtpAction({
+          email: requestedEmail,
+          otp: parsedOtp.data,
+        });
+
+        if (!isActive) return;
+
+        if (!result.ok) {
+          const message = result.errors?.otp?.[0] ?? result.message ?? 'Invalid or expired code.';
+          setIsOtpVerified(false);
+          setResetErrors((prev) => ({
+            ...prev,
+            otp: message,
+          }));
+          if (message) {
+            toast.error(message);
+          }
+          return;
+        }
+
+        setIsOtpVerified(true);
+        setResetErrors((prev) => ({
+          ...prev,
+          otp: undefined,
+        }));
+        toast.success(result.message ?? 'Code verified. You can set a new password now.');
+      } catch (error) {
+        console.error('Failed to verify reset OTP', error);
+        if (!isActive) return;
+        setIsOtpVerified(false);
+        toast.error('Unable to verify code. Please try again.');
+      } finally {
+        if (isActive) {
+          setOtpVerificationPending(false);
+        }
+      }
+    };
+
+    verifyOtp();
+
+    return () => {
+      isActive = false;
+    };
+  }, [otpValue, requestedEmail]);
 
   const fieldErr = (key: string) => state.errors?.[key]?.[0];
 
@@ -203,6 +293,16 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
       return;
     }
 
+    if (!isOtpVerified) {
+      const message = 'Enter the 6-digit code to verify before setting a new password.';
+      setResetErrors((prev) => ({
+        ...prev,
+        otp: prev.otp ?? message,
+      }));
+      toast.error(message);
+      return;
+    }
+
     setIsResetting(true);
     try {
       const result: ResetPasswordResult = await resetPasswordWithOtpAction({
@@ -212,6 +312,10 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
       });
 
       if (!result.ok) {
+        if (result.errors?.otp?.length) {
+          setIsOtpVerified(false);
+        }
+
         setResetErrors((prev) => ({
           ...prev,
           otp: result.errors?.otp?.[0] ?? prev.otp,
@@ -231,6 +335,7 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
       setOtpValue('');
       setNewPassword('');
       setConfirmPassword('');
+      setIsOtpVerified(false);
     } catch (error) {
       console.error('Password reset failed', error);
       toast.error('Unable to reset password. Please try again.');
@@ -309,6 +414,11 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
                     continue.
                   </p>
                 ) }
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  { isOtpVerified &&
+                    <p className="text-sm text-emerald-600 dark:text-emerald-400">Code verified</p>
+                  }
+                </div>
               </div>
 
               <div className="space-y-1.5">
@@ -322,6 +432,7 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
                   onChange={ (event) => setNewPassword(event.target.value) }
                   autoComplete="new-password"
                   required
+                  disabled={ !isOtpVerified || isResetting }
                   placeholder="Create a strong password"
                   className="h-10 rounded-md border border-input bg-muted/60 px-3 text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
@@ -341,6 +452,7 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
                   onChange={ (event) => setConfirmPassword(event.target.value) }
                   autoComplete="new-password"
                   required
+                  disabled={ !isOtpVerified || isResetting }
                   placeholder="Repeat your new password"
                   className="h-10 rounded-md border border-input bg-muted/60 px-3 text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
@@ -351,7 +463,7 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
 
               <Button
                 type="submit"
-                disabled={ isResetting }
+                disabled={ isResetting || !isOtpVerified }
                 className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-border bg-primary px-4 py-2 text-primary-foreground transition-[transform,opacity] active:scale-[0.98] disabled:opacity-70"
               >
                 { isResetting && <CgSpinner className="h-4 w-4 animate-spin" /> }

@@ -1,16 +1,31 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ControllerRenderProps, useForm, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 import { FiLock, FiList, FiSlash } from 'react-icons/fi';
-import { LuListOrdered } from 'react-icons/lu';
+import {
+  LuAlignCenter,
+  LuAlignJustify,
+  LuAlignLeft,
+  LuAlignRight,
+  LuLink2,
+  LuLink2Off,
+  LuListOrdered,
+  LuTable
+} from 'react-icons/lu';
 import type { ChainedCommands, Command } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import { Table } from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableCell from '@tiptap/extension-table-cell';
+import TableHeader from '@tiptap/extension-table-header';
+import TextAlign from '@tiptap/extension-text-align';
+import Link from '@tiptap/extension-link';
 
 import {
   AREA_INPUT_DEFAULT,
@@ -37,6 +52,13 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 import {
   Select,
   SelectContent,
@@ -62,6 +84,20 @@ const normalizeEditorHtml = (value?: string) => {
   return sanitizeRichText(value);
 };
 
+const ensureValidLinkHref = (value: string) => {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return '';
+  }
+
+  if (/^(https?:\/\/|mailto:|tel:)/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  return `https://${trimmed}`;
+};
+
 const DESCRIPTION_EDITOR_PLACEHOLDER = 'Describe the space, vibe, or suitable use cases...';
 const DESCRIPTION_EDITOR_STYLES = [
   'prose prose-sm max-w-full focus-visible:outline-none',
@@ -70,8 +106,46 @@ const DESCRIPTION_EDITOR_STYLES = [
   '[&_h2]:m-0 [&_h2]:text-xl [&_h2]:font-semibold',
   '[&_h3]:m-0 [&_h3]:text-lg [&_h3]:font-semibold',
   '[&_ul]:list-disc [&_ul]:pl-6 [&_ul]:marker:text-muted-foreground',
-  '[&_ol]:list-decimal [&_ol]:pl-6 [&_li]:my-1'
+  '[&_ol]:list-decimal [&_ol]:pl-6 [&_li]:my-1',
+  '[&_table]:w-full [&_table]:border [&_table]:border-border/70 [&_table]:border-collapse [&_table]:rounded-md',
+  '[&_th]:border [&_th]:border-border/70 [&_th]:bg-muted/60 [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold',
+  '[&_td]:border [&_td]:border-border/70 [&_td]:px-2 [&_td]:py-1 [&_td]:align-top'
 ].join(' ');
+
+const TABLE_INSERT_DEFAULTS = {
+  rows: 2,
+  cols: 2,
+  withHeaderRow: true,
+} as const;
+
+type TextAlignment = 'left' | 'center' | 'right' | 'justify';
+
+const TEXT_ALIGNMENT_OPTIONS: ReadonlyArray<{
+  value: TextAlignment;
+  label: string;
+  icon: typeof LuAlignLeft;
+}> = [
+  {
+    value: 'left',
+    label: 'Align left',
+    icon: LuAlignLeft,
+  },
+  {
+    value: 'center',
+    label: 'Align center',
+    icon: LuAlignCenter,
+  },
+  {
+    value: 'right',
+    label: 'Align right',
+    icon: LuAlignRight,
+  },
+  {
+    value: 'justify',
+    label: 'Justify text',
+    icon: LuAlignJustify,
+  }
+];
 
 export const spaceSchema = z.object({
   name: z.string().min(1, 'Space name is required.'),
@@ -175,11 +249,30 @@ function DescriptionEditor(props: DescriptionEditorProps) {
     onChange: field.onChange,
     onBlur: field.onBlur,
   });
+  const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
+  const [linkHref, setLinkHref] = useState('');
 
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3], }, }),
+      Link.configure({
+        autolink: true,
+        linkOnPaste: true,
+        openOnClick: false,
+        HTMLAttributes: {
+          rel: 'noopener noreferrer',
+          target: '_blank',
+        },
+      }),
+      TextAlign.configure({ types: ['heading', 'paragraph'], }),
+      Table.configure({
+        allowTableNodeSelection: true,
+        resizable: false,
+      }),
+      TableRow,
+      TableHeader,
+      TableCell,
       Placeholder.configure({ placeholder: DESCRIPTION_EDITOR_PLACEHOLDER, })
     ],
     content: field.value ?? '',
@@ -324,12 +417,102 @@ function DescriptionEditor(props: DescriptionEditorProps) {
     editor.chain().focus().toggleStrike().run();
   };
 
+  const setTextAlignment = (alignment: TextAlignment) => {
+    runBlockCommand((chain) => chain.setTextAlign(alignment));
+  };
+
+  const isAlignmentActive = (alignment: TextAlignment) =>
+    editor.isActive({ textAlign: alignment, });
+
+  const handleLinkOpenChange = (open: boolean) => {
+    if (open) {
+      const currentHref = editor.getAttributes('link').href ?? '';
+      setLinkHref(currentHref);
+    }
+
+    setLinkPopoverOpen(open);
+  };
+
+  const applyLink = () => {
+    const nextHref = ensureValidLinkHref(linkHref);
+
+    if (!nextHref) {
+      return;
+    }
+
+    editor
+      .chain()
+      .focus()
+      .extendMarkRange('link')
+      .setLink({
+        href: nextHref,
+        target: '_blank',
+        rel: 'noopener noreferrer',
+      })
+      .run();
+
+    setLinkPopoverOpen(false);
+  };
+
+  const removeLink = () => {
+    editor.chain().focus().unsetLink().run();
+    setLinkHref('');
+    setLinkPopoverOpen(false);
+  };
+
+  const insertTable = () => {
+    editor.chain().focus().insertTable(TABLE_INSERT_DEFAULTS).run();
+  };
+
+  const addTableRowBelow = () => {
+    editor.chain().focus().addRowAfter().run();
+  };
+
+  const addTableColumnAfter = () => {
+    editor.chain().focus().addColumnAfter().run();
+  };
+
+  const deleteTableRow = () => {
+    editor.chain().focus().deleteRow().run();
+  };
+
+  const deleteTableColumn = () => {
+    editor.chain().focus().deleteColumn().run();
+  };
+
+  const deleteTable = () => {
+    editor.chain().focus().deleteTable().run();
+  };
+
   const clearFormatting = () => {
     editor.chain().focus().unsetAllMarks().clearNodes().run();
   };
 
   const isHeadingActive = (level?: number) =>
     level ? editor.isActive('heading', { level, }) : editor.isActive('paragraph');
+
+  const isTableActive = editor.isActive('table');
+  const isLinkActive = editor.isActive('link');
+  const sanitizedLinkHref = ensureValidLinkHref(linkHref);
+  const createCanChain = () => editor.can().chain().focus();
+  const canInsertTable = createCanChain().insertTable(TABLE_INSERT_DEFAULTS).run();
+  const canAddRowAfter = createCanChain().addRowAfter().run();
+  const canAddColumnAfter = createCanChain().addColumnAfter().run();
+  const canDeleteRow = createCanChain().deleteRow().run();
+  const canDeleteColumn = createCanChain().deleteColumn().run();
+  const canDeleteTable = createCanChain().deleteTable().run();
+  const canApplyLink =
+    sanitizedLinkHref.length > 0
+      ? createCanChain()
+        .extendMarkRange('link')
+        .setLink({
+          href: sanitizedLinkHref,
+          target: '_blank',
+          rel: 'noopener noreferrer',
+        })
+        .run()
+      : false;
+  const canRemoveLink = isLinkActive && createCanChain().unsetLink().run();
 
   return (
     <div className="rounded-md border border-border/70">
@@ -338,83 +521,246 @@ function DescriptionEditor(props: DescriptionEditorProps) {
           { (['Normal', 'H1', 'H2', 'H3'] as const).map((label, index) => {
             const headingLevel = index === 0 ? undefined : index;
             return (
-              <Button
-                key={ label }
-                type="button"
-                size="sm"
-                variant={ isHeadingActive(headingLevel) ? 'outline' : 'ghost' }
-                className="min-w-[3rem] font-normal"
-                onClick={ () => toggleHeading(headingLevel) }
-                aria-pressed={ isHeadingActive(headingLevel) }
-                aria-label={ headingLevel ? `Heading ${headingLevel}` : 'Normal text' }
-              >
-                { label }
-              </Button>
+              <Tooltip key={ label }>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={ isHeadingActive(headingLevel) ? 'outline' : 'ghost' }
+                    className="min-w-[3rem] font-normal"
+                    onClick={ () => toggleHeading(headingLevel) }
+                    aria-pressed={ isHeadingActive(headingLevel) }
+                    aria-label={ headingLevel ? `Heading ${headingLevel}` : 'Normal text' }
+                  >
+                    { label }
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  { headingLevel ? `Heading ${headingLevel}` : 'Normal text' }
+                </TooltipContent>
+              </Tooltip>
             );
           }) }
-          <Button
-            type="button"
-            size="sm"
-            variant={ editor.isActive('bold') ? 'outline' : 'ghost' }
-            onClick={ toggleBold }
-            aria-pressed={ editor.isActive('bold') }
-            aria-label="Bold"
-          >
-            B
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={ editor.isActive('italic') ? 'outline' : 'ghost' }
-            onClick={ toggleItalic }
-            aria-pressed={ editor.isActive('italic') }
-            aria-label="Italic"
-          >
-            I
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={ editor.isActive('strike') ? 'outline' : 'ghost' }
-            onClick={ toggleStrike }
-            aria-pressed={ editor.isActive('strike') }
-            aria-label="Strikethrough"
-          >
-            S
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={ editor.isActive('bulletList') ? 'outline' : 'ghost' }
-            onClick={ toggleBulletList }
-            aria-pressed={ editor.isActive('bulletList') }
-            aria-label="Bullet list"
-          >
-            <FiList className="size-4" aria-hidden="true" />
-            <span className="sr-only">Bullet list</span>
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={ editor.isActive('orderedList') ? 'outline' : 'ghost' }
-            onClick={ toggleOrderedList }
-            aria-pressed={ editor.isActive('orderedList') }
-            aria-label="Numbered list"
-          >
-            <LuListOrdered className="size-4" aria-hidden="true" />
-            <span className="sr-only">Numbered list</span>
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="text-sm font-normal"
-            onClick={ clearFormatting }
-            aria-label="Clear formatting"
-          >
-            <FiSlash className="size-4" aria-hidden="true" />
-            <span className="sr-only">Clear formatting</span>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                size="sm"
+                variant={ editor.isActive('bold') ? 'outline' : 'ghost' }
+                onClick={ toggleBold }
+                aria-pressed={ editor.isActive('bold') }
+                aria-label="Bold"
+              >
+                B
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Bold</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                size="sm"
+                variant={ editor.isActive('italic') ? 'outline' : 'ghost' }
+                onClick={ toggleItalic }
+                aria-pressed={ editor.isActive('italic') }
+                aria-label="Italic"
+              >
+                I
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Italic</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                size="sm"
+                variant={ editor.isActive('strike') ? 'outline' : 'ghost' }
+                onClick={ toggleStrike }
+                aria-pressed={ editor.isActive('strike') }
+                aria-label="Strikethrough"
+              >
+                S
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Strikethrough</TooltipContent>
+          </Tooltip>
+          { TEXT_ALIGNMENT_OPTIONS.map(({
+            value,
+            label,
+            icon: Icon,
+          }) => (
+            <Tooltip key={ value }>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={ isAlignmentActive(value) ? 'outline' : 'ghost' }
+                  onClick={ () => setTextAlignment(value) }
+                  aria-pressed={ isAlignmentActive(value) }
+                  aria-label={ label }
+                >
+                  <Icon className="size-4" aria-hidden="true" />
+                  <span className="sr-only">{ label }</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">{ label }</TooltipContent>
+            </Tooltip>
+          )) }
+          <Popover open={ linkPopoverOpen } onOpenChange={ handleLinkOpenChange }>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={ isLinkActive ? 'outline' : 'ghost' }
+                    aria-pressed={ isLinkActive }
+                    aria-label="Insert link"
+                  >
+                    <LuLink2 className="size-4" aria-hidden="true" />
+                    <span className="sr-only">Insert link</span>
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Insert link</TooltipContent>
+            </Tooltip>
+            <PopoverContent align="start" className="w-64 space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground" htmlFor="description-link-input">
+                  Link URL
+                </label>
+                <Input
+                  id="description-link-input"
+                  value={ linkHref }
+                  onChange={ (event) => setLinkHref(event.target.value) }
+                  placeholder="https://example.com"
+                  autoComplete="url"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Button type="button" size="sm" onClick={ applyLink } disabled={ !canApplyLink }>
+                  Apply
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={ removeLink }
+                  disabled={ !canRemoveLink }
+                >
+                  <LuLink2Off className="mr-2 size-4" aria-hidden="true" />
+                  Remove
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                size="sm"
+                variant={ editor.isActive('bulletList') ? 'outline' : 'ghost' }
+                onClick={ toggleBulletList }
+                aria-pressed={ editor.isActive('bulletList') }
+                aria-label="Bullet list"
+              >
+                <FiList className="size-4" aria-hidden="true" />
+                <span className="sr-only">Bullet list</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Bullet list</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                size="sm"
+                variant={ editor.isActive('orderedList') ? 'outline' : 'ghost' }
+                onClick={ toggleOrderedList }
+                aria-pressed={ editor.isActive('orderedList') }
+                aria-label="Numbered list"
+              >
+                <LuListOrdered className="size-4" aria-hidden="true" />
+                <span className="sr-only">Numbered list</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Numbered list</TooltipContent>
+          </Tooltip>
+          <DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={ isTableActive ? 'outline' : 'ghost' }
+                    aria-pressed={ isTableActive }
+                    aria-label="Table tools"
+                  >
+                    <LuTable className="size-4" aria-hidden="true" />
+                    <span className="sr-only">Table tools</span>
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Table tools</TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent align="start" className="w-56">
+              <DropdownMenuItem
+                onSelect={ () => insertTable() }
+                disabled={ !canInsertTable }
+              >
+                Insert 2x2 table
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={ () => addTableRowBelow() }
+                disabled={ !canAddRowAfter }
+              >
+                Add row below
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={ () => addTableColumnAfter() }
+                disabled={ !canAddColumnAfter }
+              >
+                Add column to the right
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={ () => deleteTableRow() }
+                disabled={ !canDeleteRow }
+              >
+                Delete row
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={ () => deleteTableColumn() }
+                disabled={ !canDeleteColumn }
+              >
+                Delete column
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={ () => deleteTable() }
+                disabled={ !canDeleteTable }
+              >
+                Delete table
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="text-sm font-normal"
+                onClick={ clearFormatting }
+                aria-label="Clear formatting"
+              >
+                <FiSlash className="size-4" aria-hidden="true" />
+                <span className="sr-only">Clear formatting</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Clear formatting</TooltipContent>
+          </Tooltip>
         </div>
       </div>
       <div className="bg-background px-3 py-3">

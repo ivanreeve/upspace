@@ -3,12 +3,13 @@
 import {
   ChangeEvent,
   useEffect,
+  useMemo,
   useRef,
   useState
 } from 'react';
 import Image from 'next/image';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm, useWatch, type FieldPathValues } from 'react-hook-form';
 import { FiArrowLeft, FiArrowRight, FiX } from 'react-icons/fi';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -24,26 +25,47 @@ import {
 import { SpaceAmenitiesStep } from '@/components/pages/Spaces/SpaceAmenitiesStep';
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { richTextPlainTextLength } from '@/lib/rich-text';
 import NavBar from '@/components/ui/navbar';
 import { useSpacesStore } from '@/stores/useSpacesStore';
+import { useSpaceFormPersistence } from '@/hooks/useSpaceFormPersistence';
+import { usePersistentSpaceImages } from '@/hooks/usePersistentSpaceImages';
 
 const MAX_IMAGE_COUNT = 5;
+const WATCHED_FIELD_NAMES = [
+  'name',
+  'description',
+  'unit_number',
+  'address_subunit',
+  'street',
+  'city',
+  'region',
+  'postal_code',
+  'country_code'
+] as const;
+type WatchedFieldNames = typeof WATCHED_FIELD_NAMES;
+type WatchedFieldValues = FieldPathValues<SpaceFormValues, WatchedFieldNames>;
 
 export default function SpaceCreateRoute() {
   const router = useRouter();
   const createSpace = useSpacesStore((state) => state.createSpace);
-
   const form = useForm<SpaceFormValues>({
     resolver: zodResolver(spaceSchema),
     defaultValues: createSpaceFormDefaults(),
+  });
+  const { clearDraft, } = useSpaceFormPersistence(form);
+
+  const watchedDefaults = useMemo(
+    () =>
+      WATCHED_FIELD_NAMES.map((fieldName) => form.getValues(fieldName)) as WatchedFieldValues,
+    [form]
+  );
+
+  const watchedArray = useWatch<SpaceFormValues, WatchedFieldNames>({
+    control: form.control,
+    name: WATCHED_FIELD_NAMES,
+    defaultValue: watchedDefaults,
   });
 
   const [
@@ -56,31 +78,21 @@ export default function SpaceCreateRoute() {
     regionValue = '',
     postalCodeValue = '',
     countryCodeValue = ''
-  ] = useWatch({
-    control: form.control,
-    name: [
-      'name',
-      'description',
-      'unit_number',
-      'address_subunit',
-      'street',
-      'city',
-      'region',
-      'postal_code',
-      'country_code'
-    ],
-    defaultValue: ['', '', '', '', '', '', '', '', ''],
-  });
+  ] = watchedArray;
 
-  const selectedAmenities = useWatch({
+  const selectedAmenities = useWatch<SpaceFormValues, 'amenities'>({
     control: form.control,
     name: 'amenities',
-    defaultValue: [],
+    defaultValue: form.getValues('amenities'),
   }) ?? [];
 
   const normalize = (value?: string) => (value ?? '').trim();
 
-  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const {
+    selectedImages,
+    setSelectedImages,
+    clearImages,
+  } = usePersistentSpaceImages();
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const canAddMoreImages = selectedImages.length < MAX_IMAGE_COUNT;
@@ -178,6 +190,8 @@ export default function SpaceCreateRoute() {
   const handleSubmit = (values: SpaceFormValues) => {
     const spaceId = createSpace(values);
     toast.success(`${values.name} created.`);
+    clearDraft();
+    clearImages();
     router.push(`/spaces/${spaceId}`);
   };
 
@@ -206,7 +220,7 @@ export default function SpaceCreateRoute() {
             <Form { ...form }>
               <form className="space-y-6" onSubmit={ form.handleSubmit(handleSubmit) }>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between rounded-md bg-muted/5 py-2 text-sm text-muted-foreground">
+                  <div className="flex items-center justify-between rounded-md py-2 text-sm text-muted-foreground">
                     <span>Step { currentStep } of 3</span>
                     <div className="flex gap-1">
                       { [1, 2, 3].map((stepNumber) => (
@@ -305,7 +319,15 @@ export default function SpaceCreateRoute() {
                   ) }
                 </div>
                 <div className="flex flex-col gap-2 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                  <Button type="button" variant="outline" onClick={ () => router.push('/spaces') }>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={ () => {
+                      clearDraft();
+                      clearImages();
+                      router.push('/spaces');
+                    } }
+                  >
                     Cancel
                   </Button>
                   <div className="flex items-center gap-2">
