@@ -292,10 +292,10 @@ function AmenitiesSkeleton() {
     <div className="space-y-4">
       { Array.from({ length: 3, }).map((_, index) => (
         <div key={ `skeleton-${index}` } className="space-y-3">
-          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-5 w-40 rounded-sm bg-muted" />
           <div className="space-y-2">
             { Array.from({ length: 3, }).map((__, itemIndex) => (
-              <Skeleton key={ `skeleton-item-${itemIndex}` } className="h-12 w-full rounded-xl" />
+              <Skeleton key={ `skeleton-item-${itemIndex}` } className="h-12 w-full rounded-md bg-muted" />
             )) }
           </div>
         </div>
