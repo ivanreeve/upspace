@@ -7,6 +7,7 @@ import {
   IGNORED_PREFIXES,
   ONBOARDING_PATH,
   PUBLIC_PATHS,
+  ROLE_ACCESS_MAP,
   ROLE_REDIRECT_MAP
 } from '@/lib/constants';
 
@@ -102,6 +103,29 @@ export async function middleware(request: NextRequest) {
     if ((PUBLIC_PATHS.has(pathname) || isOnboardingPath) && redirectTarget) {
       const targetUrl = new URL(redirectTarget, request.url);
       return NextResponse.redirect(targetUrl);
+    }
+
+    if (!PUBLIC_PATHS.has(pathname) && !isOnboardingPath) {
+      const allowedPaths = profile?.role ? ROLE_ACCESS_MAP[profile.role] : undefined;
+
+      if (allowedPaths?.length) {
+        const canAccessPath = allowedPaths.some((allowedPath) => {
+          if (allowedPath === '/') {
+            return pathname === '/';
+          }
+
+          return (
+            pathname === allowedPath ||
+            pathname.startsWith(`${allowedPath}/`)
+          );
+        });
+
+        if (!canAccessPath) {
+          const fallbackPath = redirectTarget ?? allowedPaths[0] ?? '/';
+          const targetUrl = new URL(fallbackPath, request.url);
+          return NextResponse.redirect(targetUrl);
+        }
+      }
     }
   } catch (error) {
     console.error('Supabase middleware error', error);
