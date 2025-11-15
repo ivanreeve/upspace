@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
-import { requestSignupOtp } from '@/lib/signup-otp';
+import { OtpResendBlockedError, requestSignupOtp } from '@/lib/signup-otp';
 
 const bodySchema = z.object({ email: z.string().email(), });
 
@@ -38,6 +38,20 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, });
   } catch (error) {
+    if (error instanceof OtpResendBlockedError) {
+      const retryAfterSeconds = Math.max(1, error.retryAfterSeconds);
+      return NextResponse.json(
+        {
+          message: `Please wait ${retryAfterSeconds} seconds before requesting another code.`,
+          retryAfterSeconds,
+        },
+        {
+          status: 429,
+          headers: { 'Retry-After': retryAfterSeconds.toString(), },
+        }
+      );
+    }
+
     console.error('Failed to send signup OTP', error);
     return NextResponse.json(
       { message: 'Unable to send verification code right now.', },

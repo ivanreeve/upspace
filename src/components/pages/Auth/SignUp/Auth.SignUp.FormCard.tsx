@@ -1,6 +1,11 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react';
 import { useRouter } from 'next/navigation';
 import { CgSpinner } from 'react-icons/cg';
 import { toast } from 'sonner';
@@ -52,6 +57,8 @@ const otpSchema = z.object({
     .regex(/^\d{6}$/, 'Enter the 6-digit code we emailed to you.'),
 });
 
+const RESEND_COOLDOWN_SECONDS = 60;
+
 type FormErrors = Partial<Record<'email' | 'password' | 'confirmPassword', string>>;
 
 export function SignUpFormCard() {
@@ -68,6 +75,7 @@ export function SignUpFormCard() {
   const [otpValue, setOtpValue] = useState('');
   const [otpError, setOtpError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   const maskedEmail = useMemo(() => {
     if (!formValues.email.includes('@')) return formValues.email;
@@ -80,6 +88,18 @@ export function SignUpFormCard() {
     setFieldErrors({});
     setOtpError(null);
   };
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+
+    const timer = window.setInterval(() => {
+      setResendCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [resendCooldown]);
 
   const handleCredentialsSubmit: React.FormEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault();
@@ -131,6 +151,27 @@ export function SignUpFormCard() {
         body: JSON.stringify({ email: parsed.data.email, }),
       });
 
+      if (otpRes.status === 429) {
+        const data = (await otpRes.json().catch(() => null)) as
+          | { message?: string; retryAfterSeconds?: number }
+          | null;
+        const retryAfterHeader = Number.parseInt(otpRes.headers.get('Retry-After') ?? '', 10);
+        const retryAfterSecondsFromBody = Number(data?.retryAfterSeconds);
+        const retryAfterSeconds =
+          Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
+            ? retryAfterHeader
+            : Number.isFinite(retryAfterSecondsFromBody) && retryAfterSecondsFromBody > 0
+              ? retryAfterSecondsFromBody
+              : RESEND_COOLDOWN_SECONDS;
+
+        setResendCooldown(retryAfterSeconds);
+        toast.error(
+          data?.message ??
+            `Please wait ${retryAfterSeconds} seconds before requesting a new code.`
+        );
+        return;
+      }
+
       if (!otpRes.ok) {
         const data = await otpRes.json().catch(() => null);
         toast.error(data?.message ?? 'Unable to send verification code.');
@@ -140,6 +181,7 @@ export function SignUpFormCard() {
       await new Promise((resolve) => setTimeout(resolve, 700));
       setOtpValue('');
       setStep('otp');
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
       toast.success(`A verification code was sent to ${parsed.data.email}.`);
     } finally {
       setIsSubmitting(false);
@@ -190,6 +232,11 @@ export function SignUpFormCard() {
 
   const resendCode = async () => {
     if (step !== 'otp') return;
+    if (resendCooldown > 0) {
+      toast.error(`Please wait ${resendCooldown} seconds before requesting a new code.`);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const res = await fetch('/api/v1/auth/signup/send-otp', {
@@ -197,6 +244,27 @@ export function SignUpFormCard() {
         headers: { 'Content-Type': 'application/json', },
         body: JSON.stringify({ email: formValues.email, }),
       });
+
+      if (res.status === 429) {
+        const data = (await res.json().catch(() => null)) as
+          | { message?: string; retryAfterSeconds?: number }
+          | null;
+        const retryAfterHeader = Number.parseInt(res.headers.get('Retry-After') ?? '', 10);
+        const retryAfterSecondsFromBody = Number(data?.retryAfterSeconds);
+        const retryAfterSeconds =
+          Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
+            ? retryAfterHeader
+            : Number.isFinite(retryAfterSecondsFromBody) && retryAfterSecondsFromBody > 0
+              ? retryAfterSecondsFromBody
+              : RESEND_COOLDOWN_SECONDS;
+
+        setResendCooldown(retryAfterSeconds);
+        toast.error(
+          data?.message ??
+            `Please wait ${retryAfterSeconds} seconds before requesting a new code.`
+        );
+        return;
+      }
 
       if (!res.ok) {
         const data = await res.json().catch(() => null);
@@ -206,6 +274,7 @@ export function SignUpFormCard() {
 
       setOtpValue('');
       setOtpError(null);
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
       toast.success('We sent you a new verification code.');
     } finally {
       setIsSubmitting(false);
@@ -353,10 +422,10 @@ export function SignUpFormCard() {
             <button
               type="button"
               onClick={ resendCode }
-              disabled={ isSubmitting }
+              disabled={ isSubmitting || resendCooldown > 0 }
               className="text-sm font-medium text-primary underline-offset-4 transition hover:underline disabled:opacity-70"
             >
-              Resend code
+              { resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code' }
             </button>
           </form>
         ) }

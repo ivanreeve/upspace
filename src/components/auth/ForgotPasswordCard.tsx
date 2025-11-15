@@ -33,6 +33,7 @@ const initialState: ForgotPasswordState = {
   otp: undefined,
   message: undefined,
   errors: undefined,
+  retryAfterSeconds: undefined,
 };
 
 const passwordSchema = z
@@ -83,17 +84,29 @@ function RequestSubmitButton({ label = 'Send code', }: { label?: string }) {
   );
 }
 
-function ResendCodeButton({ disabled, }: { disabled?: boolean }) {
+function ResendCodeButton({
+  disabled,
+  cooldownSeconds = 0,
+}: {
+  disabled?: boolean;
+  cooldownSeconds?: number;
+}) {
   const { pending, } = useFormStatus();
+  const onCooldown = cooldownSeconds > 0;
+  const label = pending
+    ? 'Sending…'
+    : onCooldown
+      ? `Resend in ${cooldownSeconds}s`
+      : 'Resend code';
 
   return (
     <Button
       type="submit"
       variant="ghost"
-      disabled={ disabled || pending }
+      disabled={ disabled || pending || onCooldown }
       className="h-auto p-0 text-sm font-medium text-primary underline-offset-4 transition hover:underline disabled:opacity-70"
     >
-      { pending ? 'Sending…' : 'Resend code' }
+      { label }
     </Button>
   );
 }
@@ -108,6 +121,7 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
   const [requestedEmail, setRequestedEmail] = useState<string | null>(null);
   const [serverOtp, setServerOtp] = useState<string | null>(null);
   const [codeExpiresAt, setCodeExpiresAt] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   const [otpValue, setOtpValue] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -138,6 +152,12 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
 
   const [state, formAction] =
     useActionState<ForgotPasswordState, FormData>(requestPasswordResetAction, initialState);
+
+  useEffect(() => {
+    if (!state.retryAfterSeconds) return;
+
+    setResendCooldown(state.retryAfterSeconds);
+  }, [state.retryAfterSeconds]);
 
   useEffect(() => {
     if (!state.ok || state.mode !== 'sent') return;
@@ -172,6 +192,18 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
       toast.error(message);
     });
   }, [state]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+
+    const timer = window.setInterval(() => {
+      setResendCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [resendCooldown]);
 
   useEffect(() => {
     setIsOtpVerified(false);
@@ -469,7 +501,10 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
 
             <form action={ formAction } className="flex justify-center">
               <input type="hidden" name="email" value={ requestedEmail ?? '' } />
-              <ResendCodeButton disabled={ isResetting } />
+              <ResendCodeButton
+                disabled={ isResetting }
+                cooldownSeconds={ resendCooldown }
+              />
             </form>
           </div>
         ) }

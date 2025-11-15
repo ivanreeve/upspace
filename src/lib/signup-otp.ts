@@ -4,6 +4,17 @@ import { prisma } from '@/lib/prisma';
 import { sendOtpEmail } from '@/lib/email';
 
 const OTP_EXPIRATION_MS = 5 * 60 * 1000;
+const OTP_RESEND_COOLDOWN_MS = 60_000;
+
+export class OtpResendBlockedError extends Error {
+  retryAfterSeconds: number;
+
+  constructor(retryAfterSeconds: number) {
+    super('OTP resend blocked by cooldown.');
+    this.name = 'OtpResendBlockedError';
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
 
 function generateOtpCode() {
   return randomInt(0, 1_000_000).toString().padStart(6, '0');
@@ -14,6 +25,22 @@ function hashOtp(otp: string, key: string) {
 }
 
 export async function requestSignupOtp(email: string) {
+  const existingOtp = await prisma.signup_otps.findFirst({
+    where: { email, },
+    orderBy: { created_at: 'desc', },
+    select: {
+      created_at: true,
+    },
+  });
+
+  if (existingOtp?.created_at) {
+    const elapsedMs = Date.now() - existingOtp.created_at.getTime();
+    if (elapsedMs < OTP_RESEND_COOLDOWN_MS) {
+      const retryAfterSeconds = Math.ceil((OTP_RESEND_COOLDOWN_MS - elapsedMs) / 1000);
+      throw new OtpResendBlockedError(retryAfterSeconds);
+    }
+  }
+
   const otp = generateOtpCode();
   const expiresAt = new Date(Date.now() + OTP_EXPIRATION_MS);
   const issuedAt = new Date();

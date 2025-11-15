@@ -31,6 +31,7 @@ export type ForgotPasswordState = {
   message?: string;
   errors?: Record<string, string[]>;
   expiresAt?: string;
+  retryAfterSeconds?: number;
 };
 
 export type ResetPasswordResult = {
@@ -40,10 +41,12 @@ export type ResetPasswordResult = {
 };
 
 const OTP_EXPIRATION_MS = 10 * 60 * 1000;
+const OTP_RESEND_COOLDOWN_MS = 60_000;
 
 type PasswordResetMetadata = {
   hash: string;
   expires_at: string;
+  issued_at?: string;
 };
 
 function generateOtpCode() {
@@ -62,11 +65,17 @@ function invalidOtpResponse() {
   };
 }
 
-async function setPasswordResetMetadata(userId: string, hash: string, expiresAt: Date) {
+async function setPasswordResetMetadata(
+  userId: string,
+  hash: string,
+  expiresAt: Date,
+  issuedAt: Date
+) {
   const entry = JSON.stringify({
     password_reset: {
       hash,
       expires_at: expiresAt.toISOString(),
+      issued_at: issuedAt.toISOString(),
     },
   });
 
@@ -121,12 +130,14 @@ function parsePasswordResetMetadata(value: unknown): PasswordResetMetadata | nul
   const details = metadata as Record<string, unknown>;
   const hash = typeof details.hash === 'string' ? details.hash : undefined;
   const expiresAt = typeof details.expires_at === 'string' ? details.expires_at : undefined;
+  const issuedAt = typeof details.issued_at === 'string' ? details.issued_at : undefined;
 
   if (!hash || !expiresAt) return null;
 
   return {
     hash,
     expires_at: expiresAt,
+    issued_at: issuedAt,
   };
 }
 
@@ -220,11 +231,30 @@ export async function requestPasswordResetAction(
       };
     }
 
+    const existingMetadata = parsePasswordResetMetadata(user.user_metadata);
+    if (existingMetadata?.issued_at) {
+      const issuedAt = new Date(existingMetadata.issued_at);
+      const elapsedMs = Date.now() - issuedAt.getTime();
+
+      if (!Number.isNaN(issuedAt.getTime()) && elapsedMs < OTP_RESEND_COOLDOWN_MS) {
+        const retryAfterSeconds = Math.ceil((OTP_RESEND_COOLDOWN_MS - elapsedMs) / 1000);
+        const message = `Please wait ${retryAfterSeconds} seconds before requesting another code.`;
+
+        return {
+          ok: false,
+          errors: { email: [message], },
+          message,
+          retryAfterSeconds,
+        };
+      }
+    }
+
     const otp = generateOtpCode();
     const expiresAt = new Date(Date.now() + OTP_EXPIRATION_MS);
+    const issuedAt = new Date();
     const hashed = hashOtp(otp, user.id);
 
-    await setPasswordResetMetadata(user.id, hashed, expiresAt);
+    await setPasswordResetMetadata(user.id, hashed, expiresAt, issuedAt);
     try {
       await sendOtpEmail({
         to: normalizedEmail,
@@ -250,6 +280,7 @@ export async function requestPasswordResetAction(
       email: normalizedEmail,
       message: DEFAULT_SUCCESS_MESSAGE,
       expiresAt: expiresAt.toISOString(),
+      retryAfterSeconds: OTP_RESEND_COOLDOWN_MS / 1000,
     };
   } catch (error) {
     console.error('Failed to send password reset code', error);
