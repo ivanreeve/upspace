@@ -11,7 +11,13 @@ import {
 import Image from 'next/image';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch, type FieldPathValues } from 'react-hook-form';
-import { FiArrowLeft, FiArrowRight, FiX } from 'react-icons/fi';
+import {
+  FiArrowLeft,
+  FiArrowRight,
+  FiPlus,
+  FiTrash,
+  FiX
+} from 'react-icons/fi';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
@@ -27,13 +33,26 @@ import { SpaceAmenitiesStep } from '@/components/pages/Spaces/SpaceAmenitiesStep
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { richTextPlainTextLength } from '@/lib/rich-text';
 import NavBar from '@/components/ui/navbar';
 import { useSpacesStore } from '@/stores/useSpacesStore';
 import { useSpaceFormPersistence } from '@/hooks/useSpaceFormPersistence';
 import { usePersistentSpaceImages } from '@/hooks/usePersistentSpaceImages';
 
-const MAX_IMAGE_COUNT = 5;
+const MAX_CATEGORY_IMAGES = 5;
+const CATEGORY_NAME_SAMPLES = [
+  'Lounge & reception',
+  'Dedicated desks',
+  'Meeting rooms',
+  'Cafe & pantry',
+  'Outdoor or rooftop'
+] as const;
+const getSampleCategoryName = (index: number) => CATEGORY_NAME_SAMPLES[index % CATEGORY_NAME_SAMPLES.length];
+const generateCategoryId = () =>
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `category-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const WATCHED_FIELD_NAMES = [
   'name',
   'description',
@@ -47,15 +66,15 @@ const WATCHED_FIELD_NAMES = [
 ] as const;
 type WatchedFieldNames = typeof WATCHED_FIELD_NAMES;
 type WatchedFieldValues = FieldPathValues<SpaceFormValues, WatchedFieldNames>;
-type SpaceFormStep = 1 | 2 | 3;
-const STEP_SEQUENCE: SpaceFormStep[] = [1, 2, 3];
+type SpaceFormStep = 1 | 2 | 3 | 4;
+const STEP_SEQUENCE: SpaceFormStep[] = [1, 2, 3, 4];
 
 export default function SpaceCreateRoute() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const serializedSearchParams = searchParams.toString();
   const stepParam = searchParams.get('step');
-  const currentStep: SpaceFormStep = stepParam === '2' ? 2 : stepParam === '3' ? 3 : 1;
+  const currentStep: SpaceFormStep = stepParam === '2' ? 2 : stepParam === '3' ? 3 : stepParam === '4' ? 4 : 1;
   const createSpace = useSpacesStore((state) => state.createSpace);
   const form = useForm<SpaceFormValues>({
     resolver: zodResolver(spaceSchema),
@@ -99,20 +118,27 @@ export default function SpaceCreateRoute() {
   const normalize = (value?: string) => (value ?? '').trim();
 
   const {
-    selectedImages,
-    setSelectedImages,
+    featuredImage,
+    setFeaturedImage,
+    categories: photoCategories,
+    setCategories: setPhotoCategories,
     clearImages,
     isHydrated: areImagesHydrated,
   } = usePersistentSpaceImages();
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  const imageInputRef = useRef<HTMLInputElement | null>(null);
-  const canAddMoreImages = selectedImages.length < MAX_IMAGE_COUNT;
+  const [featuredImagePreview, setFeaturedImagePreview] = useState<string | null>(null);
+  const [categoryPreviews, setCategoryPreviews] = useState<Record<string, string[]>>({});
+  const featuredImageInputRef = useRef<HTMLInputElement | null>(null);
+  const categoryInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const isPersistenceHydrated = isFormHydrated && areImagesHydrated;
 
   const isBasicsStepComplete =
     normalize(nameValue).length > 0 &&
-    richTextPlainTextLength(descriptionValue ?? '') >= 20 &&
-    selectedImages.length > 0;
+    richTextPlainTextLength(descriptionValue ?? '') >= 20;
+
+  const isPhotoStepComplete =
+    Boolean(featuredImage) &&
+    photoCategories.length > 0 &&
+    photoCategories.every((category) => normalize(category.name).length > 0);
 
   const isAmenitiesStepComplete = selectedAmenities.length >= 2;
 
@@ -124,6 +150,22 @@ export default function SpaceCreateRoute() {
     normalize(regionValue).length > 0 &&
     normalize(postalCodeValue).length === 4 &&
     normalize(countryCodeValue).length === 2;
+
+  useEffect(() => {
+    if (!areImagesHydrated) {
+      return;
+    }
+
+    if (photoCategories.length === 0) {
+      setPhotoCategories([
+        {
+          id: generateCategoryId(),
+          name: getSampleCategoryName(0),
+          images: [],
+        }
+      ]);
+    }
+  }, [areImagesHydrated, photoCategories, setPhotoCategories]);
 
   const navigateToStep = useCallback(
     (nextStep: SpaceFormStep, options?: { replace?: boolean; }) => {
@@ -141,19 +183,33 @@ export default function SpaceCreateRoute() {
     [router, serializedSearchParams]
   );
 
-  const goToAmenitiesStep = async () => {
+  const goToPhotoStep = async () => {
     const canProceed = await form.trigger(['name', 'description']);
 
     if (!canProceed) {
       return;
     }
 
-    if (selectedImages.length === 0) {
-      toast.error('Upload at least one photo before continuing.');
+    navigateToStep(2);
+  };
+
+  const goToAmenitiesStep = () => {
+    if (!featuredImage) {
+      toast.error('Upload a featured image before continuing.');
       return;
     }
 
-    navigateToStep(2);
+    if (photoCategories.length === 0) {
+      toast.error('Add at least one photo category.');
+      return;
+    }
+
+    if (photoCategories.some((category) => normalize(category.name).length === 0)) {
+      toast.error('Give each photo category a heading.');
+      return;
+    }
+
+    navigateToStep(3);
   };
 
   const goToAddressStep = async () => {
@@ -163,7 +219,7 @@ export default function SpaceCreateRoute() {
       return;
     }
 
-    navigateToStep(3);
+    navigateToStep(4);
   };
 
   useEffect(() => {
@@ -172,7 +228,7 @@ export default function SpaceCreateRoute() {
       return;
     }
 
-    if (stepParam !== '1' && stepParam !== '2' && stepParam !== '3') {
+    if (stepParam !== '1' && stepParam !== '2' && stepParam !== '3' && stepParam !== '4') {
       navigateToStep(1, { replace: true, });
     }
   }, [navigateToStep, stepParam]);
@@ -193,58 +249,172 @@ export default function SpaceCreateRoute() {
         return;
       }
 
-      if (!isAmenitiesStepComplete) {
+      if (!isPhotoStepComplete) {
         navigateToStep(2, { replace: true, });
+        return;
       }
     }
-  }, [currentStep, isAmenitiesStepComplete, isBasicsStepComplete, isPersistenceHydrated, navigateToStep]);
 
-  const handleImageSelection = (event: ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files) {
+    if (currentStep === 4) {
+      if (!isBasicsStepComplete) {
+        navigateToStep(1, { replace: true, });
+        return;
+      }
+
+      if (!isPhotoStepComplete) {
+        navigateToStep(2, { replace: true, });
+        return;
+      }
+
+      if (!isAmenitiesStepComplete) {
+        navigateToStep(3, { replace: true, });
+      }
+    }
+  }, [currentStep, isAmenitiesStepComplete, isBasicsStepComplete, isPersistenceHydrated, isPhotoStepComplete, navigateToStep]);
+
+  const handleFeaturedImageSelection = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
       return;
     }
 
-    const incomingFiles = Array.from(event.target.files);
-    if (incomingFiles.length === 0) {
-      return;
-    }
-
-    setSelectedImages((prev) => {
-      const next = [...prev];
-
-      for (const file of incomingFiles) {
-        if (next.length >= MAX_IMAGE_COUNT) {
-          toast.error(`You can upload up to ${MAX_IMAGE_COUNT} photos.`);
-          break;
-        }
-
-        next.push(file);
-      }
-
-      return next;
-    });
-
-    // Reset the input so the same file can be reselected if needed.
+    setFeaturedImage(file);
     event.target.value = '';
   };
 
-  const handleRemoveImage = (index: number) => {
-    setSelectedImages((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+  const handleRemoveFeaturedImage = () => {
+    setFeaturedImage(null);
+    if (featuredImageInputRef.current) {
+      featuredImageInputRef.current.value = '';
+    }
   };
 
   useEffect(() => {
-    const previews = selectedImages.map((file) => URL.createObjectURL(file));
-    setImagePreviews(previews);
+    if (!featuredImage) {
+      setFeaturedImagePreview(null);
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(featuredImage);
+    setFeaturedImagePreview(previewUrl);
 
     return () => {
-      previews.forEach(URL.revokeObjectURL);
+      URL.revokeObjectURL(previewUrl);
     };
-  }, [selectedImages]);
+  }, [featuredImage]);
 
-  const previewItems = selectedImages.map((file, index) => ({
-    file,
-    url: imagePreviews[index],
-  }));
+  useEffect(() => {
+    const urls: string[] = [];
+    const previews: Record<string, string[]> = {};
+
+    photoCategories.forEach((category) => {
+      previews[category.id] = category.images.map((file) => {
+        const url = URL.createObjectURL(file);
+        urls.push(url);
+        return url;
+      });
+    });
+
+    setCategoryPreviews(previews);
+
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [photoCategories]);
+
+  const handleCategoryNameChange = (categoryId: string, nextName: string) => {
+    setPhotoCategories((prev) =>
+      prev.map((category) =>
+        category.id === categoryId
+          ? {
+              ...category,
+              name: nextName,
+            }
+          : category
+      )
+    );
+  };
+
+  const handleAddCategory = () => {
+    setPhotoCategories((prev) => [
+      ...prev,
+      {
+        id: generateCategoryId(),
+        name: getSampleCategoryName(prev.length),
+        images: [],
+      }
+    ]);
+  };
+
+  const handleRemoveCategory = (categoryId: string) => {
+    setPhotoCategories((prev) => {
+      if (prev.length <= 1) {
+        return prev;
+      }
+
+      return prev.filter((category) => category.id !== categoryId);
+    });
+
+    delete categoryInputRefs.current[categoryId];
+  };
+
+  const handleCategoryImageSelection = (categoryId: string, event: ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files ? Array.from(event.target.files) : [];
+    if (files.length === 0) {
+      return;
+    }
+
+    let message: string | null = null;
+
+    setPhotoCategories((prev) =>
+      prev.map((category) => {
+        if (category.id !== categoryId) {
+          return category;
+        }
+
+        const remainingSlots = MAX_CATEGORY_IMAGES - category.images.length;
+
+        if (remainingSlots <= 0) {
+          message = `You can upload up to ${MAX_CATEGORY_IMAGES} photos for this category.`;
+          return category;
+        }
+
+        const acceptedFiles = files.slice(0, remainingSlots);
+
+        if (acceptedFiles.length < files.length) {
+          message = `Only ${remainingSlots} more photo${remainingSlots === 1 ? '' : 's'} fit in ${category.name || 'this category'}.`;
+        }
+
+        return {
+          ...category,
+          images: [...category.images, ...acceptedFiles],
+        };
+      })
+    );
+
+    if (message) {
+      toast.error(message);
+    }
+
+    event.target.value = '';
+  };
+
+  const handleCategoryImageRemove = (categoryId: string, imageIndex: number) => {
+    setPhotoCategories((prev) =>
+      prev.map((category) =>
+        category.id === categoryId
+          ? {
+              ...category,
+              images: category.images.filter((_, itemIndex) => itemIndex !== imageIndex),
+            }
+          : category
+      )
+    );
+  };
+
+  const handleTriggerCategoryPicker = (categoryId: string) => {
+    categoryInputRefs.current[categoryId]?.click();
+  };
 
   const handleSubmit = (values: SpaceFormValues) => {
     const spaceId = createSpace(values);
@@ -280,7 +450,7 @@ export default function SpaceCreateRoute() {
               <form className="space-y-6" onSubmit={ form.handleSubmit(handleSubmit) }>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between rounded-md py-2 text-sm text-muted-foreground">
-                    <span>Step { currentStep } of 3</span>
+                    <span>Step { currentStep } of 4</span>
                     <div className="flex gap-1">
                       { STEP_SEQUENCE.map((stepNumber) => (
                         <span
@@ -291,87 +461,179 @@ export default function SpaceCreateRoute() {
                     </div>
                   </div>
                   { currentStep === 1 ? (
-                    <>
+                    <SpaceDetailsFields form={ form } />
+                  ) : currentStep === 2 ? (
+                    <div className="space-y-6">
                       <div className="rounded-md border border-border/70 bg-background/50 p-4">
-                        <div className="flex items-center justify-between text-sm font-semibold text-muted-foreground">
-                          <span>Pictures</span>
+                        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">Featured image</p>
+                            <p className="text-sm text-muted-foreground">
+                              Highlight the hero shot visitors see first on your listing.
+                            </p>
+                          </div>
                           <span className="text-xs uppercase tracking-wide text-muted-foreground">Required</span>
                         </div>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          Add visuals now or revisit this section before finalizing the address step. <span className="font-semibold text-foreground">Maximum { MAX_IMAGE_COUNT } photos.</span>
-                        </p>
-                        <div className="mt-3">
-                          { previewItems.length === 0 ? (
-                            <p className="text-xs text-muted-foreground">No files selected yet.</p>
+                        <div className="mt-4">
+                          { featuredImagePreview ? (
+                            <div className="relative">
+                              <Image
+                                src={ featuredImagePreview }
+                                alt={ featuredImage?.name ? `Preview of ${featuredImage.name}` : 'Featured image preview' }
+                                width={ 960 }
+                                height={ 540 }
+                                className="h-56 w-full rounded-md object-cover"
+                                sizes="(max-width: 640px) 100vw, 50vw"
+                                unoptimized
+                              />
+                            </div>
                           ) : (
-                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                              { previewItems.map((preview, index) => {
-                                const {
-                                  file,
-                                  url,
-                                } = preview;
-
-                                return (
-                                  <div
-                                    key={ `${file.name}-${index}` }
-                                    className="relative flex flex-col gap-1 rounded-lg border border-border/60 bg-background/80 p-1"
-                                  >
-                                    <button
-                                      type="button"
-                                      onClick={ () => handleRemoveImage(index) }
-                                      className="cursor-pointer absolute right-0 top-0 z-10 inline-flex h-6 w-6 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full border border-border/60 bg-background/60 text-muted-foreground transition hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                                      aria-label={ `Remove ${file.name}` }
-                                    >
-                                      <FiX aria-hidden="true" className="size-3" />
-                                    </button>
-                                    { url ? (
-                                      <Image
-                                        src={ url }
-                                        alt={ `Preview of ${file.name}` }
-                                        width={ 400 }
-                                        height={ 280 }
-                                        className="h-28 w-full rounded-md object-cover"
-                                        sizes="(max-width: 640px) 100vw, 33vw"
-                                        unoptimized
-                                      />
-                                    ) : (
-                                      <div className="flex h-28 items-center justify-center rounded-md bg-muted/20 text-[10px] text-muted-foreground">
-                                        Preparing preview...
-                                      </div>
-                                    ) }
-                                    <span className="truncate text-[11px] text-muted-foreground">{ file.name }</span>
-                                  </div>
-                                );
-                              }) }
+                            <div className="flex h-48 items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/20 text-sm text-muted-foreground">
+                              Upload a featured image to preview it here.
                             </div>
                           ) }
                         </div>
-                        <div className="mt-4 flex items-center gap-3">
+                        <div className="mt-4 flex flex-wrap items-center gap-3">
                           <input
-                            ref={ imageInputRef }
+                            ref={ featuredImageInputRef }
                             type="file"
                             accept="image/*"
-                            multiple
-                            onChange={ handleImageSelection }
+                            onChange={ handleFeaturedImageSelection }
                             className="sr-only"
                           />
                           <Button
                             type="button"
                             variant="outline"
-                            onClick={ () => imageInputRef.current?.click() }
-                            disabled={ !canAddMoreImages }
+                            onClick={ () => featuredImageInputRef.current?.click() }
                           >
-                            Select photos
+                            { featuredImage ? 'Replace featured image' : 'Upload featured image' }
                           </Button>
-                          <span className="text-sm text-muted-foreground">
-                            { selectedImages.length } / { MAX_IMAGE_COUNT } selected
-                            { !canAddMoreImages ? ' · Remove a photo to add another.' : '' }
-                          </span>
+                          { featuredImage && (
+                            <Button type="button" variant="ghost" onClick={ handleRemoveFeaturedImage }>
+                              Remove
+                            </Button>
+                          ) }
+                          { featuredImage && (
+                            <span className="truncate text-sm text-muted-foreground">{ featuredImage.name }</span>
+                          ) }
                         </div>
                       </div>
-                      <SpaceDetailsFields form={ form } />
-                    </>
-                  ) : currentStep === 2 ? (
+                      <div className="rounded-md border border-border/70 bg-background/50 p-4">
+                        <div className="flex flex-col gap-1">
+                          <p className="text-sm font-semibold text-foreground">Area photo categories</p>
+                          <p className="text-sm text-muted-foreground">
+                            Organize supporting shots by lounge, desk rows, or other sections. Each category holds up to { MAX_CATEGORY_IMAGES } images.
+                          </p>
+                        </div>
+                        <div className="mt-4 space-y-6">
+                          { photoCategories.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">Add at least one category to begin uploading photos.</p>
+                          ) : (
+                            photoCategories.map((category, index) => {
+                              const previews = categoryPreviews[category.id] ?? [];
+                              const canAddMore = category.images.length < MAX_CATEGORY_IMAGES;
+                              const inputId = `space-photo-category-${category.id}`;
+
+                              return (
+                                <div key={ category.id } className="space-y-3 rounded-lg border border-border/60 bg-background/60 p-4">
+                                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                    <div className="flex-1">
+                                      <label htmlFor={ inputId } className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                        Category heading
+                                      </label>
+                                      <Input
+                                        id={ inputId }
+                                        value={ category.name }
+                                        onChange={ (event) => handleCategoryNameChange(category.id, event.target.value) }
+                                        placeholder={ getSampleCategoryName(index) }
+                                        aria-label="Photo category name"
+                                      />
+                                    </div>
+                                    { photoCategories.length > 1 && (
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={ () => handleRemoveCategory(category.id) }
+                                      >
+                                        <FiTrash className="mr-1 size-4" aria-hidden="true" />
+                                        Remove
+                                      </Button>
+                                    ) }
+                                  </div>
+                                  <div>
+                                    { previews.length === 0 ? (
+                                      <p className="text-xs text-muted-foreground">No photos in this category yet.</p>
+                                    ) : (
+                                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                        { previews.map((url, imageIndex) => (
+                                          <div
+                                            key={ `${category.id}-${imageIndex}` }
+                                            className="relative flex flex-col gap-1 rounded-lg border border-border/60 bg-background/80 p-1"
+                                          >
+                                            <button
+                                              type="button"
+                                              onClick={ () => handleCategoryImageRemove(category.id, imageIndex) }
+                                              className="cursor-pointer absolute right-0 top-0 z-10 inline-flex h-6 w-6 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full border border-border/60 bg-background/60 text-muted-foreground transition hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                                              aria-label={ category.images[imageIndex]?.name ? `Remove ${category.images[imageIndex]?.name}` : 'Remove photo' }
+                                            >
+                                              <FiX aria-hidden="true" className="size-3" />
+                                            </button>
+                                            <Image
+                                              src={ url }
+                                              alt="Category photo preview"
+                                              width={ 400 }
+                                              height={ 280 }
+                                              className="h-28 w-full rounded-md object-cover"
+                                              sizes="(max-width: 640px) 100vw, 33vw"
+                                              unoptimized
+                                            />
+                                            <span className="truncate text-[11px] text-muted-foreground">{ category.images[imageIndex]?.name }</span>
+                                          </div>
+                                        )) }
+                                      </div>
+                                    ) }
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    <input
+                                      ref={ (element) => {
+                                        if (element) {
+                                          categoryInputRefs.current[category.id] = element;
+                                        } else {
+                                          delete categoryInputRefs.current[category.id];
+                                        }
+                                      } }
+                                      type="file"
+                                      accept="image/*"
+                                      multiple
+                                      className="sr-only"
+                                      onChange={ (event) => handleCategoryImageSelection(category.id, event) }
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      onClick={ () => handleTriggerCategoryPicker(category.id) }
+                                      disabled={ !canAddMore }
+                                    >
+                                      Upload photos
+                                    </Button>
+                                    <span className="text-xs text-muted-foreground">
+                                      { category.images.length } / { MAX_CATEGORY_IMAGES } selected
+                                      { !canAddMore ? ' · Remove a photo to add another.' : '' }
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          ) }
+                          <Button type="button" variant="outline" onClick={ handleAddCategory }>
+                            <FiPlus className="mr-2 size-4" aria-hidden="true" />
+                            Add another category
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : currentStep === 3 ? (
                     <SpaceAmenitiesStep form={ form } />
                   ) : (
                     <SpaceAddressFields form={ form } />
@@ -391,7 +653,7 @@ export default function SpaceCreateRoute() {
                   </Button>
                   <div className="flex items-center gap-2">
                     { currentStep === 1 && (
-                      <Button type="button" disabled={ !isBasicsStepComplete } onClick={ goToAmenitiesStep }>
+                      <Button type="button" disabled={ !isBasicsStepComplete } onClick={ goToPhotoStep }>
                         Next
                         <FiArrowRight className="size-4" aria-hidden="true" />
                       </Button>
@@ -406,7 +668,7 @@ export default function SpaceCreateRoute() {
                           <FiArrowLeft className="size-4" aria-hidden="true" />
                           Back
                         </Button>
-                        <Button type="button" disabled={ !isAmenitiesStepComplete } onClick={ goToAddressStep }>
+                        <Button type="button" disabled={ !isPhotoStepComplete } onClick={ goToAmenitiesStep }>
                           Next
                           <FiArrowRight className="size-4" aria-hidden="true" />
                         </Button>
@@ -418,6 +680,22 @@ export default function SpaceCreateRoute() {
                           type="button"
                           variant="outline"
                           onClick={ () => navigateToStep(2) }
+                        >
+                          <FiArrowLeft className="size-4" aria-hidden="true" />
+                          Back
+                        </Button>
+                        <Button type="button" disabled={ !isAmenitiesStepComplete } onClick={ goToAddressStep }>
+                          Next
+                          <FiArrowRight className="size-4" aria-hidden="true" />
+                        </Button>
+                      </>
+                    ) }
+                    { currentStep === 4 && (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={ () => navigateToStep(3) }
                         >
                           <FiArrowLeft className="size-4" aria-hidden="true" />
                           Back
