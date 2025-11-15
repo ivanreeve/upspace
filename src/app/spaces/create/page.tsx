@@ -536,7 +536,7 @@ export default function SpaceCreateRoute() {
 
                               return (
                                 <div key={ category.id } className="space-y-3 rounded-lg border border-border/60 bg-background/60 p-4">
-                                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                  <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                                     <div className="flex-1">
                                       <label htmlFor={ inputId } className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                                         Category heading
