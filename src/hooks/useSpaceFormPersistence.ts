@@ -104,5 +104,8 @@ export const useSpaceFormPersistence = (form: UseFormReturn<SpaceFormValues>) =>
     return () => subscription.unsubscribe();
   }, [form, isHydrated]);
 
-  return { clearDraft: clearSpaceFormDraft, };
+  return {
+    clearDraft: clearSpaceFormDraft,
+    isHydrated,
+  };
 };

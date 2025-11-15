@@ -2,6 +2,7 @@
 
 import {
   ChangeEvent,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -12,7 +13,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch, type FieldPathValues } from 'react-hook-form';
 import { FiArrowLeft, FiArrowRight, FiX } from 'react-icons/fi';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 
 import {
@@ -46,15 +47,24 @@ const WATCHED_FIELD_NAMES = [
 ] as const;
 type WatchedFieldNames = typeof WATCHED_FIELD_NAMES;
 type WatchedFieldValues = FieldPathValues<SpaceFormValues, WatchedFieldNames>;
+type SpaceFormStep = 1 | 2 | 3;
+const STEP_SEQUENCE: SpaceFormStep[] = [1, 2, 3];
 
 export default function SpaceCreateRoute() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const serializedSearchParams = searchParams.toString();
+  const stepParam = searchParams.get('step');
+  const currentStep: SpaceFormStep = stepParam === '2' ? 2 : stepParam === '3' ? 3 : 1;
   const createSpace = useSpacesStore((state) => state.createSpace);
   const form = useForm<SpaceFormValues>({
     resolver: zodResolver(spaceSchema),
     defaultValues: createSpaceFormDefaults(),
   });
-  const { clearDraft, } = useSpaceFormPersistence(form);
+  const {
+    clearDraft,
+    isHydrated: isFormHydrated,
+  } = useSpaceFormPersistence(form);
 
   const watchedDefaults = useMemo(
     () =>
@@ -92,10 +102,12 @@ export default function SpaceCreateRoute() {
     selectedImages,
     setSelectedImages,
     clearImages,
+    isHydrated: areImagesHydrated,
   } = usePersistentSpaceImages();
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const canAddMoreImages = selectedImages.length < MAX_IMAGE_COUNT;
+  const isPersistenceHydrated = isFormHydrated && areImagesHydrated;
 
   const isBasicsStepComplete =
     normalize(nameValue).length > 0 &&
@@ -113,7 +125,21 @@ export default function SpaceCreateRoute() {
     normalize(postalCodeValue).length === 4 &&
     normalize(countryCodeValue).length === 2;
 
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  const navigateToStep = useCallback(
+    (nextStep: SpaceFormStep, options?: { replace?: boolean; }) => {
+      const params = new URLSearchParams(serializedSearchParams);
+      params.set('step', String(nextStep));
+      const query = params.toString();
+      const target = query ? `/spaces/create?${query}` : '/spaces/create';
+
+      if (options?.replace) {
+        router.replace(target);
+      } else {
+        router.push(target);
+      }
+    },
+    [router, serializedSearchParams]
+  );
 
   const goToAmenitiesStep = async () => {
     const canProceed = await form.trigger(['name', 'description']);
@@ -127,7 +153,7 @@ export default function SpaceCreateRoute() {
       return;
     }
 
-    setCurrentStep(2);
+    navigateToStep(2);
   };
 
   const goToAddressStep = async () => {
@@ -137,8 +163,41 @@ export default function SpaceCreateRoute() {
       return;
     }
 
-    setCurrentStep(3);
+    navigateToStep(3);
   };
+
+  useEffect(() => {
+    if (stepParam === null) {
+      navigateToStep(1, { replace: true, });
+      return;
+    }
+
+    if (stepParam !== '1' && stepParam !== '2' && stepParam !== '3') {
+      navigateToStep(1, { replace: true, });
+    }
+  }, [navigateToStep, stepParam]);
+
+  useEffect(() => {
+    if (!isPersistenceHydrated) {
+      return;
+    }
+
+    if (currentStep === 2 && !isBasicsStepComplete) {
+      navigateToStep(1, { replace: true, });
+      return;
+    }
+
+    if (currentStep === 3) {
+      if (!isBasicsStepComplete) {
+        navigateToStep(1, { replace: true, });
+        return;
+      }
+
+      if (!isAmenitiesStepComplete) {
+        navigateToStep(2, { replace: true, });
+      }
+    }
+  }, [currentStep, isAmenitiesStepComplete, isBasicsStepComplete, isPersistenceHydrated, navigateToStep]);
 
   const handleImageSelection = (event: ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files) {
@@ -223,7 +282,7 @@ export default function SpaceCreateRoute() {
                   <div className="flex items-center justify-between rounded-md py-2 text-sm text-muted-foreground">
                     <span>Step { currentStep } of 3</span>
                     <div className="flex gap-1">
-                      { [1, 2, 3].map((stepNumber) => (
+                      { STEP_SEQUENCE.map((stepNumber) => (
                         <span
                           key={ stepNumber }
                           className={ `h-1.5 w-10 rounded-full transition ${currentStep >= stepNumber ? 'bg-primary' : 'bg-border/30'}` }
@@ -342,7 +401,7 @@ export default function SpaceCreateRoute() {
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={ () => setCurrentStep(1) }
+                          onClick={ () => navigateToStep(1) }
                         >
                           <FiArrowLeft className="size-4" aria-hidden="true" />
                           Back
@@ -358,7 +417,7 @@ export default function SpaceCreateRoute() {
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={ () => setCurrentStep(2) }
+                          onClick={ () => navigateToStep(2) }
                         >
                           <FiArrowLeft className="size-4" aria-hidden="true" />
                           Back

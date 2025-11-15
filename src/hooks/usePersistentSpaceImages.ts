@@ -145,5 +145,6 @@ export function usePersistentSpaceImages() {
     selectedImages,
     setSelectedImages,
     clearImages,
+    isHydrated,
   };
 }
