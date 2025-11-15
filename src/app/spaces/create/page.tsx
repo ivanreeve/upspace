@@ -565,11 +565,15 @@ export default function SpaceCreateRoute() {
                                     { previews.length === 0 ? (
                                       <p className="text-xs text-muted-foreground">No photos in this category yet.</p>
                                     ) : (
-                                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                      <div
+                                        className="flex gap-3 overflow-x-auto pb-2 pt-4"
+                                        tabIndex={ 0 }
+                                        aria-label="Scroll through category photos"
+                                      >
                                         { previews.map((url, imageIndex) => (
                                           <div
                                             key={ `${category.id}-${imageIndex}` }
-                                            className="relative flex flex-col gap-1 rounded-lg border border-border/60 bg-background/80 p-1"
+                                            className="relative flex min-w-[11rem] flex-col gap-1 rounded-lg border border-border/60 bg-background/80 p-1"
                                           >
                                             <button
                                               type="button"
@@ -585,7 +589,7 @@ export default function SpaceCreateRoute() {
                                               width={ 400 }
                                               height={ 280 }
                                               className="h-28 w-full rounded-md object-cover"
-                                              sizes="(max-width: 640px) 100vw, 33vw"
+                                              sizes="(max-width: 640px) 75vw, 20vw"
                                               unoptimized
                                             />
                                             <span className="truncate text-[11px] text-muted-foreground">{ category.images[imageIndex]?.name }</span>
