@@ -553,7 +553,6 @@ export default function SpaceCreateRoute() {
                                       <Button
                                         type="button"
                                         variant="ghost"
-                                        size="sm"
                                         onClick={ () => handleRemoveCategory(category.id) }
                                       >
                                         <FiTrash className="mr-1 size-4" aria-hidden="true" />
