@@ -419,7 +419,7 @@ export default function ForgotPasswordCard({ className, }: ForgotPasswordCardPro
                   value={ otpValue }
                   onChange={ (value) => setOtpValue(value.replace(/\D/g, '')) }
                   autoComplete="one-time-code"
-                  className="justify-between"
+                  containerClassName="justify-center gap-3"
                 >
                   <InputOTPGroup>
                     <InputOTPSlot index={ 0 } />
