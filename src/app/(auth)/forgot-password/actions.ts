@@ -156,6 +156,10 @@ export async function requestPasswordResetAction(
         to: normalizedEmail,
         otp,
         expiresAt,
+        subject: 'Reset your Upspace password',
+        appName: 'Upspace',
+        cause: 'resetting your password',
+        validForMinutes: OTP_EXPIRATION_MS / 60_000,
       });
     } catch (error) {
       console.error('Failed to send password reset email', error);

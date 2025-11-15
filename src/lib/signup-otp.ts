@@ -38,6 +38,8 @@ export async function requestSignupOtp(email: string) {
     expiresAt,
     subject: 'Verify your Upspace account',
     appName: 'Upspace',
+    cause: 'verifying your Upspace account',
+    validForMinutes: OTP_EXPIRATION_MS / 60_000,
   });
 }
 
