@@ -393,7 +393,7 @@ export function SignUpFormCard() {
                 } }
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                containerClassName="justify-between"
+                containerClassName="justify-center gap-3"
               >
                 <InputOTPGroup>
                   <InputOTPSlot index={ 0 } />

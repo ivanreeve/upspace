@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
 import { SignUpFormCard } from './Auth.SignUp.FormCard';
-import { SignUpIntro } from './Auth.SignUp.Intro';
 
 import { Button } from '@/components/ui/button';
 import NavBar from '@/components/ui/navbar';
@@ -22,7 +21,6 @@ export default function AuthSignUp() {
                 </Link>
               </Button>
             </div>
-            <SignUpIntro />
             <SignUpFormCard />
           </div>
         </div>
