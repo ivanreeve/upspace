@@ -3,7 +3,7 @@ import { createHash, randomInt, timingSafeEqual } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
 import { sendOtpEmail } from '@/lib/email';
 
-const OTP_EXPIRATION_MS = 10 * 60 * 1000;
+const OTP_EXPIRATION_MS = 5 * 60 * 1000;
 
 function generateOtpCode() {
   return randomInt(0, 1_000_000).toString().padStart(6, '0');
