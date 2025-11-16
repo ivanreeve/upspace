@@ -220,6 +220,18 @@ const DEFAULT_MAP_CENTER: Coordinates = {
   lng: 120.9811,
 };
 
+const dedupeAddressOptions = <T extends { code: string; name: string }>(options: readonly T[]) => {
+  const seen = new Set<string>();
+  return options.filter((option) => {
+    const identifier = `${option.code}-${option.name}`.trim().toLowerCase();
+    if (seen.has(identifier)) {
+      return false;
+    }
+    seen.add(identifier);
+    return true;
+  });
+};
+
 const toCoordinates = (lat?: number, lng?: number): Coordinates | null => {
   if (typeof lat !== 'number' || typeof lng !== 'number') {
     return null;
@@ -1608,9 +1620,11 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
     staleTime: 1000 * 60 * 30,
   });
 
+  const dedupedCityOptions = useMemo(() => dedupeAddressOptions(cityOptions), [cityOptions]);
+
   const selectedCity = useMemo(
-    () => cityOptions.find((city) => city.name === cityValue),
-    [cityOptions, cityValue]
+    () => dedupedCityOptions.find((city) => city.name === cityValue),
+    [dedupedCityOptions, cityValue]
   );
 
   const cityCodeForQuery = selectedCity?.code;
@@ -1633,7 +1647,8 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
 
   const regionDisabled = !isPhilippines || isRegionsLoading;
   const cityDisabled = !selectedRegion || isCitiesLoading;
-  const barangayDisabled = !selectedCity || isBarangaysLoading || barangayOptions.length === 0;
+  const dedupedBarangayOptions = useMemo(() => dedupeAddressOptions(barangayOptions), [barangayOptions]);
+  const barangayDisabled = !selectedCity || isBarangaysLoading || dedupedBarangayOptions.length === 0;
 
   useEffect(() => {
     if (!isPhilippines) {
@@ -1769,7 +1784,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
                         Unable to load cities
                       </SelectItem>
                     ) }
-                    { cityOptions.map((city) => (
+                    { dedupedCityOptions.map((city) => (
                       <SelectItem key={ `${city.code}-${city.name}` } value={ city.name }>
                         { city.name }
                       </SelectItem>
@@ -1799,7 +1814,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
                           ? 'Select a city first'
                           : isBarangaysLoading
                             ? 'Loading barangays...'
-                            : barangayOptions.length === 0
+                            : dedupedBarangayOptions.length === 0
                               ? 'No barangays available'
                               : 'Select barangay'
                       }
@@ -1811,7 +1826,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
                         Unable to load barangays
                       </SelectItem>
                     ) }
-                    { barangayOptions.map((barangay) => (
+                    { dedupedBarangayOptions.map((barangay) => (
                       <SelectItem key={ `${barangay.code}-${barangay.name}` } value={ barangay.name }>
                         { barangay.name }
                       </SelectItem>
