@@ -1,17 +1,23 @@
 import { AiFillPrinter, AiOutlineAudioMuted } from 'react-icons/ai';
-import { BiNetworkChart, BiSolidCabinet, BiSolidStoreAlt } from 'react-icons/bi';
-import { BsGrid1X2Fill, BsPersonLinesFill, BsPersonVideo3 } from 'react-icons/bs';
+import { BiNetworkChart, BiSolidCabinet, BiSolidCctv, BiSolidStoreAlt } from 'react-icons/bi';
+import { BsGrid1X2Fill, BsPersonLinesFill, BsPersonStanding, BsPersonVideo3 } from 'react-icons/bs';
 import { CgCommunity } from 'react-icons/cg';
 import {
   FaBatteryThreeQuarters,
+  FaCamera,
   FaChalkboardTeacher,
   FaCoffee,
   FaDog,
   FaEthernet,
   FaFireExtinguisher,
+  FaHeadphones,
+  FaIdCard,
   FaKey,
   FaLock,
+  FaMicrophone,
+  FaMotorcycle,
   FaNetworkWired,
+  FaPaintBrush,
   FaParking,
   FaPhone,
   FaPlug,
@@ -22,7 +28,13 @@ import {
   FaWheelchair,
   FaVolumeMute
 } from 'react-icons/fa';
-import { FaVanShuttle, FaLocationCrosshairs, FaGlassWaterDroplet } from 'react-icons/fa6';
+import {
+  FaGlassWaterDroplet,
+  FaLocationCrosshairs,
+  FaSquareParking,
+  FaTrainSubway,
+  FaVanShuttle
+} from 'react-icons/fa6';
 import { GiNightSleep } from 'react-icons/gi';
 import {
 GrBraille,
@@ -31,23 +43,29 @@ GrWorkshop,
 GrYoga
 } from 'react-icons/gr';
 import { ImBooks, ImExit } from 'react-icons/im';
-import { IoIosPeople } from 'react-icons/io';
+import { IoIosPeople, IoMdEye } from 'react-icons/io';
 import {
-IoCardSharp,
-IoShareSocialSharp,
-IoVolumeLowSharp,
-IoWater
+  IoBarbellSharp,
+  IoCardSharp,
+  IoShareSocialSharp,
+  IoVolumeLowSharp,
+  IoWater
 } from 'react-icons/io5';
 import {
   MdAir,
   MdCable,
   MdCleaningServices,
+  MdCoPresent,
   MdDirectionsBike,
   MdDocumentScanner,
+  MdFastfood,
   MdGrass,
   MdLocalBar,
+  MdLocalCafe,
+  MdLocalPolice,
   MdMeetingRoom,
   MdMoreTime,
+  MdNoFood,
   MdNoiseControlOff,
   MdOutgoingMail,
   MdOutlineDoNotDisturbOnTotalSilence,
@@ -59,36 +77,48 @@ import {
   MdOutlineSmokeFree,
   MdOutlineVpnLock,
   MdOutlineWbTwilight,
+  MdPassword,
   MdRememberMe,
   MdRestaurant,
   MdRoomPreferences,
+  MdSettingsInputHdmi,
+  MdWifiTethering,
   MdWorkspacesOutline
 } from 'react-icons/md';
 import {
-PiBowlSteamFill,
-PiCigaretteFill,
-PiCoinVerticalFill,
-PiLockersFill
+  PiBowlSteamFill,
+  PiCigaretteFill,
+  PiCoinVerticalFill,
+  PiDeskFill,
+  PiDressFill,
+  PiElevatorFill,
+  PiLockersFill,
+  PiOfficeChairFill,
+  PiTreeEvergreenFill
 } from 'react-icons/pi';
 import {
   RiBattery2ChargeFill,
   RiBilliardsFill,
   RiFingerprintFill,
   RiFridgeFill,
+  RiPrinterFill,
+  RiProjector2Fill,
+  RiReservedFill,
   RiSofaFill,
   RiTeamFill,
   RiTvFill
 } from 'react-icons/ri';
 import {
+  TbAirConditioning,
   TbAlarmSmoke,
   TbArrowRampLeft,
   TbChargingPileFilled,
-  TbDeviceCctvFilled,
   TbMicrowaveFilled,
-  TbPackages
+  TbPackages,
+  TbStackFront,
+  TbToolsKitchen2
 } from 'react-icons/tb';
-
-const ICON_HERE = 'ICON_HERE';
+import { SiTablecheck } from 'react-icons/si';
 
 export const AMENITY_ICON_MAPPINGS: Record<string, any> = {
   showers: FaShower,
