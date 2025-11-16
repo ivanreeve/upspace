@@ -106,8 +106,7 @@ model image {
   is_primary    Float
   created_at    DateTime @db.Timestamptz(6)
   area          area     @relation(fields: [area_id], references: [area_id], onDelete: NoAction, onUpdate: NoAction)
-  image         image    @relation("imageToimage", fields: [space_id], references: [image_id], onDelete: NoAction, onUpdate: NoAction)
-  other_image   image[]  @relation("imageToimage")
+  space         space    @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -147,10 +146,12 @@ model space {
   country_code       String               @db.Char(2)
   lat                Decimal              @db.Decimal(9, 6)
   long               Decimal              @db.Decimal(9, 6)
+  barangay           String?
   amenity            amenity[]
   area               area[]
   booking            booking[]
   bookmark           bookmark[]
+  image              image[]
   user               user                 @relation(fields: [user_id], references: [user_id])
   space_availability space_availability[]
 }
