@@ -53,17 +53,7 @@ const generateCategoryId = () =>
   typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
     : `category-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-const WATCHED_FIELD_NAMES = [
-  'name',
-  'description',
-  'unit_number',
-  'address_subunit',
-  'street',
-  'city',
-  'region',
-  'postal_code',
-  'country_code'
-] as const;
+const WATCHED_FIELD_NAMES = ['name', 'description', 'street', 'city', 'region', 'postal_code', 'country_code'] as const;
 type WatchedFieldNames = typeof WATCHED_FIELD_NAMES;
 type WatchedFieldValues = FieldPathValues<SpaceFormValues, WatchedFieldNames>;
 type SpaceFormStep = 1 | 2 | 3 | 4;
@@ -100,8 +90,6 @@ export default function SpaceCreateRoute() {
   const [
     nameValue = '',
     descriptionValue = '',
-    unitNumberValue = '',
-    addressSubunitValue = '',
     streetValue = '',
     cityValue = '',
     regionValue = '',
@@ -143,8 +131,6 @@ export default function SpaceCreateRoute() {
   const isAmenitiesStepComplete = selectedAmenities.length >= 2;
 
   const isAddressStepComplete =
-    normalize(unitNumberValue).length > 0 &&
-    normalize(addressSubunitValue).length > 0 &&
     normalize(streetValue).length > 0 &&
     normalize(cityValue).length > 0 &&
     normalize(regionValue).length > 0 &&
