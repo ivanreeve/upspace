@@ -30,6 +30,7 @@ import {
   spaceSchema
 } from '@/components/pages/Spaces/SpaceForms';
 import { SpaceAmenitiesStep } from '@/components/pages/Spaces/SpaceAmenitiesStep';
+import { SpaceVerificationRequirementsStep, VERIFICATION_REQUIREMENTS, type VerificationRequirementId } from '@/components/pages/Spaces/SpaceVerificationRequirementsStep';
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
 import { Card, CardContent } from '@/components/ui/card';
@@ -56,15 +57,31 @@ const generateCategoryId = () =>
 const WATCHED_FIELD_NAMES = ['name', 'description', 'street', 'city', 'region', 'postal_code', 'country_code'] as const;
 type WatchedFieldNames = typeof WATCHED_FIELD_NAMES;
 type WatchedFieldValues = FieldPathValues<SpaceFormValues, WatchedFieldNames>;
-type SpaceFormStep = 1 | 2 | 3 | 4;
-const STEP_SEQUENCE: SpaceFormStep[] = [1, 2, 3, 4];
+type SpaceFormStep = 1 | 2 | 3 | 4 | 5;
+const STEP_SEQUENCE: SpaceFormStep[] = [1, 2, 3, 4, 5];
+type VerificationRequirementsState = Record<VerificationRequirementId, File | null>;
+
+const createEmptyVerificationRequirementsState = (): VerificationRequirementsState =>
+  VERIFICATION_REQUIREMENTS.reduce((state, requirement) => {
+    state[requirement.id] = null;
+    return state;
+  }, {} as VerificationRequirementsState);
 
 export default function SpaceCreateRoute() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const serializedSearchParams = searchParams.toString();
   const stepParam = searchParams.get('step');
-  const currentStep: SpaceFormStep = stepParam === '2' ? 2 : stepParam === '3' ? 3 : stepParam === '4' ? 4 : 1;
+  const currentStep: SpaceFormStep =
+    stepParam === '2'
+      ? 2
+      : stepParam === '3'
+        ? 3
+        : stepParam === '4'
+          ? 4
+          : stepParam === '5'
+            ? 5
+            : 1;
   const createSpace = useSpacesStore((state) => state.createSpace);
   const form = useForm<SpaceFormValues>({
     resolver: zodResolver(spaceSchema),
@@ -117,7 +134,28 @@ export default function SpaceCreateRoute() {
   const [categoryPreviews, setCategoryPreviews] = useState<Record<string, string[]>>({});
   const featuredImageInputRef = useRef<HTMLInputElement | null>(null);
   const categoryInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [verificationRequirements, setVerificationRequirements] = useState<VerificationRequirementsState>(() =>
+    createEmptyVerificationRequirementsState()
+  );
   const isPersistenceHydrated = isFormHydrated && areImagesHydrated;
+
+  const handleRequirementUpload = (requirementId: VerificationRequirementId, file: File) => {
+    setVerificationRequirements((prev) => ({
+      ...prev,
+      [requirementId]: file,
+    }));
+  };
+
+  const handleRequirementRemove = (requirementId: VerificationRequirementId) => {
+    setVerificationRequirements((prev) => ({
+      ...prev,
+      [requirementId]: null,
+    }));
+  };
+
+  const resetVerificationRequirements = useCallback(() => {
+    setVerificationRequirements(createEmptyVerificationRequirementsState());
+  }, []);
 
   const isBasicsStepComplete =
     normalize(nameValue).length > 0 &&
@@ -136,6 +174,10 @@ export default function SpaceCreateRoute() {
     normalize(regionValue).length > 0 &&
     normalize(postalCodeValue).length === 4 &&
     normalize(countryCodeValue).length === 2;
+
+  const isRequirementsStepComplete = VERIFICATION_REQUIREMENTS.every((requirement) =>
+    Boolean(verificationRequirements[requirement.id])
+  );
 
   useEffect(() => {
     if (!areImagesHydrated) {
@@ -208,13 +250,31 @@ export default function SpaceCreateRoute() {
     navigateToStep(4);
   };
 
+  const goToVerificationStep = async () => {
+    const canProceed = await form.trigger([
+      'street',
+      'city',
+      'region',
+      'postal_code',
+      'country_code',
+      'lat',
+      'long'
+    ]);
+
+    if (!canProceed) {
+      return;
+    }
+
+    navigateToStep(5);
+  };
+
   useEffect(() => {
     if (stepParam === null) {
       navigateToStep(1, { replace: true, });
       return;
     }
 
-    if (stepParam !== '1' && stepParam !== '2' && stepParam !== '3' && stepParam !== '4') {
+    if (stepParam !== '1' && stepParam !== '2' && stepParam !== '3' && stepParam !== '4' && stepParam !== '5') {
       navigateToStep(1, { replace: true, });
     }
   }, [navigateToStep, stepParam]);
@@ -254,9 +314,41 @@ export default function SpaceCreateRoute() {
 
       if (!isAmenitiesStepComplete) {
         navigateToStep(3, { replace: true, });
+        return;
+      }
+
+      return;
+    }
+
+    if (currentStep === 5) {
+      if (!isBasicsStepComplete) {
+        navigateToStep(1, { replace: true, });
+        return;
+      }
+
+      if (!isPhotoStepComplete) {
+        navigateToStep(2, { replace: true, });
+        return;
+      }
+
+      if (!isAmenitiesStepComplete) {
+        navigateToStep(3, { replace: true, });
+        return;
+      }
+
+      if (!isAddressStepComplete) {
+        navigateToStep(4, { replace: true, });
       }
     }
-  }, [currentStep, isAmenitiesStepComplete, isBasicsStepComplete, isPersistenceHydrated, isPhotoStepComplete, navigateToStep]);
+  }, [
+    currentStep,
+    isAddressStepComplete,
+    isAmenitiesStepComplete,
+    isBasicsStepComplete,
+    isPersistenceHydrated,
+    isPhotoStepComplete,
+    navigateToStep
+  ]);
 
   const handleFeaturedImageSelection = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -403,10 +495,16 @@ export default function SpaceCreateRoute() {
   };
 
   const handleSubmit = (values: SpaceFormValues) => {
+    if (!isRequirementsStepComplete) {
+      toast.error('Upload all verification requirements before submitting.');
+      return;
+    }
+
     const spaceId = createSpace(values);
-    toast.success(`${values.name} created.`);
+    toast.success(`${values.name} submitted for review.`);
     clearDraft();
     clearImages();
+    resetVerificationRequirements();
     router.push(`/spaces/${spaceId}`);
   };
 
@@ -436,7 +534,7 @@ export default function SpaceCreateRoute() {
               <form className="space-y-6" onSubmit={ form.handleSubmit(handleSubmit) }>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between rounded-md py-2 text-sm text-muted-foreground">
-                    <span>Step { currentStep } of 4</span>
+                    <span>Step { currentStep } of 5</span>
                     <div className="flex gap-1">
                       { STEP_SEQUENCE.map((stepNumber) => (
                         <span
@@ -624,8 +722,14 @@ export default function SpaceCreateRoute() {
                     </div>
                   ) : currentStep === 3 ? (
                     <SpaceAmenitiesStep form={ form } />
-                  ) : (
+                  ) : currentStep === 4 ? (
                     <SpaceAddressFields form={ form } />
+                  ) : (
+                    <SpaceVerificationRequirementsStep
+                      uploads={ verificationRequirements }
+                      onUpload={ handleRequirementUpload }
+                      onRemove={ handleRequirementRemove }
+                    />
                   ) }
                 </div>
                 <div className="flex flex-col gap-2 pt-4 sm:flex-row sm:items-center sm:justify-between">
@@ -635,6 +739,7 @@ export default function SpaceCreateRoute() {
                     onClick={ () => {
                       clearDraft();
                       clearImages();
+                      resetVerificationRequirements();
                       router.push('/spaces');
                     } }
                   >
@@ -689,8 +794,24 @@ export default function SpaceCreateRoute() {
                           <FiArrowLeft className="size-4" aria-hidden="true" />
                           Back
                         </Button>
-                        <Button type="submit" disabled={ !isAddressStepComplete }>
-                          Save space
+                        <Button type="button" disabled={ !isAddressStepComplete } onClick={ goToVerificationStep }>
+                          Next
+                          <FiArrowRight className="size-4" aria-hidden="true" />
+                        </Button>
+                      </>
+                    ) }
+                    { currentStep === 5 && (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={ () => navigateToStep(4) }
+                        >
+                          <FiArrowLeft className="size-4" aria-hidden="true" />
+                          Back
+                        </Button>
+                        <Button type="submit" disabled={ !isRequirementsStepComplete }>
+                          Submit for Review
                         </Button>
                       </>
                     ) }
