@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  useCallback,
   useEffect,
   useId,
   useMemo,
@@ -197,8 +198,8 @@ type Coordinates = {
 };
 
 const DEFAULT_MAP_CENTER: Coordinates = {
-  lat: 14.5995,
-  lng: 120.9842,
+  lat: 14.5906,
+  lng: 120.9811,
 };
 
 const toCoordinates = (lat?: number, lng?: number): Coordinates | null => {
@@ -1289,8 +1290,12 @@ function PinLocationDialog({
     isError,
     errorMessage,
   } = useGoogleMapsPlaces();
-  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const [mapContainer, setMapContainer] = useState<HTMLDivElement | null>(null);
+  const handleMapContainerRef = useCallback((node: HTMLDivElement | null) => {
+    setMapContainer((prev) => (prev === node ? prev : node));
+  }, []);
   const mapInstanceRef = useRef<GoogleMapsMap | null>(null);
+  const mapInstanceContainerRef = useRef<Element | null>(null);
   const markerRef = useRef<GoogleMapsMarker | null>(null);
   const clickListenerRef = useRef<GoogleMapsEventListener | null>(null);
   const autocompleteServiceRef = useRef<GoogleAutocompleteService | null>(null);
@@ -1438,22 +1443,29 @@ function PinLocationDialog({
   }, [open]);
 
   useEffect(() => {
-    if (!open || !isReady || typeof window === 'undefined') {
+    if (!open || !isReady || typeof window === 'undefined' || !mapContainer) {
       return;
     }
 
     const maps = window.google?.maps;
-    if (!maps?.Map || !mapContainerRef.current) {
+    if (!maps?.Map) {
       return;
     }
 
+    if (mapInstanceRef.current && mapInstanceContainerRef.current !== mapContainer) {
+      mapInstanceRef.current = null;
+      mapInstanceContainerRef.current = null;
+      markerRef.current = null;
+    }
+
     if (!mapInstanceRef.current) {
-      mapInstanceRef.current = new maps.Map(mapContainerRef.current, {
+      mapInstanceRef.current = new maps.Map(mapContainer, {
         center: normalizedInitial ?? DEFAULT_MAP_CENTER,
         zoom: normalizedInitial ? 17 : 12,
         disableDefaultUI: true,
         zoomControl: true,
       });
+      mapInstanceContainerRef.current = mapContainer;
     }
 
     if (!markerRef.current && mapInstanceRef.current) {
@@ -1467,17 +1479,8 @@ function PinLocationDialog({
     mapInstanceRef.current.setCenter(target);
     mapInstanceRef.current.setZoom(selectedPosition ? 17 : normalizedInitial ? 15 : 12);
     markerRef.current?.setPosition(target);
-  }, [open, isReady, normalizedInitial, selectedPosition]);
 
-  useEffect(() => {
-    if (!open || !isReady || !mapInstanceRef.current) {
-      return;
-    }
-
-    if (clickListenerRef.current) {
-      clickListenerRef.current.remove();
-      clickListenerRef.current = null;
-    }
+    clickListenerRef.current?.remove();
 
     const listener = mapInstanceRef.current.addListener('click', (event) => {
       if (!event.latLng) {
@@ -1505,20 +1508,7 @@ function PinLocationDialog({
       listener.remove();
       clickListenerRef.current = null;
     };
-  }, [open, isReady]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    return () => {
-      if (clickListenerRef.current) {
-        clickListenerRef.current.remove();
-        clickListenerRef.current = null;
-      }
-    };
-  }, [open]);
+  }, [open, isReady, normalizedInitial, selectedPosition, mapContainer]);
 
   const confirmDisabled = !selectedPosition;
 
@@ -1728,7 +1718,7 @@ function PinLocationDialog({
             </p>
           </div>
           <div className="relative h-[320px] w-full overflow-hidden rounded-md border border-border/70 bg-muted">
-            <div ref={ mapContainerRef } className="absolute inset-0" />
+            <div ref={ handleMapContainerRef } className="absolute inset-0" />
             { (!isReady || isError) && (
               <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-muted-foreground">
                 { isError ? (errorMessage ?? 'Google Maps is unavailable right now.') : 'Loading Google Maps...' }
