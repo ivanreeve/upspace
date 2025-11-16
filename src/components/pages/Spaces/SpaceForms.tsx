@@ -1565,6 +1565,11 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
     name: 'city',
     defaultValue: form.getValues('city'),
   });
+  const barangayValue = useWatch<SpaceFormValues, 'barangay'>({
+    control: form.control,
+    name: 'barangay',
+    defaultValue: form.getValues('barangay'),
+  });
 
   const normalizedCountryCode = (countryCodeValue ?? '').toUpperCase();
   const isPhilippines = normalizedCountryCode === 'PH';
@@ -1636,16 +1641,20 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
     }
 
     const currentPostalCode = form.getValues('postal_code');
-
+    const trimmedBarangay = barangayValue?.trim();
     const trimmedCity = cityValue?.trim();
-    if (!trimmedCity) {
+
+    if (!trimmedBarangay && !trimmedCity) {
       if (currentPostalCode !== '') {
         form.setValue('postal_code', '', FORM_SET_OPTIONS);
       }
       return;
     }
 
-    const resolvedPostal = philippineZipcodes.findZipcode(trimmedCity);
+    let resolvedPostal = trimmedBarangay ? philippineZipcodes.findZipcode(trimmedBarangay) : null;
+    if ((!resolvedPostal || resolvedPostal.trim() === '') && trimmedCity) {
+      resolvedPostal = philippineZipcodes.findZipcode(trimmedCity);
+    }
     if (typeof resolvedPostal === 'string' && resolvedPostal.trim() !== '') {
       const digitsOnly = resolvedPostal.replace(/\D/g, '').padStart(4, '0').slice(0, 4);
       if (digitsOnly && digitsOnly !== currentPostalCode) {
@@ -1657,7 +1666,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
     if (currentPostalCode !== '') {
       form.setValue('postal_code', '', FORM_SET_OPTIONS);
     }
-  }, [cityValue, form, isPhilippines]);
+  }, [barangayValue, cityValue, form, isPhilippines]);
 
   return (
     <>
