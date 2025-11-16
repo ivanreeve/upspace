@@ -146,6 +146,9 @@ importers:
       nodemailer:
         specifier: ^7.0.10
         version: 7.0.10
+      ph-zipcode-lookup:
+        specifier: ^1.0.9
+        version: 1.0.9
       prisma:
         specifier: ^6.19.0
         version: 6.19.0(magicast@0.3.5)(typescript@5.9.3)
@@ -176,9 +179,6 @@ importers:
       tailwind-merge:
         specifier: ^3.3.1
         version: 3.3.1
-      zipcodes-ph:
-        specifier: ^1.1.2
-        version: 1.1.2
       zod:
         specifier: ^4.1.12
         version: 4.1.12
@@ -4274,6 +4274,9 @@ packages:
   perfect-debounce@1.0.0:
     resolution: {integrity: sha512-xCy9V055GLEqoFaHoC1SoLIaLmWctgCUaBaWxDZ7/Zx4CTyX7cJQLJOok/orfjZAh9kEYpjJa4d0KcJmCbctZA==}
 
+  ph-zipcode-lookup@1.0.9:
+    resolution: {integrity: sha512-DoeOLC8PzCmQthEm7e5AcmGttOVr/Z8dEuyu/nV8cJafJlWQC4FUA7p3bnetN/VD+j1AY4hn+96GI0RQWDGsLw==}
+
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
 
@@ -5213,9 +5216,6 @@ packages:
 
   zhead@2.2.4:
     resolution: {integrity: sha512-8F0OI5dpWIA5IGG5NHUg9staDwz/ZPxZtvGVf01j7vHqSyZ0raHY+78atOVxRqb73AotX22uV1pXt3gYSstGag==}
-
-  zipcodes-ph@1.1.2:
-    resolution: {integrity: sha512-V5DQ+rsJCFOS1Uc8vMlyu3xiCpCwEt6Gvudyyxvba0D5n9lbgtRGgfgbj7w7hoaRfg5/4UUHFj8DCk4pXUs+dg==}
 
   zod@3.24.1:
     resolution: {integrity: sha512-muH7gBL9sI1nciMZV67X5fTKKBLtwpZ5VBp1vsOQzj1MhrBZ4wlVCm3gedKZWLp0Oyel8sIGfeiz54Su+OVT+A==}
@@ -9925,6 +9925,8 @@ snapshots:
 
   perfect-debounce@1.0.0: {}
 
+  ph-zipcode-lookup@1.0.9: {}
+
   picocolors@1.1.1: {}
 
   picomatch@2.3.1: {}
@@ -11073,8 +11075,6 @@ snapshots:
   yocto-queue@0.1.0: {}
 
   zhead@2.2.4: {}
-
-  zipcodes-ph@1.1.2: {}
 
   zod@3.24.1: {}
 

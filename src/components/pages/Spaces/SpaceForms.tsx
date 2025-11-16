@@ -48,7 +48,7 @@ import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import TextAlign from '@tiptap/extension-text-align';
 import Link from '@tiptap/extension-link';
-import zipcodes from 'zipcodes-ph';
+import { zipcodes as philippineZipcodes } from 'ph-zipcode-lookup';
 
 import {
   AREA_INPUT_DEFAULT,
@@ -318,7 +318,8 @@ export const spaceSchema = z.object({
   region: z.string().min(1, 'Region / state is required.'),
   postal_code: z
     .string()
-    .refine((value) => value.length === 0 || /^\d{4}$/.test(value), 'Postal code must be exactly 4 digits.'),
+    .length(4, 'Postal code must be exactly 4 digits.')
+    .regex(/^\d{4}$/, 'Postal code must be exactly 4 digits.'),
   country_code: z
     .string()
     .length(2, 'Use the 2-letter ISO country code.')
@@ -1630,18 +1631,23 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
   const barangayDisabled = !selectedCity || isBarangaysLoading || barangayOptions.length === 0;
 
   useEffect(() => {
+    if (!isPhilippines) {
+      return;
+    }
+
     const currentPostalCode = form.getValues('postal_code');
 
-    if (!cityValue) {
+    const trimmedCity = cityValue?.trim();
+    if (!trimmedCity) {
       if (currentPostalCode !== '') {
         form.setValue('postal_code', '', FORM_SET_OPTIONS);
       }
       return;
     }
 
-    const resolvedPostal = zipcodes.reverse(cityValue);
-    if (typeof resolvedPostal === 'number' || typeof resolvedPostal === 'string') {
-      const digitsOnly = String(resolvedPostal).replace(/\D/g, '').padStart(4, '0').slice(0, 4);
+    const resolvedPostal = philippineZipcodes.findZipcode(trimmedCity);
+    if (typeof resolvedPostal === 'string' && resolvedPostal.trim() !== '') {
+      const digitsOnly = resolvedPostal.replace(/\D/g, '').padStart(4, '0').slice(0, 4);
       if (digitsOnly && digitsOnly !== currentPostalCode) {
         form.setValue('postal_code', digitsOnly, FORM_SET_OPTIONS);
       }
@@ -1651,7 +1657,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
     if (currentPostalCode !== '') {
       form.setValue('postal_code', '', FORM_SET_OPTIONS);
     }
-  }, [cityValue, form]);
+  }, [cityValue, form, isPhilippines]);
 
   return (
     <>
@@ -1866,6 +1872,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
                   aria-live="polite"
                 />
               </FormControl>
+              <FormMessage className="sr-only" />
             </FormItem>
           ) }
         />
