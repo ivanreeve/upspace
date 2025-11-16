@@ -21,6 +21,7 @@ import {
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
+import { MdOutlineMailOutline } from 'react-icons/md';
 
 import {
   SpaceAddressFields,
@@ -40,7 +41,6 @@ import NavBar from '@/components/ui/navbar';
 import { useSpacesStore } from '@/stores/useSpacesStore';
 import { useSpaceFormPersistence } from '@/hooks/useSpaceFormPersistence';
 import { usePersistentSpaceImages } from '@/hooks/usePersistentSpaceImages';
-import { MdOutlineMailOutline } from 'react-icons/md';
 
 const MAX_CATEGORY_IMAGES = 5;
 const CATEGORY_NAME_SAMPLES = [
