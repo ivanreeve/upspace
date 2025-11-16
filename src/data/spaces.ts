@@ -6,6 +6,7 @@ export type SpaceInput = {
   unit_number: string;
   address_subunit: string;
   street: string;
+  barangay?: string;
   city: string;
   region: string;
   postal_code: string;
@@ -41,6 +42,7 @@ export const SPACE_INPUT_DEFAULT: SpaceInput = {
   unit_number: '',
   address_subunit: '',
   street: '',
+  barangay: '',
   city: '',
   region: '',
   postal_code: '',
@@ -66,6 +68,7 @@ export const INITIAL_SPACES: SpaceRecord[] = [
     unit_number: 'Suite 120',
     address_subunit: 'Floor 12',
     street: '123 Mission St',
+    barangay: '',
     city: 'San Francisco',
     region: 'CA',
     postal_code: '94105',
@@ -94,6 +97,7 @@ export const INITIAL_SPACES: SpaceRecord[] = [
     unit_number: 'Unit 4B',
     address_subunit: 'Building B',
     street: '85 Berry St',
+    barangay: '',
     city: 'Brooklyn',
     region: 'NY',
     postal_code: '11249',
@@ -131,6 +135,7 @@ export const INITIAL_SPACES: SpaceRecord[] = [
     unit_number: 'Studio 2',
     address_subunit: 'Level 1',
     street: '410 N 1st Ave',
+    barangay: '',
     city: 'Minneapolis',
     region: 'MN',
     postal_code: '55401',

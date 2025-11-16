@@ -16,9 +16,11 @@ import {
   useWatch,
   type UseFormReturn
 } from 'react-hook-form';
+import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import {
   FiLoader,
+  FiCrosshair,
   FiLock,
   FiMapPin,
   FiList,
@@ -46,6 +48,7 @@ import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import TextAlign from '@tiptap/extension-text-align';
 import Link from '@tiptap/extension-link';
+import zipcodes from 'zipcodes-ph';
 
 import {
   AREA_INPUT_DEFAULT,
@@ -89,6 +92,14 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { richTextPlainTextLength, sanitizeRichText } from '@/lib/rich-text';
 import { useGoogleMapsPlaces } from '@/hooks/useGoogleMapsPlaces';
+import {
+  fetchPhilippineBarangaysByCity,
+  fetchPhilippineCitiesByRegion,
+  fetchPhilippineRegions,
+  type PhilippineBarangayOption,
+  type PhilippineCityOption,
+  type PhilippineRegionOption
+} from '@/lib/philippines-addresses/client';
 
 const rateUnits = ['hour', 'day', 'week'] as const;
 
@@ -174,6 +185,12 @@ const FORM_SET_OPTIONS = {
   shouldValidate: true,
   shouldTouch: true,
 } as const;
+const SUPPORTED_COUNTRIES = [
+  {
+    code: 'PH',
+    name: 'Philippines',
+  }
+] as const;
 
 type AddressPrediction = {
   placeId: string;
@@ -184,6 +201,7 @@ type AddressPrediction = {
 
 type ParsedAddressDetails = {
   street?: string;
+  barangay?: string;
   city?: string;
   region?: string;
   postalCode?: string;
@@ -249,6 +267,10 @@ const parseGooglePlaceDetails = (
     getAddressComponentValue(details.address_components, 'locality') ||
     getAddressComponentValue(details.address_components, 'sublocality') ||
     getAddressComponentValue(details.address_components, 'administrative_area_level_2');
+  const barangay =
+    getAddressComponentValue(details.address_components, 'sublocality_level_1') ||
+    getAddressComponentValue(details.address_components, 'sublocality') ||
+    getAddressComponentValue(details.address_components, 'neighborhood');
   const region = getAddressComponentValue(details.address_components, 'administrative_area_level_1', true);
   const postalCode = getAddressComponentValue(details.address_components, 'postal_code');
   const countryCode = getAddressComponentValue(details.address_components, 'country', true);
@@ -257,6 +279,7 @@ const parseGooglePlaceDetails = (
 
   return {
     street,
+    barangay: barangay || undefined,
     city,
     region,
     postalCode,
@@ -290,11 +313,12 @@ export const spaceSchema = z.object({
   unit_number: z.string().min(1, 'Unit or suite number is required.'),
   address_subunit: z.string().min(1, 'Address subunit is required (e.g., floor).'),
   street: z.string().min(1, 'Street is required.'),
+  barangay: z.string().optional(),
   city: z.string().min(1, 'City is required.'),
   region: z.string().min(1, 'Region / state is required.'),
   postal_code: z
     .string()
-    .min(1, 'Postal code is required.')
+    .min(1)
     .regex(/^\d{4}$/, 'Postal code must be exactly 4 digits.'),
   country_code: z
     .string()
@@ -349,6 +373,7 @@ export const spaceRecordToFormValues = (space: SpaceRecord): SpaceFormValues => 
   unit_number: space.unit_number,
   address_subunit: space.address_subunit,
   street: space.street,
+  barangay: space.barangay ?? '',
   city: space.city,
   region: space.region,
   postal_code: space.postal_code,
@@ -937,336 +962,6 @@ export function SpaceDetailsFields({ form, }: SpaceFormFieldsProps) {
   );
 }
 
-type AddressAutocompleteInputProps = {
-  form: UseFormReturn<SpaceFormValues>;
-  field: ControllerRenderProps<SpaceFormValues, 'street'>;
-};
-
-function AddressAutocompleteInput({
-  form,
-  field,
-}: AddressAutocompleteInputProps) {
-  const {
-    isReady,
-    isLoading,
-    isError,
-    errorMessage,
-  } = useGoogleMapsPlaces();
-  const [predictions, setPredictions] = useState<AddressPrediction[]>([]);
-  const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const [isFetchingPredictions, setIsFetchingPredictions] = useState(false);
-  const [isFetchingDetails, setIsFetchingDetails] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
-  const [isFocused, setIsFocused] = useState(false);
-  const autocompleteServiceRef = useRef<GoogleAutocompleteService | null>(null);
-  const placesServiceRef = useRef<GooglePlacesService | null>(null);
-  const fetchTimeoutRef = useRef<number | null>(null);
-  const blurTimeoutRef = useRef<number | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const latestQueryRef = useRef('');
-  const listboxId = useId();
-
-  useEffect(() => {
-    if (!isReady || typeof window === 'undefined') {
-      return;
-    }
-
-    const places = window.google?.maps?.places;
-    if (!places) {
-      return;
-    }
-
-    if (!autocompleteServiceRef.current) {
-      autocompleteServiceRef.current = new places.AutocompleteService();
-    }
-
-    if (!placesServiceRef.current) {
-      const container = document.createElement('div');
-      placesServiceRef.current = new places.PlacesService(container);
-    }
-  }, [isReady]);
-
-  useEffect(() => {
-    return () => {
-      if (fetchTimeoutRef.current) {
-        window.clearTimeout(fetchTimeoutRef.current);
-      }
-      if (blurTimeoutRef.current) {
-        window.clearTimeout(blurTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    latestQueryRef.current = field.value ?? '';
-
-    if (!isReady || !autocompleteServiceRef.current) {
-      if (isFetchingPredictions) {
-        setIsFetchingPredictions(false);
-      }
-      return;
-    }
-
-    if (fetchTimeoutRef.current) {
-      window.clearTimeout(fetchTimeoutRef.current);
-    }
-
-    const trimmedValue = (field.value ?? '').trim();
-
-    if (trimmedValue.length < GOOGLE_AUTOCOMPLETE_MIN_QUERY_LENGTH) {
-      setPredictions([]);
-      setIsFetchingPredictions(false);
-      return;
-    }
-
-    setIsFetchingPredictions(true);
-    let cancelled = false;
-
-    fetchTimeoutRef.current = window.setTimeout(() => {
-      const service = autocompleteServiceRef.current;
-      if (!service) {
-        setIsFetchingPredictions(false);
-        return;
-      }
-
-      service.getPlacePredictions(
-        {
-          input: field.value ?? '',
-          componentRestrictions: { country: (form.getValues('country_code') ?? 'PH').toUpperCase(), },
-          types: ['geocode'],
-        },
-        (result, status) => {
-          if (cancelled) {
-            return;
-          }
-
-          setIsFetchingPredictions(false);
-
-          if (status === 'OK' && result && result.length > 0) {
-            setPredictions(
-              result.map((prediction) => ({
-                placeId: prediction.place_id,
-                description: prediction.description,
-                mainText: prediction.structured_formatting?.main_text ?? prediction.description,
-                secondaryText: prediction.structured_formatting?.secondary_text,
-              }))
-            );
-            setLocalError(null);
-          } else if (status === 'ZERO_RESULTS') {
-            setPredictions([]);
-            setLocalError(null);
-          } else if (status !== 'OK') {
-            setPredictions([]);
-            setLocalError('Unable to fetch address suggestions. Fill the address manually.');
-          }
-        }
-      );
-    }, 250);
-
-    return () => {
-      cancelled = true;
-      if (fetchTimeoutRef.current) {
-        window.clearTimeout(fetchTimeoutRef.current);
-      }
-    };
-  }, [field.value, form, isReady, isFetchingPredictions]);
-
-  useEffect(() => {
-    if (predictions.length === 0) {
-      setHighlightedIndex(-1);
-    }
-  }, [predictions.length]);
-
-  const handlePredictionSelect = (prediction: AddressPrediction) => {
-    if (!placesServiceRef.current) {
-      return;
-    }
-
-    setIsFetchingDetails(true);
-    setPredictions([]);
-    setIsFocused(false);
-    setHighlightedIndex(-1);
-    setLocalError(null);
-
-    placesServiceRef.current.getDetails(
-      {
-        placeId: prediction.placeId,
-        fields: ['address_component', 'geometry', 'formatted_address'],
-      },
-      (details, status) => {
-        setIsFetchingDetails(false);
-
-        if (status !== 'OK' || !details) {
-          setLocalError('Unable to load that address. Please fill in the details manually.');
-          return;
-        }
-
-        const parsed = parseGooglePlaceDetails(details, prediction.description);
-        form.setValue('street', parsed.street ?? prediction.description, FORM_SET_OPTIONS);
-        form.setValue('city', parsed.city ?? '', FORM_SET_OPTIONS);
-        form.setValue('region', parsed.region ?? '', FORM_SET_OPTIONS);
-        form.setValue('postal_code', parsed.postalCode ?? '', FORM_SET_OPTIONS);
-        form.setValue(
-          'country_code',
-          (parsed.countryCode ?? form.getValues('country_code') ?? 'PH').toUpperCase(),
-          FORM_SET_OPTIONS
-        );
-
-        const parsedLat = formatCoordinate(parsed.lat);
-        const parsedLong = formatCoordinate(parsed.lng);
-
-        if (typeof parsedLat === 'number') {
-          form.setValue('lat', parsedLat, FORM_SET_OPTIONS);
-        }
-
-        if (typeof parsedLong === 'number') {
-          form.setValue('long', parsedLong, FORM_SET_OPTIONS);
-        }
-
-        requestAnimationFrame(() => {
-          inputRef.current?.focus();
-        });
-      }
-    );
-  };
-
-  const handleFocus = () => {
-    if (blurTimeoutRef.current) {
-      window.clearTimeout(blurTimeoutRef.current);
-    }
-    setIsFocused(true);
-  };
-
-  const handleBlur = () => {
-    field.onBlur();
-    blurTimeoutRef.current = window.setTimeout(() => {
-      setIsFocused(false);
-    }, 100);
-  };
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (!predictions.length) {
-      if (event.key === 'Escape') {
-        setPredictions([]);
-      }
-      return;
-    }
-
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      setHighlightedIndex((prev) => (prev + 1) % predictions.length);
-    } else if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      setHighlightedIndex((prev) => (prev - 1 + predictions.length) % predictions.length);
-    } else if (event.key === 'Enter') {
-      if (highlightedIndex >= 0 && highlightedIndex < predictions.length) {
-        event.preventDefault();
-        handlePredictionSelect(predictions[highlightedIndex]);
-      }
-    } else if (event.key === 'Escape') {
-      setPredictions([]);
-      setHighlightedIndex(-1);
-    }
-  };
-
-  const helperError = localError ?? (isError ? errorMessage : null);
-  const helperText = helperError ?? (isLoading ? 'Loading Google Maps suggestions...' : null);
-  const shouldShowSuggestions =
-    isReady && isFocused && (predictions.length > 0 || isFetchingPredictions);
-
-  return (
-    <>
-      <FormControl>
-        <div className="relative">
-          <Input
-            ref={ (node) => {
-              field.ref(node);
-              inputRef.current = node;
-            } }
-            id={ field.name }
-            name={ field.name }
-            value={ field.value ?? '' }
-            placeholder="661 San Marcelino"
-            autoComplete="off"
-            aria-autocomplete="list"
-            aria-controls={ shouldShowSuggestions ? listboxId : undefined }
-            aria-expanded={ shouldShowSuggestions }
-            aria-activedescendant={
-              highlightedIndex >= 0 ? `${listboxId}-option-${highlightedIndex}` : undefined
-            }
-            role="combobox"
-            className="pr-10"
-            onFocus={ handleFocus }
-            onBlur={ handleBlur }
-            onChange={ (event) => {
-              setLocalError(null);
-              field.onChange(event);
-            } }
-            onKeyDown={ handleKeyDown }
-          />
-          { isFetchingDetails && (
-            <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
-              <FiLoader className="size-4 animate-spin" aria-hidden="true" />
-            </div>
-          ) }
-          { shouldShowSuggestions && (
-            <div
-              className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-md border border-border/70 bg-popover text-popover-foreground shadow-lg"
-              role="presentation"
-            >
-              <ul
-                id={ listboxId }
-                role="listbox"
-                aria-label="Address suggestions"
-                className="max-h-56 overflow-auto py-1"
-              >
-                { predictions.map((prediction, index) => (
-                  <li key={ prediction.placeId }>
-                    <button
-                      type="button"
-                      id={ `${listboxId}-option-${index}` }
-                      role="option"
-                      aria-selected={ highlightedIndex === index }
-                      className={ [
-                        'flex w-full items-start gap-2 px-3 py-2 text-left text-sm transition-colors',
-                        highlightedIndex === index ? 'bg-muted' : 'hover:bg-muted/60'
-                      ].join(' ') }
-                      onMouseDown={ (event) => event.preventDefault() }
-                      onClick={ () => handlePredictionSelect(prediction) }
-                    >
-                      <FiMapPin className="mt-1 size-4 text-primary" aria-hidden="true" />
-                      <span className="flex flex-col">
-                        <span className="font-medium">{ prediction.mainText }</span>
-                        { prediction.secondaryText && (
-                          <span className="text-xs text-muted-foreground">{ prediction.secondaryText }</span>
-                        ) }
-                      </span>
-                    </button>
-                  </li>
-                )) }
-                { isFetchingPredictions && (
-                  <li className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
-                    <FiLoader className="size-4 animate-spin" aria-hidden="true" />
-                    <span>Loading suggestions...</span>
-              </li>
-            ) }
-              </ul>
-              <div className="border-t border-border/50 px-3 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
-                Powered by Google
-              </div>
-            </div>
-          ) }
-        </div>
-      </FormControl>
-      { helperText && (
-        <FormDescription className={ helperError ? 'text-destructive' : undefined }>
-          { helperText }
-        </FormDescription>
-      ) }
-    </>
-  );
-}
-
 type PinLocationDialogProps = {
   open: boolean;
   initialLat?: number;
@@ -1313,6 +1008,8 @@ function PinLocationDialog({
   const [isFetchingSearchPredictions, setIsFetchingSearchPredictions] = useState(false);
   const [isFetchingSearchDetails, setIsFetchingSearchDetails] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [isLocatingUser, setIsLocatingUser] = useState(false);
+  const [isGeolocationSupported, setIsGeolocationSupported] = useState(false);
 
   const normalizedCountry = (countryCode ?? 'PH').toUpperCase();
 
@@ -1335,6 +1032,14 @@ function PinLocationDialog({
       placesServiceRef.current = new places.PlacesService(container);
     }
   }, [isReady]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    setIsGeolocationSupported('geolocation' in window.navigator);
+  }, []);
 
   useEffect(() => () => {
     if (searchFetchTimeoutRef.current) {
@@ -1570,6 +1275,65 @@ function PinLocationDialog({
     );
   };
 
+  const handleUseCurrentLocation = () => {
+    if (isLocatingUser || typeof window === 'undefined') {
+      return;
+    }
+
+    const geolocation = window.navigator?.geolocation;
+
+    if (!geolocation) {
+      setSearchError('Location access is not available in this browser.');
+      return;
+    }
+
+    setIsLocatingUser(true);
+    setSearchPredictions([]);
+    setIsSearchFocused(false);
+    setSearchHighlightedIndex(-1);
+    setSearchError(null);
+
+    geolocation.getCurrentPosition(
+      (position) => {
+        setIsLocatingUser(false);
+        const lat = formatCoordinate(position.coords.latitude);
+        const lng = formatCoordinate(position.coords.longitude);
+
+        if (typeof lat !== 'number' || typeof lng !== 'number') {
+          setSearchError('Unable to determine your current location. Try searching instead.');
+          return;
+        }
+
+        const coordinates = {
+          lat,
+          lng,
+        };
+        setSelectedPosition(coordinates);
+        markerRef.current?.setPosition(coordinates);
+        mapInstanceRef.current?.setCenter(coordinates);
+        mapInstanceRef.current?.setZoom(17);
+        setSearchQuery('Current location');
+      },
+      (error: GeolocationPositionError) => {
+        setIsLocatingUser(false);
+        let message = 'Unable to fetch your current location. Try searching instead.';
+        if (error.code === error.PERMISSION_DENIED) {
+          message = 'Location access was blocked. Allow it in your browser settings and try again.';
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          message = 'Your location is unavailable. Try again in a moment or search manually.';
+        } else if (error.code === error.TIMEOUT) {
+          message = 'Getting your current location took too long. Please try again.';
+        }
+        setSearchError(message);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  };
+
   const handleSearchFocus = () => {
     if (searchBlurTimeoutRef.current) {
       window.clearTimeout(searchBlurTimeoutRef.current);
@@ -1616,6 +1380,11 @@ function PinLocationDialog({
   const searchHelperText = searchError
     ?? (isError ? (errorMessage ?? 'Google Maps search is unavailable right now.') : 'Search Google Maps to jump to your building or landmark.');
   const isSearchHelperError = Boolean(searchError) || isError;
+  const locationButtonLabel = isLocatingUser ? 'Locating your current position...' : 'Use my current location';
+  const locationButtonDisabled = !isGeolocationSupported || isLocatingUser;
+  const locationButtonTitle = !isGeolocationSupported
+    ? 'Location access is not available in this browser.'
+    : locationButtonLabel;
 
   return (
     <Dialog open={ open } onOpenChange={ onOpenChange }>
@@ -1648,7 +1417,7 @@ function PinLocationDialog({
                   searchHighlightedIndex >= 0 ? `${searchListboxId}-option-${searchHighlightedIndex}` : undefined
                 }
                 role="combobox"
-                className="pl-10"
+                className="pl-10 pr-24"
                 onFocus={ handleSearchFocus }
                 onBlur={ handleSearchBlur }
                 onChange={ (event) => {
@@ -1660,11 +1429,27 @@ function PinLocationDialog({
               <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground">
                 <FiSearch className="size-4" aria-hidden="true" />
               </div>
-              { (isFetchingSearchDetails) && (
-                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
-                  <FiLoader className="size-4 animate-spin" aria-hidden="true" />
-                </div>
-              ) }
+              <div className="absolute inset-y-0 right-2 flex items-center gap-2">
+                { isFetchingSearchDetails && (
+                  <div className="text-muted-foreground">
+                    <FiLoader className="size-4 animate-spin" aria-hidden="true" />
+                  </div>
+                ) }
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="text-muted-foreground"
+                  onClick={ handleUseCurrentLocation }
+                  disabled={ locationButtonDisabled }
+                  aria-label={ locationButtonLabel }
+                  title={ locationButtonTitle }
+                >
+                  { isLocatingUser
+                    ? <FiLoader className="size-4 animate-spin" aria-hidden="true" />
+                    : <FiCrosshair className="size-4" aria-hidden="true" /> }
+                </Button>
+              </div>
               { shouldShowSearchSuggestions && (
                 <div
                   className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-md border border-border/70 bg-popover text-popover-foreground shadow-lg"
@@ -1764,23 +1549,276 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
     name: 'country_code',
     defaultValue: form.getValues('country_code'),
   });
+  const regionValue = useWatch<SpaceFormValues, 'region'>({
+    control: form.control,
+    name: 'region',
+    defaultValue: form.getValues('region'),
+  });
+  const cityValue = useWatch<SpaceFormValues, 'city'>({
+    control: form.control,
+    name: 'city',
+    defaultValue: form.getValues('city'),
+  });
+
+  const normalizedCountryCode = (countryCodeValue ?? '').toUpperCase();
+  const isPhilippines = normalizedCountryCode === 'PH';
+
+  const {
+    data: regionOptions = [],
+    isLoading: isRegionsLoading,
+    isError: isRegionsError,
+  } = useQuery<PhilippineRegionOption[]>({
+    queryKey: ['philippines', 'regions'],
+    queryFn: fetchPhilippineRegions,
+    enabled: isPhilippines,
+    staleTime: 1000 * 60 * 60 * 24,
+  });
+
+  const selectedRegion = useMemo(
+    () => regionOptions.find((region) => region.name === regionValue),
+    [regionOptions, regionValue]
+  );
+
+  const regionCodeForQuery = selectedRegion?.code;
+  const {
+    data: cityOptions = [],
+    isLoading: isCitiesLoading,
+    isError: isCitiesError,
+  } = useQuery<PhilippineCityOption[]>({
+    queryKey: ['philippines', 'cities', regionCodeForQuery],
+    queryFn: () => {
+      if (!regionCodeForQuery) {
+        return Promise.resolve<PhilippineCityOption[]>([]);
+      }
+
+      return fetchPhilippineCitiesByRegion(regionCodeForQuery);
+    },
+    enabled: Boolean(regionCodeForQuery),
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const selectedCity = useMemo(
+    () => cityOptions.find((city) => city.name === cityValue),
+    [cityOptions, cityValue]
+  );
+
+  const cityCodeForQuery = selectedCity?.code;
+  const {
+    data: barangayOptions = [],
+    isLoading: isBarangaysLoading,
+    isError: isBarangaysError,
+  } = useQuery<PhilippineBarangayOption[]>({
+    queryKey: ['philippines', 'barangays', cityCodeForQuery],
+    queryFn: () => {
+      if (!cityCodeForQuery) {
+        return Promise.resolve<PhilippineBarangayOption[]>([]);
+      }
+
+      return fetchPhilippineBarangaysByCity(cityCodeForQuery);
+    },
+    enabled: Boolean(cityCodeForQuery),
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const regionDisabled = !isPhilippines || isRegionsLoading;
+  const cityDisabled = !selectedRegion || isCitiesLoading;
+  const barangayDisabled = !selectedCity || isBarangaysLoading || barangayOptions.length === 0;
+
+  useEffect(() => {
+    const currentPostalCode = form.getValues('postal_code');
+
+    if (!cityValue) {
+      if (currentPostalCode !== '') {
+        form.setValue('postal_code', '', FORM_SET_OPTIONS);
+      }
+      return;
+    }
+
+    const resolvedPostal = zipcodes.reverse(cityValue);
+    if (typeof resolvedPostal === 'number' || typeof resolvedPostal === 'string') {
+      const digitsOnly = String(resolvedPostal).replace(/\D/g, '').padStart(4, '0').slice(0, 4);
+      if (digitsOnly && digitsOnly !== currentPostalCode) {
+        form.setValue('postal_code', digitsOnly, FORM_SET_OPTIONS);
+      }
+      return;
+    }
+
+    if (currentPostalCode !== '') {
+      form.setValue('postal_code', '', FORM_SET_OPTIONS);
+    }
+  }, [cityValue, form]);
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-4">
         <FormField
           control={ form.control }
-          name="unit_number"
+          name="country_code"
           render={ ({ field, }) => (
             <FormItem>
-              <FormLabel>Unit / Suite</FormLabel>
+              <FormLabel className="flex items-center gap-2">
+                <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
+                <span>Country</span>
+              </FormLabel>
               <FormControl>
-                <Input placeholder="Unit Number" { ...field } />
+                <Select
+                  value={ field.value ?? '' }
+                  onValueChange={ (value) => {
+                    const normalized = (value ?? '').toUpperCase();
+                    field.onChange(normalized);
+                    form.setValue('region', '', FORM_SET_OPTIONS);
+                    form.setValue('city', '', FORM_SET_OPTIONS);
+                    form.setValue('barangay', '', FORM_SET_OPTIONS);
+                    form.setValue('postal_code', '', FORM_SET_OPTIONS);
+                  } }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Philippines" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    { SUPPORTED_COUNTRIES.map((country) => (
+                      <SelectItem key={ country.code } value={ country.code }>
+                        { country.name }
+                      </SelectItem>
+                    )) }
+                  </SelectContent>
+                </Select>
+              </FormControl>
+            </FormItem>
+          ) }
+        />
+        <FormField
+          control={ form.control }
+          name="region"
+          render={ ({ field, }) => (
+            <FormItem>
+              <FormLabel>Region / State</FormLabel>
+              <FormControl>
+                <Select
+                  value={ field.value ?? '' }
+                  onValueChange={ (value) => {
+                    field.onChange(value);
+                    form.setValue('city', '', FORM_SET_OPTIONS);
+                    form.setValue('barangay', '', FORM_SET_OPTIONS);
+                    form.setValue('postal_code', '', FORM_SET_OPTIONS);
+                  } }
+                  disabled={ regionDisabled }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={ isRegionsLoading ? 'Loading regions...' : 'Select region / state' } />
+                  </SelectTrigger>
+                  <SelectContent>
+                    { isRegionsError && (
+                      <SelectItem value="regions-error" disabled>
+                        Unable to load regions
+                      </SelectItem>
+                    ) }
+                    { regionOptions.map((region) => (
+                      <SelectItem key={ region.code } value={ region.name }>
+                        { region.name }
+                      </SelectItem>
+                    )) }
+                  </SelectContent>
+                </Select>
+              </FormControl>
+            </FormItem>
+          ) }
+        />
+        <FormField
+          control={ form.control }
+          name="city"
+          render={ ({ field, }) => (
+            <FormItem>
+              <FormLabel>City</FormLabel>
+              <FormControl>
+                <Select
+                  value={ field.value ?? '' }
+                  onValueChange={ (value) => {
+                    field.onChange(value);
+                    form.setValue('barangay', '', FORM_SET_OPTIONS);
+                    form.setValue('postal_code', '', FORM_SET_OPTIONS);
+                  } }
+                  disabled={ cityDisabled }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={ isCitiesLoading ? 'Loading cities...' : 'Select city' } />
+                  </SelectTrigger>
+                  <SelectContent>
+                    { isCitiesError && (
+                      <SelectItem value="cities-error" disabled>
+                        Unable to load cities
+                      </SelectItem>
+                    ) }
+                    { cityOptions.map((city) => (
+                      <SelectItem key={ city.code } value={ city.name }>
+                        { city.name }
+                      </SelectItem>
+                    )) }
+                  </SelectContent>
+                </Select>
+              </FormControl>
+            </FormItem>
+          ) }
+        />
+        <FormField
+          control={ form.control }
+          name="barangay"
+          render={ ({ field, }) => (
+            <FormItem>
+              <FormLabel>Barangay</FormLabel>
+              <FormControl>
+                <Select
+                  value={ field.value ?? '' }
+                  onValueChange={ (value) => field.onChange(value) }
+                  disabled={ barangayDisabled }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue
+                      placeholder={
+                        !selectedCity
+                          ? 'Select a city first'
+                          : isBarangaysLoading
+                            ? 'Loading barangays...'
+                            : barangayOptions.length === 0
+                              ? 'No barangays available'
+                              : 'Select barangay'
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    { isBarangaysError && (
+                      <SelectItem value="barangays-error" disabled>
+                        Unable to load barangays
+                      </SelectItem>
+                    ) }
+                    { barangayOptions.map((barangay) => (
+                      <SelectItem key={ barangay.code } value={ barangay.name }>
+                        { barangay.name }
+                      </SelectItem>
+                    )) }
+                  </SelectContent>
+                </Select>
+              </FormControl>
+            </FormItem>
+          ) }
+        />
+      </div>
+      <div className="grid gap-4">
+        <FormField
+          control={ form.control }
+          name="street"
+          render={ ({ field, }) => (
+            <FormItem>
+              <FormLabel>Street</FormLabel>
+              <FormControl>
+                <Input placeholder="Rizal Ave" { ...field } />
               </FormControl>
               <FormMessage />
             </FormItem>
           ) }
         />
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
         <FormField
           control={ form.control }
           name="address_subunit"
@@ -1794,42 +1832,14 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
             </FormItem>
           ) }
         />
-      </div>
-      <div className="grid gap-4 md:grid-cols-2">
         <FormField
           control={ form.control }
-          name="street"
+          name="unit_number"
           render={ ({ field, }) => (
             <FormItem>
-              <FormLabel>Street</FormLabel>
-              <AddressAutocompleteInput form={ form } field={ field } />
-              <FormMessage />
-            </FormItem>
-          ) }
-        />
-        <FormField
-          control={ form.control }
-          name="city"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel>City</FormLabel>
+              <FormLabel>Unit / Suite</FormLabel>
               <FormControl>
-                <Input placeholder="Manila" { ...field } />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          ) }
-        />
-      </div>
-      <div className="grid gap-4 md:grid-cols-3">
-        <FormField
-          control={ form.control }
-          name="region"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel>Region / State</FormLabel>
-              <FormControl>
-                <Input placeholder="NCR" { ...field } />
+                <Input placeholder="Unit Number" { ...field } />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -1849,40 +1859,10 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
                   maxLength={ 4 }
                   placeholder="1000"
                   { ...field }
-                  onChange={ (event) => {
-                    const digits = event.target.value.replace(/\D/g, '');
-                    field.onChange(digits.slice(0, 4));
-                  } }
+                  readOnly
+                  disabled
+                  aria-live="polite"
                 />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          ) }
-        />
-        <FormField
-          control={ form.control }
-          name="country_code"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel className="flex items-center gap-2">
-                <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
-                <span>Country</span>
-              </FormLabel>
-              <FormControl>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Input
-                      placeholder="PH"
-                      maxLength={ 2 }
-                      { ...field }
-                      readOnly
-                      value={ field.value?.toUpperCase() ?? '' }
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Currently available for coworking spaces in the Philippines.
-                  </TooltipContent>
-                </Tooltip>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -1978,6 +1958,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
     </>
   );
 }
+
 
 export function SpaceFormFields({ form, }: SpaceFormFieldsProps) {
   return (
