@@ -1764,7 +1764,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
           name="city"
           render={ ({ field, }) => (
             <FormItem>
-              <FormLabel>City</FormLabel>
+              <FormLabel className="data-[error=true]:text-foreground">City</FormLabel>
               <FormControl>
                 <Select
                   value={ field.value ?? '' }
@@ -1775,7 +1775,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
                   } }
                   disabled={ cityDisabled }
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full aria-invalid:border-input aria-invalid:ring-transparent aria-invalid:ring-0">
                     <SelectValue placeholder={ isCitiesLoading ? 'Loading cities...' : 'Select city' } />
                   </SelectTrigger>
                   <SelectContent>
@@ -1882,7 +1882,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
           name="postal_code"
           render={ ({ field, }) => (
             <FormItem>
-              <FormLabel>Postal code</FormLabel>
+              <FormLabel className="data-[error=true]:text-foreground">Postal code</FormLabel>
               <FormControl>
                 <Input
                   type="text"
@@ -1893,10 +1893,10 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
                   { ...field }
                   readOnly
                   disabled
+                  className="aria-invalid:border-input aria-invalid:ring-transparent aria-invalid:ring-0"
                   aria-live="polite"
                 />
               </FormControl>
-              <FormMessage className="sr-only" />
             </FormItem>
           ) }
         />
