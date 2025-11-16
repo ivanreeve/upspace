@@ -11,6 +11,8 @@ type ReactNode
 import type { Session } from '@supabase/supabase-js';
 
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { clearSpaceFormDraft } from '@/hooks/useSpaceFormPersistence';
+import { clearStoredPhotoState } from '@/hooks/usePersistentSpaceImages';
 
 type SessionContextValue = {
   session: Session | null;
@@ -43,10 +45,15 @@ export function SessionProvider({ children, }: { children: ReactNode }) {
         setIsLoading(false);
       });
 
-    const { data: { subscription, }, } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: { subscription, }, } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mounted) return;
       setSession(newSession);
       setIsLoading(false);
+
+      if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+        clearSpaceFormDraft();
+        clearStoredPhotoState();
+      }
     });
 
     return () => {

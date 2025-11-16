@@ -135,7 +135,7 @@ const writeStoredPhotoState = async (state: SpacePhotoState) => {
   }
 };
 
-const clearStoredPhotoState = () => {
+export const clearStoredPhotoState = () => {
   if (!canUseStorage()) {
     return;
   }
