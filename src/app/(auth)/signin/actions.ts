@@ -1,10 +1,15 @@
 'use server';
 
-import { AuthApiError } from '@supabase/supabase-js';
+import { AuthApiError, type Session } from '@supabase/supabase-js';
 import { z } from 'zod';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { ROLE_REDIRECT_MAP } from '@/lib/constants';
+
+type SupabaseSessionPayload = {
+  access_token: string;
+  refresh_token: string;
+};
 
 const schema = z
   .object({
@@ -23,7 +28,19 @@ export type LoginState = {
   message?: string;
   errors?: Record<string, string[]>;
   redirectTo?: string;
+  supabaseSession?: SupabaseSessionPayload;
 };
+
+function extractSupabaseSession(session: Session | null): SupabaseSessionPayload | undefined {
+  if (!session?.access_token || !session?.refresh_token) {
+    return undefined;
+  }
+
+  return {
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+  };
+}
 
 export async function loginAction(_prev: LoginState, formData: FormData): Promise<LoginState> {
   
@@ -55,6 +72,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
       email: parsed.data.email,
       password: parsed.data.password,
     });
+    const supabaseSession = extractSupabaseSession(signInData?.session ?? null);
 
     if (error) {
       if (error instanceof AuthApiError) {
@@ -85,6 +103,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
       return {
         ok: true,
         redirectTo: callbackUrl,
+        supabaseSession,
       };
     }
 
@@ -115,6 +134,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
       return {
         ok: true,
         redirectTo: '/onboarding',
+        supabaseSession,
       };
     }
 
@@ -123,6 +143,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     return {
       ok: true,
       redirectTo: roleRedirect ?? callbackUrl,
+      supabaseSession,
     };
   } catch (error) {
     console.error('Failed to sign in with Supabase', error);
