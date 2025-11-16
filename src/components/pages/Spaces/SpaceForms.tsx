@@ -318,8 +318,7 @@ export const spaceSchema = z.object({
   region: z.string().min(1, 'Region / state is required.'),
   postal_code: z
     .string()
-    .min(1)
-    .regex(/^\d{4}$/, 'Postal code must be exactly 4 digits.'),
+    .refine((value) => value.length === 0 || /^\d{4}$/.test(value), 'Postal code must be exactly 4 digits.'),
   country_code: z
     .string()
     .length(2, 'Use the 2-letter ISO country code.')
@@ -1813,7 +1812,6 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
               <FormControl>
                 <Input placeholder="Rizal Ave" { ...field } />
               </FormControl>
-              <FormMessage />
             </FormItem>
           ) }
         />
