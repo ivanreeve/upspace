@@ -1168,13 +1168,7 @@ function AddressAutocompleteInput({
   };
 
   const helperError = localError ?? (isError ? errorMessage : null);
-  const helperText = helperError
-    ? helperError
-    : isReady
-      ? 'Start typing to search Google Maps and autofill the rest of the address.'
-      : isLoading
-        ? 'Loading Google Maps suggestions...'
-        : 'Start typing to search Google Maps and autofill the rest of the address.';
+  const helperText = helperError ?? (isLoading ? 'Loading Google Maps suggestions...' : null);
   const shouldShowSuggestions =
     isReady && isFocused && (predictions.length > 0 || isFetchingPredictions);
 
@@ -1262,9 +1256,11 @@ function AddressAutocompleteInput({
           ) }
         </div>
       </FormControl>
-      <FormDescription className={ helperError ? 'text-destructive' : undefined }>
-        { helperText }
-      </FormDescription>
+      { helperText && (
+        <FormDescription className={ helperError ? 'text-destructive' : undefined }>
+          { helperText }
+        </FormDescription>
+      ) }
     </>
   );
 }
