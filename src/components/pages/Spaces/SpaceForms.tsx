@@ -798,7 +798,7 @@ export function SpaceDetailsFields({ form, }: SpaceFormFieldsProps) {
         name="description"
         render={ ({ field, }) => (
           <FormItem>
-            <FormLabel>Description</FormLabel>
+            <FormLabel>Description <span className="text-muted-foreground italic">(min. 20 characters)</span></FormLabel>
             <FormControl>
               <DescriptionEditor field={ field } />
             </FormControl>
