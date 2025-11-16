@@ -1,10 +1,22 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState
+} from 'react';
+import type { KeyboardEvent } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ControllerRenderProps, useForm, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
-import { FiLock, FiList, FiSlash } from 'react-icons/fi';
+import {
+  FiLoader,
+  FiLock,
+  FiMapPin,
+  FiList,
+  FiSlash
+} from 'react-icons/fi';
 import {
   LuAlignCenter,
   LuAlignJustify,
@@ -68,6 +80,7 @@ import {
 } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { richTextPlainTextLength, sanitizeRichText } from '@/lib/rich-text';
+import { useGoogleMapsPlaces } from '@/hooks/useGoogleMapsPlaces';
 
 const rateUnits = ['hour', 'day', 'week'] as const;
 
@@ -146,6 +159,87 @@ const TEXT_ALIGNMENT_OPTIONS: ReadonlyArray<{
     icon: LuAlignJustify,
   }
 ];
+
+const GOOGLE_AUTOCOMPLETE_MIN_QUERY_LENGTH = 3;
+const FORM_SET_OPTIONS = {
+  shouldDirty: true,
+  shouldValidate: true,
+  shouldTouch: true,
+} as const;
+
+type AddressPrediction = {
+  placeId: string;
+  description: string;
+  mainText: string;
+  secondaryText?: string;
+};
+
+type ParsedAddressDetails = {
+  street?: string;
+  city?: string;
+  region?: string;
+  postalCode?: string;
+  countryCode?: string;
+  lat?: number;
+  lng?: number;
+};
+
+const getAddressComponentValue = (
+  components: GooglePlaceAddressComponent[] | undefined,
+  type: string,
+  useShortName = false
+) => {
+  if (!components) {
+    return '';
+  }
+
+  const component = components.find((entry) => entry.types.includes(type));
+  if (!component) {
+    return '';
+  }
+
+  return useShortName ? component.short_name : component.long_name;
+};
+
+const buildStreetLine = (components: GooglePlaceAddressComponent[] | undefined) => {
+  const streetNumber = getAddressComponentValue(components, 'street_number');
+  const route = getAddressComponentValue(components, 'route');
+  return [streetNumber, route].filter(Boolean).join(' ').trim();
+};
+
+const parseGooglePlaceDetails = (
+  details: GooglePlaceDetails,
+  fallbackStreet: string
+): ParsedAddressDetails => {
+  const street = buildStreetLine(details.address_components) || fallbackStreet;
+  const city =
+    getAddressComponentValue(details.address_components, 'locality') ||
+    getAddressComponentValue(details.address_components, 'sublocality') ||
+    getAddressComponentValue(details.address_components, 'administrative_area_level_2');
+  const region = getAddressComponentValue(details.address_components, 'administrative_area_level_1', true);
+  const postalCode = getAddressComponentValue(details.address_components, 'postal_code');
+  const countryCode = getAddressComponentValue(details.address_components, 'country', true);
+  const lat = details.geometry?.location?.lat();
+  const lng = details.geometry?.location?.lng();
+
+  return {
+    street,
+    city,
+    region,
+    postalCode,
+    countryCode,
+    lat,
+    lng,
+  };
+};
+
+const formatCoordinate = (value: number | undefined) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return undefined;
+  }
+
+  return Math.round(value * 1_000_000) / 1_000_000;
+};
 
 export const spaceSchema = z.object({
   name: z.string().min(1, 'Space name is required.'),
@@ -810,6 +904,340 @@ export function SpaceDetailsFields({ form, }: SpaceFormFieldsProps) {
   );
 }
 
+type AddressAutocompleteInputProps = {
+  form: UseFormReturn<SpaceFormValues>;
+  field: ControllerRenderProps<SpaceFormValues, 'street'>;
+};
+
+function AddressAutocompleteInput({
+  form,
+  field,
+}: AddressAutocompleteInputProps) {
+  const {
+    isReady,
+    isLoading,
+    isError,
+    errorMessage,
+  } = useGoogleMapsPlaces();
+  const [predictions, setPredictions] = useState<AddressPrediction[]>([]);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [isFetchingPredictions, setIsFetchingPredictions] = useState(false);
+  const [isFetchingDetails, setIsFetchingDetails] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [isFocused, setIsFocused] = useState(false);
+  const autocompleteServiceRef = useRef<GoogleAutocompleteService | null>(null);
+  const placesServiceRef = useRef<GooglePlacesService | null>(null);
+  const fetchTimeoutRef = useRef<number | null>(null);
+  const blurTimeoutRef = useRef<number | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const latestQueryRef = useRef('');
+  const listboxId = useId();
+
+  useEffect(() => {
+    if (!isReady || typeof window === 'undefined') {
+      return;
+    }
+
+    const places = window.google?.maps?.places;
+    if (!places) {
+      return;
+    }
+
+    if (!autocompleteServiceRef.current) {
+      autocompleteServiceRef.current = new places.AutocompleteService();
+    }
+
+    if (!placesServiceRef.current) {
+      const container = document.createElement('div');
+      placesServiceRef.current = new places.PlacesService(container);
+    }
+  }, [isReady]);
+
+  useEffect(() => {
+    return () => {
+      if (fetchTimeoutRef.current) {
+        window.clearTimeout(fetchTimeoutRef.current);
+      }
+      if (blurTimeoutRef.current) {
+        window.clearTimeout(blurTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    latestQueryRef.current = field.value ?? '';
+
+    if (!isReady || !autocompleteServiceRef.current) {
+      if (isFetchingPredictions) {
+        setIsFetchingPredictions(false);
+      }
+      return;
+    }
+
+    if (fetchTimeoutRef.current) {
+      window.clearTimeout(fetchTimeoutRef.current);
+    }
+
+    const trimmedValue = (field.value ?? '').trim();
+
+    if (trimmedValue.length < GOOGLE_AUTOCOMPLETE_MIN_QUERY_LENGTH) {
+      setPredictions([]);
+      setIsFetchingPredictions(false);
+      return;
+    }
+
+    setIsFetchingPredictions(true);
+    let cancelled = false;
+
+    fetchTimeoutRef.current = window.setTimeout(() => {
+      const service = autocompleteServiceRef.current;
+      if (!service) {
+        setIsFetchingPredictions(false);
+        return;
+      }
+
+      service.getPlacePredictions(
+        {
+          input: field.value ?? '',
+          componentRestrictions: { country: (form.getValues('country_code') ?? 'PH').toUpperCase(), },
+          types: ['geocode'],
+        },
+        (result, status) => {
+          if (cancelled) {
+            return;
+          }
+
+          setIsFetchingPredictions(false);
+
+          if (status === 'OK' && result && result.length > 0) {
+            setPredictions(
+              result.map((prediction) => ({
+                placeId: prediction.place_id,
+                description: prediction.description,
+                mainText: prediction.structured_formatting?.main_text ?? prediction.description,
+                secondaryText: prediction.structured_formatting?.secondary_text,
+              }))
+            );
+            setLocalError(null);
+          } else if (status === 'ZERO_RESULTS') {
+            setPredictions([]);
+            setLocalError(null);
+          } else if (status !== 'OK') {
+            setPredictions([]);
+            setLocalError('Unable to fetch address suggestions. Fill the address manually.');
+          }
+        }
+      );
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      if (fetchTimeoutRef.current) {
+        window.clearTimeout(fetchTimeoutRef.current);
+      }
+    };
+  }, [field.value, form, isReady, isFetchingPredictions]);
+
+  useEffect(() => {
+    if (predictions.length === 0) {
+      setHighlightedIndex(-1);
+    }
+  }, [predictions.length]);
+
+  const handlePredictionSelect = (prediction: AddressPrediction) => {
+    if (!placesServiceRef.current) {
+      return;
+    }
+
+    setIsFetchingDetails(true);
+    setPredictions([]);
+    setIsFocused(false);
+    setHighlightedIndex(-1);
+    setLocalError(null);
+
+    placesServiceRef.current.getDetails(
+      {
+        placeId: prediction.placeId,
+        fields: ['address_component', 'geometry', 'formatted_address'],
+      },
+      (details, status) => {
+        setIsFetchingDetails(false);
+
+        if (status !== 'OK' || !details) {
+          setLocalError('Unable to load that address. Please fill in the details manually.');
+          return;
+        }
+
+        const parsed = parseGooglePlaceDetails(details, prediction.description);
+        form.setValue('street', parsed.street ?? prediction.description, FORM_SET_OPTIONS);
+        form.setValue('city', parsed.city ?? '', FORM_SET_OPTIONS);
+        form.setValue('region', parsed.region ?? '', FORM_SET_OPTIONS);
+        form.setValue('postal_code', parsed.postalCode ?? '', FORM_SET_OPTIONS);
+        form.setValue(
+          'country_code',
+          (parsed.countryCode ?? form.getValues('country_code') ?? 'PH').toUpperCase(),
+          FORM_SET_OPTIONS
+        );
+
+        const parsedLat = formatCoordinate(parsed.lat);
+        const parsedLong = formatCoordinate(parsed.lng);
+
+        if (typeof parsedLat === 'number') {
+          form.setValue('lat', parsedLat, FORM_SET_OPTIONS);
+        }
+
+        if (typeof parsedLong === 'number') {
+          form.setValue('long', parsedLong, FORM_SET_OPTIONS);
+        }
+
+        requestAnimationFrame(() => {
+          inputRef.current?.focus();
+        });
+      }
+    );
+  };
+
+  const handleFocus = () => {
+    if (blurTimeoutRef.current) {
+      window.clearTimeout(blurTimeoutRef.current);
+    }
+    setIsFocused(true);
+  };
+
+  const handleBlur = () => {
+    field.onBlur();
+    blurTimeoutRef.current = window.setTimeout(() => {
+      setIsFocused(false);
+    }, 100);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (!predictions.length) {
+      if (event.key === 'Escape') {
+        setPredictions([]);
+      }
+      return;
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setHighlightedIndex((prev) => (prev + 1) % predictions.length);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setHighlightedIndex((prev) => (prev - 1 + predictions.length) % predictions.length);
+    } else if (event.key === 'Enter') {
+      if (highlightedIndex >= 0 && highlightedIndex < predictions.length) {
+        event.preventDefault();
+        handlePredictionSelect(predictions[highlightedIndex]);
+      }
+    } else if (event.key === 'Escape') {
+      setPredictions([]);
+      setHighlightedIndex(-1);
+    }
+  };
+
+  const helperError = localError ?? (isError ? errorMessage : null);
+  const helperText = helperError
+    ? helperError
+    : isReady
+      ? 'Start typing to search Google Maps and autofill the rest of the address.'
+      : isLoading
+        ? 'Loading Google Maps suggestions...'
+        : 'Start typing to search Google Maps and autofill the rest of the address.';
+  const shouldShowSuggestions =
+    isReady && isFocused && (predictions.length > 0 || isFetchingPredictions);
+
+  return (
+    <>
+      <FormControl>
+        <div className="relative">
+          <Input
+            ref={ (node) => {
+              field.ref(node);
+              inputRef.current = node;
+            } }
+            id={ field.name }
+            name={ field.name }
+            value={ field.value ?? '' }
+            placeholder="661 San Marcelino"
+            autoComplete="off"
+            aria-autocomplete="list"
+            aria-controls={ shouldShowSuggestions ? listboxId : undefined }
+            aria-expanded={ shouldShowSuggestions }
+            aria-activedescendant={
+              highlightedIndex >= 0 ? `${listboxId}-option-${highlightedIndex}` : undefined
+            }
+            role="combobox"
+            className="pr-10"
+            onFocus={ handleFocus }
+            onBlur={ handleBlur }
+            onChange={ (event) => {
+              setLocalError(null);
+              field.onChange(event);
+            } }
+            onKeyDown={ handleKeyDown }
+          />
+          { isFetchingDetails && (
+            <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
+              <FiLoader className="size-4 animate-spin" aria-hidden="true" />
+            </div>
+          ) }
+          { shouldShowSuggestions && (
+            <div
+              className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-md border border-border/70 bg-popover text-popover-foreground shadow-lg"
+              role="presentation"
+            >
+              <ul
+                id={ listboxId }
+                role="listbox"
+                aria-label="Address suggestions"
+                className="max-h-56 overflow-auto py-1"
+              >
+                { predictions.map((prediction, index) => (
+                  <li key={ prediction.placeId }>
+                    <button
+                      type="button"
+                      id={ `${listboxId}-option-${index}` }
+                      role="option"
+                      aria-selected={ highlightedIndex === index }
+                      className={ [
+                        'flex w-full items-start gap-2 px-3 py-2 text-left text-sm transition-colors',
+                        highlightedIndex === index ? 'bg-muted' : 'hover:bg-muted/60'
+                      ].join(' ') }
+                      onMouseDown={ (event) => event.preventDefault() }
+                      onClick={ () => handlePredictionSelect(prediction) }
+                    >
+                      <FiMapPin className="mt-1 size-4 text-primary" aria-hidden="true" />
+                      <span className="flex flex-col">
+                        <span className="font-medium">{ prediction.mainText }</span>
+                        { prediction.secondaryText && (
+                          <span className="text-xs text-muted-foreground">{ prediction.secondaryText }</span>
+                        ) }
+                      </span>
+                    </button>
+                  </li>
+                )) }
+                { isFetchingPredictions && (
+                  <li className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+                    <FiLoader className="size-4 animate-spin" aria-hidden="true" />
+                    <span>Loading suggestions...</span>
+              </li>
+            ) }
+              </ul>
+              <div className="border-t border-border/50 px-3 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                Powered by Google
+              </div>
+            </div>
+          ) }
+        </div>
+      </FormControl>
+      <FormDescription className={ helperError ? 'text-destructive' : undefined }>
+        { helperText }
+      </FormDescription>
+    </>
+  );
+}
+
 export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
   return (
     <>
@@ -848,9 +1276,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
           render={ ({ field, }) => (
             <FormItem>
               <FormLabel>Street</FormLabel>
-              <FormControl>
-                <Input placeholder="661 San Marcelino" { ...field } />
-              </FormControl>
+              <AddressAutocompleteInput form={ form } field={ field } />
               <FormMessage />
             </FormItem>
           ) }
