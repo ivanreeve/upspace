@@ -300,12 +300,18 @@ mode: 'insensitive' as const,
 }
 
 export async function POST(req: NextRequest) {
+  const optionalLocationField = z
+    .string()
+    .max(200)
+    .optional()
+    .transform((value) => (value ?? '').trim());
+
   const bodySchema = z.object({
     user_id: z.string().regex(/^\d+$/),
     name: z.string().min(1).max(200),
-    unit_number: z.string().min(1).max(200),
+    unit_number: optionalLocationField,
     street: z.string().min(1).max(200),
-    address_subunit: z.string().min(1).max(200),
+    address_subunit: optionalLocationField,
     city: z.string().min(1).max(200),
     region: z.string().min(1).max(200),
     country: z.string().min(1).max(200),

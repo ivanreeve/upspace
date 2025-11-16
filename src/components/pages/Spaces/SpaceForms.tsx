@@ -322,8 +322,16 @@ export const spaceSchema = z.object({
   amenities: z
     .array(z.string().min(1))
     .min(2, 'Select at least two amenities.'),
-  unit_number: z.string().min(1, 'Unit or suite number is required.'),
-  address_subunit: z.string().min(1, 'Address subunit is required (e.g., floor).'),
+  unit_number: z
+    .string()
+    .max(200, 'Unit or suite must be 200 characters or less.')
+    .optional()
+    .transform((value) => (value ?? '').trim()),
+  address_subunit: z
+    .string()
+    .max(200, 'Address subunit must be 200 characters or less.')
+    .optional()
+    .transform((value) => (value ?? '').trim()),
   street: z.string().min(1, 'Street is required.'),
   barangay: z.string().optional(),
   city: z.string().min(1, 'City is required.'),
@@ -1856,7 +1864,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
           name="address_subunit"
           render={ ({ field, }) => (
             <FormItem>
-              <FormLabel>Address subunit</FormLabel>
+              <FormLabel>Address subunit <span className="italic text-muted-foreground">(Optional)</span></FormLabel>
               <FormControl>
                 <Input placeholder="2F" { ...field } />
               </FormControl>
@@ -1869,7 +1877,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
           name="unit_number"
           render={ ({ field, }) => (
             <FormItem>
-              <FormLabel>Unit / Suite</FormLabel>
+              <FormLabel>Unit / Suite <span className="italic text-muted-foreground">(Optional)</span></FormLabel>
               <FormControl>
                 <Input placeholder="Unit Number" { ...field } />
               </FormControl>
