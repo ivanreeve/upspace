@@ -21,6 +21,7 @@ import {
   FiLock,
   FiMapPin,
   FiList,
+  FiSearch,
   FiSlash
 } from 'react-icons/fi';
 import {
@@ -1269,6 +1270,7 @@ type PinLocationDialogProps = {
   open: boolean;
   initialLat?: number;
   initialLong?: number;
+  countryCode?: string;
   onOpenChange: (open: boolean) => void;
   onConfirm: (coordinates: Coordinates) => void;
 };
@@ -1277,6 +1279,7 @@ function PinLocationDialog({
   open,
   initialLat,
   initialLong,
+  countryCode,
   onOpenChange,
   onConfirm,
 }: PinLocationDialogProps) {
@@ -1290,8 +1293,129 @@ function PinLocationDialog({
   const mapInstanceRef = useRef<GoogleMapsMap | null>(null);
   const markerRef = useRef<GoogleMapsMarker | null>(null);
   const clickListenerRef = useRef<GoogleMapsEventListener | null>(null);
+  const autocompleteServiceRef = useRef<GoogleAutocompleteService | null>(null);
+  const placesServiceRef = useRef<GooglePlacesService | null>(null);
+  const searchListboxId = useId();
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const searchFetchTimeoutRef = useRef<number | null>(null);
+  const searchBlurTimeoutRef = useRef<number | null>(null);
   const normalizedInitial = useMemo(() => toCoordinates(initialLat, initialLong), [initialLat, initialLong]);
   const [selectedPosition, setSelectedPosition] = useState<Coordinates | null>(normalizedInitial);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchPredictions, setSearchPredictions] = useState<AddressPrediction[]>([]);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [searchHighlightedIndex, setSearchHighlightedIndex] = useState(-1);
+  const [isFetchingSearchPredictions, setIsFetchingSearchPredictions] = useState(false);
+  const [isFetchingSearchDetails, setIsFetchingSearchDetails] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+
+  const normalizedCountry = (countryCode ?? 'PH').toUpperCase();
+
+  useEffect(() => {
+    if (!isReady || typeof window === 'undefined') {
+      return;
+    }
+
+    const places = window.google?.maps?.places;
+    if (!places) {
+      return;
+    }
+
+    if (!autocompleteServiceRef.current) {
+      autocompleteServiceRef.current = new places.AutocompleteService();
+    }
+
+    if (!placesServiceRef.current) {
+      const container = document.createElement('div');
+      placesServiceRef.current = new places.PlacesService(container);
+    }
+  }, [isReady]);
+
+  useEffect(() => () => {
+    if (searchFetchTimeoutRef.current) {
+      window.clearTimeout(searchFetchTimeoutRef.current);
+    }
+    if (searchBlurTimeoutRef.current) {
+      window.clearTimeout(searchBlurTimeoutRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isReady || !autocompleteServiceRef.current) {
+      if (isFetchingSearchPredictions) {
+        setIsFetchingSearchPredictions(false);
+      }
+      return;
+    }
+
+    if (searchFetchTimeoutRef.current) {
+      window.clearTimeout(searchFetchTimeoutRef.current);
+    }
+
+    const trimmed = searchQuery.trim();
+    if (trimmed.length < GOOGLE_AUTOCOMPLETE_MIN_QUERY_LENGTH) {
+      setSearchPredictions([]);
+      setIsFetchingSearchPredictions(false);
+      setSearchError(null);
+      return;
+    }
+
+    setIsFetchingSearchPredictions(true);
+    let cancelled = false;
+
+    searchFetchTimeoutRef.current = window.setTimeout(() => {
+      const service = autocompleteServiceRef.current;
+      if (!service) {
+        setIsFetchingSearchPredictions(false);
+        return;
+      }
+
+      service.getPlacePredictions(
+        {
+          input: trimmed,
+          componentRestrictions: { country: normalizedCountry, },
+        },
+        (result, status) => {
+          if (cancelled) {
+            return;
+          }
+
+          setIsFetchingSearchPredictions(false);
+
+          if (status === 'OK' && result && result.length > 0) {
+            setSearchPredictions(
+              result.map((prediction) => ({
+                placeId: prediction.place_id,
+                description: prediction.description,
+                mainText: prediction.structured_formatting?.main_text ?? prediction.description,
+                secondaryText: prediction.structured_formatting?.secondary_text,
+              }))
+            );
+            setSearchError(null);
+          } else if (status === 'ZERO_RESULTS') {
+            setSearchPredictions([]);
+            setSearchError(null);
+          } else if (status !== 'OK') {
+            setSearchPredictions([]);
+            setSearchError('Unable to search Google Maps right now. Try again in a moment.');
+          }
+        }
+      );
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      if (searchFetchTimeoutRef.current) {
+        window.clearTimeout(searchFetchTimeoutRef.current);
+      }
+    };
+  }, [isReady, searchQuery, normalizedCountry, isFetchingSearchPredictions]);
+
+  useEffect(() => {
+    if (searchPredictions.length === 0) {
+      setSearchHighlightedIndex(-1);
+    }
+  }, [searchPredictions.length]);
 
   useEffect(() => {
     if (!open) {
@@ -1300,6 +1424,18 @@ function PinLocationDialog({
 
     setSelectedPosition(normalizedInitial);
   }, [open, normalizedInitial]);
+
+  useEffect(() => {
+    if (open) {
+      return;
+    }
+
+    setSearchQuery('');
+    setSearchPredictions([]);
+    setIsSearchFocused(false);
+    setSearchHighlightedIndex(-1);
+    setSearchError(null);
+  }, [open]);
 
   useEffect(() => {
     if (!open || !isReady || typeof window === 'undefined') {
@@ -1399,6 +1535,98 @@ function PinLocationDialog({
     ? errorMessage ?? 'Unable to load Google Maps. Try again later or continue without pinning the location.'
     : 'Click on the map to drop a pin at the entrance of the space.';
 
+  const handleSearchPredictionSelect = (prediction: AddressPrediction) => {
+    if (!placesServiceRef.current) {
+      return;
+    }
+
+    setIsFetchingSearchDetails(true);
+    setSearchPredictions([]);
+    setIsSearchFocused(false);
+    setSearchHighlightedIndex(-1);
+    setSearchQuery(prediction.description);
+    setSearchError(null);
+
+    placesServiceRef.current.getDetails(
+      {
+        placeId: prediction.placeId,
+        fields: ['geometry'],
+      },
+      (details, status) => {
+        setIsFetchingSearchDetails(false);
+
+        if (status !== 'OK' || !details?.geometry?.location) {
+          setSearchError('Unable to load that place. Try clicking on the map instead.');
+          return;
+        }
+
+        const lat = formatCoordinate(details.geometry.location.lat());
+        const lng = formatCoordinate(details.geometry.location.lng());
+
+        if (typeof lat !== 'number' || typeof lng !== 'number') {
+          setSearchError('Unable to determine that location.');
+          return;
+        }
+
+        const coordinates = {
+          lat,
+          lng,
+        };
+        setSelectedPosition(coordinates);
+        markerRef.current?.setPosition(coordinates);
+        mapInstanceRef.current?.setCenter(coordinates);
+        mapInstanceRef.current?.setZoom(17);
+      }
+    );
+  };
+
+  const handleSearchFocus = () => {
+    if (searchBlurTimeoutRef.current) {
+      window.clearTimeout(searchBlurTimeoutRef.current);
+    }
+    setIsSearchFocused(true);
+  };
+
+  const handleSearchBlur = () => {
+    searchBlurTimeoutRef.current = window.setTimeout(() => {
+      setIsSearchFocused(false);
+    }, 100);
+  };
+
+  const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (!searchPredictions.length) {
+      if (event.key === 'Escape') {
+        setSearchPredictions([]);
+      }
+      return;
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setSearchHighlightedIndex((prev) => (prev + 1) % searchPredictions.length);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setSearchHighlightedIndex((prev) => (prev - 1 + searchPredictions.length) % searchPredictions.length);
+    } else if (event.key === 'Enter') {
+      if (searchHighlightedIndex >= 0 && searchHighlightedIndex < searchPredictions.length) {
+        event.preventDefault();
+        handleSearchPredictionSelect(searchPredictions[searchHighlightedIndex]);
+      }
+    } else if (event.key === 'Escape') {
+      setSearchPredictions([]);
+      setSearchHighlightedIndex(-1);
+    }
+  };
+
+  const shouldShowSearchSuggestions =
+    isReady &&
+    isSearchFocused &&
+    (searchPredictions.length > 0 || isFetchingSearchPredictions);
+
+  const searchHelperText = searchError
+    ?? (isError ? (errorMessage ?? 'Google Maps search is unavailable right now.') : 'Search Google Maps to jump to your building or landmark.');
+  const isSearchHelperError = Boolean(searchError) || isError;
+
   return (
     <Dialog open={ open } onOpenChange={ onOpenChange }>
       <DialogContent className="sm:max-w-lg">
@@ -1409,6 +1637,96 @@ function PinLocationDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
+          <div className="space-y-1">
+            <label htmlFor="pin-location-search" className="text-sm font-medium text-foreground">
+              Search places
+            </label>
+            <div className="relative">
+              <Input
+                id="pin-location-search"
+                ref={ (node) => {
+                  searchInputRef.current = node;
+                } }
+                placeholder="Ayala North Exchange"
+                value={ searchQuery }
+                autoComplete="off"
+                disabled={ !isReady || isError }
+                aria-autocomplete="list"
+                aria-controls={ shouldShowSearchSuggestions ? searchListboxId : undefined }
+                aria-expanded={ shouldShowSearchSuggestions }
+                aria-activedescendant={
+                  searchHighlightedIndex >= 0 ? `${searchListboxId}-option-${searchHighlightedIndex}` : undefined
+                }
+                role="combobox"
+                className="pl-10"
+                onFocus={ handleSearchFocus }
+                onBlur={ handleSearchBlur }
+                onChange={ (event) => {
+                  setSearchError(null);
+                  setSearchQuery(event.target.value);
+                } }
+                onKeyDown={ handleSearchKeyDown }
+              />
+              <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground">
+                <FiSearch className="size-4" aria-hidden="true" />
+              </div>
+              { (isFetchingSearchDetails) && (
+                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
+                  <FiLoader className="size-4 animate-spin" aria-hidden="true" />
+                </div>
+              ) }
+              { shouldShowSearchSuggestions && (
+                <div
+                  className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-md border border-border/70 bg-popover text-popover-foreground shadow-lg"
+                  role="presentation"
+                >
+                  <ul
+                    id={ searchListboxId }
+                    role="listbox"
+                    aria-label="Map search suggestions"
+                    className="max-h-56 overflow-auto py-1"
+                  >
+                    { searchPredictions.map((prediction, index) => (
+                      <li key={ prediction.placeId }>
+                        <button
+                          type="button"
+                          id={ `${searchListboxId}-option-${index}` }
+                          role="option"
+                          aria-selected={ searchHighlightedIndex === index }
+                          className={ [
+                            'flex w-full items-start gap-2 px-3 py-2 text-left text-sm transition-colors',
+                            searchHighlightedIndex === index ? 'bg-muted' : 'hover:bg-muted/60'
+                          ].join(' ') }
+                          onMouseDown={ (event) => event.preventDefault() }
+                          onClick={ () => handleSearchPredictionSelect(prediction) }
+                        >
+                          <FiMapPin className="mt-1 size-4 text-primary" aria-hidden="true" />
+                          <span className="flex flex-col">
+                            <span className="font-medium">{ prediction.mainText }</span>
+                            { prediction.secondaryText && (
+                              <span className="text-xs text-muted-foreground">{ prediction.secondaryText }</span>
+                            ) }
+                          </span>
+                        </button>
+                      </li>
+                    )) }
+                    { isFetchingSearchPredictions && (
+                      <li className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+                        <FiLoader className="size-4 animate-spin" aria-hidden="true" />
+                        <span>Searching Google Maps...</span>
+                      </li>
+                    ) }
+                  </ul>
+                  <div className="border-t border-border/50 px-3 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Powered by Google
+                  </div>
+                </div>
+              ) }
+            </div>
+            <p className={ `text-xs ${isSearchHelperError ? 'text-destructive' : 'text-muted-foreground'}` }>
+              { searchHelperText }
+            </p>
+          </div>
           <div className="relative h-[320px] w-full overflow-hidden rounded-md border border-border/70 bg-muted">
             <div ref={ mapContainerRef } className="absolute inset-0" />
             { (!isReady || isError) && (
@@ -1450,6 +1768,11 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
     control: form.control,
     name: 'long',
     defaultValue: form.getValues('long'),
+  });
+  const countryCodeValue = useWatch<SpaceFormValues, 'country_code'>({
+    control: form.control,
+    name: 'country_code',
+    defaultValue: form.getValues('country_code'),
   });
 
   return (
@@ -1656,6 +1979,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
         onOpenChange={ setPinDialogOpen }
         initialLat={ typeof latValue === 'number' ? latValue : undefined }
         initialLong={ typeof longValue === 'number' ? longValue : undefined }
+        countryCode={ countryCodeValue }
         onConfirm={ ({
           lat,
           lng,
