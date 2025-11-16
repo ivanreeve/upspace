@@ -3,12 +3,18 @@
 import {
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState
 } from 'react';
 import type { KeyboardEvent } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ControllerRenderProps, useForm, type UseFormReturn } from 'react-hook-form';
+import {
+  ControllerRenderProps,
+  useForm,
+  useWatch,
+  type UseFormReturn
+} from 'react-hook-form';
 import { z } from 'zod';
 import {
   FiLoader,
@@ -182,6 +188,31 @@ type ParsedAddressDetails = {
   countryCode?: string;
   lat?: number;
   lng?: number;
+};
+
+type Coordinates = {
+  lat: number;
+  lng: number;
+};
+
+const DEFAULT_MAP_CENTER: Coordinates = {
+  lat: 14.5995,
+  lng: 120.9842,
+};
+
+const toCoordinates = (lat?: number, lng?: number): Coordinates | null => {
+  if (typeof lat !== 'number' || typeof lng !== 'number') {
+    return null;
+  }
+
+  if (Number.isNaN(lat) || Number.isNaN(lng)) {
+    return null;
+  }
+
+  return {
+    lat,
+    lng,
+  };
 };
 
 const getAddressComponentValue = (
@@ -1238,7 +1269,193 @@ function AddressAutocompleteInput({
   );
 }
 
+type PinLocationDialogProps = {
+  open: boolean;
+  initialLat?: number;
+  initialLong?: number;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: (coordinates: Coordinates) => void;
+};
+
+function PinLocationDialog({
+  open,
+  initialLat,
+  initialLong,
+  onOpenChange,
+  onConfirm,
+}: PinLocationDialogProps) {
+  const {
+    isReady,
+    isLoading,
+    isError,
+    errorMessage,
+  } = useGoogleMapsPlaces();
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapInstanceRef = useRef<GoogleMapsMap | null>(null);
+  const markerRef = useRef<GoogleMapsMarker | null>(null);
+  const clickListenerRef = useRef<GoogleMapsEventListener | null>(null);
+  const normalizedInitial = useMemo(() => toCoordinates(initialLat, initialLong), [initialLat, initialLong]);
+  const [selectedPosition, setSelectedPosition] = useState<Coordinates | null>(normalizedInitial);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setSelectedPosition(normalizedInitial);
+  }, [open, normalizedInitial]);
+
+  useEffect(() => {
+    if (!open || !isReady || typeof window === 'undefined') {
+      return;
+    }
+
+    const maps = window.google?.maps;
+    if (!maps?.Map || !mapContainerRef.current) {
+      return;
+    }
+
+    if (!mapInstanceRef.current) {
+      mapInstanceRef.current = new maps.Map(mapContainerRef.current, {
+        center: normalizedInitial ?? DEFAULT_MAP_CENTER,
+        zoom: normalizedInitial ? 17 : 12,
+        disableDefaultUI: true,
+        zoomControl: true,
+      });
+    }
+
+    if (!markerRef.current && mapInstanceRef.current) {
+      markerRef.current = new maps.Marker({
+        map: mapInstanceRef.current,
+        position: normalizedInitial ?? DEFAULT_MAP_CENTER,
+      });
+    }
+
+    const target = selectedPosition ?? normalizedInitial ?? DEFAULT_MAP_CENTER;
+    mapInstanceRef.current.setCenter(target);
+    mapInstanceRef.current.setZoom(selectedPosition ? 17 : normalizedInitial ? 15 : 12);
+    markerRef.current?.setPosition(target);
+  }, [open, isReady, normalizedInitial, selectedPosition]);
+
+  useEffect(() => {
+    if (!open || !isReady || !mapInstanceRef.current) {
+      return;
+    }
+
+    if (clickListenerRef.current) {
+      clickListenerRef.current.remove();
+      clickListenerRef.current = null;
+    }
+
+    const listener = mapInstanceRef.current.addListener('click', (event) => {
+      if (!event.latLng) {
+        return;
+      }
+
+      const lat = formatCoordinate(event.latLng.lat());
+      const lng = formatCoordinate(event.latLng.lng());
+
+      if (typeof lat !== 'number' || typeof lng !== 'number') {
+        return;
+      }
+
+      const next = {
+        lat,
+        lng,
+      };
+      setSelectedPosition(next);
+      markerRef.current?.setPosition(next);
+    });
+
+    clickListenerRef.current = listener;
+
+    return () => {
+      listener.remove();
+      clickListenerRef.current = null;
+    };
+  }, [open, isReady]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    return () => {
+      if (clickListenerRef.current) {
+        clickListenerRef.current.remove();
+        clickListenerRef.current = null;
+      }
+    };
+  }, [open]);
+
+  const confirmDisabled = !selectedPosition;
+
+  const handleConfirm = () => {
+    if (!selectedPosition) {
+      return;
+    }
+
+    onConfirm(selectedPosition);
+    onOpenChange(false);
+  };
+
+  const helperText = isError
+    ? errorMessage ?? 'Unable to load Google Maps. Try again later or continue without pinning the location.'
+    : 'Click on the map to drop a pin at the entrance of the space.';
+
+  return (
+    <Dialog open={ open } onOpenChange={ onOpenChange }>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Pin exact location</DialogTitle>
+          <DialogDescription>
+            { helperText }
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="relative h-[320px] w-full overflow-hidden rounded-md border border-border/70 bg-muted">
+            <div ref={ mapContainerRef } className="absolute inset-0" />
+            { (!isReady || isError) && (
+              <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                { isError ? (errorMessage ?? 'Google Maps is unavailable right now.') : 'Loading Google Maps...' }
+              </div>
+            ) }
+          </div>
+          { selectedPosition && (
+            <div className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">Selected pin:</span>{ ' ' }
+              <span className="font-mono">
+                { selectedPosition.lat.toFixed(6) }, { selectedPosition.lng.toFixed(6) }
+              </span>
+            </div>
+          ) }
+        </div>
+        <DialogFooter className="flex-col gap-2 sm:flex-row">
+          <Button type="button" variant="outline" onClick={ () => onOpenChange(false) }>
+            Cancel
+          </Button>
+          <Button type="button" onClick={ handleConfirm } disabled={ confirmDisabled || isError || isLoading }>
+            Use this location
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
+  const [pinDialogOpen, setPinDialogOpen] = useState(false);
+  const latValue = useWatch<SpaceFormValues, 'lat'>({
+    control: form.control,
+    name: 'lat',
+    defaultValue: form.getValues('lat'),
+  });
+  const longValue = useWatch<SpaceFormValues, 'long'>({
+    control: form.control,
+    name: 'long',
+    defaultValue: form.getValues('long'),
+  });
+
   return (
     <>
       <div className="grid gap-4 md:grid-cols-2">
@@ -1388,7 +1605,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
                     />
                   </TooltipTrigger>
                   <TooltipContent>
-                    Latitude and longitude are determined by the address.
+                    Latitude and longitude are determined by the address or by pinning the map.
                   </TooltipContent>
                 </Tooltip>
               </FormControl>
@@ -1420,7 +1637,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
                     />
                   </TooltipTrigger>
                   <TooltipContent>
-                    Latitude and longitude are determined by the address.
+                    Latitude and longitude are determined by the address or by pinning the map.
                   </TooltipContent>
                 </Tooltip>
               </FormControl>
@@ -1429,6 +1646,28 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
           ) }
         />
       </div>
+      <div className="space-y-2">
+        <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={ () => setPinDialogOpen(true) }>
+          <FiMapPin className="mr-2 size-4" aria-hidden="true" />
+          Pin exact location
+        </Button>
+        <p className="text-sm text-muted-foreground">
+          Drop a pin on the map to fine-tune the coordinates travelers will receive.
+        </p>
+      </div>
+      <PinLocationDialog
+        open={ pinDialogOpen }
+        onOpenChange={ setPinDialogOpen }
+        initialLat={ typeof latValue === 'number' ? latValue : undefined }
+        initialLong={ typeof longValue === 'number' ? longValue : undefined }
+        onConfirm={ ({
+          lat,
+          lng,
+        }) => {
+          form.setValue('lat', lat, FORM_SET_OPTIONS);
+          form.setValue('long', lng, FORM_SET_OPTIONS);
+        } }
+      />
     </>
   );
 }
