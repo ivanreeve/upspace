@@ -1,6 +1,16 @@
 import { AiFillPrinter, AiOutlineAudioMuted } from 'react-icons/ai';
-import { BiNetworkChart, BiSolidCabinet, BiSolidCctv, BiSolidStoreAlt } from 'react-icons/bi';
-import { BsGrid1X2Fill, BsPersonLinesFill, BsPersonStanding, BsPersonVideo3 } from 'react-icons/bs';
+import {
+BiNetworkChart,
+BiSolidCabinet,
+BiSolidCctv,
+BiSolidStoreAlt
+} from 'react-icons/bi';
+import {
+BsGrid1X2Fill,
+BsPersonLinesFill,
+BsPersonStanding,
+BsPersonVideo3
+} from 'react-icons/bs';
 import { CgCommunity } from 'react-icons/cg';
 import {
   FaBatteryThreeQuarters,
