@@ -20,13 +20,13 @@ import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import {
   FiLoader,
-  FiCrosshair,
   FiLock,
   FiMapPin,
   FiList,
   FiSearch,
   FiSlash
 } from 'react-icons/fi';
+import { BiCurrentLocation } from 'react-icons/bi';
 import {
   LuAlignCenter,
   LuAlignJustify,
@@ -1399,103 +1399,109 @@ function PinLocationDialog({
             <label htmlFor="pin-location-search" className="text-sm font-medium text-foreground">
               Search places
             </label>
-            <div className="relative">
-              <Input
-                id="pin-location-search"
-                ref={ (node) => {
-                  searchInputRef.current = node;
-                } }
-                placeholder="Ayala North Exchange"
-                value={ searchQuery }
-                autoComplete="off"
-                disabled={ !isReady || isError }
-                aria-autocomplete="list"
-                aria-controls={ shouldShowSearchSuggestions ? searchListboxId : undefined }
-                aria-expanded={ shouldShowSearchSuggestions }
-                aria-activedescendant={
-                  searchHighlightedIndex >= 0 ? `${searchListboxId}-option-${searchHighlightedIndex}` : undefined
-                }
-                role="combobox"
-                className="pl-10 pr-24"
-                onFocus={ handleSearchFocus }
-                onBlur={ handleSearchBlur }
-                onChange={ (event) => {
-                  setSearchError(null);
-                  setSearchQuery(event.target.value);
-                } }
-                onKeyDown={ handleSearchKeyDown }
-              />
-              <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground">
-                <FiSearch className="size-4" aria-hidden="true" />
-              </div>
-              <div className="absolute inset-y-0 right-2 flex items-center gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="relative flex-1">
+                <Input
+                  id="pin-location-search"
+                  ref={ (node) => {
+                    searchInputRef.current = node;
+                  } }
+                  placeholder="Ayala North Exchange"
+                  value={ searchQuery }
+                  autoComplete="off"
+                  disabled={ !isReady || isError }
+                  aria-autocomplete="list"
+                  aria-controls={ shouldShowSearchSuggestions ? searchListboxId : undefined }
+                  aria-expanded={ shouldShowSearchSuggestions }
+                  aria-activedescendant={
+                    searchHighlightedIndex >= 0 ? `${searchListboxId}-option-${searchHighlightedIndex}` : undefined
+                  }
+                  role="combobox"
+                  className="w-full pl-10 pr-12"
+                  onFocus={ handleSearchFocus }
+                  onBlur={ handleSearchBlur }
+                  onChange={ (event) => {
+                    setSearchError(null);
+                    setSearchQuery(event.target.value);
+                  } }
+                  onKeyDown={ handleSearchKeyDown }
+                />
+                <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground">
+                  <FiSearch className="size-4" aria-hidden="true" />
+                </div>
                 { isFetchingSearchDetails && (
-                  <div className="text-muted-foreground">
+                  <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
                     <FiLoader className="size-4 animate-spin" aria-hidden="true" />
                   </div>
                 ) }
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="text-muted-foreground"
-                  onClick={ handleUseCurrentLocation }
-                  disabled={ locationButtonDisabled }
-                  aria-label={ locationButtonLabel }
-                  title={ locationButtonTitle }
-                >
-                  { isLocatingUser
-                    ? <FiLoader className="size-4 animate-spin" aria-hidden="true" />
-                    : <FiCrosshair className="size-4" aria-hidden="true" /> }
-                </Button>
-              </div>
-              { shouldShowSearchSuggestions && (
-                <div
-                  className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-md border border-border/70 bg-popover text-popover-foreground shadow-lg"
-                  role="presentation"
-                >
-                  <ul
-                    id={ searchListboxId }
-                    role="listbox"
-                    aria-label="Map search suggestions"
-                    className="max-h-56 overflow-auto py-1"
+                { shouldShowSearchSuggestions && (
+                  <div
+                    className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-md border border-border/70 bg-popover text-popover-foreground shadow-lg"
+                    role="presentation"
                   >
-                    { searchPredictions.map((prediction, index) => (
-                      <li key={ prediction.placeId }>
-                        <button
-                          type="button"
-                          id={ `${searchListboxId}-option-${index}` }
-                          role="option"
-                          aria-selected={ searchHighlightedIndex === index }
-                          className={ [
-                            'flex w-full items-start gap-2 px-3 py-2 text-left text-sm transition-colors',
-                            searchHighlightedIndex === index ? 'bg-muted' : 'hover:bg-muted/60'
-                          ].join(' ') }
-                          onMouseDown={ (event) => event.preventDefault() }
-                          onClick={ () => handleSearchPredictionSelect(prediction) }
-                        >
-                          <FiMapPin className="mt-1 size-4 text-primary" aria-hidden="true" />
-                          <span className="flex flex-col">
-                            <span className="font-medium">{ prediction.mainText }</span>
-                            { prediction.secondaryText && (
-                              <span className="text-xs text-muted-foreground">{ prediction.secondaryText }</span>
-                            ) }
-                          </span>
-                        </button>
-                      </li>
-                    )) }
-                    { isFetchingSearchPredictions && (
-                      <li className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
-                        <FiLoader className="size-4 animate-spin" aria-hidden="true" />
-                        <span>Searching Google Maps...</span>
-                      </li>
-                    ) }
-                  </ul>
-                  <div className="border-t border-border/50 px-3 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
-                    Powered by Google
+                    <ul
+                      id={ searchListboxId }
+                      role="listbox"
+                      aria-label="Map search suggestions"
+                      className="max-h-56 overflow-auto py-1"
+                    >
+                      { searchPredictions.map((prediction, index) => (
+                        <li key={ prediction.placeId }>
+                          <button
+                            type="button"
+                            id={ `${searchListboxId}-option-${index}` }
+                            role="option"
+                            aria-selected={ searchHighlightedIndex === index }
+                            className={ [
+                              'flex w-full items-start gap-2 px-3 py-2 text-left text-sm transition-colors',
+                              searchHighlightedIndex === index ? 'bg-muted' : 'hover:bg-muted/60'
+                            ].join(' ') }
+                            onMouseDown={ (event) => event.preventDefault() }
+                            onClick={ () => handleSearchPredictionSelect(prediction) }
+                          >
+                            <FiMapPin className="mt-1 size-4 text-primary" aria-hidden="true" />
+                            <span className="flex flex-col">
+                              <span className="font-medium">{ prediction.mainText }</span>
+                              { prediction.secondaryText && (
+                                <span className="text-xs text-muted-foreground">{ prediction.secondaryText }</span>
+                              ) }
+                            </span>
+                          </button>
+                        </li>
+                      )) }
+                      { isFetchingSearchPredictions && (
+                        <li className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+                          <FiLoader className="size-4 animate-spin" aria-hidden="true" />
+                          <span>Searching Google Maps...</span>
+                        </li>
+                      ) }
+                    </ul>
+                    <div className="border-t border-border/50 px-3 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                      Powered by Google
+                    </div>
                   </div>
-                </div>
-              ) }
+                ) }
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="shrink-0 gap-2 whitespace-nowrap"
+                onClick={ handleUseCurrentLocation }
+                disabled={ locationButtonDisabled }
+                title={ locationButtonTitle }
+              >
+                { isLocatingUser
+                  ? (
+                    <>
+                      <FiLoader className="size-4 animate-spin" aria-hidden="true" />
+                    </>
+                    )
+                  : (
+                    <>
+                      <BiCurrentLocation className="size-4" aria-hidden="true" />
+                    </>
+                    ) }
+              </Button>
             </div>
             <p className={ `text-xs ${isSearchHelperError ? 'text-destructive' : 'text-muted-foreground'}` }>
               { searchHelperText }
@@ -1749,7 +1755,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
                       </SelectItem>
                     ) }
                     { cityOptions.map((city) => (
-                      <SelectItem key={ city.code } value={ city.name }>
+                      <SelectItem key={ `${city.code}-${city.name}` } value={ city.name }>
                         { city.name }
                       </SelectItem>
                     )) }
@@ -1791,7 +1797,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
                       </SelectItem>
                     ) }
                     { barangayOptions.map((barangay) => (
-                      <SelectItem key={ barangay.code } value={ barangay.name }>
+                      <SelectItem key={ `${barangay.code}-${barangay.name}` } value={ barangay.name }>
                         { barangay.name }
                       </SelectItem>
                     )) }
@@ -1802,7 +1808,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
           ) }
         />
       </div>
-      <div className="grid gap-4">
+      <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
         <FormField
           control={ form.control }
           name="street"
@@ -1815,8 +1821,6 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
             </FormItem>
           ) }
         />
-      </div>
-      <div className="grid gap-4 md:grid-cols-3">
         <FormField
           control={ form.control }
           name="address_subunit"
@@ -1862,7 +1866,6 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
                   aria-live="polite"
                 />
               </FormControl>
-              <FormMessage />
             </FormItem>
           ) }
         />
