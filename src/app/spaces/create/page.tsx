@@ -40,6 +40,7 @@ import NavBar from '@/components/ui/navbar';
 import { useSpacesStore } from '@/stores/useSpacesStore';
 import { useSpaceFormPersistence } from '@/hooks/useSpaceFormPersistence';
 import { usePersistentSpaceImages } from '@/hooks/usePersistentSpaceImages';
+import { MdOutlineMailOutline } from 'react-icons/md';
 
 const MAX_CATEGORY_IMAGES = 5;
 const CATEGORY_NAME_SAMPLES = [
@@ -811,6 +812,7 @@ export default function SpaceCreateRoute() {
                           Back
                         </Button>
                         <Button type="submit" disabled={ !isRequirementsStepComplete }>
+                          <MdOutlineMailOutline className="size-4" aria-hidden="true" />
                           Submit for Review
                         </Button>
                       </>
