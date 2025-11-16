@@ -1889,7 +1889,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
           ) }
         />
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
         <FormField
           control={ form.control }
           name="lat"
@@ -1954,15 +1954,12 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
             </FormItem>
           ) }
         />
-      </div>
-      <div className="space-y-2">
-        <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={ () => setPinDialogOpen(true) }>
-          <FiMapPin className="mr-2 size-4" aria-hidden="true" />
-          Pin exact location
-        </Button>
-        <p className="text-sm text-muted-foreground">
-          Drop a pin on the map to fine-tune the coordinates travelers will receive.
-        </p>
+        <div className="flex flex-col items-end gap-2 md:col-span-1">
+          <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={ () => setPinDialogOpen(true) }>
+            <FiMapPin className="mr-2 size-4" aria-hidden="true" />
+            Pin exact location
+          </Button>
+        </div>
       </div>
       <PinLocationDialog
         open={ pinDialogOpen }
