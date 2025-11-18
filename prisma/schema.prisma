@@ -31,17 +31,16 @@ model amenity_choice {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model area {
-  area_id      BigInt        @id @unique @default(autoincrement())
+  area_id      BigInt       @id @unique @default(autoincrement())
   space_id     BigInt
   name         String
   max_capacity BigInt
   min_capacity BigInt
-  created_at   DateTime      @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime?     @default(now()) @db.Timestamptz(6)
-  space        space         @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?    @default(now()) @db.Timestamptz(6)
+  space        space        @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
   booking      booking[]
   price_rate   price_rate[]
-  space_image  space_image[]
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -164,13 +163,11 @@ model space_availability {
 model space_image {
   image_id      BigInt   @id(map: "image_pkey") @unique(map: "image_image_id_key") @default(autoincrement())
   space_id      BigInt
-  area_id       BigInt
   path          String
   display_order BigInt?
   is_primary    Float
   created_at    DateTime @db.Timestamptz(6)
   category      String?
-  area          area     @relation(fields: [area_id], references: [area_id], onDelete: NoAction, onUpdate: NoAction, map: "image_area_id_fkey")
   space         space    @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction, map: "image_space_id_fkey")
 }
 
