@@ -15,14 +15,14 @@ export const VERIFICATION_REQUIREMENTS = [
     description: 'Submit your DTI certificate of business name registration or SEC papers for corporations.',
   },
   {
-    id: 'representative_id',
-    label: 'Government ID of the authorized representative',
-    description: 'Attach a valid government-issued ID for the person managing the listing or acting as the authorized signatory.',
-  },
-  {
     id: 'tax_registration',
     label: 'Tax registration (e.g., BIR Certificate of Registration)',
     description: 'Include your latest tax registration certificate so we can verify compliance.',
+  },
+  {
+    id: 'representative_id',
+    label: 'Government ID of the authorized representative',
+    description: 'Attach a valid government-issued ID for the person managing the listing or acting as the authorized signatory.',
   }
 ] as const;
 
