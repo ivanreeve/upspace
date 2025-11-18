@@ -6,12 +6,19 @@ import {
   cloneWeeklyAvailability,
   INITIAL_SPACES,
   SpaceInput,
-  SpaceRecord
+  SpaceRecord,
+  SpaceStatus
 } from '@/data/spaces';
+
+type CreateSpaceOptions = {
+  spaceId?: string;
+  status?: SpaceStatus;
+  createdAt?: string;
+};
 
 type SpacesState = {
   spaces: SpaceRecord[];
-  createSpace: (payload: SpaceInput) => string;
+  createSpace: (payload: SpaceInput, options?: CreateSpaceOptions) => string;
   updateSpace: (spaceId: string, payload: SpaceInput) => void;
   createArea: (spaceId: string, payload: AreaInput) => void;
   updateArea: (spaceId: string, areaId: string, payload: AreaInput) => void;
@@ -27,13 +34,15 @@ const cloneAreaInput = (payload: AreaInput): AreaInput => ({ ...payload, });
 
 export const useSpacesStore = create<SpacesState>((set) => ({
   spaces: INITIAL_SPACES,
-  createSpace: (payload) => {
-    const id = crypto.randomUUID();
+  createSpace: (payload, options) => {
+    const id = options?.spaceId ?? crypto.randomUUID();
+    const createdAt = options?.createdAt ?? new Date().toISOString();
+    const status = options?.status ?? 'Draft';
     const newSpace: SpaceRecord = {
       ...cloneSpaceInput(payload),
       id,
-      status: 'Draft',
-      created_at: new Date().toISOString(),
+      status,
+      created_at: createdAt,
       areas: [],
     };
 

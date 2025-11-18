@@ -1,13 +1,247 @@
+import type { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
+import { WEEKDAY_ORDER, type WeekdayName } from '@/data/spaces';
 import { prisma } from '@/lib/prisma';
+import { richTextPlainTextLength, sanitizeRichText } from '@/lib/rich-text';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 // JSON-safe replacer: BigInt->string, Date->ISO
 const replacer = (_k: string, v: unknown) =>
   typeof v === 'bigint' ? v.toString()
   : v instanceof Date ? v.toISOString()
   : v;
+
+const TIME_24H_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const MIN_DESCRIPTION_CHARS = 20;
+const MAX_DESCRIPTION_CHARS = 500;
+
+const weekdayEnum = z.enum(WEEKDAY_ORDER);
+
+const timeStringToMinutes = (value: string) => {
+  const [hours, minutes] = value.split(':').map((part) => Number(part));
+  return Number.isFinite(hours) && Number.isFinite(minutes)
+    ? hours * 60 + minutes
+    : Number.NaN;
+};
+
+const timeStringToUtcDate = (value: string) => {
+  const [hours, minutes] = value.split(':').map((part) => Number(part));
+  return new Date(Date.UTC(1970, 0, 1, hours, minutes, 0));
+};
+
+const daySlotSchema = z.object({
+  is_open: z.boolean(),
+  opens_at: z.string().regex(TIME_24H_PATTERN, 'Use 24-hour HH:MM format.'),
+  closes_at: z.string().regex(TIME_24H_PATTERN, 'Use 24-hour HH:MM format.'),
+}).superRefine((values, ctx) => {
+  if (!values.is_open) {
+    return;
+  }
+
+  const openMinutes = timeStringToMinutes(values.opens_at);
+  const closeMinutes = timeStringToMinutes(values.closes_at);
+
+  if (!Number.isFinite(openMinutes) || !Number.isFinite(closeMinutes)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Enter valid HH:MM times.',
+    });
+    return;
+  }
+
+  if (closeMinutes <= openMinutes) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['closes_at'],
+      message: 'Closing time must be after opening time.',
+    });
+  }
+});
+
+const weeklyAvailabilitySchema = z.record(weekdayEnum, daySlotSchema).superRefine((availability, ctx) => {
+  let openDayCount = 0;
+
+  for (const day of WEEKDAY_ORDER) {
+    const slot = availability[day];
+    if (!slot) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [day],
+        message: `Provide hours for ${day}.`,
+      });
+      continue;
+    }
+
+    if (slot.is_open) {
+      openDayCount += 1;
+    }
+  }
+
+  if (openDayCount === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Open the space on at least one day of the week.',
+    });
+  }
+});
+
+const optionalLocationField = z
+  .string()
+  .max(200)
+  .optional()
+  .transform((value) => (value ?? '').trim());
+
+const coordinateSchema = z
+  .coerce
+  .number()
+  .refine((value) => Number.isFinite(value), { message: 'Coordinate is required.', });
+
+const spaceImageSchema = z.object({
+  path: z.string().trim().min(1).max(1024),
+  category: z.string().trim().min(1).max(200).optional(),
+  is_primary: z.boolean(),
+  display_order: z.number().int().min(0).max(10_000),
+});
+
+const VERIFICATION_REQUIREMENT_IDS = ['dti_registration', 'tax_registration', 'representative_id'] as const;
+
+const verificationDocumentSchema = z.object({
+  path: z.string().trim().min(1).max(1024),
+  requirement_id: z.enum(VERIFICATION_REQUIREMENT_IDS),
+  slot_id: z.string().trim().min(1).max(100).optional(),
+  mime_type: z.string().trim().min(1).max(255),
+  file_size_bytes: z.number().int().positive().max(10 * 1024 * 1024),
+});
+
+const spaceCreateSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  description: z.string().min(1),
+  unit_number: optionalLocationField,
+  address_subunit: optionalLocationField,
+  street: z.string().trim().min(1).max(200),
+  barangay: z.string().max(200).optional().transform((value) => value?.trim() ?? ''),
+  city: z.string().trim().min(1).max(200),
+  region: z.string().trim().min(1).max(200),
+  postal_code: z.string().trim().length(4).regex(/^[0-9]{4}$/),
+  country_code: z
+    .string()
+    .trim()
+    .length(2)
+    .regex(/^[A-Za-z]{2}$/)
+    .transform((value) => value.toUpperCase()),
+  lat: coordinateSchema.min(-90).max(90),
+  long: coordinateSchema.min(-180).max(180),
+  amenities: z.array(z.string().uuid()).min(2),
+  availability: weeklyAvailabilitySchema,
+  images: z.array(spaceImageSchema).max(50).optional(),
+  verification_documents: z.array(verificationDocumentSchema).max(20).optional(),
+});
+
+type SpaceCreateInput = z.infer<typeof spaceCreateSchema>;
+
+type VerificationRequirementId = (typeof VERIFICATION_REQUIREMENT_IDS)[number];
+
+const REQUIREMENT_TO_DOCUMENT_TYPE: Record<VerificationRequirementId, 'dti_registration' | 'bir_cor' | 'authorized_rep_id'> = {
+  dti_registration: 'dti_registration',
+  tax_registration: 'bir_cor',
+  representative_id: 'authorized_rep_id',
+};
+
+type AvailabilitySlot = {
+  day: WeekdayName;
+  dayIndex: number;
+  opening: Date;
+  closing: Date;
+};
+
+const DAY_NAME_TO_INDEX: Record<WeekdayName, number> = {
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4,
+  Friday: 5,
+  Saturday: 6,
+  Sunday: 7,
+};
+
+class HttpError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'HttpError';
+    this.status = status;
+  }
+}
+
+const normalizeAvailability = (availability: SpaceCreateInput['availability']): AvailabilitySlot[] => {
+  const slots: AvailabilitySlot[] = [];
+
+  for (const day of WEEKDAY_ORDER) {
+    const slot = availability[day];
+    if (!slot || !slot.is_open) {
+      continue;
+    }
+
+    const opening = timeStringToUtcDate(slot.opens_at);
+    const closing = timeStringToUtcDate(slot.closes_at);
+
+    if (closing <= opening) {
+      throw new HttpError(422, `Closing time must be after opening time on ${day}.`);
+    }
+
+    slots.push({
+      day,
+      dayIndex: DAY_NAME_TO_INDEX[day],
+      opening,
+      closing,
+    });
+  }
+
+  if (!slots.length) {
+    throw new HttpError(422, 'Provide availability for at least one day.');
+  }
+
+  return slots;
+};
+
+const serializeSpace = (space: {
+  space_id: bigint;
+  user_id: bigint;
+  name: string;
+  unit_number: string;
+  street: string;
+  address_subunit: string;
+  city: string;
+  region: string;
+  country_code: string;
+  postal_code: string;
+  description: string | null;
+  barangay: string | null;
+  lat: Prisma.Decimal | number;
+  long: Prisma.Decimal | number;
+  created_at: Date;
+  updated_at: Date;
+}) => ({
+  space_id: space.space_id.toString(),
+  user_id: space.user_id.toString(),
+  name: space.name,
+  unit_number: space.unit_number,
+  street: space.street,
+  address_subunit: space.address_subunit,
+  city: space.city,
+  region: space.region,
+  country_code: space.country_code,
+  postal_code: space.postal_code,
+  description: space.description ?? '',
+  barangay: space.barangay,
+  lat: typeof space.lat === 'number' ? space.lat : Number(space.lat),
+  long: typeof space.long === 'number' ? space.long : Number(space.long),
+  created_at: space.created_at.toISOString(),
+  updated_at: space.updated_at.toISOString(),
+});
 
 export async function GET(req: NextRequest) {
   try {
@@ -300,84 +534,183 @@ mode: 'insensitive' as const,
 }
 
 export async function POST(req: NextRequest) {
-  const optionalLocationField = z
-    .string()
-    .max(200)
-    .optional()
-    .transform((value) => (value ?? '').trim());
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: authData,
+    error: authError,
+  } = await supabase.auth.getUser();
 
-  const bodySchema = z.object({
-    user_id: z.string().regex(/^\d+$/),
-    name: z.string().min(1).max(200),
-    unit_number: optionalLocationField,
-    street: z.string().min(1).max(200),
-    address_subunit: optionalLocationField,
-    city: z.string().min(1).max(200),
-    region: z.string().min(1).max(200),
-    country: z.string().min(1).max(200),
-    postal_code: z.string().min(1).max(50),
+  if (authError || !authData?.user) {
+    return NextResponse.json({ error: 'Authentication required.', }, { status: 401, });
+  }
+
+  const dbUser = await prisma.user.findFirst({
+    where: { auth_user_id: authData.user.id, },
+    select: {
+      user_id: true,
+      role: true,
+      is_onboard: true,
+    },
   });
 
-  const json = await req.json().catch(() => null);
-  const parsed = bodySchema.safeParse(json);
+  if (!dbUser) {
+    return NextResponse.json({ error: 'User profile not found.', }, { status: 403, });
+  }
+
+  if (dbUser.role !== 'partner') {
+    return NextResponse.json({ error: 'Only partner accounts can create spaces.', }, { status: 403, });
+  }
+
+  if (!dbUser.is_onboard) {
+    return NextResponse.json({ error: 'Complete onboarding before submitting spaces.', }, { status: 409, });
+  }
+
+  const body = await req.json().catch(() => null);
+  const parsed = spaceCreateSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten(), }, { status: 400, });
   }
 
+  const sanitizedDescription = sanitizeRichText(parsed.data.description ?? '');
+  const plainTextLength = richTextPlainTextLength(sanitizedDescription);
+
+  if (plainTextLength < MIN_DESCRIPTION_CHARS || plainTextLength > MAX_DESCRIPTION_CHARS) {
+    return NextResponse.json(
+      { error: `Description must be between ${MIN_DESCRIPTION_CHARS} and ${MAX_DESCRIPTION_CHARS} characters.`, },
+      { status: 422, }
+    );
+  }
+
+  const uniqueAmenityIds = Array.from(new Set(parsed.data.amenities));
+  const normalizedAvailability = normalizeAvailability(parsed.data.availability);
+  const imagesPayload = parsed.data.images ?? [];
+  const verificationDocsPayload = parsed.data.verification_documents ?? [];
+  const now = new Date();
+
   try {
-    const now = new Date();
-    const created = await prisma.space.create({
-      data: {
-        user_id: BigInt(parsed.data.user_id),
-        name: parsed.data.name,
-        unit_number: parsed.data.unit_number,
-        street: parsed.data.street,
-        address_subunit: parsed.data.address_subunit,
-        city: parsed.data.city,
-        region: parsed.data.region,
-        country: parsed.data.country,
-        postal_code: parsed.data.postal_code,
-        created_at: now,
-        updated_at: now,
-      },
-      select: {
-        space_id: true,
-        user_id: true,
-        name: true,
-        unit_number: true,
-        street: true,
-        address_subunit: true,
-        city: true,
-        region: true,
-        country: true,
-        postal_code: true,
-        created_at: true,
-        updated_at: true,
-      },
+    const created = await prisma.$transaction(async (tx) => {
+      const space = await tx.space.create({
+        data: {
+          user_id: dbUser.user_id,
+          name: parsed.data.name.trim(),
+          description: sanitizedDescription,
+          unit_number: parsed.data.unit_number ?? '',
+          address_subunit: parsed.data.address_subunit ?? '',
+          street: parsed.data.street.trim(),
+          barangay: parsed.data.barangay?.trim() ? parsed.data.barangay.trim() : null,
+          city: parsed.data.city.trim(),
+          region: parsed.data.region.trim(),
+          postal_code: parsed.data.postal_code.trim(),
+          country_code: parsed.data.country_code,
+          lat: parsed.data.lat,
+          long: parsed.data.long,
+          created_at: now,
+          updated_at: now,
+        },
+        select: {
+          space_id: true,
+          user_id: true,
+          name: true,
+          unit_number: true,
+          street: true,
+          address_subunit: true,
+          city: true,
+          region: true,
+          country_code: true,
+          postal_code: true,
+          description: true,
+          barangay: true,
+          lat: true,
+          long: true,
+          created_at: true,
+          updated_at: true,
+        },
+      });
+
+      if (uniqueAmenityIds.length) {
+        const amenityChoices = await tx.amenity_choice.findMany({
+          where: { id: { in: uniqueAmenityIds, }, },
+          select: { id: true, },
+        });
+
+        if (amenityChoices.length !== uniqueAmenityIds.length) {
+          throw new HttpError(422, 'One or more amenities are invalid.');
+        }
+
+        await tx.amenity.createMany({
+          data: amenityChoices.map((choice) => ({
+            space_id: space.space_id,
+            amenity_choice_id: choice.id,
+          })),
+        });
+      }
+
+      if (normalizedAvailability.length) {
+        await tx.space_availability.createMany({
+          data: normalizedAvailability.map((slot) => ({
+            space_id: space.space_id,
+            day_of_week: slot.dayIndex,
+            opening: slot.opening,
+            closing: slot.closing,
+          })),
+        });
+      }
+
+      if (imagesPayload.length) {
+        await tx.space_image.createMany({
+          data: imagesPayload.map((image) => ({
+            space_id: space.space_id,
+            path: image.path,
+            category: image.category ?? null,
+            display_order: BigInt(image.display_order),
+            is_primary: image.is_primary ? 1 : 0,
+            created_at: now,
+          })),
+        });
+      }
+
+      if (verificationDocsPayload.length) {
+        const verificationRecord = await tx.verification.create({
+          data: {
+            subject_type: 'space',
+            partner_id: null,
+            space_id: space.space_id,
+            status: 'in_review',
+            submitted_at: now,
+            created_at: now,
+            updated_at: now,
+          },
+          select: { id: true, },
+        });
+
+        await tx.verification_document.createMany({
+          data: verificationDocsPayload.map((doc) => ({
+            verification_id: verificationRecord.id,
+            document_type: REQUIREMENT_TO_DOCUMENT_TYPE[doc.requirement_id],
+            path: doc.path,
+            file_size_bytes: BigInt(doc.file_size_bytes),
+            mime_type: doc.mime_type,
+          })),
+        });
+      }
+
+      return space;
     });
 
-    const payload = {
-      space_id: created.space_id.toString(),
-      user_id: created.user_id.toString(),
-      name: created.name,
-      unit_number: created.unit_number,
-      street: created.street,
-      address_subunit: created.address_subunit,
-      city: created.city,
-      region: created.region,
-      country: created.country,
-      postal_code: created.postal_code,
-      created_at: created.created_at instanceof Date ? created.created_at.toISOString() : created.created_at,
-      updated_at: created.updated_at instanceof Date ? created.updated_at.toISOString() : created.updated_at,
-    };
-
-    const res = NextResponse.json({ data: payload, }, { status: 201, });
-    res.headers.set('Location', `/api/v1/spaces/${payload.space_id}`);
+    const responsePayload = serializeSpace(created);
+    const res = NextResponse.json({ data: responsePayload, }, { status: 201, });
+    res.headers.set('Location', `/api/v1/spaces/${responsePayload.space_id}`);
     return res;
-  } catch (err: any) {
-    if (err?.code === 'P2003') {
+  } catch (error: any) {
+    if (error instanceof HttpError) {
+      return NextResponse.json({ error: error.message, }, { status: error.status, });
+    }
+
+    if (error?.code === 'P2003') {
       return NextResponse.json({ error: 'User not found.', }, { status: 404, });
     }
+
+    console.error('Failed to create space', error);
     return NextResponse.json({ error: 'Failed to create space', }, { status: 500, });
   }
 }

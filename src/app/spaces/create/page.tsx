@@ -14,6 +14,7 @@ import { useForm, useWatch, type FieldPathValues } from 'react-hook-form';
 import {
   FiArrowLeft,
   FiArrowRight,
+  FiLoader,
   FiPlus,
   FiTrash,
   FiX
@@ -40,11 +41,14 @@ import { Form } from '@/components/ui/form';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { richTextPlainTextLength } from '@/lib/rich-text';
+import { useSession } from '@/components/auth/SessionProvider';
 import NavBar from '@/components/ui/navbar';
 import { useSpacesStore } from '@/stores/useSpacesStore';
 import { useSpaceFormPersistence } from '@/hooks/useSpaceFormPersistence';
 import { usePersistentSpaceImages } from '@/hooks/usePersistentSpaceImages';
 import { WEEKDAY_ORDER } from '@/data/spaces';
+import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 const MAX_CATEGORY_IMAGES = 5;
 const CATEGORY_NAME_SAMPLES = [
@@ -100,11 +104,126 @@ const createListingChecklistState = () =>
     return state;
   }, {} as Record<string, boolean>);
 
+const SPACE_IMAGES_BUCKET = process.env.NEXT_PUBLIC_SPACE_IMAGES_BUCKET ?? 'upspace-uploads-space-images';
+const VERIFICATION_DOCS_BUCKET = process.env.NEXT_PUBLIC_VERIFICATION_DOCS_BUCKET ?? 'upspace-verification-documents';
+const SPACE_IMAGES_PREFIX = 'space-images';
+const VERIFICATION_DOCS_PREFIX = 'verification-documents';
+
+const sanitizeFileName = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64) || 'file';
+
+const createRandomSuffix = () =>
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2, 10);
+
+const buildStorageObjectPath = (prefix: string, ownerId: string, fileName: string) =>
+  [
+    prefix,
+    ownerId,
+    `${Date.now()}-${createRandomSuffix()}-${sanitizeFileName(fileName)}`
+  ]
+    .filter(Boolean)
+    .join('/');
+
+const SPACE_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg'] as const;
+const SPACE_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
+const VERIFICATION_DOC_MIME_TYPES = ['image/png', 'image/jpeg', 'application/pdf'] as const;
+const VERIFICATION_DOC_MAX_BYTES = 10 * 1024 * 1024;
+
+type UploadedSpaceImagePayload = {
+  path: string;
+  category?: string;
+  is_primary: boolean;
+  display_order: number;
+};
+
+type UploadedVerificationDocumentPayload = {
+  path: string;
+  requirement_id: VerificationRequirementId;
+  slot_id: string;
+  mime_type: string;
+  file_size_bytes: number;
+};
+
+type CreateSpaceApiResponse = {
+  data: {
+    space_id: string;
+    created_at: string;
+    name: string;
+  };
+};
+
+type SubmissionAssets = {
+  images: UploadedSpaceImagePayload[];
+  verification_documents: UploadedVerificationDocumentPayload[];
+};
+
+const buildCreateSpacePayload = (values: SpaceFormValues, assets: SubmissionAssets) => {
+  const availability = WEEKDAY_ORDER.reduce((record, day) => {
+    const slot = values.availability?.[day];
+    if (slot) {
+      record[day] = {
+        is_open: Boolean(slot.is_open),
+        opens_at: slot.opens_at,
+        closes_at: slot.closes_at,
+      };
+    }
+    return record;
+  }, {} as SpaceFormValues['availability']);
+
+  return {
+    name: values.name.trim(),
+    description: values.description,
+    unit_number: values.unit_number?.trim() ?? '',
+    address_subunit: values.address_subunit?.trim() ?? '',
+    street: values.street.trim(),
+    barangay: values.barangay?.trim() ?? '',
+    city: values.city.trim(),
+    region: values.region.trim(),
+    postal_code: values.postal_code.trim(),
+    country_code: values.country_code.trim(),
+    lat: values.lat,
+    long: values.long,
+    amenities: (values.amenities ?? []).filter((amenity): amenity is string => Boolean(amenity)),
+    availability,
+    images: assets.images,
+    verification_documents: assets.verification_documents,
+  } satisfies Record<string, unknown>;
+};
+
+const formatBytes = (bytes: number) => {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+  if (bytes >= 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+  return `${bytes} B`;
+};
+
+const normalizeMimeType = (mime: string) => {
+  const normalized = (mime ?? '').trim().toLowerCase();
+  if (normalized === 'image/jpg') {
+    return 'image/jpeg';
+  }
+  return normalized;
+};
+
 export default function SpaceCreateRoute() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { session, } = useSession();
+  const supabase = useMemo(() => getSupabaseBrowserClient(), []);
+  const storageOwnerId = session?.user?.id ?? 'anonymous';
   const serializedSearchParams = searchParams.toString();
   const stepParam = searchParams.get('step');
+  const authenticatedFetch = useAuthenticatedFetch();
   const currentStep: SpaceFormStep =
     stepParam === '2'
       ? 2
@@ -126,6 +245,7 @@ export default function SpaceCreateRoute() {
     clearDraft,
     isHydrated: isFormHydrated,
   } = useSpaceFormPersistence(form);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [listingChecklistState, setListingChecklistState] = useState<Record<string, boolean>>(createListingChecklistState);
   const isListingChecklistComplete = useMemo(
@@ -626,7 +746,167 @@ export default function SpaceCreateRoute() {
     categoryInputRefs.current[categoryId]?.click();
   };
 
-  const handleSubmit = (values: SpaceFormValues) => {
+  const ensureFileWithinConstraints = (
+    file: File,
+    allowedMimeTypes: readonly string[],
+    maxBytes: number,
+    label: string
+  ) => {
+    const normalizedMime = normalizeMimeType(file.type ?? '');
+    if (!normalizedMime || !allowedMimeTypes.includes(normalizedMime)) {
+      throw new Error(`${label} must be one of: ${allowedMimeTypes.join(', ')}.`);
+    }
+
+    if (file.size > maxBytes) {
+      throw new Error(`${label} must be ${formatBytes(maxBytes)} or smaller.`);
+    }
+
+    return normalizedMime;
+  };
+
+  const uploadToSupabase = useCallback(
+    async (
+      bucket: string,
+      objectPath: string,
+      file: File,
+      contentType: string
+    ) => {
+      const uploadOptions = {
+        cacheControl: '3600',
+        contentType,
+        upsert: false,
+      };
+
+      const { error, } = await supabase.storage.from(bucket).upload(
+        objectPath,
+        file,
+        uploadOptions
+      );
+
+      if (error) {
+        throw new Error(error.message ?? 'Failed to upload file to storage.');
+      }
+    },
+    [supabase]
+  );
+
+  const uploadSpaceImageFile = async (file: File) => {
+    const normalizedMime = ensureFileWithinConstraints(
+      file,
+      SPACE_IMAGE_MIME_TYPES,
+      SPACE_IMAGE_MAX_BYTES,
+      'Space images'
+    );
+
+    const objectPath = buildStorageObjectPath(SPACE_IMAGES_PREFIX, storageOwnerId, file.name);
+    await uploadToSupabase(SPACE_IMAGES_BUCKET, objectPath, file, normalizedMime);
+
+    return `${SPACE_IMAGES_BUCKET}/${objectPath}`;
+  };
+
+  const uploadVerificationDocumentFile = async (
+    requirementId: VerificationRequirementId,
+    file: File
+  ) => {
+    const normalizedMime = ensureFileWithinConstraints(
+      file,
+      VERIFICATION_DOC_MIME_TYPES,
+      VERIFICATION_DOC_MAX_BYTES,
+      'Verification documents'
+    );
+
+    const prefix = `${VERIFICATION_DOCS_PREFIX}/${requirementId}`;
+    const objectPath = buildStorageObjectPath(prefix, storageOwnerId, file.name);
+    await uploadToSupabase(VERIFICATION_DOCS_BUCKET, objectPath, file, normalizedMime);
+
+    return {
+      path: `${VERIFICATION_DOCS_BUCKET}/${objectPath}`,
+      mimeType: normalizedMime,
+    };
+  };
+
+  const uploadSpaceImages = async (): Promise<UploadedSpaceImagePayload[]> => {
+    if (!featuredImage) {
+      throw new Error('Upload a featured image before submitting.');
+    }
+
+    const uploads: UploadedSpaceImagePayload[] = [];
+    let displayOrder = 0;
+
+    const featuredPath = await uploadSpaceImageFile(featuredImage);
+    uploads.push({
+      path: featuredPath,
+      category: 'featured',
+      is_primary: true,
+      display_order: displayOrder,
+    });
+    displayOrder += 1;
+
+    for (const category of photoCategories) {
+      const categoryName = category.name.trim();
+      for (const imageFile of category.images) {
+        const path = await uploadSpaceImageFile(imageFile);
+        uploads.push({
+          path,
+          category: categoryName || undefined,
+          is_primary: false,
+          display_order: displayOrder,
+        });
+        displayOrder += 1;
+      }
+    }
+
+    return uploads;
+  };
+
+  const uploadVerificationDocuments = async (): Promise<UploadedVerificationDocumentPayload[]> => {
+    const uploads: UploadedVerificationDocumentPayload[] = [];
+
+    for (const requirement of VERIFICATION_REQUIREMENTS) {
+      const slotFiles = verificationRequirements[requirement.id] ?? [];
+      requirement.slots.forEach((_slot, index) => {
+        if (!slotFiles[index]) {
+          throw new Error(`Missing required document for ${requirement.label}.`);
+        }
+      });
+    }
+
+    for (const requirement of VERIFICATION_REQUIREMENTS) {
+      const slotFiles = verificationRequirements[requirement.id] ?? [];
+      for (let index = 0; index < requirement.slots.length; index += 1) {
+        const slot = requirement.slots[index];
+        const file = slotFiles[index];
+        if (!file) {
+          throw new Error(`Missing required document for ${requirement.label}.`);
+        }
+
+        const {
+          path,
+          mimeType,
+        } = await uploadVerificationDocumentFile(requirement.id, file);
+        uploads.push({
+          path,
+          requirement_id: requirement.id,
+          slot_id: slot.id,
+          mime_type: mimeType,
+          file_size_bytes: file.size,
+        });
+      }
+    }
+
+    return uploads;
+  };
+
+  const uploadSubmissionAssets = async (): Promise<SubmissionAssets> => {
+    const images = await uploadSpaceImages();
+    const verification_documents = await uploadVerificationDocuments();
+    return {
+      images,
+      verification_documents,
+    };
+  };
+
+  const handleSubmit = async (values: SpaceFormValues) => {
     if (!isListingChecklistComplete) {
       toast.error('Confirm the listing checklist before submitting.');
       return;
@@ -635,13 +915,53 @@ export default function SpaceCreateRoute() {
       toast.error('Upload all verification requirements before submitting.');
       return;
     }
+    if (isSubmitting) {
+      return;
+    }
 
-    const spaceId = createSpace(values);
-    toast.success(`${values.name} submitted for review.`);
-    clearDraft();
-    clearImages();
-    resetVerificationRequirements();
-    router.push(`/spaces/${spaceId}`);
+    setIsSubmitting(true);
+
+    try {
+      const assets = await uploadSubmissionAssets();
+      const requestPayload = buildCreateSpacePayload(values, assets);
+      const response = await authenticatedFetch('/api/v1/spaces', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify(requestPayload),
+      });
+
+      const responseBody = await response.json().catch(() => null);
+      if (!response.ok) {
+        const message = typeof responseBody?.error === 'string'
+          ? responseBody.error
+          : 'Failed to submit the space. Please try again.';
+        throw new Error(message);
+      }
+
+      const payload = responseBody as CreateSpaceApiResponse;
+      const spaceId = payload?.data?.space_id;
+
+      if (!spaceId) {
+        throw new Error('Space submission succeeded but no ID was returned.');
+      }
+
+      createSpace(values, {
+        spaceId,
+        createdAt: payload.data.created_at,
+        status: 'Pending',
+      });
+
+      toast.success(`${values.name} submitted for review.`);
+      clearDraft();
+      clearImages();
+      resetVerificationRequirements();
+      router.push(`/spaces/${spaceId}`);
+    } catch (error) {
+      console.error('Failed to submit space', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to submit the space. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -904,6 +1224,7 @@ export default function SpaceCreateRoute() {
                   <Button
                     type="button"
                     variant="outline"
+                    disabled={ isSubmitting }
                     onClick={ () => {
                       clearDraft();
                       clearImages();
@@ -989,14 +1310,31 @@ export default function SpaceCreateRoute() {
                         <Button
                           type="button"
                           variant="outline"
+                          disabled={ isSubmitting }
                           onClick={ () => navigateToStep(5) }
                         >
                           <FiArrowLeft className="size-4" aria-hidden="true" />
                           Back
                         </Button>
-                        <Button type="submit" disabled={ !isRequirementsStepComplete || !isListingChecklistComplete }>
-                          <MdOutlineMailOutline className="size-4" aria-hidden="true" />
-                          Submit for Review
+                        <Button
+                          type="submit"
+                          disabled={
+                            isSubmitting ||
+                            !isRequirementsStepComplete ||
+                            !isListingChecklistComplete
+                          }
+                        >
+                          { isSubmitting ? (
+                            <>
+                              <FiLoader className="size-4 animate-spin" aria-hidden="true" />
+                              <span>Submitting...</span>
+                            </>
+                          ) : (
+                            <>
+                              <MdOutlineMailOutline className="size-4" aria-hidden="true" />
+                              <span>Submit for Review</span>
+                            </>
+                          ) }
                         </Button>
                       </>
                     ) }
