@@ -38,7 +38,7 @@ function SubmitButton() {
       ].join(' ') }
     >
       { pending && <CgSpinner className="h-4 w-4 animate-spin" /> }
-      <span>{ pending ? 'Validating…' : 'Sign In' }</span>
+      <span>{ pending ? 'Signing In...' : 'Sign In' }</span>
     </Button>
   );
 }

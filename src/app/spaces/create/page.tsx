@@ -14,11 +14,11 @@ import { useForm, useWatch, type FieldPathValues } from 'react-hook-form';
 import {
   FiArrowLeft,
   FiArrowRight,
-  FiLoader,
   FiPlus,
   FiTrash,
   FiX
 } from 'react-icons/fi';
+import { CgSpinner } from 'react-icons/cg';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
@@ -955,7 +955,7 @@ export default function SpaceCreateRoute() {
       clearDraft();
       clearImages();
       resetVerificationRequirements();
-      router.push(`/spaces/${spaceId}`);
+      router.push('/spaces');
     } catch (error) {
       console.error('Failed to submit space', error);
       toast.error(error instanceof Error ? error.message : 'Failed to submit the space. Please try again.');
@@ -1326,7 +1326,7 @@ export default function SpaceCreateRoute() {
                         >
                           { isSubmitting ? (
                             <>
-                              <FiLoader className="size-4 animate-spin" aria-hidden="true" />
+                              <CgSpinner className="h-4 w-4 animate-spin" aria-hidden="true" />
                               <span>Submitting...</span>
                             </>
                           ) : (
