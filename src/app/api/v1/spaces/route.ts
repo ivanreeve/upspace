@@ -208,7 +208,7 @@ const normalizeAvailability = (availability: SpaceCreateInput['availability']): 
 };
 
 const serializeSpace = (space: {
-  space_id: bigint;
+  id: string;
   user_id: bigint;
   name: string;
   unit_number: string;
@@ -225,7 +225,7 @@ const serializeSpace = (space: {
   created_at: Date;
   updated_at: Date;
 }) => ({
-  space_id: space.space_id.toString(),
+  space_id: space.id,
   user_id: space.user_id.toString(),
   name: space.name,
   unit_number: space.unit_number,
@@ -251,7 +251,7 @@ export async function GET(req: NextRequest) {
     const querySchema = z.object({
       // pagination
       limit: z.coerce.number().int().min(1).max(100).default(20),
-      cursor: z.string().regex(/^\d+$/).optional(),
+      cursor: z.string().uuid().optional(),
 
       // simple equals filters
       city: z.string().min(1).optional(),
@@ -270,7 +270,7 @@ export async function GET(req: NextRequest) {
       updated_to: z.string().datetime().optional(),
 
       // ids filter
-      space_ids: z.string().optional(), // comma-separated digits
+      space_ids: z.string().optional(), // comma-separated UUIDs
 
       // relational filters
       amenities: z.string().optional(), // comma-separated list of names
@@ -285,7 +285,7 @@ export async function GET(req: NextRequest) {
       max_rate_price: z.coerce.number().nonnegative().optional(),
 
       // sorting
-      sort: z.enum(['space_id','name','created_at','updated_at']).optional(),
+      sort: z.enum(['id','name','created_at','updated_at']).optional(),
       order: z.enum(['asc','desc']).optional(),
     });
 
@@ -349,7 +349,7 @@ export async function GET(req: NextRequest) {
     const and: any[] = [];
     if (city) and.push({ city, });
     if (region) and.push({ region, });
-    if (country) and.push({ country, });
+    if (country) and.push({ country_code: country, });
     if (postal_code) and.push({ postal_code, });
     if (user_id) and.push({ user_id: BigInt(user_id), });
 
@@ -393,11 +393,11 @@ mode: 'insensitive' as const,
 }, 
 },
           {
- country: {
- contains: q,
-mode: 'insensitive' as const, 
-}, 
-},
+            country_code: {
+              contains: q,
+              mode: 'insensitive' as const,
+            },
+          },
           {
  postal_code: {
  contains: q,
@@ -409,12 +409,21 @@ mode: 'insensitive' as const,
     }
 
     // Space IDs filter
-    const ids = (space_ids ?? '')
+    const candidateSpaceIds = (space_ids ?? '')
       .split(',')
-      .map(s => s.trim())
-      .filter(s => /^\d+$/.test(s))
-      .map(s => BigInt(s));
-    if (ids.length > 0) and.push({ space_id: { in: ids, }, });
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (candidateSpaceIds.length > 0) {
+      try {
+        candidateSpaceIds.forEach((value) => z.string().uuid().parse(value));
+      } catch {
+        return NextResponse.json(
+          { error: 'space_ids must be a comma-separated list of UUIDs', },
+          { status: 400, }
+        );
+      }
+      and.push({ id: { in: candidateSpaceIds, }, });
+    }
 
     // Created/updated range filters
     if (created_from || created_to) {
@@ -467,7 +476,7 @@ mode: 'insensitive' as const,
 
     // Minimum capacity via related areas
     if (typeof min_capacity === 'number') {
-      and.push({ area: { some: { capacity: { gte: BigInt(min_capacity), }, }, }, });
+      and.push({ area: { some: { min_capacity: { gte: BigInt(min_capacity), }, }, }, });
     }
 
     // Bookmarked by a specific user
@@ -501,7 +510,7 @@ mode: 'insensitive' as const,
     // Pagination and sorting
     const take = limit + 1; // read one extra to know if there's a next page
     const orderBy = (() => {
-      const field = sort ?? 'space_id';
+      const field = sort ?? 'id';
       const direction = order ?? 'asc';
       return { [field]: direction, } as const;
     })();
@@ -510,13 +519,13 @@ mode: 'insensitive' as const,
       where,
       take,
       skip: cursor ? 1 : 0,
-      ...(cursor ? { cursor: { space_id: BigInt(cursor), }, } : {}),
+      ...(cursor ? { cursor: { id: cursor, }, } : {}),
       orderBy,
     });
 
     const hasNext = rows.length > limit;
     const items = hasNext ? rows.slice(0, limit) : rows;
-    const nextCursor = hasNext ? String(items[items.length - 1].space_id as unknown as bigint) : null;
+    const nextCursor = hasNext ? items[items.length - 1].id : null;
 
     const body = JSON.stringify({
       data: items,
@@ -608,7 +617,7 @@ export async function POST(req: NextRequest) {
           updated_at: now,
         },
         select: {
-          space_id: true,
+          id: true,
           user_id: true,
           name: true,
           unit_number: true,
@@ -639,7 +648,7 @@ export async function POST(req: NextRequest) {
 
         await tx.amenity.createMany({
           data: amenityChoices.map((choice) => ({
-            space_id: space.space_id,
+            space_id: space.id,
             amenity_choice_id: choice.id,
           })),
         });
@@ -648,7 +657,7 @@ export async function POST(req: NextRequest) {
       if (normalizedAvailability.length) {
         await tx.space_availability.createMany({
           data: normalizedAvailability.map((slot) => ({
-            space_id: space.space_id,
+            space_id: space.id,
             day_of_week: slot.dayIndex,
             opening: slot.opening,
             closing: slot.closing,
@@ -659,7 +668,7 @@ export async function POST(req: NextRequest) {
       if (imagesPayload.length) {
         await tx.space_image.createMany({
           data: imagesPayload.map((image) => ({
-            space_id: space.space_id,
+            space_id: space.id,
             path: image.path,
             category: image.category ?? null,
             display_order: BigInt(image.display_order),
@@ -674,7 +683,7 @@ export async function POST(req: NextRequest) {
           data: {
             subject_type: 'space',
             partner_id: null,
-            space_id: space.space_id,
+            space_id: space.id,
             status: 'in_review',
             submitted_at: now,
             created_at: now,

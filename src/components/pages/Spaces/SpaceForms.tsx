@@ -135,6 +135,53 @@ const normalizeEditorHtml = (value?: string) => {
   return sanitizeRichText(value);
 };
 
+const formatCoordinate = (value: number | undefined) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return undefined;
+  }
+
+  return Math.round(value * 1_000_000) / 1_000_000;
+};
+
+const dedupeAddressOptions = <T extends { code: string; name: string }>(options: readonly T[]) => {
+  const seen = new Set<string>();
+  return options.filter((option) => {
+    const identifier = `${option.code}-${option.name}`.trim().toLowerCase();
+    if (seen.has(identifier)) {
+      return false;
+    }
+    seen.add(identifier);
+    return true;
+  });
+};
+const GOOGLE_AUTOCOMPLETE_MIN_QUERY_LENGTH = 3;
+const FORM_SET_OPTIONS = {
+  shouldDirty: true,
+  shouldValidate: true,
+  shouldTouch: true,
+} as const;
+const SUPPORTED_COUNTRIES = [
+  {
+    code: 'PH',
+    name: 'Philippines',
+  }
+] as const;
+
+const toCoordinates = (lat?: number, lng?: number): Coordinates | null => {
+  if (typeof lat !== 'number' || typeof lng !== 'number') {
+    return null;
+  }
+
+  if (Number.isNaN(lat) || Number.isNaN(lng)) {
+    return null;
+  }
+
+  return {
+    lat,
+    lng,
+  };
+};
+
 const ensureValidLinkHref = (value: string) => {
   const trimmed = value.trim();
 
@@ -148,6 +195,41 @@ const ensureValidLinkHref = (value: string) => {
 
   return `https://${trimmed}`;
 };
+
+type TextAlignment = 'left' | 'center' | 'right' | 'justify';
+
+const TEXT_ALIGNMENT_OPTIONS: ReadonlyArray<{
+  value: TextAlignment;
+  label: string;
+  icon: typeof LuAlignLeft;
+}> = [
+  {
+    value: 'left',
+    label: 'Align left',
+    icon: LuAlignLeft,
+  },
+  {
+    value: 'center',
+    label: 'Align center',
+    icon: LuAlignCenter,
+  },
+  {
+    value: 'right',
+    label: 'Align right',
+    icon: LuAlignRight,
+  },
+  {
+    value: 'justify',
+    label: 'Justify text',
+    icon: LuAlignJustify,
+  }
+];
+
+const TABLE_INSERT_DEFAULTS = {
+  rows: 2,
+  cols: 2,
+  withHeaderRow: true,
+} as const;
 
 export const createSpaceFormDefaults = (): SpaceFormValues => ({
   ...SPACE_INPUT_DEFAULT,

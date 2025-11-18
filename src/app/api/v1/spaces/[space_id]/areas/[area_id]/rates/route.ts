@@ -5,8 +5,8 @@ import { prisma } from '@/lib/prisma';
 
 type Params = { params: Promise<{ space_id?: string; area_id?: string }> };
 
-const isNumericId = (value: string | undefined): value is string =>
-  typeof value === 'string' && /^\d+$/.test(value);
+const isUuid = (value: string | undefined): value is string =>
+  typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
 const createSchema = z.object({
   time_unit: z.string().min(1).max(100),
@@ -20,43 +20,40 @@ export async function GET(_req: NextRequest, { params, }: Params) {
  space_id, area_id, 
 } = await params;
 
-  if (!isNumericId(space_id) || !isNumericId(area_id)) {
+  if (!isUuid(space_id) || !isUuid(area_id)) {
     return NextResponse.json(
-      { error: 'space_id and area_id are required and must be numeric', },
+      { error: 'space_id and area_id are required and must be valid UUIDs', },
       { status: 400, }
     );
   }
 
-  const spaceId = BigInt(space_id);
-  const areaId = BigInt(area_id);
-
   try {
     // ensure area exists and belongs to space
     const area = await prisma.area.findUnique({
-      where: { area_id: areaId, },
+      where: { id: area_id, },
       select: { space_id: true, },
     });
 
-    if (!area || area.space_id !== spaceId) {
+    if (!area || area.space_id !== space_id) {
       return NextResponse.json({ error: 'Area not found', }, { status: 404, });
     }
 
-    const rows = await prisma.rate.findMany({
-      where: { area_id: areaId, },
-      orderBy: { rate_id: 'asc', },
+    const rows = await prisma.price_rate.findMany({
+      where: { area_id, },
+      orderBy: { id: 'asc', },
       select: {
- rate_id: true,
-area_id: true,
-time_unit: true,
-price: true, 
-},
+        id: true,
+        area_id: true,
+        time_unit: true,
+        price: true,
+      },
     });
 
     return NextResponse.json(
       {
         data: rows.map((r) => ({
-          rate_id: r.rate_id.toString(),
-          area_id: r.area_id.toString(),
+          rate_id: r.id,
+          area_id: r.area_id,
           time_unit: r.time_unit,
           price: r.price.toString(),
         })),
@@ -74,9 +71,9 @@ export async function POST(req: NextRequest, { params, }: Params) {
  space_id, area_id, 
 } = await params;
 
-  if (!isNumericId(space_id) || !isNumericId(area_id)) {
+  if (!isUuid(space_id) || !isUuid(area_id)) {
     return NextResponse.json(
-      { error: 'space_id and area_id are required and must be numeric', },
+      { error: 'space_id and area_id are required and must be valid UUIDs', },
       { status: 400, }
     );
   }
@@ -87,37 +84,34 @@ export async function POST(req: NextRequest, { params, }: Params) {
     return NextResponse.json({ error: parsed.error.flatten(), }, { status: 400, });
   }
 
-  const spaceId = BigInt(space_id);
-  const areaId = BigInt(area_id);
-
   try {
     // ensure area exists and belongs to the space
     const area = await prisma.area.findUnique({
-      where: { area_id: areaId, },
+      where: { id: area_id, },
       select: { space_id: true, },
     });
 
-    if (!area || area.space_id !== spaceId) {
+    if (!area || area.space_id !== space_id) {
       return NextResponse.json({ error: 'Area not found', }, { status: 404, });
     }
 
-    const created = await prisma.rate.create({
+    const created = await prisma.price_rate.create({
       data: {
-        area_id: areaId,
+        area_id,
         time_unit: parsed.data.time_unit,
         price: parsed.data.price, // Prisma Decimal accepts string
       },
       select: {
- rate_id: true,
-area_id: true,
-time_unit: true,
-price: true, 
-},
+        id: true,
+        area_id: true,
+        time_unit: true,
+        price: true,
+      },
     });
 
     const payload = {
-      rate_id: created.rate_id.toString(),
-      area_id: created.area_id.toString(),
+      rate_id: created.id,
+      area_id: created.area_id,
       time_unit: created.time_unit,
       price: created.price.toString(),
     };

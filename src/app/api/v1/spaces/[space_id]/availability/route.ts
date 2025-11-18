@@ -4,8 +4,8 @@ import { prisma } from '@/lib/prisma';
 
 type Params = { params: Promise<{ space_id?: string }> };
 
-const isNumericId = (value: string | undefined): value is string =>
-  typeof value === 'string' && /^\d+$/.test(value);
+const isUuid = (value: string | undefined): value is string =>
+  typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
 const mondayFirstDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] as const;
 type MondayFirstDay = typeof mondayFirstDays[number];
@@ -22,31 +22,31 @@ const parseTimeToUTCDate = (time: string): Date | null => {
 // Retrieve availability slots for a space
 export async function GET(_req: NextRequest, { params, }: Params) {
   const { space_id, } = await params;
-  if (!isNumericId(space_id)) {
+  if (!isUuid(space_id)) {
     return NextResponse.json(
-      { error: 'space_id is required and must be numeric', },
+      { error: 'space_id is required and must be a valid UUID', },
       { status: 400, }
     );
   }
 
   try {
     const rows = await prisma.space_availability.findMany({
-      where: { space_id: BigInt(space_id), },
+      where: { space_id, },
       select: {
-        availability_id: true,
+        id: true,
         space_id: true,
         day_of_week: true,
-        opening_time: true,
-        closing_time: true,
+        opening: true,
+        closing: true,
       },
     });
 
     const data = rows.map((r) => ({
-      availability_id: r.availability_id.toString(),
-      space_id: r.space_id.toString(),
+      availability_id: r.id,
+      space_id: r.space_id,
       day_of_week: String(r.day_of_week),
-      opening_time: r.opening_time instanceof Date ? r.opening_time.toISOString() : String(r.opening_time),
-      closing_time: r.closing_time instanceof Date ? r.closing_time.toISOString() : String(r.closing_time),
+      opening_time: r.opening instanceof Date ? r.opening.toISOString() : String(r.opening),
+      closing_time: r.closing instanceof Date ? r.closing.toISOString() : String(r.closing),
     }));
 
     data.sort(
@@ -62,9 +62,9 @@ export async function GET(_req: NextRequest, { params, }: Params) {
 // Add availability slots to a space
 export async function POST(req: NextRequest, { params, }: Params) {
   const { space_id, } = await params;
-  if (!isNumericId(space_id)) {
+  if (!isUuid(space_id)) {
     return NextResponse.json(
-      { error: 'space_id is required and must be numeric', },
+      { error: 'space_id is required and must be a valid UUID', },
       { status: 400, }
     );
   }
@@ -103,11 +103,11 @@ export async function POST(req: NextRequest, { params, }: Params) {
     }
   }
 
-  const spaceId = BigInt(space_id);
+  const spaceId = space_id;
 
   try {
     const created = await prisma.$transaction(async (tx) => {
-      const createdRows: Array<{ availability_id: bigint; space_id: bigint; day_of_week: string; opening_time: Date; closing_time: Date; }> = [];
+      const createdRows: Array<{ id: string; space_id: string; day_of_week: string; opening: Date; closing: Date; }> = [];
       for (const s of inputs) {
         await tx.space_availability.deleteMany({
  where: {
@@ -119,15 +119,15 @@ day_of_week: s.day_of_week,
           data: {
             space_id: spaceId,
             day_of_week: s.day_of_week,
-            opening_time: parseTimeToUTCDate(s.opening_time)!,
-            closing_time: parseTimeToUTCDate(s.closing_time)!,
+            opening: parseTimeToUTCDate(s.opening_time)!,
+            closing: parseTimeToUTCDate(s.closing_time)!,
           },
           select: {
-            availability_id: true,
+            id: true,
             space_id: true,
             day_of_week: true,
-            opening_time: true,
-            closing_time: true,
+            opening: true,
+            closing: true,
           },
         });
         createdRows.push(row);
@@ -137,11 +137,11 @@ day_of_week: s.day_of_week,
 
     // Normalize response: day name + ISO times
     const data = created.map((r) => ({
-      availability_id: r.availability_id.toString(),
-      space_id: r.space_id.toString(),
+      availability_id: r.id,
+      space_id: r.space_id,
       day_of_week: String(r.day_of_week),
-      opening_time: r.opening_time instanceof Date ? r.opening_time.toISOString() : String(r.opening_time),
-      closing_time: r.closing_time instanceof Date ? r.closing_time.toISOString() : String(r.closing_time),
+      opening_time: r.opening instanceof Date ? r.opening.toISOString() : String(r.opening),
+      closing_time: r.closing instanceof Date ? r.closing.toISOString() : String(r.closing),
     }));
 
     if (data.length === 1) {

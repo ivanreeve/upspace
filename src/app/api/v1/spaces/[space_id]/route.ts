@@ -5,8 +5,8 @@ import { prisma } from '@/lib/prisma';
 
 type Params = { params: Promise<{ space_id?: string }> };
 
-const isNumericId = (value: string | undefined): value is string =>
-  typeof value === 'string' && /^\d+$/.test(value);
+const isUuid = (value: string | undefined): value is string =>
+  typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
 // Fields allowed to update on space
 const updateSchema = z.object({
@@ -22,16 +22,14 @@ const updateSchema = z.object({
 
 export async function GET(_req: NextRequest, { params, }: Params) {
   const { space_id, } = await params;
-  if (!isNumericId(space_id)) {
-    return NextResponse.json({ error: 'space_id is required and must be numeric', }, { status: 400, });
+  if (!isUuid(space_id)) {
+    return NextResponse.json({ error: 'space_id is required and must be a valid UUID', }, { status: 400, });
   }
 
-  const id = BigInt(space_id);
-
   const row = await prisma.space.findUnique({
-    where: { space_id: id, },
+    where: { id: space_id, },
     select: {
-      space_id: true,
+      id: true,
       user_id: true,
       name: true,
       unit_number: true,
@@ -39,7 +37,7 @@ export async function GET(_req: NextRequest, { params, }: Params) {
       address_subunit: true,
       city: true,
       region: true,
-      country: true,
+      country_code: true,
       postal_code: true,
       created_at: true,
       updated_at: true,
@@ -52,7 +50,7 @@ export async function GET(_req: NextRequest, { params, }: Params) {
 
   return NextResponse.json({
     data: {
-      space_id: row.space_id.toString(),
+      space_id: row.id,
       user_id: row.user_id.toString(),
       name: row.name,
       unit_number: row.unit_number,
@@ -60,7 +58,7 @@ export async function GET(_req: NextRequest, { params, }: Params) {
       address_subunit: row.address_subunit,
       city: row.city,
       region: row.region,
-      country: row.country,
+      country_code: row.country_code,
       postal_code: row.postal_code,
       created_at: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
       updated_at: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at,
@@ -71,8 +69,8 @@ export async function GET(_req: NextRequest, { params, }: Params) {
 
 export async function PUT(req: NextRequest, { params, }: Params) {
   const { space_id, } = await params;
-  if (!isNumericId(space_id)) {
-    return NextResponse.json({ error: 'space_id is required and must be numeric', }, { status: 400, });
+  if (!isUuid(space_id)) {
+    return NextResponse.json({ error: 'space_id is required and must be a valid UUID', }, { status: 400, });
   }
 
   const json = await req.json().catch(() => null);
@@ -81,11 +79,9 @@ export async function PUT(req: NextRequest, { params, }: Params) {
     return NextResponse.json({ error: parsed.error.flatten(), }, { status: 400, });
   }
 
-  const id = BigInt(space_id);
-
   try {
     const updated = await prisma.space.update({
-      where: { space_id: id, },
+      where: { id: space_id, },
       data: {
         ...(parsed.data.name !== undefined ? { name: parsed.data.name, } : {}),
         ...(parsed.data.unit_number !== undefined ? { unit_number: parsed.data.unit_number, } : {}),
@@ -93,11 +89,11 @@ export async function PUT(req: NextRequest, { params, }: Params) {
         ...(parsed.data.address_subunit !== undefined ? { address_subunit: parsed.data.address_subunit, } : {}),
         ...(parsed.data.city !== undefined ? { city: parsed.data.city, } : {}),
         ...(parsed.data.region !== undefined ? { region: parsed.data.region, } : {}),
-        ...(parsed.data.country !== undefined ? { country: parsed.data.country, } : {}),
+        ...(parsed.data.country !== undefined ? { country_code: parsed.data.country, } : {}),
         ...(parsed.data.postal_code !== undefined ? { postal_code: parsed.data.postal_code, } : {}),
       },
       select: {
-        space_id: true,
+        id: true,
         user_id: true,
         name: true,
         unit_number: true,
@@ -105,7 +101,7 @@ export async function PUT(req: NextRequest, { params, }: Params) {
         address_subunit: true,
         city: true,
         region: true,
-        country: true,
+        country_code: true,
         postal_code: true,
         created_at: true,
         updated_at: true,
@@ -114,7 +110,7 @@ export async function PUT(req: NextRequest, { params, }: Params) {
 
     return NextResponse.json({
       data: {
-        space_id: updated.space_id.toString(),
+        space_id: updated.id,
         user_id: updated.user_id.toString(),
         name: updated.name,
         unit_number: updated.unit_number,
@@ -122,7 +118,7 @@ export async function PUT(req: NextRequest, { params, }: Params) {
         address_subunit: updated.address_subunit,
         city: updated.city,
         region: updated.region,
-        country: updated.country,
+        country_code: updated.country_code,
         postal_code: updated.postal_code,
         created_at: updated.created_at instanceof Date ? updated.created_at.toISOString() : updated.created_at,
         updated_at: updated.updated_at instanceof Date ? updated.updated_at.toISOString() : updated.updated_at,
@@ -138,20 +134,18 @@ export async function PUT(req: NextRequest, { params, }: Params) {
 
 export async function DELETE(_req: NextRequest, { params, }: Params) {
   const { space_id, } = await params;
-  if (!isNumericId(space_id)) {
-    return NextResponse.json({ error: 'space_id is required and must be numeric', }, { status: 400, });
+  if (!isUuid(space_id)) {
+    return NextResponse.json({ error: 'space_id is required and must be a valid UUID', }, { status: 400, });
   }
 
-  const id = BigInt(space_id);
-
   try {
-    await prisma.space.delete({ where: { space_id: id, }, });
+    await prisma.space.delete({ where: { id: space_id, }, });
     return NextResponse.json({
       message: 'Space deleted successfully',
       data: {
- space_id: id.toString(),
-deleted: true, 
-},
+        space_id,
+        deleted: true,
+      },
     }, { status: 200, });
   } catch (err: any) {
     if (err?.code === 'P2025') {
