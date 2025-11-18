@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import {
   AreaInput,
   AreaRecord,
+  cloneWeeklyAvailability,
   INITIAL_SPACES,
   SpaceInput,
   SpaceRecord
@@ -19,6 +20,7 @@ type SpacesState = {
 const cloneSpaceInput = (payload: SpaceInput): SpaceInput => ({
   ...payload,
   amenities: [...payload.amenities],
+  availability: cloneWeeklyAvailability(payload.availability),
 });
 
 const cloneAreaInput = (payload: AreaInput): AreaInput => ({ ...payload, });

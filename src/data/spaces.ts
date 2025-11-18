@@ -1,5 +1,45 @@
 export type SpaceStatus = 'Live' | 'Pending' | 'Draft';
 
+export const WEEKDAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
+export type WeekdayName = (typeof WEEKDAY_ORDER)[number];
+
+export type DayAvailability = {
+  is_open: boolean;
+  opens_at: string;
+  closes_at: string;
+};
+
+export type WeeklyAvailability = Record<WeekdayName, DayAvailability>;
+
+const createDailyAvailability = (overrides?: Partial<DayAvailability>): DayAvailability => ({
+  is_open: true,
+  opens_at: '09:00',
+  closes_at: '18:00',
+  ...overrides,
+});
+
+export const createDefaultWeeklyAvailability = (): WeeklyAvailability => {
+  const availability = {} as WeeklyAvailability;
+
+  for (const day of WEEKDAY_ORDER) {
+    const isWeekend = day === 'Saturday' || day === 'Sunday';
+    availability[day] = createDailyAvailability({ is_open: !isWeekend, });
+  }
+
+  return availability;
+};
+
+export const cloneWeeklyAvailability = (availability: WeeklyAvailability): WeeklyAvailability => {
+  const clone = {} as WeeklyAvailability;
+
+  for (const day of WEEKDAY_ORDER) {
+    const slot = availability[day];
+    clone[day] = slot ? { ...slot, } : createDailyAvailability();
+  }
+
+  return clone;
+};
+
 export type SpaceInput = {
   name: string;
   description: string;
@@ -14,6 +54,7 @@ export type SpaceInput = {
   lat: number;
   long: number;
   amenities: string[];
+  availability: WeeklyAvailability;
 };
 
 export type AreaInput = {
@@ -50,6 +91,7 @@ export const SPACE_INPUT_DEFAULT: SpaceInput = {
   lat: 14.5906,
   long: 120.9811,
   amenities: [],
+  availability: createDefaultWeeklyAvailability(),
 };
 
 export const AREA_INPUT_DEFAULT: AreaInput = {
@@ -76,6 +118,7 @@ export const INITIAL_SPACES: SpaceRecord[] = [
     lat: 37.791212,
     long: -122.392756,
     amenities: ['amenity-meeting-room', 'amenity-free-coffee'],
+    availability: createDefaultWeeklyAvailability(),
     status: 'Live',
     created_at: '2025-02-10T10:00:00.000Z',
     areas: [
@@ -105,6 +148,7 @@ export const INITIAL_SPACES: SpaceRecord[] = [
     lat: 40.71978,
     long: -73.9615,
     amenities: ['amenity-podcast-booth', 'amenity-yoga-room'],
+    availability: createDefaultWeeklyAvailability(),
     status: 'Pending',
     created_at: '2025-03-01T13:15:00.000Z',
     areas: [
@@ -143,6 +187,7 @@ export const INITIAL_SPACES: SpaceRecord[] = [
     lat: 44.98857,
     long: -93.27121,
     amenities: ['amenity-daylight', 'amenity-modular'],
+    availability: createDefaultWeeklyAvailability(),
     status: 'Draft',
     created_at: '2025-03-05T08:45:00.000Z',
     areas: [],

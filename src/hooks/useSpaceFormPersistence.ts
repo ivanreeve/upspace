@@ -8,6 +8,15 @@ import { createSpaceFormDefaults, SpaceFormValues } from '@/components/pages/Spa
 
 const STORAGE_KEY = 'upspace.space_create_form_draft';
 
+const availabilityDraftSchema = z.record(
+  z.string(),
+  z.object({
+    is_open: z.boolean(),
+    opens_at: z.string(),
+    closes_at: z.string(),
+  })
+);
+
 const spaceFormDraftSchema = z.object({
   name: z.string().optional(),
   description: z.string().optional(),
@@ -21,6 +30,7 @@ const spaceFormDraftSchema = z.object({
   amenities: z.array(z.string()).optional(),
   lat: z.number().optional(),
   long: z.number().optional(),
+  availability: availabilityDraftSchema.optional(),
 });
 
 type SpaceFormDraft = z.infer<typeof spaceFormDraftSchema>;
@@ -66,6 +76,41 @@ export const clearSpaceFormDraft = () => {
   window.localStorage.removeItem(STORAGE_KEY);
 };
 
+const mergeAvailability = (
+  defaults: SpaceFormValues['availability'],
+  draftAvailability?: SpaceFormDraft['availability']
+): SpaceFormValues['availability'] => {
+  const merged: SpaceFormValues['availability'] = Object.entries(defaults).reduce(
+    (acc, [day, slot]) => {
+      acc[day as keyof SpaceFormValues['availability']] = { ...slot, };
+      return acc;
+    },
+    {} as SpaceFormValues['availability']
+  );
+
+  if (!draftAvailability) {
+    return merged;
+  }
+
+  for (const [day, slot] of Object.entries(draftAvailability)) {
+    if (!slot) {
+      continue;
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(merged, day)) {
+      continue;
+    }
+
+    merged[day as keyof SpaceFormValues['availability']] = {
+      is_open: slot.is_open,
+      opens_at: slot.opens_at,
+      closes_at: slot.closes_at,
+    };
+  }
+
+  return merged;
+};
+
 const mergeDraftWithDefaults = (draft: SpaceFormDraft | null): SpaceFormValues => {
   const defaults = createSpaceFormDefaults();
   if (!draft) {
@@ -78,6 +123,7 @@ const mergeDraftWithDefaults = (draft: SpaceFormDraft | null): SpaceFormValues =
     lat: draft.lat ?? defaults.lat,
     long: draft.long ?? defaults.long,
     amenities: draft.amenities ?? defaults.amenities,
+    availability: mergeAvailability(defaults.availability, draft.availability),
   };
 };
 

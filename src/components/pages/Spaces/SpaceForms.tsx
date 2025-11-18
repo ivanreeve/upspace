@@ -53,8 +53,10 @@ import { zipcodes as philippineZipcodes } from 'ph-zipcode-lookup';
 import {
   AREA_INPUT_DEFAULT,
   AreaRecord,
+  cloneWeeklyAvailability,
   SPACE_INPUT_DEFAULT,
-  SpaceRecord
+  SpaceRecord,
+  WEEKDAY_ORDER
 } from '@/data/spaces';
 import {
   Form,
@@ -102,6 +104,76 @@ import {
 } from '@/lib/philippines-addresses/client';
 
 const rateUnits = ['hour', 'day', 'week'] as const;
+const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const weekdayEnum = z.enum(WEEKDAY_ORDER);
+
+const toMinutes = (value: string) => {
+  const [hours, minutes] = value.split(':').map((part) => Number(part));
+  return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : Number.NaN;
+};
+
+const weeklyAvailabilitySchema = z
+  .record(
+    weekdayEnum,
+    z
+      .object({
+        is_open: z.boolean(),
+        opens_at: z.string().regex(timePattern, 'Use 24-hour HH:MM format.'),
+        closes_at: z.string().regex(timePattern, 'Use 24-hour HH:MM format.'),
+      })
+      .superRefine((values, ctx) => {
+        if (!values.is_open) {
+          return;
+        }
+
+        const openMinutes = toMinutes(values.opens_at);
+        const closeMinutes = toMinutes(values.closes_at);
+
+        if (!Number.isFinite(openMinutes) || !Number.isFinite(closeMinutes)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Enter valid times in HH:MM format.',
+          });
+          return;
+        }
+
+        if (closeMinutes <= openMinutes) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Closing time must be after opening time.',
+            path: ['closes_at'],
+          });
+        }
+      })
+  )
+  .superRefine((availability, ctx) => {
+    let hasOpenDay = false;
+
+    for (const day of WEEKDAY_ORDER) {
+      const slot = availability[day];
+
+      if (!slot) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [day],
+          message: `Provide hours for ${day}.`,
+        });
+        continue;
+      }
+
+      if (slot.is_open) {
+        hasOpenDay = true;
+      }
+    }
+
+    if (!hasOpenDay) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Open the space on at least one day of the week.',
+        path: [],
+      });
+    }
+  });
 
 const normalizeEditorHtml = (value?: string) => {
   if (!value) {
@@ -354,6 +426,7 @@ export const spaceSchema = z.object({
     .number({ message: 'Longitude is required.', })
     .min(-180, 'Longitude must be >= -180.')
     .max(180, 'Longitude must be <= 180.'),
+  availability: weeklyAvailabilitySchema,
 });
 
 export const areaSchema = z
@@ -383,6 +456,7 @@ export type AreaFormValues = z.infer<typeof areaSchema>;
 export const createSpaceFormDefaults = (): SpaceFormValues => ({
   ...SPACE_INPUT_DEFAULT,
   amenities: [...SPACE_INPUT_DEFAULT.amenities],
+  availability: cloneWeeklyAvailability(SPACE_INPUT_DEFAULT.availability),
 });
 
 export const createAreaFormDefaults = (): AreaFormValues => ({ ...AREA_INPUT_DEFAULT, });
@@ -401,6 +475,7 @@ export const spaceRecordToFormValues = (space: SpaceRecord): SpaceFormValues => 
   lat: space.lat,
   long: space.long,
   amenities: [...space.amenities],
+  availability: cloneWeeklyAvailability(space.availability),
 });
 
 export const areaRecordToFormValues = (area: AreaRecord): AreaFormValues => ({

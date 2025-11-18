@@ -31,6 +31,7 @@ import {
   spaceSchema
 } from '@/components/pages/Spaces/SpaceForms';
 import { SpaceAmenitiesStep } from '@/components/pages/Spaces/SpaceAmenitiesStep';
+import { SpaceAvailabilityStep } from '@/components/pages/Spaces/SpaceAvailabilityStep';
 import { SpaceVerificationRequirementsStep, VERIFICATION_REQUIREMENTS, type VerificationRequirementId } from '@/components/pages/Spaces/SpaceVerificationRequirementsStep';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -43,6 +44,7 @@ import NavBar from '@/components/ui/navbar';
 import { useSpacesStore } from '@/stores/useSpacesStore';
 import { useSpaceFormPersistence } from '@/hooks/useSpaceFormPersistence';
 import { usePersistentSpaceImages } from '@/hooks/usePersistentSpaceImages';
+import { WEEKDAY_ORDER } from '@/data/spaces';
 
 const MAX_CATEGORY_IMAGES = 5;
 const CATEGORY_NAME_SAMPLES = [
@@ -57,11 +59,15 @@ const generateCategoryId = () =>
   typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
     : `category-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-const WATCHED_FIELD_NAMES = ['name', 'description', 'street', 'city', 'region', 'postal_code', 'country_code'] as const;
+const minutesFromTime = (value: string) => {
+  const [hours, minutes] = value.split(':').map((part) => Number(part));
+  return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : Number.NaN;
+};
+const WATCHED_FIELD_NAMES = ['name', 'description', 'street', 'city', 'region', 'postal_code', 'country_code', 'lat', 'long'] as const;
 type WatchedFieldNames = typeof WATCHED_FIELD_NAMES;
 type WatchedFieldValues = FieldPathValues<SpaceFormValues, WatchedFieldNames>;
-type SpaceFormStep = 1 | 2 | 3 | 4 | 5;
-const STEP_SEQUENCE: SpaceFormStep[] = [1, 2, 3, 4, 5];
+type SpaceFormStep = 1 | 2 | 3 | 4 | 5 | 6;
+const STEP_SEQUENCE: SpaceFormStep[] = [1, 2, 3, 4, 5, 6];
 type VerificationRequirementsState = Record<VerificationRequirementId, (File | null)[]>;
 
 const createEmptyVerificationRequirementsState = (): VerificationRequirementsState =>
@@ -108,7 +114,9 @@ export default function SpaceCreateRoute() {
           ? 4
           : stepParam === '5'
             ? 5
-            : 1;
+            : stepParam === '6'
+              ? 6
+              : 1;
   const createSpace = useSpacesStore((state) => state.createSpace);
   const form = useForm<SpaceFormValues>({
     resolver: zodResolver(spaceSchema),
@@ -144,7 +152,9 @@ export default function SpaceCreateRoute() {
     cityValue = '',
     regionValue = '',
     postalCodeValue = '',
-    countryCodeValue = ''
+    countryCodeValue = '',
+    latValue = 0,
+    longValue = 0
   ] = watchedArray;
 
   const selectedAmenities = useWatch<SpaceFormValues, 'amenities'>({
@@ -152,6 +162,12 @@ export default function SpaceCreateRoute() {
     name: 'amenities',
     defaultValue: form.getValues('amenities'),
   }) ?? [];
+
+  const weeklyAvailability = useWatch<SpaceFormValues, 'availability'>({
+    control: form.control,
+    name: 'availability',
+    defaultValue: form.getValues('availability'),
+  });
 
   const normalize = (value?: string) => (value ?? '').trim();
 
@@ -216,7 +232,40 @@ export default function SpaceCreateRoute() {
     normalize(cityValue).length > 0 &&
     normalize(regionValue).length > 0 &&
     normalize(postalCodeValue).length === 4 &&
-    normalize(countryCodeValue).length === 2;
+    normalize(countryCodeValue).length === 2 &&
+    typeof latValue === 'number' &&
+    typeof longValue === 'number' &&
+    !Number.isNaN(latValue) &&
+    !Number.isNaN(longValue);
+
+  const isAvailabilityStepComplete = useMemo(() => {
+    if (!weeklyAvailability) {
+      return false;
+    }
+
+    let hasOpenDay = false;
+
+    for (const day of WEEKDAY_ORDER) {
+      const slot = weeklyAvailability[day];
+      if (!slot) {
+        return false;
+      }
+
+      if (!slot.is_open) {
+        continue;
+      }
+
+      hasOpenDay = true;
+      const openMinutes = minutesFromTime(slot.opens_at);
+      const closeMinutes = minutesFromTime(slot.closes_at);
+
+      if (!Number.isFinite(openMinutes) || !Number.isFinite(closeMinutes) || closeMinutes <= openMinutes) {
+        return false;
+      }
+    }
+
+    return hasOpenDay;
+  }, [weeklyAvailability]);
 
   const isRequirementsStepComplete = VERIFICATION_REQUIREMENTS.every((requirement) =>
     requirement.slots.every((_, slotIndex) => Boolean(verificationRequirements[requirement.id][slotIndex]))
@@ -293,7 +342,7 @@ export default function SpaceCreateRoute() {
     navigateToStep(4);
   };
 
-  const goToVerificationStep = async () => {
+  const goToAvailabilityStep = async () => {
     const canProceed = await form.trigger([
       'street',
       'city',
@@ -311,13 +360,23 @@ export default function SpaceCreateRoute() {
     navigateToStep(5);
   };
 
+  const goToVerificationStep = async () => {
+    const canProceed = await form.trigger('availability');
+
+    if (!canProceed) {
+      return;
+    }
+
+    navigateToStep(6);
+  };
+
   useEffect(() => {
     if (stepParam === null) {
       navigateToStep(1, { replace: true, });
       return;
     }
 
-    if (stepParam !== '1' && stepParam !== '2' && stepParam !== '3' && stepParam !== '4' && stepParam !== '5') {
+    if (stepParam !== '1' && stepParam !== '2' && stepParam !== '3' && stepParam !== '4' && stepParam !== '5' && stepParam !== '6') {
       navigateToStep(1, { replace: true, });
     }
   }, [navigateToStep, stepParam]);
@@ -381,11 +440,41 @@ export default function SpaceCreateRoute() {
 
       if (!isAddressStepComplete) {
         navigateToStep(4, { replace: true, });
+        return;
+      }
+
+      return;
+    }
+
+    if (currentStep === 6) {
+      if (!isBasicsStepComplete) {
+        navigateToStep(1, { replace: true, });
+        return;
+      }
+
+      if (!isPhotoStepComplete) {
+        navigateToStep(2, { replace: true, });
+        return;
+      }
+
+      if (!isAmenitiesStepComplete) {
+        navigateToStep(3, { replace: true, });
+        return;
+      }
+
+      if (!isAddressStepComplete) {
+        navigateToStep(4, { replace: true, });
+        return;
+      }
+
+      if (!isAvailabilityStepComplete) {
+        navigateToStep(5, { replace: true, });
       }
     }
   }, [
     currentStep,
     isAddressStepComplete,
+    isAvailabilityStepComplete,
     isAmenitiesStepComplete,
     isBasicsStepComplete,
     isPersistenceHydrated,
@@ -581,7 +670,7 @@ export default function SpaceCreateRoute() {
               <form className="space-y-6" onSubmit={ form.handleSubmit(handleSubmit) }>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between rounded-md py-2 text-sm text-muted-foreground">
-                    <span>Step { currentStep } of 5</span>
+                    <span>Step { currentStep } of { STEP_SEQUENCE.length }</span>
                     <div className="flex gap-1">
                       { STEP_SEQUENCE.map((stepNumber) => (
                         <span
@@ -771,6 +860,8 @@ export default function SpaceCreateRoute() {
                     <SpaceAmenitiesStep form={ form } />
                   ) : currentStep === 4 ? (
                     <SpaceAddressFields form={ form } />
+                  ) : currentStep === 5 ? (
+                    <SpaceAvailabilityStep form={ form } />
                   ) : (
                     <SpaceVerificationRequirementsStep
                       uploads={ verificationRequirements }
@@ -779,7 +870,7 @@ export default function SpaceCreateRoute() {
                     />
                   ) }
                 </div>
-                { currentStep === 5 && (
+                { currentStep === 6 && (
                   <div className="mt-4 rounded-lg border border-border/70 bg-background/80 p-4">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-semibold text-foreground">Listing checklist</p>
@@ -871,7 +962,7 @@ export default function SpaceCreateRoute() {
                           <FiArrowLeft className="size-4" aria-hidden="true" />
                           Back
                         </Button>
-                        <Button type="button" disabled={ !isAddressStepComplete } onClick={ goToVerificationStep }>
+                        <Button type="button" disabled={ !isAddressStepComplete } onClick={ goToAvailabilityStep }>
                           Next
                           <FiArrowRight className="size-4" aria-hidden="true" />
                         </Button>
@@ -883,6 +974,22 @@ export default function SpaceCreateRoute() {
                           type="button"
                           variant="outline"
                           onClick={ () => navigateToStep(4) }
+                        >
+                          <FiArrowLeft className="size-4" aria-hidden="true" />
+                          Back
+                        </Button>
+                        <Button type="button" disabled={ !isAvailabilityStepComplete } onClick={ goToVerificationStep }>
+                          Next
+                          <FiArrowRight className="size-4" aria-hidden="true" />
+                        </Button>
+                      </>
+                    ) }
+                    { currentStep === 6 && (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={ () => navigateToStep(5) }
                         >
                           <FiArrowLeft className="size-4" aria-hidden="true" />
                           Back
