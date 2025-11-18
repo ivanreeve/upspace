@@ -72,7 +72,7 @@ const signUpChecklistItems: AgreementChecklistItem[] = [
         I have read and agree to the { ' ' }
         <Link
           href="/terms"
-          className="font-semibold text-primary underline-offset-2 hover:underline"
+          className="font-semibold text-secondary underline-offset-2 hover:underline"
         >
           Terms &amp; Conditions
         </Link>{ ' ' }

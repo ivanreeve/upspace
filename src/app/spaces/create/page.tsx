@@ -78,7 +78,7 @@ const spaceListingChecklist: AgreementChecklistItem[] = [
         I confirm this workspace submission is governed by the { ' ' }
         <Link
           href="/terms"
-          className="font-semibold text-primary underline-offset-2 hover:underline"
+          className="font-semibold text-secondary underline-offset-2 hover:underline"
         >
           Terms &amp; Conditions
         </Link>
