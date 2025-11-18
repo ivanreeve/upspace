@@ -10,19 +10,9 @@ import { Label } from '@/components/ui/label';
 
 export const VERIFICATION_REQUIREMENTS = [
   {
-    id: 'business_permit',
-    label: 'Business Permit (from LGU)',
-    description: 'Provide the current permit issued by your local government unit authorizing business operations.',
-  },
-  {
     id: 'dti_registration',
     label: 'DTI Registration (or SEC registration for corporations)',
     description: 'Submit your DTI certificate of business name registration or SEC papers for corporations.',
-  },
-  {
-    id: 'address_proof',
-    label: 'Proof of business address',
-    description: 'Upload a document that clearly shows the same business address you entered in the previous step.',
   },
   {
     id: 'representative_id',
@@ -73,7 +63,7 @@ export function SpaceVerificationRequirementsStep({
       <div className="rounded-lg border border-border/70 bg-muted/30 p-4 text-sm text-muted-foreground">
         <p className="flex items-start gap-2">
           <FiAlertCircle className="mt-0.5 size-4 flex-shrink-0" aria-hidden="true" />
-          Upload all five documents so we can verify your business before publishing your listing. Accepted formats: PDF, JPG, PNG.
+          Upload all required documents so we can verify your business before publishing your listing. Accepted formats: PDF, JPG, PNG.
         </p>
       </div>
       <div className="space-y-4">
