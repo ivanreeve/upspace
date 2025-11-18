@@ -5,9 +5,14 @@ import {
   useEffect,
   useMemo,
   useState,
-  type ReactNode,
+  type ReactNode
 } from 'react';
-import { FiEdit, FiLayers, FiPlus, FiX } from 'react-icons/fi';
+import {
+FiEdit,
+FiLayers,
+FiPlus,
+FiX
+} from 'react-icons/fi';
 import { toast } from 'sonner';
 
 import {
@@ -41,7 +46,7 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
+  DialogTitle
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -197,7 +202,7 @@ export function SpaceDetailsPanel({
             )) }
           </CardContent>
         </Card>
-        {/* ... rest of skeleton ... */}
+        { /* ... rest of skeleton ... */ }
       </div>
     );
   }
@@ -236,7 +241,7 @@ export function SpaceDetailsPanel({
               <p className="text-sm text-muted-foreground">No photos uploaded yet.</p>
             ) : (
               <div className="flex flex-col gap-4 lg:flex-row">
-                {/* Main Featured Image Preview */}
+                { /* Main Featured Image Preview */ }
                 <figure className="relative h-56 flex-1 overflow-hidden rounded-md border border-border/60 bg-muted sm:h-64 lg:h-72 xl:h-[22rem]">
                   { featuredImageUrl ? (
                     <Image
@@ -257,9 +262,9 @@ export function SpaceDetailsPanel({
                   </figcaption>
                 </figure>
                 
-                {/* Small Grid Images */}
+                { /* Small Grid Images */ }
                 <div className="grid grid-cols-2 gap-3 lg:w-[260px] xl:w-[320px]">
-                  { Array.from({ length: 4 }).map((_, index) => {
+                  { Array.from({ length: 4, }).map((_, index) => {
                     const image = stackedImages[index];
                     const imageSrc = image ? getPublicImageUrl(image.path) : null;
                     const isSeeMoreSlot = index === 3;
@@ -297,9 +302,6 @@ export function SpaceDetailsPanel({
                             </div>
                           ) }
                         </div>
-                        <figcaption className="text-xs text-muted-foreground">
-                          { image ? image.category ?? 'Uncategorized' : 'Available soon' }
-                        </figcaption>
                       </figure>
                     );
                   }) }
@@ -309,7 +311,7 @@ export function SpaceDetailsPanel({
           </CardContent>
         </Card>
 
-        {/* Details and Areas Cards */}
+        { /* Details and Areas Cards */ }
         <div className="grid gap-6 lg:grid-cols-[3fr,2fr]">
           <Card className="border-border/70 bg-background/80">
             <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -419,7 +421,7 @@ export function SpaceDetailsPanel({
         </div>
       </div>
 
-      {/* Edit Forms */ }
+      { /* Edit Forms */ }
       <SpaceDialog
         open={ spaceDialogOpen }
         mode="edit"
@@ -438,7 +440,7 @@ export function SpaceDetailsPanel({
         isSubmitting={ editingAreaId ? updateAreaMutation.isPending : createAreaMutation.isPending }
       />
 
-      {/* Full Gallery Dialog */ }
+      { /* Full Gallery Dialog */ }
       <Dialog open={ galleryOpen } onOpenChange={ setGalleryOpen }>
         <DialogContent className="flex h-[90vh] w-full max-w-[95vw] sm:max-w-[90vw] lg:max-w-6xl flex-col p-0">
           <DialogHeader className="border-b border-border/50 px-6 py-4">
@@ -447,7 +449,7 @@ export function SpaceDetailsPanel({
           <ScrollArea className="flex-1">
             <div className="space-y-8 px-6 py-6">
               
-              {/* 1. Featured Image Section */}
+              { /* 1. Featured Image Section */ }
               <section className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold uppercase tracking-wide text-foreground">Featured</h3>
@@ -471,7 +473,7 @@ export function SpaceDetailsPanel({
                 </div>
               </section>
 
-              {/* 2. Category Sections (Horizontal Scroll) */}
+              { /* 2. Category Sections (Horizontal Scroll) */ }
               { imagesByCategory.map(([category, images]) => (
                 <section key={ category } className="space-y-3">
                   <div className="flex items-center gap-2 border-b border-border/30 pb-2">
@@ -479,7 +481,7 @@ export function SpaceDetailsPanel({
                     <span className="text-xs text-muted-foreground">({ images.length })</span>
                   </div>
                   
-                  {/* Responsive Grid Container */ }
+                  { /* Responsive Grid Container */ }
                   <div className="grid grid-cols-2 gap-4 pb-2 pt-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     { images.map((img) => {
                       const src = getPublicImageUrl(img.path);
