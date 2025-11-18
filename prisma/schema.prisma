@@ -30,17 +30,17 @@ model amenity_choice {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model area {
-  area_id      BigInt       @id @unique @default(autoincrement())
+  area_id      BigInt        @id @unique @default(autoincrement())
   space_id     BigInt
   name         String
   max_capacity BigInt
   min_capacity BigInt
-  created_at   DateTime     @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime?    @default(now()) @db.Timestamptz(6)
-  space        space        @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
+  created_at   DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?     @default(now()) @db.Timestamptz(6)
+  space        space         @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
   booking      booking[]
-  image        image[]
   price_rate   price_rate[]
+  space_image  space_image[]
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -97,20 +97,6 @@ model bookmark {
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model image {
-  image_id      BigInt   @id @unique @default(autoincrement())
-  space_id      BigInt
-  area_id       BigInt
-  path          String
-  display_order BigInt
-  is_primary    Float
-  created_at    DateTime @db.Timestamptz(6)
-  category      String?
-  area          area     @relation(fields: [area_id], references: [area_id], onDelete: NoAction, onUpdate: NoAction)
-  space         space    @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
-}
-
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model price_rate {
   rate_id    BigInt    @id(map: "rate_pkey") @unique(map: "rate_rate_id_key") @default(autoincrement())
   area_id    BigInt
@@ -152,9 +138,10 @@ model space {
   area               area[]
   booking            booking[]
   bookmark           bookmark[]
-  image              image[]
   user               user                 @relation(fields: [user_id], references: [user_id])
   space_availability space_availability[]
+  space_image        space_image[]
+  verification       verification[]
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -170,6 +157,20 @@ model space_availability {
   space           space     @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([space_id, day_of_week], map: "uniq_space_day")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model space_image {
+  image_id      BigInt   @id(map: "image_pkey") @unique(map: "image_image_id_key") @default(autoincrement())
+  space_id      BigInt
+  area_id       BigInt
+  path          String
+  display_order BigInt?
+  is_primary    Float
+  created_at    DateTime @db.Timestamptz(6)
+  category      String?
+  area          area     @relation(fields: [area_id], references: [area_id], onDelete: NoAction, onUpdate: NoAction, map: "image_area_id_fkey")
+  space         space    @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction, map: "image_space_id_fkey")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -192,22 +193,43 @@ model transaction {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model user {
   first_name   String?
-  birthday     DateTime?     @db.Date
-  is_disabled  Boolean       @default(false)
-  created_at   DateTime      @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamptz(6)
-  updated_at   DateTime      @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamptz(6)
-  user_id      BigInt        @id @unique @default(autoincrement())
-  role         user_role     @default(customer)
+  birthday     DateTime?      @db.Date
+  is_disabled  Boolean        @default(false)
+  created_at   DateTime       @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamptz(6)
+  updated_at   DateTime       @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamptz(6)
+  user_id      BigInt         @id @unique @default(autoincrement())
+  role         user_role      @default(customer)
   middle_name  String?
   last_name    String?
-  handle       String        @unique
+  handle       String         @unique
   avatar       String?
-  is_onboard   Boolean       @default(false)
-  auth_user_id String        @unique @db.Uuid
+  is_onboard   Boolean        @default(false)
+  auth_user_id String         @unique @db.Uuid
   audit_event  audit_event[]
   booking      booking[]
   bookmark     bookmark[]
   space        space[]
+  verification verification[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model verification {
+  id              BigInt                    @id @default(autoincrement())
+  subject_type    verification_subject_type
+  partner_id      BigInt?
+  space_id        BigInt?
+  status          verification_status
+  valid_until     DateTime?                 @db.Date
+  submitted_at    DateTime                  @default(now()) @db.Timestamptz(6)
+  approved_at     DateTime?                 @db.Timestamptz(6)
+  reviewed_at     DateTime?                 @db.Timestamptz(6)
+  rejected_at     DateTime?                 @db.Timestamptz(6)
+  rejected_reason String?
+  created_at      DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime                  @default(now()) @db.Timestamptz(6)
+  user            user?                     @relation(fields: [partner_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  space           space?                    @relation(fields: [space_id], references: [space_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 enum amenity_category {
@@ -266,4 +288,28 @@ enum user_role {
   customer
   partner
   admin
+}
+
+enum verification_document_type {
+  dti_registration
+  sec_registration
+  bir_cor
+  authorized_rep_id
+  business_permit
+  business_address_proof
+  occupancy_permit
+}
+
+enum verification_status {
+  draft
+  status
+  in_review
+  approved
+  rejected
+  expired
+}
+
+enum verification_subject_type {
+  partner
+  space
 }
