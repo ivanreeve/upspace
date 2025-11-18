@@ -263,21 +263,21 @@ export function SpaceDetailsPanel({
                 </figure>
                 
                 { /* Small Grid Images */ }
-                <div className="grid grid-cols-2 gap-3 lg:w-[260px] xl:w-[320px]">
+                <div className="grid grid-cols-2 grid-rows-2 gap-3 lg:w-[260px] xl:w-[320px]">
                   { Array.from({ length: 4, }).map((_, index) => {
                     const image = stackedImages[index];
                     const imageSrc = image ? getPublicImageUrl(image.path) : null;
                     const isSeeMoreSlot = index === 3;
 
                     return (
-                      <figure key={ `window-photo-${index}` } className="space-y-2">
-                        <div className="relative h-32 overflow-hidden rounded-md border border-border/60 bg-muted sm:h-36 lg:h-32">
+                      <figure key={ `window-photo-${index}` }>
+                        <div className="relative aspect-square w-full overflow-hidden rounded-md border border-border/60 bg-muted">
                           { imageSrc ? (
                             <Image
                               src={ imageSrc }
                               alt={ image.category ?? `${space.name} photo` }
                               fill
-                              sizes="(min-width: 1280px) 160px, (min-width: 1024px) 120px, 45vw"
+                              sizes="(min-width: 1280px) 160px, (min-width: 1024px) 140px, 45vw"
                               className="object-cover"
                             />
                           ) : (
