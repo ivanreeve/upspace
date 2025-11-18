@@ -6,6 +6,7 @@ import {
   useRef,
   useState
 } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CgSpinner } from 'react-icons/cg';
 import { toast } from 'sonner';
@@ -27,6 +28,7 @@ import {
   InputOTPSlot
 } from '@/components/ui/input-otp';
 import { Label } from '@/components/ui/label';
+import { AgreementChecklist, type AgreementChecklistItem } from '@/components/ui/AgreementChecklist';
 
 const credentialsSchema = z
   .object({
@@ -60,6 +62,39 @@ const otpSchema = z.object({
 const RESEND_COOLDOWN_SECONDS = 60;
 
 type FormErrors = Partial<Record<'email' | 'password' | 'confirmPassword', string>>;
+
+const signUpChecklistItems: AgreementChecklistItem[] = [
+  {
+    id: 'sign-up-account-terms',
+    content: (
+      <>
+        I have read and agree to the { ' ' }
+        <Link
+          href="/terms"
+          className="font-semibold text-primary underline-offset-2 hover:underline"
+        >
+          Terms &amp; Conditions
+        </Link>{ ' ' }
+        before creating my account.
+      </>
+    ),
+  },
+  {
+    id: 'sign-up-listing-terms',
+    content: (
+      <>
+        Any workspace I list is governed by the same { ' ' }
+        <Link
+          href="/terms"
+          className="font-semibold text-primary underline-offset-2 hover:underline"
+        >
+          Terms &amp; Conditions
+        </Link>
+        .
+      </>
+    ),
+  }
+];
 
 export function SignUpFormCard() {
   const router = useRouter();
@@ -296,85 +331,92 @@ export function SignUpFormCard() {
 
       <CardContent>
         { step === 'credentials' ? (
-          <form onSubmit={ handleCredentialsSubmit } className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="sign-up-email" className="text-muted-foreground text-sm">
-                Work email
-              </Label>
-              <Input
-                id="sign-up-email"
-                type="email"
-                name="email"
-                value={ formValues.email }
-                onChange={ (event) => setFormValues((prev) => ({
-                  ...prev,
-                  email: event.target.value,
-                })) }
-                autoComplete="email"
-                required
-                className="h-10 rounded-md border border-input bg-muted/60 px-3 placeholder:text-muted-foreground"
-                placeholder="you@company.com"
-              />
-              { fieldErrors.email && (
-                <p className="text-sm text-destructive">{ fieldErrors.email }</p>
-              ) }
-            </div>
+          <div className="space-y-6">
+            <AgreementChecklist
+              title="Before you continue"
+              description="Confirm these points before we create your UpSpace account."
+              items={ signUpChecklistItems }
+            />
+            <form onSubmit={ handleCredentialsSubmit } className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="sign-up-email" className="text-muted-foreground text-sm">
+                  Work email
+                </Label>
+                <Input
+                  id="sign-up-email"
+                  type="email"
+                  name="email"
+                  value={ formValues.email }
+                  onChange={ (event) => setFormValues((prev) => ({
+                    ...prev,
+                    email: event.target.value,
+                  })) }
+                  autoComplete="email"
+                  required
+                  className="h-10 rounded-md border border-input bg-muted/60 px-3 placeholder:text-muted-foreground"
+                  placeholder="you@company.com"
+                />
+                { fieldErrors.email && (
+                  <p className="text-sm text-destructive">{ fieldErrors.email }</p>
+                ) }
+              </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="sign-up-password" className="text-muted-foreground text-sm">
-                Password
-              </Label>
-              <Input
-                id="sign-up-password"
-                type="password"
-                name="password"
-                value={ formValues.password }
-                onChange={ (event) => setFormValues((prev) => ({
-                  ...prev,
-                  password: event.target.value,
-                })) }
-                autoComplete="new-password"
-                required
-                className="h-10 rounded-md border border-input bg-muted/60 px-3 placeholder:text-muted-foreground"
-                placeholder="Create a strong password"
-              />
-              { fieldErrors.password && (
-                <p className="text-sm text-destructive">{ fieldErrors.password }</p>
-              ) }
-            </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sign-up-password" className="text-muted-foreground text-sm">
+                  Password
+                </Label>
+                <Input
+                  id="sign-up-password"
+                  type="password"
+                  name="password"
+                  value={ formValues.password }
+                  onChange={ (event) => setFormValues((prev) => ({
+                    ...prev,
+                    password: event.target.value,
+                  })) }
+                  autoComplete="new-password"
+                  required
+                  className="h-10 rounded-md border border-input bg-muted/60 px-3 placeholder:text-muted-foreground"
+                  placeholder="Create a strong password"
+                />
+                { fieldErrors.password && (
+                  <p className="text-sm text-destructive">{ fieldErrors.password }</p>
+                ) }
+              </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="sign-up-confirm" className="text-muted-foreground text-sm">
-                Confirm password
-              </Label>
-              <Input
-                id="sign-up-confirm"
-                type="password"
-                name="confirmPassword"
-                value={ formValues.confirmPassword }
-                onChange={ (event) => setFormValues((prev) => ({
-                  ...prev,
-                  confirmPassword: event.target.value,
-                })) }
-                autoComplete="new-password"
-                required
-                className="h-10 rounded-md border border-input bg-muted/60 px-3 placeholder:text-muted-foreground"
-                placeholder="Repeat your password"
-              />
-              { fieldErrors.confirmPassword && (
-                <p className="text-sm text-destructive">{ fieldErrors.confirmPassword }</p>
-              ) }
-            </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sign-up-confirm" className="text-muted-foreground text-sm">
+                  Confirm password
+                </Label>
+                <Input
+                  id="sign-up-confirm"
+                  type="password"
+                  name="confirmPassword"
+                  value={ formValues.confirmPassword }
+                  onChange={ (event) => setFormValues((prev) => ({
+                    ...prev,
+                    confirmPassword: event.target.value,
+                  })) }
+                  autoComplete="new-password"
+                  required
+                  className="h-10 rounded-md border border-input bg-muted/60 px-3 placeholder:text-muted-foreground"
+                  placeholder="Repeat your password"
+                />
+                { fieldErrors.confirmPassword && (
+                  <p className="text-sm text-destructive">{ fieldErrors.confirmPassword }</p>
+                ) }
+              </div>
 
-            <Button
-              type="submit"
-              disabled={ isSubmitting }
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-border bg-primary px-4 py-2 text-primary-foreground transition-[transform,opacity] active:scale-[0.98] disabled:opacity-70"
-            >
-              { isSubmitting && <CgSpinner className="h-4 w-4 animate-spin" /> }
-              { isSubmitting ? 'Creating account…' : 'Continue' }
-            </Button>
-          </form>
+              <Button
+                type="submit"
+                disabled={ isSubmitting }
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-border bg-primary px-4 py-2 text-primary-foreground transition-[transform,opacity] active:scale-[0.98] disabled:opacity-70"
+              >
+                { isSubmitting && <CgSpinner className="h-4 w-4 animate-spin" /> }
+                { isSubmitting ? 'Creating account…' : 'Continue' }
+              </Button>
+            </form>
+          </div>
         ) : (
           <form ref={ otpFormRef } onSubmit={ handleOtpSubmit } className="space-y-4">
             <div className="space-y-1.5">

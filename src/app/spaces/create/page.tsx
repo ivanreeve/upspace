@@ -33,6 +33,8 @@ import {
 import { SpaceAmenitiesStep } from '@/components/pages/Spaces/SpaceAmenitiesStep';
 import { SpaceVerificationRequirementsStep, VERIFICATION_REQUIREMENTS, type VerificationRequirementId } from '@/components/pages/Spaces/SpaceVerificationRequirementsStep';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { type AgreementChecklistItem } from '@/components/ui/AgreementChecklist';
 import { Form } from '@/components/ui/form';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -68,6 +70,30 @@ const createEmptyVerificationRequirementsState = (): VerificationRequirementsSta
     return state;
   }, {} as VerificationRequirementsState);
 
+const spaceListingChecklist: AgreementChecklistItem[] = [
+  {
+    id: 'listing-terms-accept',
+    content: (
+      <>
+        I confirm this workspace submission is governed by the { ' ' }
+        <Link
+          href="/terms"
+          className="font-semibold text-primary underline-offset-2 hover:underline"
+        >
+          Terms &amp; Conditions
+        </Link>
+        .
+      </>
+    ),
+  }
+];
+
+const createListingChecklistState = () =>
+  spaceListingChecklist.reduce((state, item) => {
+    state[item.id] = false;
+    return state;
+  }, {} as Record<string, boolean>);
+
 export default function SpaceCreateRoute() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -92,6 +118,12 @@ export default function SpaceCreateRoute() {
     clearDraft,
     isHydrated: isFormHydrated,
   } = useSpaceFormPersistence(form);
+
+  const [listingChecklistState, setListingChecklistState] = useState<Record<string, boolean>>(createListingChecklistState);
+  const isListingChecklistComplete = useMemo(
+    () => Object.values(listingChecklistState).every(Boolean),
+    [listingChecklistState]
+  );
 
   const watchedDefaults = useMemo(
     () =>
@@ -496,6 +528,10 @@ export default function SpaceCreateRoute() {
   };
 
   const handleSubmit = (values: SpaceFormValues) => {
+    if (!isListingChecklistComplete) {
+      toast.error('Confirm the listing checklist before submitting.');
+      return;
+    }
     if (!isRequirementsStepComplete) {
       toast.error('Upload all verification requirements before submitting.');
       return;
@@ -529,7 +565,7 @@ export default function SpaceCreateRoute() {
           </Button>
         </div>
 
-        <Card className="mt-8 border-border/70 bg-background/80">
+        <Card className="mt-6 border-border/70 bg-background/80">
           <CardContent>
             <Form { ...form }>
               <form className="space-y-6" onSubmit={ form.handleSubmit(handleSubmit) }>
@@ -733,6 +769,36 @@ export default function SpaceCreateRoute() {
                     />
                   ) }
                 </div>
+                { currentStep === 5 && (
+                  <div className="mt-4 rounded-lg border border-border/70 bg-background/80 p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-foreground">Listing checklist</p>
+                      <span className="text-xs uppercase tracking-wide text-muted-foreground">Required</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Confirm these reminders to satisfy our hosting guidelines before submitting.
+                    </p>
+                    <div className="mt-3 space-y-2">
+                      { spaceListingChecklist.map((item) => (
+                        <label key={ item.id } className="flex items-start gap-2 text-sm text-foreground">
+                          <Checkbox
+                            checked={ listingChecklistState[item.id] }
+                            onCheckedChange={ (checked) =>
+                              setListingChecklistState((prev) => ({
+                                ...prev,
+                                [item.id]: Boolean(checked),
+                              }))
+                            }
+                            aria-describedby={ `listing-checklist-${item.id}` }
+                          />
+                          <span id={ `listing-checklist-${item.id}` } className="leading-relaxed">
+                            { item.content }
+                          </span>
+                        </label>
+                      )) }
+                    </div>
+                  </div>
+                ) }
                 <div className="flex flex-col gap-2 pt-4 sm:flex-row sm:items-center sm:justify-between">
                   <Button
                     type="button"
@@ -811,7 +877,7 @@ export default function SpaceCreateRoute() {
                           <FiArrowLeft className="size-4" aria-hidden="true" />
                           Back
                         </Button>
-                        <Button type="submit" disabled={ !isRequirementsStepComplete }>
+                        <Button type="submit" disabled={ !isRequirementsStepComplete || !isListingChecklistComplete }>
                           <MdOutlineMailOutline className="size-4" aria-hidden="true" />
                           Submit for Review
                         </Button>
