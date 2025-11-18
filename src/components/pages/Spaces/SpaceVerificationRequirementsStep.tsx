@@ -22,7 +22,8 @@ export const VERIFICATION_REQUIREMENTS = [
   {
     id: 'representative_id',
     label: 'Government ID of the authorized representative',
-    description: 'Attach a valid government-issued ID for the person managing the listing or acting as the authorized signatory.',
+    description:
+      'Attach one of the following IDs for the person managing the listing: Philsys National ID, Voter’s ID, Driver’s License, UMID, or Postal ID.',
   }
 ] as const;
 
