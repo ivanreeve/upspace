@@ -65,8 +65,12 @@ export function SpaceDetailsPanel({
   className,
 }: SpaceDetailsPanelProps) {
   const normalizedSpaceId = spaceId ?? '';
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '') ?? '';
-  const getPublicImageUrl = (path?: string) => path ? `${supabaseUrl}/storage/v1/object/public/${path}` : null;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '') ?? null;
+  const getPublicImageUrl = (path?: string | null) => (supabaseUrl && path ? `${supabaseUrl}/storage/v1/object/public/${path}` : null);
+  const resolveImageSrc = (image?: SpaceImageRecord | null) => {
+    if (!image) return null;
+    return image.public_url ?? getPublicImageUrl(image.path);
+  };
   const {
     data: space,
     isLoading,
@@ -223,7 +227,7 @@ export function SpaceDetailsPanel({
 
   const primaryImage = space.images.find((image) => image.is_primary) ?? space.images[0] ?? null;
   const stackedImages = space.images.filter((image) => image.id !== primaryImage?.id);
-  const featuredImageUrl = primaryImage ? getPublicImageUrl(primaryImage.path) : null;
+  const featuredImageUrl = resolveImageSrc(primaryImage);
 
   return (
     <>
@@ -266,7 +270,7 @@ export function SpaceDetailsPanel({
                 <div className="grid grid-cols-2 grid-rows-2 gap-3 lg:w-[260px] xl:w-[320px]">
                   { Array.from({ length: 4, }).map((_, index) => {
                     const image = stackedImages[index];
-                    const imageSrc = image ? getPublicImageUrl(image.path) : null;
+                    const imageSrc = resolveImageSrc(image);
                     const isSeeMoreSlot = index === 3;
 
                     return (
@@ -484,7 +488,7 @@ export function SpaceDetailsPanel({
                   { /* Responsive Grid Container */ }
                   <div className="grid grid-cols-2 gap-4 pb-2 pt-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     { images.map((img) => {
-                      const src = getPublicImageUrl(img.path);
+                      const src = resolveImageSrc(img);
                       return (
                         <div 
                           key={ img.id } 

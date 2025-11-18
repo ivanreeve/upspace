@@ -73,6 +73,7 @@ export type AreaRecord = AreaInput & {
 export type SpaceImageRecord = {
   id: string;
   path: string;
+  public_url: string | null;
   category: string | null;
   is_primary: boolean;
   display_order: number;

@@ -14,7 +14,9 @@ export async function GET() {
       include: partnerSpaceInclude,
     });
 
-    return NextResponse.json({ data: spaces.map(serializePartnerSpace), });
+    const payload = await Promise.all(spaces.map((space) => serializePartnerSpace(space)));
+
+    return NextResponse.json({ data: payload, });
   } catch (error) {
     if (error instanceof PartnerSessionError) {
       return NextResponse.json({ error: error.message, }, { status: error.status, });
