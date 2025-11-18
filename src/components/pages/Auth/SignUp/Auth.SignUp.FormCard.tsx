@@ -20,6 +20,7 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import {
   InputOTP,
@@ -28,7 +29,7 @@ import {
   InputOTPSlot
 } from '@/components/ui/input-otp';
 import { Label } from '@/components/ui/label';
-import { AgreementChecklist, type AgreementChecklistItem } from '@/components/ui/AgreementChecklist';
+import { type AgreementChecklistItem } from '@/components/ui/AgreementChecklist';
 
 const credentialsSchema = z
   .object({
@@ -78,23 +79,14 @@ const signUpChecklistItems: AgreementChecklistItem[] = [
         before creating my account.
       </>
     ),
-  },
-  {
-    id: 'sign-up-listing-terms',
-    content: (
-      <>
-        Any workspace I list is governed by the same { ' ' }
-        <Link
-          href="/terms"
-          className="font-semibold text-primary underline-offset-2 hover:underline"
-        >
-          Terms &amp; Conditions
-        </Link>
-        .
-      </>
-    ),
   }
 ];
+
+const createSignUpChecklistState = () =>
+  signUpChecklistItems.reduce((state, item) => {
+    state[item.id] = false;
+    return state;
+  }, {} as Record<string, boolean>);
 
 export function SignUpFormCard() {
   const router = useRouter();
@@ -106,6 +98,7 @@ export function SignUpFormCard() {
     password: '',
     confirmPassword: '',
   });
+  const [signUpChecklistState, setSignUpChecklistState] = useState<Record<string, boolean>>(createSignUpChecklistState);
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const [otpValue, setOtpValue] = useState('');
   const [otpError, setOtpError] = useState<string | null>(null);
@@ -118,6 +111,10 @@ export function SignUpFormCard() {
     if (user.length <= 2) return formValues.email;
     return `${user.slice(0, 2)}***@${domain}`;
   }, [formValues.email]);
+  const isSignUpChecklistComplete = useMemo(
+    () => Object.values(signUpChecklistState).every(Boolean),
+    [signUpChecklistState]
+  );
 
   const resetErrors = () => {
     setFieldErrors({});
@@ -139,6 +136,11 @@ export function SignUpFormCard() {
   const handleCredentialsSubmit: React.FormEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault();
     resetErrors();
+
+    if (!isSignUpChecklistComplete) {
+      toast.error('Confirm the sign-up checklist before continuing.');
+      return;
+    }
 
     const parsed = credentialsSchema.safeParse(formValues);
     if (!parsed.success) {
@@ -332,11 +334,6 @@ export function SignUpFormCard() {
       <CardContent>
         { step === 'credentials' ? (
           <div className="space-y-6">
-            <AgreementChecklist
-              title="Before you continue"
-              description="Confirm these points before we create your UpSpace account."
-              items={ signUpChecklistItems }
-            />
             <form onSubmit={ handleCredentialsSubmit } className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="sign-up-email" className="text-muted-foreground text-sm">
@@ -355,9 +352,11 @@ export function SignUpFormCard() {
                   required
                   className="h-10 rounded-md border border-input bg-muted/60 px-3 placeholder:text-muted-foreground"
                   placeholder="you@company.com"
+                  aria-invalid={ Boolean(fieldErrors.email) }
+                  aria-describedby={ fieldErrors.email ? 'sign-up-email-error' : undefined }
                 />
                 { fieldErrors.email && (
-                  <p className="text-sm text-destructive">{ fieldErrors.email }</p>
+                  <p id="sign-up-email-error" className="text-sm text-destructive">{ fieldErrors.email }</p>
                 ) }
               </div>
 
@@ -378,9 +377,11 @@ export function SignUpFormCard() {
                   required
                   className="h-10 rounded-md border border-input bg-muted/60 px-3 placeholder:text-muted-foreground"
                   placeholder="Create a strong password"
+                  aria-invalid={ Boolean(fieldErrors.password) }
+                  aria-describedby={ fieldErrors.password ? 'sign-up-password-error' : undefined }
                 />
                 { fieldErrors.password && (
-                  <p className="text-sm text-destructive">{ fieldErrors.password }</p>
+                  <p id="sign-up-password-error" className="text-sm text-destructive">{ fieldErrors.password }</p>
                 ) }
               </div>
 
@@ -401,15 +402,46 @@ export function SignUpFormCard() {
                   required
                   className="h-10 rounded-md border border-input bg-muted/60 px-3 placeholder:text-muted-foreground"
                   placeholder="Repeat your password"
+                  aria-invalid={ Boolean(fieldErrors.confirmPassword) }
+                  aria-describedby={ fieldErrors.confirmPassword ? 'sign-up-confirm-error' : undefined }
                 />
                 { fieldErrors.confirmPassword && (
-                  <p className="text-sm text-destructive">{ fieldErrors.confirmPassword }</p>
+                  <p id="sign-up-confirm-error" className="text-sm text-destructive">{ fieldErrors.confirmPassword }</p>
                 ) }
+              </div>
+
+              <div className="rounded-lg border border-border/70 bg-background/80 p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-foreground">Sign-up checklist</p>
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground">Required</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Check each item to confirm you agree to the platform guidelines.
+                </p>
+                <div className="mt-3 space-y-2">
+                  { signUpChecklistItems.map((item) => (
+                    <label key={ item.id } className="flex items-start gap-2 text-sm text-foreground">
+                      <Checkbox
+                        checked={ signUpChecklistState[item.id] }
+                        onCheckedChange={ (checked) =>
+                          setSignUpChecklistState((prev) => ({
+                            ...prev,
+                            [item.id]: Boolean(checked),
+                          }))
+                        }
+                        aria-describedby={ `sign-up-checklist-${item.id}` }
+                      />
+                      <span id={ `sign-up-checklist-${item.id}` } className="leading-relaxed">
+                        { item.content }
+                      </span>
+                    </label>
+                  )) }
+                </div>
               </div>
 
               <Button
                 type="submit"
-                disabled={ isSubmitting }
+                disabled={ isSubmitting || !isSignUpChecklistComplete }
                 className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-border bg-primary px-4 py-2 text-primary-foreground transition-[transform,opacity] active:scale-[0.98] disabled:opacity-70"
               >
                 { isSubmitting && <CgSpinner className="h-4 w-4 animate-spin" /> }
@@ -454,7 +486,7 @@ export function SignUpFormCard() {
 
             <Button
               type="submit"
-              disabled={ isSubmitting }
+              disabled={ isSubmitting || !isSignUpChecklistComplete }
               className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-border bg-primary px-4 py-2 text-primary-foreground transition-[transform,opacity] active:scale-[0.98] disabled:opacity-70"
             >
               { isSubmitting && <CgSpinner className="h-4 w-4 animate-spin" /> }
