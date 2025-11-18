@@ -108,6 +108,8 @@ import {
   type SpaceFormValues
 } from '@/lib/validations/spaces';
 
+const DESCRIPTION_EDITOR_PLACEHOLDER = 'Describe what makes this space unique, amenities available, and any booking requirements (min. 20 characters).';
+
 export const createSpaceFormDefaults = (): SpaceFormValues => ({
   ...SPACE_INPUT_DEFAULT,
   amenities: [...SPACE_INPUT_DEFAULT.amenities],
