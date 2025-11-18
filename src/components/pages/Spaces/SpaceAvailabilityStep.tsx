@@ -4,8 +4,7 @@ import { useMemo } from 'react';
 import { useWatch, type UseFormReturn } from 'react-hook-form';
 import { FiClock } from 'react-icons/fi';
 
-import { SpaceFormValues } from './SpaceForms';
-
+import type { SpaceFormValues } from '@/lib/validations/spaces';
 import { WEEKDAY_ORDER } from '@/data/spaces';
 import {
   FormDescription,

@@ -10,6 +10,7 @@ import {
 } from 'react';
 import Image from 'next/image';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQueryClient } from '@tanstack/react-query';
 import { useForm, useWatch, type FieldPathValues } from 'react-hook-form';
 import {
   FiArrowLeft,
@@ -24,13 +25,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { MdOutlineMailOutline } from 'react-icons/md';
 
-import {
-  SpaceAddressFields,
-  SpaceDetailsFields,
-  SpaceFormValues,
-  createSpaceFormDefaults,
-  spaceSchema
-} from '@/components/pages/Spaces/SpaceForms';
+import { SpaceAddressFields, SpaceDetailsFields, createSpaceFormDefaults } from '@/components/pages/Spaces/SpaceForms';
 import { SpaceAmenitiesStep } from '@/components/pages/Spaces/SpaceAmenitiesStep';
 import { SpaceAvailabilityStep } from '@/components/pages/Spaces/SpaceAvailabilityStep';
 import { SpaceVerificationRequirementsStep, VERIFICATION_REQUIREMENTS, type VerificationRequirementId } from '@/components/pages/Spaces/SpaceVerificationRequirementsStep';
@@ -43,12 +38,13 @@ import { Input } from '@/components/ui/input';
 import { richTextPlainTextLength } from '@/lib/rich-text';
 import { useSession } from '@/components/auth/SessionProvider';
 import NavBar from '@/components/ui/navbar';
-import { useSpacesStore } from '@/stores/useSpacesStore';
 import { useSpaceFormPersistence } from '@/hooks/useSpaceFormPersistence';
 import { usePersistentSpaceImages } from '@/hooks/usePersistentSpaceImages';
 import { WEEKDAY_ORDER } from '@/data/spaces';
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
+import { partnerSpacesKeys } from '@/hooks/api/usePartnerSpaces';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { spaceSchema, type SpaceFormValues } from '@/lib/validations/spaces';
 
 const MAX_CATEGORY_IMAGES = 5;
 const CATEGORY_NAME_SAMPLES = [
@@ -220,6 +216,7 @@ export default function SpaceCreateRoute() {
   const searchParams = useSearchParams();
   const { session, } = useSession();
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
+  const queryClient = useQueryClient();
   const storageOwnerId = session?.user?.id ?? 'anonymous';
   const serializedSearchParams = searchParams.toString();
   const stepParam = searchParams.get('step');
@@ -236,7 +233,6 @@ export default function SpaceCreateRoute() {
             : stepParam === '6'
               ? 6
               : 1;
-  const createSpace = useSpacesStore((state) => state.createSpace);
   const form = useForm<SpaceFormValues>({
     resolver: zodResolver(spaceSchema),
     defaultValues: createSpaceFormDefaults(),
@@ -945,13 +941,8 @@ export default function SpaceCreateRoute() {
         throw new Error('Space submission succeeded but no ID was returned.');
       }
 
-      createSpace(values, {
-        spaceId,
-        createdAt: payload.data.created_at,
-        status: 'Pending',
-      });
-
       toast.success(`${values.name} submitted for review.`);
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
       clearDraft();
       clearImages();
       resetVerificationRequirements();

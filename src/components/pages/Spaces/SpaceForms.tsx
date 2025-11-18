@@ -17,7 +17,6 @@ import {
   type UseFormReturn
 } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
-import { z } from 'zod';
 import {
   FiLoader,
   FiLock,
@@ -55,8 +54,7 @@ import {
   AreaRecord,
   cloneWeeklyAvailability,
   SPACE_INPUT_DEFAULT,
-  SpaceRecord,
-  WEEKDAY_ORDER
+  SpaceRecord
 } from '@/data/spaces';
 import {
   Form,
@@ -102,356 +100,13 @@ import {
   type PhilippineCityOption,
   type PhilippineRegionOption
 } from '@/lib/philippines-addresses/client';
-
-const rateUnits = ['hour', 'day', 'week'] as const;
-const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
-const weekdayEnum = z.enum(WEEKDAY_ORDER);
-
-const toMinutes = (value: string) => {
-  const [hours, minutes] = value.split(':').map((part) => Number(part));
-  return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : Number.NaN;
-};
-
-const weeklyAvailabilitySchema = z
-  .record(
-    weekdayEnum,
-    z
-      .object({
-        is_open: z.boolean(),
-        opens_at: z.string().regex(timePattern, 'Use 24-hour HH:MM format.'),
-        closes_at: z.string().regex(timePattern, 'Use 24-hour HH:MM format.'),
-      })
-      .superRefine((values, ctx) => {
-        if (!values.is_open) {
-          return;
-        }
-
-        const openMinutes = toMinutes(values.opens_at);
-        const closeMinutes = toMinutes(values.closes_at);
-
-        if (!Number.isFinite(openMinutes) || !Number.isFinite(closeMinutes)) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'Enter valid times in HH:MM format.',
-          });
-          return;
-        }
-
-        if (closeMinutes <= openMinutes) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'Closing time must be after opening time.',
-            path: ['closes_at'],
-          });
-        }
-      })
-  )
-  .superRefine((availability, ctx) => {
-    let hasOpenDay = false;
-
-    for (const day of WEEKDAY_ORDER) {
-      const slot = availability[day];
-
-      if (!slot) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: [day],
-          message: `Provide hours for ${day}.`,
-        });
-        continue;
-      }
-
-      if (slot.is_open) {
-        hasOpenDay = true;
-      }
-    }
-
-    if (!hasOpenDay) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Open the space on at least one day of the week.',
-        path: [],
-      });
-    }
-  });
-
-const normalizeEditorHtml = (value?: string) => {
-  if (!value) {
-    return '';
-  }
-
-  const trimmed = value.trim();
-  if (trimmed === '<p><br></p>' || trimmed === '<div><br></div>') {
-    return '';
-  }
-
-  return sanitizeRichText(value);
-};
-
-const ensureValidLinkHref = (value: string) => {
-  const trimmed = value.trim();
-
-  if (!trimmed) {
-    return '';
-  }
-
-  if (/^(https?:\/\/|mailto:|tel:)/i.test(trimmed)) {
-    return trimmed;
-  }
-
-  return `https://${trimmed}`;
-};
-
-const DESCRIPTION_EDITOR_PLACEHOLDER = 'Describe the space, vibe, or suitable use cases...';
-const DESCRIPTION_EDITOR_STYLES = [
-  'prose prose-sm max-w-full focus-visible:outline-none',
-  '[&_p]:m-0',
-  '[&_h1]:m-0 [&_h1]:text-2xl [&_h1]:font-semibold',
-  '[&_h2]:m-0 [&_h2]:text-xl [&_h2]:font-semibold',
-  '[&_h3]:m-0 [&_h3]:text-lg [&_h3]:font-semibold',
-  '[&_ul]:list-disc [&_ul]:pl-6 [&_ul]:marker:text-muted-foreground',
-  '[&_ol]:list-decimal [&_ol]:pl-6 [&_li]:my-1',
-  '[&_table]:w-full [&_table]:border [&_table]:border-border/70 [&_table]:border-collapse [&_table]:rounded-md',
-  '[&_th]:border [&_th]:border-border/70 [&_th]:bg-muted/60 [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold',
-  '[&_td]:border [&_td]:border-border/70 [&_td]:px-2 [&_td]:py-1 [&_td]:align-top'
-].join(' ');
-
-const TABLE_INSERT_DEFAULTS = {
-  rows: 2,
-  cols: 2,
-  withHeaderRow: true,
-} as const;
-
-type TextAlignment = 'left' | 'center' | 'right' | 'justify';
-
-const TEXT_ALIGNMENT_OPTIONS: ReadonlyArray<{
-  value: TextAlignment;
-  label: string;
-  icon: typeof LuAlignLeft;
-}> = [
-  {
-    value: 'left',
-    label: 'Align left',
-    icon: LuAlignLeft,
-  },
-  {
-    value: 'center',
-    label: 'Align center',
-    icon: LuAlignCenter,
-  },
-  {
-    value: 'right',
-    label: 'Align right',
-    icon: LuAlignRight,
-  },
-  {
-    value: 'justify',
-    label: 'Justify text',
-    icon: LuAlignJustify,
-  }
-];
-
-const GOOGLE_AUTOCOMPLETE_MIN_QUERY_LENGTH = 3;
-const FORM_SET_OPTIONS = {
-  shouldDirty: true,
-  shouldValidate: true,
-  shouldTouch: true,
-} as const;
-const SUPPORTED_COUNTRIES = [
-  {
-    code: 'PH',
-    name: 'Philippines',
-  }
-] as const;
-
-type AddressPrediction = {
-  placeId: string;
-  description: string;
-  mainText: string;
-  secondaryText?: string;
-};
-
-type ParsedAddressDetails = {
-  street?: string;
-  barangay?: string;
-  city?: string;
-  region?: string;
-  postalCode?: string;
-  countryCode?: string;
-  lat?: number;
-  lng?: number;
-};
-
-type Coordinates = {
-  lat: number;
-  lng: number;
-};
-
-const DEFAULT_MAP_CENTER: Coordinates = {
-  lat: 14.5906,
-  lng: 120.9811,
-};
-
-const dedupeAddressOptions = <T extends { code: string; name: string }>(options: readonly T[]) => {
-  const seen = new Set<string>();
-  return options.filter((option) => {
-    const identifier = `${option.code}-${option.name}`.trim().toLowerCase();
-    if (seen.has(identifier)) {
-      return false;
-    }
-    seen.add(identifier);
-    return true;
-  });
-};
-
-const toCoordinates = (lat?: number, lng?: number): Coordinates | null => {
-  if (typeof lat !== 'number' || typeof lng !== 'number') {
-    return null;
-  }
-
-  if (Number.isNaN(lat) || Number.isNaN(lng)) {
-    return null;
-  }
-
-  return {
-    lat,
-    lng,
-  };
-};
-
-const getAddressComponentValue = (
-  components: GooglePlaceAddressComponent[] | undefined,
-  type: string,
-  useShortName = false
-) => {
-  if (!components) {
-    return '';
-  }
-
-  const component = components.find((entry) => entry.types.includes(type));
-  if (!component) {
-    return '';
-  }
-
-  return useShortName ? component.short_name : component.long_name;
-};
-
-const buildStreetLine = (components: GooglePlaceAddressComponent[] | undefined) => {
-  const streetNumber = getAddressComponentValue(components, 'street_number');
-  const route = getAddressComponentValue(components, 'route');
-  return [streetNumber, route].filter(Boolean).join(' ').trim();
-};
-
-const parseGooglePlaceDetails = (
-  details: GooglePlaceDetails,
-  fallbackStreet: string
-): ParsedAddressDetails => {
-  const street = buildStreetLine(details.address_components) || fallbackStreet;
-  const city =
-    getAddressComponentValue(details.address_components, 'locality') ||
-    getAddressComponentValue(details.address_components, 'sublocality') ||
-    getAddressComponentValue(details.address_components, 'administrative_area_level_2');
-  const barangay =
-    getAddressComponentValue(details.address_components, 'sublocality_level_1') ||
-    getAddressComponentValue(details.address_components, 'sublocality') ||
-    getAddressComponentValue(details.address_components, 'neighborhood');
-  const region = getAddressComponentValue(details.address_components, 'administrative_area_level_1', true);
-  const postalCode = getAddressComponentValue(details.address_components, 'postal_code');
-  const countryCode = getAddressComponentValue(details.address_components, 'country', true);
-  const lat = details.geometry?.location?.lat();
-  const lng = details.geometry?.location?.lng();
-
-  return {
-    street,
-    barangay: barangay || undefined,
-    city,
-    region,
-    postalCode,
-    countryCode,
-    lat,
-    lng,
-  };
-};
-
-const formatCoordinate = (value: number | undefined) => {
-  if (typeof value !== 'number' || Number.isNaN(value)) {
-    return undefined;
-  }
-
-  return Math.round(value * 1_000_000) / 1_000_000;
-};
-
-export const spaceSchema = z.object({
-  name: z.string().min(1, 'Space name is required.'),
-  description: z
-    .preprocess(
-      (value) => (typeof value === 'string' ? sanitizeRichText(value) : ''),
-      z
-        .string()
-        .refine((value) => richTextPlainTextLength(value) >= 20, 'Describe the space in at least 20 characters.')
-        .refine((value) => richTextPlainTextLength(value) <= 500, 'Keep the description under 500 characters.')
-    ),
-  amenities: z
-    .array(z.string().min(1))
-    .min(2, 'Select at least two amenities.'),
-  unit_number: z
-    .string()
-    .max(200, 'Unit or suite must be 200 characters or less.')
-    .optional()
-    .transform((value) => (value ?? '').trim()),
-  address_subunit: z
-    .string()
-    .max(200, 'Address subunit must be 200 characters or less.')
-    .optional()
-    .transform((value) => (value ?? '').trim()),
-  street: z.string().min(1, 'Street is required.'),
-  barangay: z.string().optional(),
-  city: z.string().min(1, 'City is required.'),
-  region: z.string().min(1, 'Region / state is required.'),
-  postal_code: z
-    .string()
-    .length(4, 'Postal code must be exactly 4 digits.')
-    .regex(/^\d{4}$/, 'Postal code must be exactly 4 digits.'),
-  country_code: z
-    .string()
-    .length(2, 'Use the 2-letter ISO country code.')
-    .regex(/^[A-Za-z]{2}$/, 'Only alphabetic characters are allowed.'),
-  lat: z
-    .coerce
-    .number({ message: 'Latitude is required.', })
-    .min(-90, 'Latitude must be >= -90.')
-    .max(90, 'Latitude must be <= 90.'),
-  long: z
-    .coerce
-    .number({ message: 'Longitude is required.', })
-    .min(-180, 'Longitude must be >= -180.')
-    .max(180, 'Longitude must be <= 180.'),
-  availability: weeklyAvailabilitySchema,
-});
-
-export const areaSchema = z
-  .object({
-    name: z.string().min(1, 'Area name is required.'),
-    min_capacity: z
-      .coerce
-      .number({ message: 'Provide the minimum capacity.', })
-      .int()
-      .min(1, 'Minimum capacity must be at least 1 seat.'),
-    max_capacity: z
-      .coerce
-      .number({ message: 'Provide the maximum capacity.', })
-      .int()
-      .min(1, 'Maximum capacity must be at least 1 seat.'),
-    rate_time_unit: z.enum(rateUnits, { required_error: 'Select a billing cadence.', }),
-    rate_amount: z.coerce.number({ message: 'Provide a rate amount.', }).positive('Rate must be greater than zero.'),
-  })
-  .refine((values) => values.max_capacity >= values.min_capacity, {
-    path: ['max_capacity'],
-    message: 'Max capacity must be greater than or equal to min capacity.',
-  });
-
-export type SpaceFormValues = z.infer<typeof spaceSchema>;
-export type AreaFormValues = z.infer<typeof areaSchema>;
+import {
+  areaSchema,
+  rateUnits,
+  spaceSchema,
+  type AreaFormValues,
+  type SpaceFormValues
+} from '@/lib/validations/spaces';
 
 export const createSpaceFormDefaults = (): SpaceFormValues => ({
   ...SPACE_INPUT_DEFAULT,
@@ -2106,6 +1761,7 @@ type SpaceDialogProps = {
   initialValues: SpaceFormValues;
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: SpaceFormValues) => void;
+  isSubmitting?: boolean;
 };
 
 export function SpaceDialog({
@@ -2114,6 +1770,7 @@ export function SpaceDialog({
   initialValues,
   onOpenChange,
   onSubmit,
+  isSubmitting = false,
 }: SpaceDialogProps) {
   const form = useForm<SpaceFormValues>({
     resolver: zodResolver(spaceSchema),
@@ -2139,11 +1796,11 @@ export function SpaceDialog({
           <form className="space-y-6" onSubmit={ form.handleSubmit(onSubmit) }>
             <SpaceFormFields form={ form } />
             <DialogFooter className="flex-col gap-2 sm:flex-row">
-              <Button type="button" variant="outline" onClick={ close }>
+              <Button type="button" variant="outline" onClick={ close } disabled={ isSubmitting }>
                 Cancel
               </Button>
-              <Button type="submit">
-                { mode === 'create' ? 'Save space' : 'Update space' }
+              <Button type="submit" disabled={ isSubmitting }>
+                { isSubmitting ? 'Saving…' : mode === 'create' ? 'Save space' : 'Update space' }
               </Button>
             </DialogFooter>
           </form>
@@ -2159,6 +1816,7 @@ type AreaDialogProps = {
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: AreaFormValues) => void;
   mode?: 'create' | 'edit';
+  isSubmitting?: boolean;
 };
 
 export function AreaDialog({
@@ -2167,6 +1825,7 @@ export function AreaDialog({
   onOpenChange,
   onSubmit,
   mode = 'create',
+  isSubmitting = false,
 }: AreaDialogProps) {
   const form = useForm<AreaFormValues>({
     resolver: zodResolver(areaSchema),
@@ -2305,10 +1964,12 @@ export function AreaDialog({
           />
             </div>
             <DialogFooter className="flex-col gap-2 sm:flex-row">
-              <Button type="button" variant="outline" onClick={ close }>
+              <Button type="button" variant="outline" onClick={ close } disabled={ isSubmitting }>
                 Cancel
               </Button>
-              <Button type="submit">{ mode === 'edit' ? 'Update area' : 'Save area' }</Button>
+              <Button type="submit" disabled={ isSubmitting }>
+                { isSubmitting ? 'Saving…' : mode === 'edit' ? 'Update area' : 'Save area' }
+              </Button>
             </DialogFooter>
           </form>
         </Form>

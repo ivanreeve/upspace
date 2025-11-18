@@ -70,11 +70,20 @@ export type AreaRecord = AreaInput & {
   created_at: string;
 };
 
+export type SpaceImageRecord = {
+  id: string;
+  path: string;
+  category: string | null;
+  is_primary: boolean;
+  display_order: number;
+};
+
 export type SpaceRecord = SpaceInput & {
   id: string;
   status: SpaceStatus;
   created_at: string;
   areas: AreaRecord[];
+  images: SpaceImageRecord[];
 };
 
 export const SPACE_INPUT_DEFAULT: SpaceInput = {
@@ -121,6 +130,7 @@ export const INITIAL_SPACES: SpaceRecord[] = [
     availability: createDefaultWeeklyAvailability(),
     status: 'Live',
     created_at: '2025-02-10T10:00:00.000Z',
+    images: [],
     areas: [
       {
         id: 'atlas-loft-boardroom',
@@ -151,6 +161,7 @@ export const INITIAL_SPACES: SpaceRecord[] = [
     availability: createDefaultWeeklyAvailability(),
     status: 'Pending',
     created_at: '2025-03-01T13:15:00.000Z',
+    images: [],
     areas: [
       {
         id: 'beacon-maker-lab',
@@ -190,6 +201,7 @@ export const INITIAL_SPACES: SpaceRecord[] = [
     availability: createDefaultWeeklyAvailability(),
     status: 'Draft',
     created_at: '2025-03-05T08:45:00.000Z',
+    images: [],
     areas: [],
   }
 ];

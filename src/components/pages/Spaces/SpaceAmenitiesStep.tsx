@@ -10,8 +10,7 @@ import {
   FiSearch
 } from 'react-icons/fi';
 
-import { SpaceFormValues } from './SpaceForms';
-
+import type { SpaceFormValues } from '@/lib/validations/spaces';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {

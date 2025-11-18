@@ -6,20 +6,10 @@ import { useParams } from 'next/navigation';
 
 import { SpaceDetailsPanel } from '@/components/pages/Spaces/SpaceDetailsPanel';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card';
-import { useSpacesStore } from '@/stores/useSpacesStore';
 
 export default function SpaceDetailRoute() {
   const params = useParams<{ spaceId: string }>();
   const spaceId = params?.spaceId ?? '';
-
-  const spaceExists = useSpacesStore((state) => state.spaces.some((space) => space.id === spaceId));
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
@@ -37,24 +27,7 @@ export default function SpaceDetailRoute() {
         </Button>
       </div>
 
-      { spaceExists ? (
-        <SpaceDetailsPanel spaceId={ spaceId } className="mt-8" />
-      ) : (
-        <Card className="mt-8 border-border/70 bg-background/80">
-          <CardHeader>
-            <CardTitle>Space not found</CardTitle>
-            <CardDescription>The requested space ID does not exist in the current session.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild>
-              <Link href="/spaces" className="inline-flex items-center gap-2">
-                <FiArrowLeft className="size-4" aria-hidden="true" />
-                Return to spaces
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      ) }
+      <SpaceDetailsPanel spaceId={ spaceId } className="mt-8" />
     </div>
   );
 }

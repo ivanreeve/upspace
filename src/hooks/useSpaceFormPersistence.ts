@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 
-import { createSpaceFormDefaults, SpaceFormValues } from '@/components/pages/Spaces/SpaceForms';
+import { createSpaceFormDefaults } from '@/components/pages/Spaces/SpaceForms';
+import type { SpaceFormValues } from '@/lib/validations/spaces';
 
 const STORAGE_KEY = 'upspace.space_create_form_draft';
 
