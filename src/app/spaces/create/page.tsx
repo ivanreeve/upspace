@@ -62,11 +62,11 @@ type WatchedFieldNames = typeof WATCHED_FIELD_NAMES;
 type WatchedFieldValues = FieldPathValues<SpaceFormValues, WatchedFieldNames>;
 type SpaceFormStep = 1 | 2 | 3 | 4 | 5;
 const STEP_SEQUENCE: SpaceFormStep[] = [1, 2, 3, 4, 5];
-type VerificationRequirementsState = Record<VerificationRequirementId, File | null>;
+type VerificationRequirementsState = Record<VerificationRequirementId, (File | null)[]>;
 
 const createEmptyVerificationRequirementsState = (): VerificationRequirementsState =>
   VERIFICATION_REQUIREMENTS.reduce((state, requirement) => {
-    state[requirement.id] = null;
+    state[requirement.id] = requirement.slots.map(() => null);
     return state;
   }, {} as VerificationRequirementsState);
 
@@ -172,18 +172,28 @@ export default function SpaceCreateRoute() {
   );
   const isPersistenceHydrated = isFormHydrated && areImagesHydrated;
 
-  const handleRequirementUpload = (requirementId: VerificationRequirementId, file: File) => {
-    setVerificationRequirements((prev) => ({
-      ...prev,
-      [requirementId]: file,
-    }));
+  const handleRequirementUpload = (requirementId: VerificationRequirementId, slotIndex: number, file: File) => {
+    setVerificationRequirements((prev) => {
+      const nextSlots = [ ...prev[requirementId] ];
+      nextSlots[slotIndex] = file;
+
+      return {
+        ...prev,
+        [requirementId]: nextSlots,
+      };
+    });
   };
 
-  const handleRequirementRemove = (requirementId: VerificationRequirementId) => {
-    setVerificationRequirements((prev) => ({
-      ...prev,
-      [requirementId]: null,
-    }));
+  const handleRequirementRemove = (requirementId: VerificationRequirementId, slotIndex: number) => {
+    setVerificationRequirements((prev) => {
+      const nextSlots = [ ...prev[requirementId] ];
+      nextSlots[slotIndex] = null;
+
+      return {
+        ...prev,
+        [requirementId]: nextSlots,
+      };
+    });
   };
 
   const resetVerificationRequirements = useCallback(() => {
@@ -209,7 +219,7 @@ export default function SpaceCreateRoute() {
     normalize(countryCodeValue).length === 2;
 
   const isRequirementsStepComplete = VERIFICATION_REQUIREMENTS.every((requirement) =>
-    Boolean(verificationRequirements[requirement.id])
+    requirement.slots.every((_, slotIndex) => Boolean(verificationRequirements[requirement.id][slotIndex]))
   );
 
   useEffect(() => {
