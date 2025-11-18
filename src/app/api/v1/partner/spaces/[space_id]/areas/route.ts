@@ -6,7 +6,8 @@ import { serializeArea } from '@/lib/spaces/partner-serializer';
 import type { PartnerSpaceRow } from '@/lib/spaces/partner-serializer';
 import { areaSchema } from '@/lib/validations/spaces';
 
-const isNumericId = (value: string | undefined): value is string => typeof value === 'string' && /^\d+$/.test(value);
+const isUuid = (value: string | undefined): value is string =>
+  typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
 type RouteParams = {
   params: {
@@ -19,8 +20,8 @@ export async function POST(req: NextRequest, { params, }: RouteParams) {
     const { userId, } = await requirePartnerSession();
     const spaceIdParam = params?.space_id;
 
-    if (!isNumericId(spaceIdParam)) {
-      return NextResponse.json({ error: 'space_id must be numeric.', }, { status: 400, });
+    if (!isUuid(spaceIdParam)) {
+      return NextResponse.json({ error: 'space_id must be a valid UUID.', }, { status: 400, });
     }
 
     const body = await req.json().catch(() => null);
@@ -30,13 +31,12 @@ export async function POST(req: NextRequest, { params, }: RouteParams) {
       return NextResponse.json({ error: parsed.error.flatten(), }, { status: 400, });
     }
 
-    const spaceId = BigInt(spaceIdParam);
     const space = await prisma.space.findFirst({
       where: {
-        space_id: spaceId,
+        id: spaceIdParam,
         user_id: userId,
       },
-      select: { space_id: true, },
+      select: { id: true, },
     });
 
     if (!space) {
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest, { params, }: RouteParams) {
     const result = await prisma.$transaction(async (tx): Promise<PartnerSpaceRow['area'][number]> => {
       const createdArea = await tx.area.create({
         data: {
-          space_id: spaceId,
+          space_id: spaceIdParam,
           name: parsed.data.name.trim(),
           min_capacity: BigInt(parsed.data.min_capacity),
           max_capacity: BigInt(parsed.data.max_capacity),
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest, { params, }: RouteParams) {
 
       const createdRate = await tx.price_rate.create({
         data: {
-          area_id: createdArea.area_id,
+          area_id: createdArea.id,
           time_unit: parsed.data.rate_time_unit,
           price: parsed.data.rate_amount.toString(),
         },

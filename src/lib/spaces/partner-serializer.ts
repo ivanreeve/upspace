@@ -33,12 +33,12 @@ export const partnerSpaceInclude = {
   space_availability: { orderBy: { day_of_week: 'asc' as const, }, },
   area: {
     orderBy: { created_at: 'asc' as const, },
-    include: { price_rate: { orderBy: { rate_id: 'asc' as const, }, }, },
+    include: { price_rate: { orderBy: { created_at: 'asc' as const, }, }, },
   },
   space_image: {
     orderBy: { display_order: 'asc' as const, },
     select: {
-      image_id: true,
+      id: true,
       path: true,
       category: true,
       is_primary: true,
@@ -58,7 +58,7 @@ export type PartnerSpaceRow = Prisma.spaceGetPayload<{
 
 export async function serializePartnerSpace(space: PartnerSpaceRow): Promise<SpaceRecord> {
   return {
-    id: space.space_id.toString(),
+    id: space.id,
     name: space.name,
     description: space.description ?? '',
     unit_number: space.unit_number,
@@ -112,7 +112,7 @@ export const serializeArea = (
 ): AreaRecord => {
   const primaryRate = area.price_rate[0];
   return {
-    id: area.area_id.toString(),
+    id: area.id,
     name: area.name,
     min_capacity: Number(area.min_capacity),
     max_capacity: Number(area.max_capacity),
@@ -125,7 +125,7 @@ export const serializeArea = (
 const serializeImage = (
   image: PartnerSpaceRow['space_image'][number]
 ): Omit<SpaceImageRecord, 'public_url'> => ({
-  id: image.image_id.toString(),
+  id: image.id,
   path: image.path,
   category: image.category,
   is_primary: Boolean(image.is_primary),

@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { AreaRecord, SpaceRecord } from '@/data/spaces';
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
-import type { AreaFormValues } from '@/lib/validations/spaces';
+import type { AreaFormValues, SpaceFormValues } from '@/lib/validations/spaces';
 
 export const partnerSpacesKeys = {
   all: ['partner-spaces'] as const,
@@ -118,6 +118,36 @@ export function useUpdateAreaMutation(spaceId: string) {
       }
 
       const data = (await response.json()) as { data: AreaRecord };
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), });
+    },
+  });
+}
+
+export function useUpdatePartnerSpaceMutation(spaceId: string) {
+  const authFetch = useAuthenticatedFetch();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: SpaceFormValues) => {
+      if (!spaceId) {
+        throw new Error('Space ID is required to update a listing.');
+      }
+
+      const response = await authFetch(`/api/v1/partner/spaces/${spaceId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+      }
+
+      const data = (await response.json()) as { data: SpaceRecord };
       return data.data;
     },
     onSuccess: () => {

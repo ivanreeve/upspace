@@ -6,7 +6,8 @@ import { serializeArea } from '@/lib/spaces/partner-serializer';
 import type { PartnerSpaceRow } from '@/lib/spaces/partner-serializer';
 import { areaSchema } from '@/lib/validations/spaces';
 
-const isNumericId = (value: string | undefined): value is string => typeof value === 'string' && /^\d+$/.test(value);
+const isUuid = (value: string | undefined): value is string =>
+  typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
 type RouteParams = {
   params: {
@@ -21,8 +22,8 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
     const spaceIdParam = params?.space_id;
     const areaIdParam = params?.area_id;
 
-    if (!isNumericId(spaceIdParam) || !isNumericId(areaIdParam)) {
-      return NextResponse.json({ error: 'space_id and area_id must be numeric.', }, { status: 400, });
+    if (!isUuid(spaceIdParam) || !isUuid(areaIdParam)) {
+      return NextResponse.json({ error: 'space_id and area_id must be valid UUIDs.', }, { status: 400, });
     }
 
     const payload = await req.json().catch(() => null);
@@ -31,15 +32,12 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
       return NextResponse.json({ error: parsed.error.flatten(), }, { status: 400, });
     }
 
-    const spaceId = BigInt(spaceIdParam);
-    const areaId = BigInt(areaIdParam);
-
     const space = await prisma.space.findFirst({
       where: {
-        space_id: spaceId,
+        id: spaceIdParam,
         user_id: userId,
       },
-      select: { space_id: true, },
+      select: { id: true, },
     });
 
     if (!space) {
@@ -48,10 +46,10 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
 
     const existingArea = await prisma.area.findFirst({
       where: {
-        area_id: areaId,
-        space_id: spaceId,
+        id: areaIdParam,
+        space_id: spaceIdParam,
       },
-      select: { area_id: true, },
+      select: { id: true, },
     });
 
     if (!existingArea) {
@@ -60,7 +58,7 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
 
     const result = await prisma.$transaction(async (tx): Promise<PartnerSpaceRow['area'][number]> => {
       const updatedArea = await tx.area.update({
-        where: { area_id: areaId, },
+        where: { id: areaIdParam, },
         data: {
           name: parsed.data.name.trim(),
           min_capacity: BigInt(parsed.data.min_capacity),
@@ -70,13 +68,13 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
       });
 
       const existingRate = await tx.price_rate.findFirst({
-        where: { area_id: areaId, },
-        orderBy: { rate_id: 'asc', },
+        where: { area_id: areaIdParam, },
+        orderBy: { created_at: 'asc', },
       });
 
       if (existingRate) {
         await tx.price_rate.update({
-          where: { rate_id: existingRate.rate_id, },
+          where: { id: existingRate.id, },
           data: {
             time_unit: parsed.data.rate_time_unit,
             price: parsed.data.rate_amount.toString(),
@@ -86,7 +84,7 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
       } else {
         await tx.price_rate.create({
           data: {
-            area_id: areaId,
+            area_id: areaIdParam,
             time_unit: parsed.data.rate_time_unit,
             price: parsed.data.rate_amount.toString(),
           },
@@ -94,8 +92,8 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
       }
 
       const priceRates = await tx.price_rate.findMany({
-        where: { area_id: areaId, },
-        orderBy: { rate_id: 'asc', },
+        where: { area_id: areaIdParam, },
+        orderBy: { created_at: 'asc', },
       });
 
       return {
