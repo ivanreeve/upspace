@@ -109,6 +109,45 @@ import {
 } from '@/lib/validations/spaces';
 
 const DESCRIPTION_EDITOR_PLACEHOLDER = 'Describe what makes this space unique, amenities available, and any booking requirements (min. 20 characters).';
+const DESCRIPTION_EDITOR_STYLES = [
+  'prose prose-sm max-w-full focus-visible:outline-none',
+  '[&_p]:m-0',
+  '[&_h1]:m-0 [&_h1]:text-2xl [&_h1]:font-semibold',
+  '[&_h2]:m-0 [&_h2]:text-xl [&_h2]:font-semibold',
+  '[&_h3]:m-0 [&_h3]:text-lg [&_h3]:font-semibold',
+  '[&_ul]:list-disc [&_ul]:pl-6 [&_ul]:marker:text-muted-foreground',
+  '[&_ol]:list-decimal [&_ol]:pl-6 [&_li]:my-1',
+  '[&_table]:w-full [&_table]:border [&_table]:border-border/70 [&_table]:border-collapse [&_table]:rounded-md',
+  '[&_th]:border [&_th]:border-border/70 [&_th]:bg-muted/60 [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold',
+  '[&_td]:border [&_td]:border-border/70 [&_td]:px-2 [&_td]:py-1 [&_td]:align-top'
+].join(' ');
+
+const normalizeEditorHtml = (value?: string) => {
+  if (!value) {
+    return '';
+  }
+
+  const trimmed = value.trim();
+  if (trimmed === '<p><br></p>' || trimmed === '<div><br></div>') {
+    return '';
+  }
+
+  return sanitizeRichText(value);
+};
+
+const ensureValidLinkHref = (value: string) => {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return '';
+  }
+
+  if (/^(https?:\/\/|mailto:|tel:)/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  return `https://${trimmed}`;
+};
 
 export const createSpaceFormDefaults = (): SpaceFormValues => ({
   ...SPACE_INPUT_DEFAULT,
