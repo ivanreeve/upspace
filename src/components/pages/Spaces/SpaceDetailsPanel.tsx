@@ -289,22 +289,16 @@ export function SpaceDetailsPanel({
                               No image
                             </div>
                           ) }
-                          { isSeeMoreSlot && (
-                            <div className="absolute inset-0 flex items-end justify-center p-3">
-                              <div className="w-full rounded-md bg-gradient-to-t from-background/90 to-transparent p-1">
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="secondary"
-                                  className="w-full shadow-sm"
-                                  onClick={ () => setGalleryOpen(true) }
-                                  aria-label="Open full image gallery"
-                                >
-                                  See all photos
-                                </Button>
-                              </div>
-                            </div>
-                          ) }
+                          { isSeeMoreSlot ? (
+                            <button
+                              type="button"
+                              onClick={ () => setGalleryOpen(true) }
+                              aria-label="Open full image gallery"
+                              className="absolute inset-0 flex items-center justify-center rounded-md bg-background/55 text-sm font-medium text-foreground backdrop-blur-md transition hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                            >
+                              See all photos
+                            </button>
+                          ) : null }
                         </div>
                       </figure>
                     );
