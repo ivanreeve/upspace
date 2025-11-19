@@ -7,20 +7,22 @@ import {
   useState,
   type ReactNode
 } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { z } from 'zod';
 import {
-FiEdit,
-FiLayers,
-FiPlus,
-FiX
+  FiEdit,
+  FiLayers,
+  FiPlus,
+  FiX
 } from 'react-icons/fi';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 
 import {
   AreaDialog,
-  SpaceDialog,
+  DescriptionEditor,
   areaRecordToFormValues,
   createAreaFormDefaults,
-  createSpaceFormDefaults,
   spaceRecordToFormValues
 } from './SpaceForms';
 
@@ -48,15 +50,44 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { sanitizeRichText } from '@/lib/rich-text';
+import { richTextPlainTextLength, sanitizeRichText } from '@/lib/rich-text';
 import { cn } from '@/lib/utils';
-import type { AreaFormValues, SpaceFormValues } from '@/lib/validations/spaces';
+import type { AreaFormValues } from '@/lib/validations/spaces';
 
 
 type SpaceDetailsPanelProps = {
   spaceId: string | null;
   className?: string;
 };
+
+const DESCRIPTION_MIN_CHARACTERS = 20;
+const DESCRIPTION_MAX_CHARACTERS = 500;
+
+const descriptionSchema = z.object({
+  description: z
+    .string()
+    .superRefine((value, ctx) => {
+      const sanitized = sanitizeRichText(value ?? '');
+      const plainTextLength = richTextPlainTextLength(sanitized);
+
+      if (plainTextLength < DESCRIPTION_MIN_CHARACTERS) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Add at least ${DESCRIPTION_MIN_CHARACTERS} characters.`,
+        });
+      }
+
+      if (plainTextLength > DESCRIPTION_MAX_CHARACTERS) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Keep the description under ${DESCRIPTION_MAX_CHARACTERS} characters.`,
+        });
+      }
+    })
+    .transform((value) => sanitizeRichText(value ?? '')),
+});
+
+type DescriptionFormValues = z.infer<typeof descriptionSchema>;
 
 export function SpaceDetailsPanel({
   spaceId,
@@ -80,14 +111,21 @@ export function SpaceDetailsPanel({
   const createAreaMutation = useCreateAreaMutation(normalizedSpaceId);
   const updateAreaMutation = useUpdateAreaMutation(normalizedSpaceId);
 
-  const [spaceDialogOpen, setSpaceDialogOpen] = useState(false);
-  const [spaceDialogValues, setSpaceDialogValues] = useState<SpaceFormValues>(createSpaceFormDefaults());
+  const descriptionForm = useForm<DescriptionFormValues>({
+    resolver: zodResolver(descriptionSchema),
+    defaultValues: { description: '', },
+  });
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [areaDialogOpen, setAreaDialogOpen] = useState(false);
   const [areaDialogValues, setAreaDialogValues] = useState<AreaFormValues>(createAreaFormDefaults());
   const [editingAreaId, setEditingAreaId] = useState<string | null>(null);
   
   // Controls the full-screen gallery modal
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const descriptionValue = descriptionForm.watch('description');
+  const descriptionPlainTextLength = richTextPlainTextLength(sanitizeRichText(descriptionValue ?? ''));
+  const descriptionError = descriptionForm.formState.errors.description?.message;
+  const isDescriptionDirty = descriptionForm.formState.isDirty;
 
   const imagesByCategory = useMemo(() => {
     const images = space?.images ?? [];
@@ -118,20 +156,38 @@ export function SpaceDetailsPanel({
     setGalleryOpen(false);
   }, [space?.id]);
 
-  const handleEditSpace = () => {
+  useEffect(() => {
+    if (!space || isEditingDescription) {
+      return;
+    }
+    descriptionForm.reset({ description: sanitizeRichText(space.description ?? ''), });
+  }, [space, descriptionForm, isEditingDescription]);
+
+  const handleStartDescriptionEdit = () => {
     if (!space) return;
-    setSpaceDialogValues(spaceRecordToFormValues(space));
-    setSpaceDialogOpen(true);
+    setIsEditingDescription(true);
+    descriptionForm.reset({ description: sanitizeRichText(space.description ?? ''), });
+    descriptionForm.clearErrors();
   };
 
-  const handleSpaceSubmit = async (values: SpaceFormValues) => {
+  const handleCancelDescriptionEdit = () => {
+    if (!space) return;
+    setIsEditingDescription(false);
+    descriptionForm.reset({ description: sanitizeRichText(space.description ?? ''), });
+    descriptionForm.clearErrors();
+  };
+
+  const handleDescriptionSubmit = async (values: DescriptionFormValues) => {
     if (!space) return;
     try {
-      await updateSpaceMutation.mutateAsync(values);
-      toast.success(`${values.name} updated.`);
-      setSpaceDialogOpen(false);
+      await updateSpaceMutation.mutateAsync({
+        ...spaceRecordToFormValues(space),
+        description: values.description,
+      });
+      toast.success('Description updated.');
+      setIsEditingDescription(false);
     } catch (mutationError) {
-      toast.error(mutationError instanceof Error ? mutationError.message : 'Unable to update space.');
+      toast.error(mutationError instanceof Error ? mutationError.message : 'Unable to update description.');
     }
   };
 
@@ -316,13 +372,60 @@ export function SpaceDetailsPanel({
         <div className="grid gap-6 lg:grid-cols-[3fr,2fr]">
           <div className="space-y-6">
             <Card className="border-border/70 bg-background/80">
-              <CardHeader className="space-y-1">
-                <Badge variant="outline" className="font-mono text-xs uppercase tracking-wide">description</Badge>
-                <CardTitle className="text-2xl">Description</CardTitle>
-                <CardDescription>Rendered rich text from <code>prisma.space.description</code>.</CardDescription>
+              <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="space-y-1">
+                  <Badge variant="outline" className="font-mono text-xs uppercase tracking-wide">description</Badge>
+                  <CardTitle className="text-2xl">Description</CardTitle>
+                  <CardDescription>Rendered rich text from <code>prisma.space.description</code>.</CardDescription>
+                </div>
+                { !isEditingDescription ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={ handleStartDescriptionEdit }
+                    className="inline-flex items-center gap-2"
+                  >
+                    <FiEdit className="size-4" aria-hidden="true" />
+                    Edit description
+                  </Button>
+                ) : null }
               </CardHeader>
               <CardContent>
-                { space.description ? (
+                { isEditingDescription ? (
+                  <form className="space-y-4" onSubmit={ descriptionForm.handleSubmit(handleDescriptionSubmit) }>
+                    <Controller
+                      control={ descriptionForm.control }
+                      name="description"
+                      render={ ({ field, }) => (
+                        <DescriptionEditor field={ field } />
+                      ) }
+                    />
+                    <div className="flex flex-col gap-1">
+                      <p className="text-xs text-muted-foreground">
+                        { descriptionPlainTextLength } / { DESCRIPTION_MAX_CHARACTERS } characters
+                      </p>
+                      { descriptionError ? (
+                        <p className="text-sm text-destructive">{ descriptionError }</p>
+                      ) : null }
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={ handleCancelDescriptionEdit }
+                        disabled={ updateSpaceMutation.isPending }
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={ updateSpaceMutation.isPending || !isDescriptionDirty }
+                      >
+                        { updateSpaceMutation.isPending ? 'Saving...' : 'Save description' }
+                      </Button>
+                    </div>
+                  </form>
+                ) : space.description ? (
                   <div
                     className="text-sm leading-relaxed text-muted-foreground"
                     dangerouslySetInnerHTML={ { __html: sanitizeRichText(space.description), } }
@@ -340,10 +443,6 @@ export function SpaceDetailsPanel({
                   <CardTitle className="text-2xl">{ space.name }</CardTitle>
                   <CardDescription>Values currently stored for <code>prisma.space</code>.</CardDescription>
                 </div>
-                <Button type="button" variant="secondary" onClick={ handleEditSpace } className="inline-flex items-center gap-2">
-                  <FiEdit className="size-4" aria-hidden="true" />
-                  Edit space
-                </Button>
               </CardHeader>
               <CardContent className="grid gap-6 sm:grid-cols-2">
                 { renderField('Unit / suite', space.unit_number) }
@@ -432,16 +531,7 @@ export function SpaceDetailsPanel({
         </div>
       </div>
 
-      { /* Edit Forms */ }
-      <SpaceDialog
-        open={ spaceDialogOpen }
-        mode="edit"
-        initialValues={ spaceDialogValues }
-        onOpenChange={ setSpaceDialogOpen }
-        onSubmit={ handleSpaceSubmit }
-        isSubmitting={ updateSpaceMutation.isPending }
-      />
-
+      { /* Area Form */ }
       <AreaDialog
         open={ areaDialogOpen }
         mode={ editingAreaId ? 'edit' : 'create' }

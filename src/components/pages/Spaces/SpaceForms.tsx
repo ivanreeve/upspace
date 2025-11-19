@@ -264,11 +264,11 @@ export const areaRecordToFormValues = (area: AreaRecord): AreaFormValues => ({
   rate_amount: area.rate_amount,
 });
 
-type DescriptionEditorProps = {
-  field: ControllerRenderProps<SpaceFormValues, 'description'>;
+export type DescriptionEditorProps<TFieldValues extends { description: string }> = {
+  field: ControllerRenderProps<TFieldValues, 'description'>;
 };
 
-function DescriptionEditor(props: DescriptionEditorProps) {
+export function DescriptionEditor<TFieldValues extends { description: string }>(props: DescriptionEditorProps<TFieldValues>) {
   const { field, } = props;
   const handlersRef = useRef({
     onChange: field.onChange,
