@@ -96,9 +96,14 @@ export function SpaceDetailsPanel({
       return [];
     }
 
+    const primaryImageId =
+      images.find((image) => image.is_primary)?.id ?? images[0]?.id ?? null;
     const groups: Record<string, SpaceImageRecord[]> = {};
 
     for (const image of images) {
+      if (primaryImageId && image.id === primaryImageId) {
+        continue;
+      }
       const category = image.category ?? 'Uncategorized';
       if (!groups[category]) {
         groups[category] = [];
