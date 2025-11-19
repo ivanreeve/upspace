@@ -2016,7 +2016,7 @@ export function AreaDialog({
                 <FormLabel>Billing cadence</FormLabel>
                 <Select value={ field.value } onValueChange={ field.onChange }>
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select cadence" />
                     </SelectTrigger>
                   </FormControl>
