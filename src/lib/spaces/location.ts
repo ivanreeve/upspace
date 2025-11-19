@@ -12,7 +12,9 @@ export async function updateSpaceLocationPoint(
   tx: Prisma.TransactionClient,
   params: SpaceLocationParams
 ) {
-  const { spaceId, lat, long, } = params;
+  const {
+ spaceId, lat, long, 
+} = params;
   const normalizedLat = Number(lat);
   const normalizedLong = Number(long);
 
@@ -22,7 +24,7 @@ export async function updateSpaceLocationPoint(
 
   await tx.$executeRaw`
     UPDATE "space"
-    SET location = ST_SetSRID(ST_MakePoint(${normalizedLong}, ${normalizedLat}), ${SRID})
-    WHERE id = ${spaceId}
+    SET location = ST_SetSRID(ST_MakePoint(${normalizedLong}, ${normalizedLat}), ${SRID}::integer)
+    WHERE id = ${spaceId}::uuid
   `;
 }

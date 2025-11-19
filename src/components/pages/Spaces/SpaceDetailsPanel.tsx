@@ -25,6 +25,7 @@ import {
   createAreaFormDefaults,
   spaceRecordToFormValues
 } from './SpaceForms';
+import { SPACE_DESCRIPTION_VIEWER_CLASSNAME } from './space-description-rich-text';
 
 import { AreaRecord, SpaceImageRecord } from '@/data/spaces';
 import {
@@ -308,7 +309,6 @@ export function SpaceDetailsPanel({
         <Card className="border-border/70 bg-background/80">
           <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1">
-              <Badge variant="outline" className="font-mono text-xs uppercase tracking-wide">photos</Badge>
               <CardTitle className="text-2xl">Uploaded photos</CardTitle>
               <CardDescription>Images stored for this listing.</CardDescription>
             </div>
@@ -387,7 +387,6 @@ export function SpaceDetailsPanel({
             <Card className="border-border/70 bg-background/80">
               <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-1">
-                  <Badge variant="outline" className="font-mono text-xs uppercase tracking-wide">description</Badge>
                   <CardTitle className="text-2xl">Description</CardTitle>
                   <CardDescription>Rendered rich text from <code>prisma.space.description</code>.</CardDescription>
                 </div>
@@ -440,7 +439,7 @@ export function SpaceDetailsPanel({
                   </form>
                 ) : space.description ? (
                   <div
-                    className="text-sm leading-relaxed text-muted-foreground"
+                    className={ SPACE_DESCRIPTION_VIEWER_CLASSNAME }
                     dangerouslySetInnerHTML={ { __html: sanitizeRichText(space.description), } }
                   />
                 ) : (
@@ -452,7 +451,6 @@ export function SpaceDetailsPanel({
             <Card className="border-border/70 bg-background/80">
               <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-1">
-                  <Badge variant="outline" className="font-mono text-xs uppercase tracking-wide">space</Badge>
                   <CardTitle className="text-2xl">{ space.name }</CardTitle>
                   <CardDescription>Values currently stored for <code>prisma.space</code>.</CardDescription>
                 </div>
@@ -474,7 +472,6 @@ export function SpaceDetailsPanel({
           <Card className="border-border/70 bg-background/80">
             <CardHeader className="flex flex-col gap-4">
               <div className="space-y-1">
-                <Badge variant="outline" className="font-mono text-xs uppercase tracking-wide">areas</Badge>
                 <CardTitle className="text-2xl">Rentable areas</CardTitle>
                 <CardDescription>Every row maps to <code>prisma.area</code> + <code>price_rate</code>.</CardDescription>
               </div>
