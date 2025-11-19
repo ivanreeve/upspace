@@ -16,6 +16,7 @@ model amenity {
   id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   space_id          String         @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   amenity_choice    amenity_choice @relation(fields: [amenity_choice_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  space             space          @relation(fields: [space_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -129,6 +130,7 @@ model space {
   long               Decimal              @db.Decimal(9, 6)
   barangay           String?
   id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  amenity            amenity[]
   area               area[]
   user               user                 @relation(fields: [user_id], references: [user_id])
   space_availability space_availability[]
