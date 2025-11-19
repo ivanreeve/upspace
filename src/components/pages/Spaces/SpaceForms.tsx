@@ -1862,22 +1862,6 @@ export function SpaceFormFields({ form, }: SpaceFormFieldsProps) {
   );
 }
 
-type SchemaReferenceProps = {
-  table: 'space' | 'area' | 'price_rate';
-  column: string;
-};
-
-export function SchemaReference({
-  table,
-  column,
-}: SchemaReferenceProps) {
-  return (
-    <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-      { table }.{ column }
-    </span>
-  );
-}
-
 type SpaceDialogProps = {
   open: boolean;
   mode: 'create' | 'edit';
@@ -1975,10 +1959,7 @@ export function AreaDialog({
               name="name"
           render={ ({ field, }) => (
             <FormItem>
-              <FormLabel className="flex items-center justify-between">
-                <span>Area name</span>
-                <SchemaReference table="area" column="name" />
-              </FormLabel>
+              <FormLabel>Area name</FormLabel>
               <FormControl>
                 <Input placeholder="Boardroom A" { ...field } />
               </FormControl>
@@ -1992,10 +1973,7 @@ export function AreaDialog({
             name="min_capacity"
             render={ ({ field, }) => (
               <FormItem>
-                <FormLabel className="flex items-center justify-between">
-                  <span>Min capacity</span>
-                  <SchemaReference table="area" column="min_capacity" />
-                </FormLabel>
+                <FormLabel>Min capacity</FormLabel>
                 <FormControl>
                   <Input
                     type="number"
@@ -2014,10 +1992,7 @@ export function AreaDialog({
             name="max_capacity"
             render={ ({ field, }) => (
               <FormItem>
-                <FormLabel className="flex items-center justify-between">
-                  <span>Max capacity</span>
-                  <SchemaReference table="area" column="max_capacity" />
-                </FormLabel>
+                <FormLabel>Max capacity</FormLabel>
                 <FormControl>
                   <Input
                     type="number"
@@ -2038,10 +2013,7 @@ export function AreaDialog({
             name="rate_time_unit"
             render={ ({ field, }) => (
               <FormItem>
-                <FormLabel className="flex items-center justify-between">
-                  <span>Billing cadence</span>
-                  <SchemaReference table="price_rate" column="time_unit" />
-                </FormLabel>
+                <FormLabel>Billing cadence</FormLabel>
                 <Select value={ field.value } onValueChange={ field.onChange }>
                   <FormControl>
                     <SelectTrigger>
@@ -2067,10 +2039,7 @@ export function AreaDialog({
             name="rate_amount"
             render={ ({ field, }) => (
               <FormItem>
-                <FormLabel className="flex items-center justify-between">
-                  <span>Rate (PHP)</span>
-                  <SchemaReference table="price_rate" column="price" />
-                </FormLabel>
+                <FormLabel>Rate (PHP)</FormLabel>
                 <FormControl>
                   <Input
                     type="number"

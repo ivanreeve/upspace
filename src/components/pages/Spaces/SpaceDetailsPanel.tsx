@@ -335,7 +335,6 @@ export function SpaceDetailsPanel({
                   ) }
                   <figcaption className="absolute bottom-0 left-0 right-0 flex items-center justify-between gap-2 border-t border-border/50 bg-gradient-to-t from-background/90 to-transparent px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground">
                     <span>{ primaryImage?.category ?? 'Featured' }</span>
-                    { primaryImage?.is_primary ? <Badge variant="secondary">Primary</Badge> : null }
                   </figcaption>
                 </figure>
                 
@@ -598,7 +597,6 @@ export function SpaceDetailsPanel({
               <section className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold uppercase tracking-wide text-foreground">Featured</h3>
-                  { primaryImage?.is_primary && <Badge variant="secondary">Primary</Badge> }
                 </div>
                 <div className="relative aspect-video w-full overflow-hidden rounded-md border border-border/60 bg-muted">
                   { featuredImageUrl ? (
