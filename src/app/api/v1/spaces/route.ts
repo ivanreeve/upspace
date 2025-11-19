@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { WEEKDAY_ORDER, type WeekdayName } from '@/data/spaces';
 import { prisma } from '@/lib/prisma';
+import { updateSpaceLocationPoint } from '@/lib/spaces/location';
 import { richTextPlainTextLength, sanitizeRichText } from '@/lib/rich-text';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -634,6 +635,12 @@ export async function POST(req: NextRequest) {
           created_at: true,
           updated_at: true,
         },
+      });
+
+      await updateSpaceLocationPoint(tx, {
+        spaceId: space.id,
+        lat: parsed.data.lat,
+        long: parsed.data.long,
       });
 
       if (uniqueAmenityIds.length) {

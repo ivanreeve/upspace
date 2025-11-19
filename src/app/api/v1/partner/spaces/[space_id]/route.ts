@@ -4,6 +4,7 @@ import { WEEKDAY_ORDER, type WeekdayName } from '@/data/spaces';
 import { prisma } from '@/lib/prisma';
 import { PartnerSessionError, requirePartnerSession } from '@/lib/auth/require-partner-session';
 import { partnerSpaceInclude, serializePartnerSpace } from '@/lib/spaces/partner-serializer';
+import { updateSpaceLocationPoint } from '@/lib/spaces/location';
 import { richTextPlainTextLength, sanitizeRichText } from '@/lib/rich-text';
 import { spaceSchema, type SpaceFormValues } from '@/lib/validations/spaces';
 
@@ -166,6 +167,12 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
           long: parsed.data.long,
           updated_at: now,
         },
+      });
+
+      await updateSpaceLocationPoint(tx, {
+        spaceId: spaceIdParam,
+        lat: parsed.data.lat,
+        long: parsed.data.long,
       });
 
       await tx.amenity.deleteMany({ where: { space_id: spaceIdParam, }, });

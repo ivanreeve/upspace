@@ -120,19 +120,20 @@ model space {
   address_subunit    String
   city               String
   region             String
-  created_at         DateTime             @db.Timestamptz(6)
-  updated_at         DateTime             @db.Timestamptz(6)
+  created_at         DateTime                              @db.Timestamptz(6)
+  updated_at         DateTime                              @db.Timestamptz(6)
   postal_code        String
   user_id            BigInt
   description        String?
-  country_code       String               @db.Char(2)
-  lat                Decimal              @db.Decimal(9, 6)
-  long               Decimal              @db.Decimal(9, 6)
+  country_code       String                                @db.Char(2)
+  lat                Decimal                               @db.Decimal(9, 6)
+  long               Decimal                               @db.Decimal(9, 6)
+  location           Unsupported("geography(Point,4326)")?
   barangay           String?
-  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id                 String                                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   amenity            amenity[]
   area               area[]
-  user               user                 @relation(fields: [user_id], references: [user_id])
+  user               user                                  @relation(fields: [user_id], references: [user_id])
   space_availability space_availability[]
   space_image        space_image[]
   verification       verification[]
