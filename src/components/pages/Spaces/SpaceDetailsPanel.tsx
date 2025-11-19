@@ -17,7 +17,6 @@ import { toast } from 'sonner';
 
 import {
   AreaDialog,
-  SchemaReference,
   SpaceDialog,
   areaRecordToFormValues,
   createAreaFormDefaults,
@@ -324,15 +323,15 @@ export function SpaceDetailsPanel({
               </Button>
             </CardHeader>
             <CardContent className="grid gap-6 sm:grid-cols-2">
-              { renderField('Unit / suite', space.unit_number, 'space', 'unit_number') }
-              { renderField('Address subunit', space.address_subunit, 'space', 'address_subunit') }
-              { renderField('Street', space.street, 'space', 'street') }
-              { renderField('City', space.city, 'space', 'city') }
-              { renderField('Region / state', space.region, 'space', 'region') }
-              { renderField('Postal code', space.postal_code, 'space', 'postal_code') }
-              { renderField('Country', space.country_code, 'space', 'country_code') }
-              { renderField('Latitude', space.lat.toString(), 'space', 'lat') }
-              { renderField('Longitude', space.long.toString(), 'space', 'long') }
+              { renderField('Unit / suite', space.unit_number) }
+              { renderField('Address subunit', space.address_subunit) }
+              { renderField('Street', space.street) }
+              { renderField('City', space.city) }
+              { renderField('Region / state', space.region) }
+              { renderField('Postal code', space.postal_code) }
+              { renderField('Country', space.country_code) }
+              { renderField('Latitude', space.lat.toString()) }
+              { renderField('Longitude', space.long.toString()) }
             </CardContent>
             <CardFooter>
               { space.description ? (
@@ -515,13 +514,12 @@ export function SpaceDetailsPanel({
   );
 }
 
-function renderField(label: string, value: string, table: 'space' | 'area' | 'price_rate', column: string) {
+function renderField(label: string, value: string) {
   return (
     <div className="space-y-1 rounded-md border border-border/50 bg-muted/20 p-3">
-      <div className="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
-        <span>{ label }</span>
-        <SchemaReference table={ table } column={ column } />
-      </div>
+      <span className="text-xs uppercase tracking-wide text-muted-foreground">
+        { label }
+      </span>
       <p className="text-base font-semibold text-foreground">{ value || '—' }</p>
     </div>
   );
