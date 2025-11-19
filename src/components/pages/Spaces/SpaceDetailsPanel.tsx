@@ -488,20 +488,20 @@ export function SpaceDetailsPanel({
                   </div>
                   
                   { /* Responsive Grid Container */ }
-                  <div className="grid grid-cols-2 gap-4 pb-2 pt-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  <div className="grid grid-cols-1 gap-6 pb-3 pt-3 sm:grid-cols-2 lg:grid-cols-3">
                     { images.map((img) => {
                       const src = resolveImageSrc(img);
                       return (
                         <div 
                           key={ img.id } 
-                          className="relative aspect-[4/3] overflow-hidden rounded-md border border-border/60 bg-muted"
+                          className="relative aspect-[3/2] min-h-[220px] overflow-hidden rounded-lg border border-border/60 bg-muted shadow-sm"
                         >
                           { src ? (
                             <Image
                               src={ src }
                               alt={ img.category ?? 'Gallery image' }
                               fill
-                              sizes="(min-width: 1280px) 240px, (min-width: 1024px) 200px, 45vw"
+                              sizes="(min-width: 1280px) 360px, (min-width: 1024px) 300px, 100vw"
                               className="object-cover transition-transform hover:scale-105"
                             />
                           ) : (
