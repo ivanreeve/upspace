@@ -127,6 +127,34 @@ export function useUpdateAreaMutation(spaceId: string) {
   });
 }
 
+export function useDeleteAreaMutation(spaceId: string) {
+  const authFetch = useAuthenticatedFetch();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (areaId: string) => {
+      if (!spaceId) {
+        throw new Error('Space ID is required to delete an area.');
+      }
+
+      const response = await authFetch(
+        `/api/v1/partner/spaces/${spaceId}/areas/${areaId}`,
+        { method: 'DELETE', }
+      );
+
+      if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+      }
+
+      return areaId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), });
+    },
+  });
+}
+
 export function useUpdatePartnerSpaceMutation(spaceId: string) {
   const authFetch = useAuthenticatedFetch();
   const queryClient = useQueryClient();

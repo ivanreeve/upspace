@@ -13,7 +13,7 @@ import {
   FiEdit,
   FiLayers,
   FiPlus,
-  FiX
+  FiTrash2
 } from 'react-icons/fi';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -30,6 +30,7 @@ import { AreaRecord, SpaceImageRecord } from '@/data/spaces';
 import {
   useCreateAreaMutation,
   usePartnerSpaceQuery,
+  useDeleteAreaMutation,
   useUpdateAreaMutation,
   useUpdatePartnerSpaceMutation
 } from '@/hooks/api/usePartnerSpaces';
@@ -45,6 +46,8 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
@@ -57,6 +60,10 @@ import type { AreaFormValues } from '@/lib/validations/spaces';
 
 type SpaceDetailsPanelProps = {
   spaceId: string | null;
+  className?: string;
+};
+
+type SpaceDetailsSkeletonProps = {
   className?: string;
 };
 
@@ -110,6 +117,7 @@ export function SpaceDetailsPanel({
   const updateSpaceMutation = useUpdatePartnerSpaceMutation(normalizedSpaceId);
   const createAreaMutation = useCreateAreaMutation(normalizedSpaceId);
   const updateAreaMutation = useUpdateAreaMutation(normalizedSpaceId);
+  const deleteAreaMutation = useDeleteAreaMutation(normalizedSpaceId);
 
   const descriptionForm = useForm<DescriptionFormValues>({
     resolver: zodResolver(descriptionSchema),
@@ -119,6 +127,7 @@ export function SpaceDetailsPanel({
   const [areaDialogOpen, setAreaDialogOpen] = useState(false);
   const [areaDialogValues, setAreaDialogValues] = useState<AreaFormValues>(createAreaFormDefaults());
   const [editingAreaId, setEditingAreaId] = useState<string | null>(null);
+  const [areaPendingDelete, setAreaPendingDelete] = useState<AreaRecord | null>(null);
   
   // Controls the full-screen gallery modal
   const [galleryOpen, setGalleryOpen] = useState(false);
@@ -126,6 +135,7 @@ export function SpaceDetailsPanel({
   const descriptionPlainTextLength = richTextPlainTextLength(sanitizeRichText(descriptionValue ?? ''));
   const descriptionError = descriptionForm.formState.errors.description?.message;
   const isDescriptionDirty = descriptionForm.formState.isDirty;
+  const isDeletingArea = deleteAreaMutation.isPending;
 
   const imagesByCategory = useMemo(() => {
     const images = space?.images ?? [];
@@ -232,6 +242,30 @@ export function SpaceDetailsPanel({
     }
   };
 
+  const handleRequestDeleteArea = (area: AreaRecord) => {
+    setAreaPendingDelete(area);
+  };
+
+  const handleDeleteDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      setAreaPendingDelete(null);
+    }
+  };
+
+  const handleConfirmAreaDelete = async () => {
+    if (!areaPendingDelete) {
+      return;
+    }
+
+    try {
+      await deleteAreaMutation.mutateAsync(areaPendingDelete.id);
+      toast.success(`${areaPendingDelete.name} removed.`);
+      setAreaPendingDelete(null);
+    } catch (mutationError) {
+      toast.error(mutationError instanceof Error ? mutationError.message : 'Unable to delete area.');
+    }
+  };
+
   const renderStatusCard = (title: string, description: string, action?: ReactNode) => (
     <Card className={ cn('border-border/70 bg-background/80', className) }>
       <CardHeader>
@@ -247,27 +281,7 @@ export function SpaceDetailsPanel({
   }
 
   if (isLoading) {
-    return (
-      // ... existing skeleton code ...
-      <div className={ cn('space-y-6', className) }>
-        <Card className="border-border/70 bg-background/80">
-          <CardHeader className="space-y-2">
-            <Skeleton className="h-4 w-20" />
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-64" />
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            { Array.from({ length: 3, }).map((_, index) => (
-              <div key={ `photo-skeleton-${index}` } className="space-y-2">
-                <Skeleton className="h-40 w-full rounded-md" />
-                <Skeleton className="h-3 w-24" />
-              </div>
-            )) }
-          </CardContent>
-        </Card>
-        { /* ... rest of skeleton ... */ }
-      </div>
-    );
+    return <SpaceDetailsSkeleton className={ className } />;
   }
 
   if (isError) {
@@ -500,6 +514,16 @@ export function SpaceDetailsPanel({
                           <FiEdit className="size-3" aria-hidden="true" />
                           Edit
                         </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={ () => handleRequestDeleteArea(area) }
+                          className="text-xs text-destructive hover:text-destructive"
+                        >
+                          <FiTrash2 className="size-3" aria-hidden="true" />
+                          Delete
+                        </Button>
                       </div>
                     </div>
                     <dl className="mt-3 grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
@@ -540,6 +564,26 @@ export function SpaceDetailsPanel({
         onSubmit={ handleAreaSubmit }
         isSubmitting={ editingAreaId ? updateAreaMutation.isPending : createAreaMutation.isPending }
       />
+
+      <Dialog open={ Boolean(areaPendingDelete) } onOpenChange={ handleDeleteDialogOpenChange }>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete area</DialogTitle>
+            <DialogDescription>
+              This will permanently remove { areaPendingDelete?.name ? `"${areaPendingDelete.name}"` : 'this area' } and its pricing details.
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={ () => handleDeleteDialogOpenChange(false) } disabled={ isDeletingArea }>
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" onClick={ handleConfirmAreaDelete } disabled={ isDeletingArea }>
+              { isDeletingArea ? 'Deleting...' : 'Delete area' }
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       { /* Full Gallery Dialog */ }
       <Dialog open={ galleryOpen } onOpenChange={ setGalleryOpen }>
@@ -625,6 +669,104 @@ function renderField(label: string, value: string) {
         { label }
       </span>
       <p className="text-base font-semibold text-foreground">{ value || '—' }</p>
+    </div>
+  );
+}
+
+function SpaceDetailsSkeleton({ className, }: SpaceDetailsSkeletonProps) {
+  return (
+    <div className={ cn('space-y-6', className) }>
+      <Card className="border-border/70 bg-background/80">
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_260px] lg:items-stretch xl:grid-cols-[minmax(0,1fr)_320px]">
+            <Skeleton className="h-56 w-full rounded-md sm:h-64 lg:h-72 xl:h-[22rem]" />
+            <div className="grid grid-cols-2 grid-rows-2 gap-4 lg:h-full">
+              { Array.from({ length: 4, }).map((_, index) => (
+                <Skeleton key={ `gallery-skeleton-${index}` } className="h-32 w-full rounded-md sm:h-36 lg:h-full" />
+              )) }
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-6 lg:grid-cols-[3fr,2fr]">
+        <div className="space-y-6">
+          <Card className="border-border/70 bg-background/80">
+            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-6 w-40" />
+                <Skeleton className="h-4 w-64" />
+              </div>
+              <Skeleton className="h-9 w-36" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-4 w-4/6" />
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/70 bg-background/80">
+            <CardHeader className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-64" />
+            </CardHeader>
+            <CardContent className="grid gap-6 sm:grid-cols-2">
+              { Array.from({ length: 6, }).map((_, index) => (
+                <div key={ `field-skeleton-${index}` } className="space-y-2 rounded-md border border-border/50 bg-muted/20 p-3">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-5 w-28" />
+                </div>
+              )) }
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="border-border/70 bg-background/80">
+          <CardHeader className="flex flex-col gap-4">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-64" />
+            </div>
+            <Skeleton className="h-10 w-full sm:w-32" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            { Array.from({ length: 2, }).map((_, index) => (
+              <div key={ `area-skeleton-${index}` } className="space-y-3 rounded-md border border-border/60 p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <Skeleton className="h-8 w-24" />
+                </div>
+                <div className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Skeleton className="h-3 w-28" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                  <div className="space-y-2">
+                    <Skeleton className="h-3 w-28" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                </div>
+              </div>
+            )) }
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -111,3 +111,52 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
     return NextResponse.json({ error: 'Unable to update area.', }, { status: 500, });
   }
 }
+
+export async function DELETE(_req: NextRequest, { params, }: RouteParams) {
+  try {
+    const { userId, } = await requirePartnerSession();
+    const spaceIdParam = params?.space_id;
+    const areaIdParam = params?.area_id;
+
+    if (!isUuid(spaceIdParam) || !isUuid(areaIdParam)) {
+      return NextResponse.json({ error: 'space_id and area_id must be valid UUIDs.', }, { status: 400, });
+    }
+
+    const space = await prisma.space.findFirst({
+      where: {
+        id: spaceIdParam,
+        user_id: userId,
+      },
+      select: { id: true, },
+    });
+
+    if (!space) {
+      return NextResponse.json({ error: 'Space not found.', }, { status: 404, });
+    }
+
+    const existingArea = await prisma.area.findFirst({
+      where: {
+        id: areaIdParam,
+        space_id: spaceIdParam,
+      },
+      select: { id: true, },
+    });
+
+    if (!existingArea) {
+      return NextResponse.json({ error: 'Area not found.', }, { status: 404, });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.price_rate.deleteMany({ where: { area_id: areaIdParam, }, });
+      await tx.area.delete({ where: { id: areaIdParam, }, });
+    });
+
+    return new NextResponse(null, { status: 204, });
+  } catch (error) {
+    if (error instanceof PartnerSessionError) {
+      return NextResponse.json({ error: error.message, }, { status: error.status, });
+    }
+    console.error('Failed to delete area', error);
+    return NextResponse.json({ error: 'Unable to delete area.', }, { status: 500, });
+  }
+}
