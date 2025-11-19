@@ -242,7 +242,7 @@ export function SpaceDetailsPanel({
             { space.images.length === 0 ? (
               <p className="text-sm text-muted-foreground">No photos uploaded yet.</p>
             ) : (
-              <div className="flex flex-col gap-4 lg:flex-row">
+              <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_260px] lg:items-stretch xl:grid-cols-[minmax(0,1fr)_320px]">
                 { /* Main Featured Image Preview */ }
                 <figure className="relative h-56 flex-1 overflow-hidden rounded-md border border-border/60 bg-muted sm:h-64 lg:h-72 xl:h-[22rem]">
                   { featuredImageUrl ? (
@@ -265,7 +265,7 @@ export function SpaceDetailsPanel({
                 </figure>
                 
                 { /* Small Grid Images */ }
-                <div className="grid grid-cols-2 grid-rows-2 gap-4 lg:w-[260px] xl:w-[320px]">
+                <div className="grid grid-cols-2 grid-rows-2 gap-4 lg:h-full">
                   { Array.from({ length: 4, }).map((_, index) => {
                     const image = stackedImages[index];
                     const imageSrc = resolveImageSrc(image);
@@ -273,7 +273,7 @@ export function SpaceDetailsPanel({
 
                     return (
                       <figure key={ `window-photo-${index}` }>
-                        <div className="relative aspect-square w-full overflow-hidden rounded-md border border-border/60 bg-muted">
+                        <div className="relative aspect-square w-full overflow-hidden rounded-md border border-border/60 bg-muted lg:aspect-auto lg:h-full">
                           { imageSrc ? (
                             <Image
                               src={ imageSrc }
