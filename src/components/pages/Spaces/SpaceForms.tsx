@@ -2068,7 +2068,7 @@ export function AreaDialog({
             render={ ({ field, }) => (
               <FormItem>
                 <FormLabel className="flex items-center justify-between">
-                  <span>Rate (USD)</span>
+                  <span>Rate (PHP)</span>
                   <SchemaReference table="price_rate" column="price" />
                 </FormLabel>
                 <FormControl>
