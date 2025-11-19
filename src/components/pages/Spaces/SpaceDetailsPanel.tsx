@@ -37,7 +37,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle
 } from '@/components/ui/card';
@@ -310,40 +309,50 @@ export function SpaceDetailsPanel({
 
         { /* Details and Areas Cards */ }
         <div className="grid gap-6 lg:grid-cols-[3fr,2fr]">
-          <Card className="border-border/70 bg-background/80">
-            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="space-y-1">
-                <Badge variant="outline" className="font-mono text-xs uppercase tracking-wide">space</Badge>
-                <CardTitle className="text-2xl">{ space.name }</CardTitle>
-                <CardDescription>Values currently stored for <code>prisma.space</code>.</CardDescription>
-              </div>
-              <Button type="button" variant="secondary" onClick={ handleEditSpace } className="inline-flex items-center gap-2">
-                <FiEdit className="size-4" aria-hidden="true" />
-                Edit space
-              </Button>
-            </CardHeader>
-            <CardContent className="grid gap-6 sm:grid-cols-2">
-              { renderField('Unit / suite', space.unit_number) }
-              { renderField('Address subunit', space.address_subunit) }
-              { renderField('Street', space.street) }
-              { renderField('City', space.city) }
-              { renderField('Region / state', space.region) }
-              { renderField('Postal code', space.postal_code) }
-              { renderField('Country', space.country_code) }
-              { renderField('Latitude', space.lat.toString()) }
-              { renderField('Longitude', space.long.toString()) }
-            </CardContent>
-            <CardFooter>
-              { space.description ? (
-                <div
-                  className="text-sm text-muted-foreground leading-relaxed"
-                  dangerouslySetInnerHTML={ { __html: sanitizeRichText(space.description), } }
-                />
-              ) : (
-                <p className="text-sm text-muted-foreground">No description yet.</p>
-              ) }
-            </CardFooter>
-          </Card>
+          <div className="space-y-6">
+            <Card className="border-border/70 bg-background/80">
+              <CardHeader className="space-y-1">
+                <Badge variant="outline" className="font-mono text-xs uppercase tracking-wide">description</Badge>
+                <CardTitle className="text-2xl">Description</CardTitle>
+                <CardDescription>Rendered rich text from <code>prisma.space.description</code>.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                { space.description ? (
+                  <div
+                    className="text-sm leading-relaxed text-muted-foreground"
+                    dangerouslySetInnerHTML={ { __html: sanitizeRichText(space.description), } }
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground">No description yet.</p>
+                ) }
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/70 bg-background/80">
+              <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="space-y-1">
+                  <Badge variant="outline" className="font-mono text-xs uppercase tracking-wide">space</Badge>
+                  <CardTitle className="text-2xl">{ space.name }</CardTitle>
+                  <CardDescription>Values currently stored for <code>prisma.space</code>.</CardDescription>
+                </div>
+                <Button type="button" variant="secondary" onClick={ handleEditSpace } className="inline-flex items-center gap-2">
+                  <FiEdit className="size-4" aria-hidden="true" />
+                  Edit space
+                </Button>
+              </CardHeader>
+              <CardContent className="grid gap-6 sm:grid-cols-2">
+                { renderField('Unit / suite', space.unit_number) }
+                { renderField('Address subunit', space.address_subunit) }
+                { renderField('Street', space.street) }
+                { renderField('City', space.city) }
+                { renderField('Region / state', space.region) }
+                { renderField('Postal code', space.postal_code) }
+                { renderField('Country', space.country_code) }
+                { renderField('Latitude', space.lat.toString()) }
+                { renderField('Longitude', space.long.toString()) }
+              </CardContent>
+            </Card>
+          </div>
 
           <Card className="border-border/70 bg-background/80">
             <CardHeader className="flex flex-col gap-4">
