@@ -267,7 +267,7 @@ export function SpaceDetailsPanel({
                 </figure>
                 
                 { /* Small Grid Images */ }
-                <div className="grid grid-cols-2 grid-rows-2 gap-3 lg:w-[260px] xl:w-[320px]">
+                <div className="grid grid-cols-2 grid-rows-2 gap-4 lg:w-[260px] xl:w-[320px]">
                   { Array.from({ length: 4, }).map((_, index) => {
                     const image = stackedImages[index];
                     const imageSrc = resolveImageSrc(image);
