@@ -193,7 +193,7 @@ export default function Marketplace() {
 
   return (
     <div className="bg-muted/20">
-      <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+      <section className="px-4 py-10 sm:px-6 lg:px-10">
         <div className="grid gap-8 lg:grid-cols-12">
           <aside className="hidden lg:col-span-4 lg:block">
             <Card className="sticky top-6 border-border/70 shadow-sm">

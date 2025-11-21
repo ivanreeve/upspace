@@ -78,7 +78,7 @@ const statusVariant = (status?: Space['status']): 'secondary' | 'outline' => {
 
 export function SkeletonGrid({ count = 6, }: { count?: number }) {
   return (
-    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
       { Array.from({ length: count, }).map((_, i) => (
         <Card key={ i } className="border-border/60">
           <Skeleton className="h-44 w-full rounded-t-lg" />
@@ -101,7 +101,7 @@ export function CardsGrid({ items, }: { items: Space[] }) {
     );
   }
   return (
-    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
       { items.map((space) => (
         <SpaceCard key={ space.space_id } space={ space } />
       )) }
