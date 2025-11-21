@@ -194,34 +194,12 @@ export default function Marketplace() {
   return (
     <div className="bg-muted/20">
       <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-6">
-          <form
-            onSubmit={ handleSearchSubmit }
-            className="flex flex-col gap-3 rounded-2xl border bg-card/80 p-4 shadow-sm md:flex-row md:items-center"
-          >
-            <div className="flex flex-1 items-center gap-3 rounded-xl border bg-background px-4 py-2 shadow-sm">
-              <FiSearch aria-hidden="true" className="size-5 text-muted-foreground" />
-              <Input
-                value={ searchValue }
-                onChange={ (event) => setSearchValue(event.target.value) }
-                placeholder="Search by space name, neighborhood, or keyword"
-                aria-label="Search spaces"
-                className="border-none bg-transparent text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
-              />
-            </div>
-            <Button type="submit" className="w-full rounded-xl md:w-auto">
-              Search marketplace
-            </Button>
-          </form>
-        </div>
-
-        <div className="mt-8 grid gap-8 lg:grid-cols-12">
+        <div className="grid gap-8 lg:grid-cols-12">
           <aside className="hidden lg:col-span-4 lg:block">
             <Card className="sticky top-6 border-border/70 shadow-sm">
               <CardHeader className="space-y-3">
                 <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">Filters</p>
-                  <CardTitle>Advanced options</CardTitle>
+                  <CardTitle>Advanced Filters</CardTitle>
                   <CardDescription>
                     Narrow spaces by exact location, availability window, and price range.
                   </CardDescription>
@@ -243,6 +221,25 @@ export default function Marketplace() {
           </aside>
 
           <div className="space-y-6 lg:col-span-8">
+            <form
+              onSubmit={ handleSearchSubmit }
+              className="flex flex-col gap-3 rounded-2xl border bg-card/80 p-4 shadow-sm md:flex-row md:items-center"
+            >
+              <div className="flex flex-1 items-center gap-3 rounded-xl border bg-background px-4 py-2 shadow-sm">
+                <FiSearch aria-hidden="true" className="size-5 text-muted-foreground" />
+                <Input
+                  value={ searchValue }
+                  onChange={ (event) => setSearchValue(event.target.value) }
+                  placeholder="Search by space name, neighborhood, or keyword"
+                  aria-label="Search spaces"
+                  className="border-none bg-transparent text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
+                />
+              </div>
+              <Button type="submit" className="w-full rounded-xl md:w-auto">
+                Search marketplace
+              </Button>
+            </form>
+
             <div className="flex flex-wrap items-center gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
