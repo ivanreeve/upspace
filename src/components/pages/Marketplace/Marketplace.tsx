@@ -496,7 +496,7 @@ function FiltersForm({
             } }
             disabled={ isRegionsLoading }
           >
-            <SelectTrigger id="region-select" aria-label="Region">
+            <SelectTrigger id="region-select" aria-label="Region" className="w-full">
               <SelectValue
                 placeholder={
                   isRegionsError
@@ -536,7 +536,7 @@ function FiltersForm({
             } }
             disabled={ !regionCode || isCitiesLoading }
           >
-            <SelectTrigger id="city-select" aria-label="City">
+            <SelectTrigger id="city-select" aria-label="City" className="w-full">
               <SelectValue
                 placeholder={
                   !regionCode
@@ -578,7 +578,7 @@ function FiltersForm({
             } }
             disabled={ !cityCode || isBarangaysLoading }
           >
-            <SelectTrigger id="barangay-select" aria-label="Barangay">
+            <SelectTrigger id="barangay-select" aria-label="Barangay" className="w-full">
               <SelectValue
                 placeholder={
                   !cityCode
