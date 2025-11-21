@@ -15,7 +15,14 @@ import { useForm, useWatch, type FieldPathValues } from 'react-hook-form';
 import {
   FiArrowLeft,
   FiArrowRight,
+  FiCamera,
+  FiCheck,
+  FiCalendar,
+  FiHome,
+  FiList,
+  FiMapPin,
   FiPlus,
+  FiShield,
   FiTrash,
   FiX
 } from 'react-icons/fi';
@@ -24,6 +31,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { MdOutlineMailOutline } from 'react-icons/md';
+import type { IconType } from 'react-icons';
 
 import { SpaceAddressFields, SpaceDetailsFields, createSpaceFormDefaults } from '@/components/pages/Spaces/SpaceForms';
 import { SpaceAmenitiesStep } from '@/components/pages/Spaces/SpaceAmenitiesStep';
@@ -45,6 +53,7 @@ import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
 import { partnerSpacesKeys } from '@/hooks/api/usePartnerSpaces';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { spaceSchema, type SpaceFormValues } from '@/lib/validations/spaces';
+import { cn } from '@/lib/utils';
 
 const MAX_CATEGORY_IMAGES = 5;
 const CATEGORY_NAME_SAMPLES = [
@@ -68,6 +77,43 @@ type WatchedFieldNames = typeof WATCHED_FIELD_NAMES;
 type WatchedFieldValues = FieldPathValues<SpaceFormValues, WatchedFieldNames>;
 type SpaceFormStep = 1 | 2 | 3 | 4 | 5 | 6;
 const STEP_SEQUENCE: SpaceFormStep[] = [1, 2, 3, 4, 5, 6];
+type StepSidebarItem = {
+  step: SpaceFormStep;
+  label: string;
+  icon: IconType;
+};
+const STEP_SIDEBAR_ITEMS: StepSidebarItem[] = [
+  {
+    step: 1,
+    label: 'Space details',
+    icon: FiHome,
+  },
+  {
+    step: 2,
+    label: 'Photos',
+    icon: FiCamera,
+  },
+  {
+    step: 3,
+    label: 'Amenities',
+    icon: FiList,
+  },
+  {
+    step: 4,
+    label: 'Address',
+    icon: FiMapPin,
+  },
+  {
+    step: 5,
+    label: 'Availability',
+    icon: FiCalendar,
+  },
+  {
+    step: 6,
+    label: 'Verification',
+    icon: FiShield,
+  }
+];
 type VerificationRequirementsState = Record<VerificationRequirementId, (File | null)[]>;
 
 const createEmptyVerificationRequirementsState = (): VerificationRequirementsState =>
@@ -385,6 +431,43 @@ export default function SpaceCreateRoute() {
 
   const isRequirementsStepComplete = VERIFICATION_REQUIREMENTS.every((requirement) =>
     requirement.slots.every((_, slotIndex) => Boolean(verificationRequirements[requirement.id][slotIndex]))
+  );
+
+  const stepCompletionStatus = useMemo<Record<SpaceFormStep, boolean>>(
+    () => ({
+      1: isBasicsStepComplete,
+      2: isPhotoStepComplete,
+      3: isAmenitiesStepComplete,
+      4: isAddressStepComplete,
+      5: isAvailabilityStepComplete,
+      6: isRequirementsStepComplete,
+    }),
+    [
+      isAddressStepComplete,
+      isAmenitiesStepComplete,
+      isAvailabilityStepComplete,
+      isBasicsStepComplete,
+      isPhotoStepComplete,
+      isRequirementsStepComplete
+    ]
+  );
+
+  const stepAccessibility = useMemo<Record<SpaceFormStep, boolean>>(
+    () => ({
+      1: true,
+      2: isBasicsStepComplete,
+      3: isPhotoStepComplete,
+      4: isAmenitiesStepComplete,
+      5: isAddressStepComplete,
+      6: isAvailabilityStepComplete,
+    }),
+    [
+      isAddressStepComplete,
+      isAmenitiesStepComplete,
+      isAvailabilityStepComplete,
+      isBasicsStepComplete,
+      isPhotoStepComplete
+    ]
   );
 
   useEffect(() => {
@@ -978,9 +1061,65 @@ export default function SpaceCreateRoute() {
         <Card className="mt-6 border-border/70 bg-background/80">
           <CardContent>
             <Form { ...form }>
-              <form className="space-y-6" onSubmit={ form.handleSubmit(handleSubmit) }>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between rounded-md py-2 text-sm text-muted-foreground">
+              <form
+                className="grid gap-6 lg:grid-cols-[240px_1fr]"
+                onSubmit={ form.handleSubmit(handleSubmit) }
+              >
+                <aside className="space-y-5 rounded-lg border border-border/70 bg-background/80 p-5 lg:sticky lg:top-4 lg:self-start">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Step navigation</p>
+                    <p className="text-sm font-semibold text-foreground">Follow the flow</p>
+                  </div>
+                  <nav className="space-y-2" aria-label="Space setup steps">
+                    { STEP_SIDEBAR_ITEMS.map((item) => {
+                      const isCurrent = item.step === currentStep;
+                      const isAccessible = stepAccessibility[item.step];
+                      const isComplete = stepCompletionStatus[item.step];
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={ item.step }
+                          type="button"
+                          className={ cn(
+                            'flex w-full flex-col gap-2 rounded-lg border px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                            isCurrent ? 'border-primary bg-primary/10' : 'border-border/60 bg-background/80',
+                            !isAccessible && 'cursor-not-allowed opacity-60'
+                          ) }
+                          disabled={ !isAccessible }
+                          aria-current={ isCurrent ? 'step' : undefined }
+                          onClick={ () => {
+                            if (!isAccessible || isCurrent) {
+                              return;
+                            }
+                            navigateToStep(item.step);
+                          } }
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                              Step { item.step }
+                            </span>
+                            { isComplete && (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
+                                <FiCheck className="size-3" aria-hidden="true" />
+                                Complete
+                              </span>
+                            ) }
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Icon className="size-4" aria-hidden="true" />
+                            <span className="text-sm font-semibold text-foreground">{ item.label }</span>
+                          </div>
+                        </button>
+                      );
+                    }) }
+                  </nav>
+                  <p className="text-xs text-muted-foreground">
+                    Locked steps unlock when the previous section is completed.
+                  </p>
+                </aside>
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between rounded-md py-2 text-sm text-muted-foreground">
                     <span>Step { currentStep } of { STEP_SEQUENCE.length }</span>
                     <div className="flex gap-1">
                       { STEP_SEQUENCE.map((stepNumber) => (
@@ -1330,6 +1469,7 @@ export default function SpaceCreateRoute() {
                       </>
                     ) }
                   </div>
+                </div>
                 </div>
               </form>
             </Form>
