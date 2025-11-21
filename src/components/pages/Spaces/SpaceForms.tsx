@@ -310,7 +310,12 @@ export function DescriptionEditor<TFieldValues extends { description: string }>(
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3], }, }),
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2, 3],
+        },
+        link: false,
+      }),
       Link.configure({
         autolink: true,
         linkOnPaste: true,
