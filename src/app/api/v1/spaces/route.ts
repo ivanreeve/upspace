@@ -167,6 +167,25 @@ const DAY_NAME_TO_INDEX: Record<WeekdayName, number> = {
   Sunday: 6,
 };
 
+const padTime = (value: number) => value.toString().padStart(2, '0');
+const formatTime = (value: Date) => `${padTime(value.getUTCHours())}:${padTime(value.getUTCMinutes())}`;
+const SUPABASE_DEFAULT_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://dfnwebbpjajrlfmeaarx.supabase.co';
+const SUPABASE_BASE_URL = SUPABASE_DEFAULT_URL.replace(/\/$/, '');
+const isAbsoluteUrl = (value: string | null | undefined) => Boolean(value && /^https?:\/\//i.test(value));
+const buildPublicObjectUrl = (path: string | null | undefined) => {
+  if (!path) {
+    return null;
+  }
+  if (isAbsoluteUrl(path)) {
+    return path;
+  }
+  const normalized = path.replace(/^\/+/, '');
+  if (!SUPABASE_BASE_URL) {
+    return null;
+  }
+  return `${SUPABASE_BASE_URL}/storage/v1/object/public/${normalized}`;
+};
+
 class HttpError extends Error {
   status: number;
 
@@ -176,6 +195,48 @@ class HttpError extends Error {
     this.status = status;
   }
 }
+
+const deriveSpaceStatus = (latestStatus?: Prisma.verificationStatus | null) => {
+  if (latestStatus === 'approved') {
+    return 'Live';
+  }
+  if (latestStatus === 'in_review') {
+    return 'Pending';
+  }
+  return 'Draft';
+};
+
+const summarizeRates = (
+  areas: {
+    price_rate: {
+      price: Prisma.Decimal | number;
+      time_unit: string;
+    }[];
+  }[]
+) => {
+  const allRates = areas.flatMap((area) => area.price_rate ?? []);
+  if (!allRates.length) {
+    return null;
+  }
+  const numericPrices = allRates.map((rate) => Number(rate.price));
+  return {
+    min: Math.min(...numericPrices),
+    max: Math.max(...numericPrices),
+    unit: allRates[0]?.time_unit ?? null,
+  };
+};
+
+const serializeAvailabilitySlots = (
+  slots: {
+    day_of_week: number;
+    opening: Date;
+    closing: Date;
+  }[]
+) => slots.map((slot) => ({
+  day_of_week: slot.day_of_week,
+  opens_at: formatTime(new Date(slot.opening)),
+  closes_at: formatTime(new Date(slot.closing)),
+}));
 
 const normalizeAvailability = (availability: SpaceCreateInput['availability']): AvailabilitySlot[] => {
   const slots: AvailabilitySlot[] = [];
@@ -259,6 +320,8 @@ export async function GET(req: NextRequest) {
       region: z.string().min(1).optional(),
       country: z.string().min(1).optional(),
       postal_code: z.string().min(1).optional(),
+      barangay: z.string().min(1).optional(),
+      street: z.string().min(1).optional(),
       user_id: z.string().regex(/^\d+$/).optional(),
 
       // search
@@ -284,6 +347,9 @@ export async function GET(req: NextRequest) {
       rate_time_unit: z.string().min(1).optional(),
       min_rate_price: z.coerce.number().nonnegative().optional(),
       max_rate_price: z.coerce.number().nonnegative().optional(),
+      available_from: z.string().regex(TIME_24H_PATTERN).optional(),
+      available_to: z.string().regex(TIME_24H_PATTERN).optional(),
+      include_pending: z.coerce.boolean().optional().default(false),
 
       // sorting
       sort: z.enum(['id','name','created_at','updated_at']).optional(),
@@ -297,6 +363,8 @@ export async function GET(req: NextRequest) {
       region: searchParams.get('region') ?? undefined,
       country: searchParams.get('country') ?? undefined,
       postal_code: searchParams.get('postal_code') ?? undefined,
+      barangay: searchParams.get('barangay') ?? undefined,
+      street: searchParams.get('street') ?? undefined,
       user_id: searchParams.get('user_id') ?? undefined,
       q: searchParams.get('q') ?? undefined,
       created_from: searchParams.get('created_from') ?? undefined,
@@ -312,6 +380,9 @@ export async function GET(req: NextRequest) {
       rate_time_unit: searchParams.get('rate_time_unit') ?? undefined,
       min_rate_price: searchParams.get('min_rate_price') ?? undefined,
       max_rate_price: searchParams.get('max_rate_price') ?? undefined,
+      available_from: searchParams.get('available_from') ?? undefined,
+      available_to: searchParams.get('available_to') ?? undefined,
+      include_pending: searchParams.get('include_pending') ?? undefined,
       sort: searchParams.get('sort') ?? undefined,
       order: searchParams.get('order') ?? undefined,
     });
@@ -327,6 +398,8 @@ export async function GET(req: NextRequest) {
       region,
       country,
       postal_code,
+      barangay,
+      street,
       user_id,
       q,
       created_from,
@@ -342,9 +415,23 @@ export async function GET(req: NextRequest) {
       rate_time_unit,
       min_rate_price,
       max_rate_price,
+      available_from,
+      available_to,
+      include_pending,
       sort,
       order,
     } = parsed.data;
+
+    if (available_from && available_to) {
+      const startMinutes = timeStringToMinutes(available_from);
+      const endMinutes = timeStringToMinutes(available_to);
+      if (!Number.isFinite(startMinutes) || !Number.isFinite(endMinutes) || endMinutes <= startMinutes) {
+        return NextResponse.json(
+          { error: 'available_to must be later than available_from.', },
+          { status: 400, }
+        );
+      }
+    }
 
     // Build Prisma where clause
     const and: any[] = [];
@@ -352,6 +439,8 @@ export async function GET(req: NextRequest) {
     if (region) and.push({ region, });
     if (country) and.push({ country_code: country, });
     if (postal_code) and.push({ postal_code, });
+    if (barangay) and.push({ barangay, });
+    if (street) and.push({ street, });
     if (user_id) and.push({ user_id: BigInt(user_id), });
 
     if (q) {
@@ -426,6 +515,12 @@ mode: 'insensitive' as const,
       and.push({ id: { in: candidateSpaceIds, }, });
     }
 
+    const verificationStatuses: Prisma.verificationStatus[] = include_pending
+      ? ['approved', 'in_review']
+      : ['approved'];
+
+    and.push({ verification: { some: { status: { in: verificationStatuses, }, }, }, });
+
     // Created/updated range filters
     if (created_from || created_to) {
       const created: any = {};
@@ -490,8 +585,31 @@ mode: 'insensitive' as const,
       .split(',')
       .map(s => s.trim())
       .filter(Boolean);
-    if (days.length > 0) {
-      and.push({ space_availability: { some: { day_of_week: { in: days, }, }, }, });
+
+    const normalizedDays = days
+      .map((day) => {
+        if (/^\d+$/.test(day)) {
+          return Number(day);
+        }
+        if ((day as WeekdayName) in DAY_NAME_TO_INDEX) {
+          return DAY_NAME_TO_INDEX[day as WeekdayName];
+        }
+        return null;
+      })
+      .filter((value): value is number => value !== null);
+
+    const availabilityClause: Prisma.space_availabilityWhereInput = {};
+    if (normalizedDays.length > 0) {
+      availabilityClause.day_of_week = { in: normalizedDays, };
+    }
+    if (available_from) {
+      availabilityClause.opening = { lte: timeStringToUtcDate(available_from), };
+    }
+    if (available_to) {
+      availabilityClause.closing = { gte: timeStringToUtcDate(available_to), };
+    }
+    if (Object.keys(availabilityClause).length > 0) {
+      and.push({ space_availability: { some: availabilityClause, }, });
     }
 
     // Rate-based price/time-unit filter via areas -> rates
@@ -522,14 +640,69 @@ mode: 'insensitive' as const,
       skip: cursor ? 1 : 0,
       ...(cursor ? { cursor: { id: cursor, }, } : {}),
       orderBy,
+      include: {
+        space_image: {
+          orderBy: [
+            { is_primary: 'desc' as const, },
+            { display_order: 'asc' as const, },
+            { created_at: 'asc' as const, }
+          ],
+          select: {
+            path: true,
+            is_primary: true,
+            display_order: true,
+          },
+          take: 2,
+        },
+        area: {
+          select: {
+            id: true,
+            price_rate: {
+              select: {
+                price: true,
+                time_unit: true,
+              },
+            },
+          },
+        },
+        verification: {
+          orderBy: { created_at: 'desc' as const, },
+          take: 1,
+          select: { status: true, },
+        },
+        space_availability: {
+          select: {
+            day_of_week: true,
+            opening: true,
+            closing: true,
+          },
+          orderBy: { day_of_week: 'asc' as const, },
+        },
+      },
     });
 
     const hasNext = rows.length > limit;
     const items = hasNext ? rows.slice(0, limit) : rows;
     const nextCursor = hasNext ? items[items.length - 1].id : null;
 
+    const payload = items.map((space) => {
+      const base = serializeSpace(space);
+      const primaryImage = space.space_image[0];
+      const priceSummary = summarizeRates(space.area);
+
+      return {
+        ...base,
+        status: deriveSpaceStatus(space.verification[0]?.status ?? null),
+        image_url: buildPublicObjectUrl(primaryImage?.path ?? null),
+        min_rate_price: priceSummary?.min ?? null,
+        max_rate_price: priceSummary?.max ?? null,
+        rate_time_unit: priceSummary?.unit ?? null,
+        availability: serializeAvailabilitySlots(space.space_availability),
+      };
+    });
+
     const body = JSON.stringify({
-      data: items,
+      data: payload,
       nextCursor,
     }, replacer);
 
