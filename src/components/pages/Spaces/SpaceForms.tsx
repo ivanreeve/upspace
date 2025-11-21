@@ -18,6 +18,8 @@ import {
 } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import {
+  FiCheck,
+  FiChevronDown,
   FiLoader,
   FiLock,
   FiMapPin,
@@ -54,9 +56,11 @@ import { SPACE_DESCRIPTION_EDITOR_CLASSNAME } from './space-description-rich-tex
 import {
   AREA_INPUT_DEFAULT,
   AreaRecord,
+  WEEKDAY_ORDER,
   cloneWeeklyAvailability,
   SPACE_INPUT_DEFAULT,
-  SpaceRecord
+  SpaceRecord,
+  type WeeklyAvailability
 } from '@/data/spaces';
 import {
   Form,
@@ -215,16 +219,52 @@ const TEXT_ALIGNMENT_OPTIONS: ReadonlyArray<{
   }
 ];
 
+const HEADING_OPTIONS = [
+  {
+    title: 'Normal',
+    label: 'Normal text',
+    level: undefined,
+  },
+  {
+    title: 'H1',
+    label: 'Heading 1',
+    level: 1,
+  },
+  {
+    title: 'H2',
+    label: 'Heading 2',
+    level: 2,
+  },
+  {
+    title: 'H3',
+    label: 'Heading 3',
+    level: 3,
+  }
+] as const;
+
 const TABLE_INSERT_DEFAULTS = {
   rows: 2,
   cols: 2,
   withHeaderRow: true,
 } as const;
 
+const disableWeeklyAvailability = (availability: WeeklyAvailability): WeeklyAvailability => {
+  const disabledAvailability = {} as WeeklyAvailability;
+
+  for (const day of WEEKDAY_ORDER) {
+    disabledAvailability[day] = {
+      ...availability[day],
+      is_open: false,
+    };
+  }
+
+  return disabledAvailability;
+};
+
 export const createSpaceFormDefaults = (): SpaceFormValues => ({
   ...SPACE_INPUT_DEFAULT,
   amenities: [...SPACE_INPUT_DEFAULT.amenities],
-  availability: cloneWeeklyAvailability(SPACE_INPUT_DEFAULT.availability),
+  availability: disableWeeklyAvailability(cloneWeeklyAvailability(SPACE_INPUT_DEFAULT.availability)),
 });
 
 export const createAreaFormDefaults = (): AreaFormValues => ({ ...AREA_INPUT_DEFAULT, });
@@ -528,34 +568,49 @@ export function DescriptionEditor<TFieldValues extends { description: string }>(
         .run()
       : false;
   const canRemoveLink = isLinkActive && createCanChain().unsetLink().run();
+  const headingSelection = HEADING_OPTIONS.find((option) => isHeadingActive(option.level));
+  const activeHeadingOption = headingSelection ?? HEADING_OPTIONS[0];
+  const alignmentSelection = TEXT_ALIGNMENT_OPTIONS.find((option) => isAlignmentActive(option.value));
+  const activeAlignmentOption = alignmentSelection ?? TEXT_ALIGNMENT_OPTIONS[0];
+  const ActiveAlignmentIcon = activeAlignmentOption.icon;
 
   return (
     <div className="rounded-md border border-border/70">
       <div className="border-b border-border/70 bg-muted px-3 py-2">
         <div className="flex flex-wrap items-center gap-2" role="toolbar" aria-label="Description formatting tools">
-          { (['Normal', 'H1', 'H2', 'H3'] as const).map((label, index) => {
-            const headingLevel = index === 0 ? undefined : index;
-            return (
-              <Tooltip key={ label }>
-                <TooltipTrigger asChild>
+          <DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
                   <Button
                     type="button"
                     size="sm"
-                    variant={ isHeadingActive(headingLevel) ? 'outline' : 'ghost' }
-                    className="min-w-[3rem] font-normal"
-                    onClick={ () => toggleHeading(headingLevel) }
-                    aria-pressed={ isHeadingActive(headingLevel) }
-                    aria-label={ headingLevel ? `Heading ${headingLevel}` : 'Normal text' }
+                    variant="outline"
+                    className="gap-1 font-normal"
+                    aria-label={ activeHeadingOption.label }
                   >
-                    { label }
+                    <span>{ activeHeadingOption.title }</span>
+                    <FiChevronDown className="size-4" aria-hidden="true" />
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  { headingLevel ? `Heading ${headingLevel}` : 'Normal text' }
-                </TooltipContent>
-              </Tooltip>
-            );
-          }) }
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Paragraph style</TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent align="start" className="w-56">
+              { HEADING_OPTIONS.map((option) => (
+                <DropdownMenuItem
+                  key={ option.label }
+                  onSelect={ () => toggleHeading(option.level) }
+                  className="flex items-center justify-between gap-2"
+                >
+                  <span>{ option.label }</span>
+                  { isHeadingActive(option.level) && (
+                    <FiCheck className="size-4" aria-hidden="true" />
+                  ) }
+                </DropdownMenuItem>
+              )) }
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -601,28 +656,45 @@ export function DescriptionEditor<TFieldValues extends { description: string }>(
             </TooltipTrigger>
             <TooltipContent side="bottom">Strikethrough</TooltipContent>
           </Tooltip>
-          { TEXT_ALIGNMENT_OPTIONS.map(({
-            value,
-            label,
-            icon: Icon,
-          }) => (
-            <Tooltip key={ value }>
+          <DropdownMenu>
+            <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={ isAlignmentActive(value) ? 'outline' : 'ghost' }
-                  onClick={ () => setTextAlignment(value) }
-                  aria-pressed={ isAlignmentActive(value) }
-                  aria-label={ label }
-                >
-                  <Icon className="size-4" aria-hidden="true" />
-                  <span className="sr-only">{ label }</span>
-                </Button>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="gap-1"
+                    aria-label={ activeAlignmentOption.label }
+                  >
+                  <ActiveAlignmentIcon className="size-4" aria-hidden="true" />
+                    <FiChevronDown className="size-4" aria-hidden="true" />
+                  </Button>
+                </DropdownMenuTrigger>
               </TooltipTrigger>
-              <TooltipContent side="bottom">{ label }</TooltipContent>
+              <TooltipContent side="bottom">Text alignment</TooltipContent>
             </Tooltip>
-          )) }
+            <DropdownMenuContent align="start" className="w-56">
+              { TEXT_ALIGNMENT_OPTIONS.map((option) => {
+                const AlignmentIcon = option.icon;
+                return (
+                  <DropdownMenuItem
+                    key={ option.value }
+                    onSelect={ () => setTextAlignment(option.value) }
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <AlignmentIcon className="size-4" aria-hidden="true" />
+                      <span>{ option.label }</span>
+                    </div>
+                    { isAlignmentActive(option.value) && (
+                      <FiCheck className="size-4" aria-hidden="true" />
+                    ) }
+                  </DropdownMenuItem>
+                );
+              }) }
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Popover open={ linkPopoverOpen } onOpenChange={ handleLinkOpenChange }>
             <Tooltip>
               <TooltipTrigger asChild>

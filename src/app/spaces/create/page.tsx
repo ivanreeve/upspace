@@ -1065,7 +1065,7 @@ export default function SpaceCreateRoute() {
                 className="grid gap-6 lg:grid-cols-[240px_1fr]"
                 onSubmit={ form.handleSubmit(handleSubmit) }
               >
-                <aside className="space-y-5 rounded-lg border border-border/70 bg-background/80 p-5 lg:sticky lg:top-4 lg:self-start">
+                <aside className="space-y-5 bg-background/80 p-5 lg:sticky lg:top-4 lg:self-start">
                   <div>
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">Step navigation</p>
                     <p className="text-sm font-semibold text-foreground">Follow the flow</p>
@@ -1119,19 +1119,8 @@ export default function SpaceCreateRoute() {
                 </aside>
                 <div className="space-y-6">
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between rounded-md py-2 text-sm text-muted-foreground">
-                    <span>Step { currentStep } of { STEP_SEQUENCE.length }</span>
-                    <div className="flex gap-1">
-                      { STEP_SEQUENCE.map((stepNumber) => (
-                        <span
-                          key={ stepNumber }
-                          className={ `h-1.5 w-10 rounded-full transition ${currentStep >= stepNumber ? 'bg-primary' : 'bg-border/30'}` }
-                        />
-                      ) ) }
-                    </div>
-                  </div>
-                  { currentStep === 1 ? (
-                    <SpaceDetailsFields form={ form } />
+                    { currentStep === 1 ? (
+                      <SpaceDetailsFields form={ form } />
                   ) : currentStep === 2 ? (
                     <div className="space-y-6">
                       <div className="rounded-md border border-border/70 bg-background/50 p-4">
