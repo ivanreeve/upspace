@@ -49,8 +49,7 @@ export default function RootLayout({ children, }: Readonly<{
           <QueryProvider>
             <ThemeProvider
               attribute="class"
-              defaultTheme="dark"
-              enableSystem
+              defaultTheme="light"
               disableTransitionOnChange
             >
               <AuthProfileSync />
