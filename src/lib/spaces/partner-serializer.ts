@@ -148,12 +148,18 @@ const serializeImage = (
   display_order: Number(image.display_order ?? 0),
 });
 
-type VerificationContainer = {
-  verification: { status: Prisma.verificationStatus }[];
-};
+type VerificationLike =
+  | {
+    verification: { status: Prisma.verificationStatus | null }[];
+  }
+  | Prisma.verificationStatus
+  | null
+  | undefined;
 
-export const deriveSpaceStatus = (space: VerificationContainer): SpaceStatus => {
-  const latest = space.verification[0]?.status;
+export const deriveSpaceStatus = (source: VerificationLike): SpaceStatus => {
+  const latest = typeof source === 'string' || source === null || source === undefined
+    ? source ?? null
+    : source.verification[0]?.status ?? null;
   if (latest === 'approved') {
     return 'Live';
   }

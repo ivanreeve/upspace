@@ -8,6 +8,7 @@ import { updateSpaceLocationPoint } from '@/lib/spaces/location';
 import { richTextPlainTextLength, sanitizeRichText } from '@/lib/rich-text';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { buildPublicObjectUrl, isAbsoluteUrl, resolveSignedImageUrls } from '@/lib/spaces/image-urls';
+import { deriveSpaceStatus } from '@/lib/spaces/partner-serializer';
 
 // JSON-safe replacer: BigInt->string, Date->ISO
 const replacer = (_k: string, v: unknown) =>
