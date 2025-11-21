@@ -207,9 +207,9 @@ export default function Marketplace() {
           <div className="space-y-6">
             <form
               onSubmit={ handleSearchSubmit }
-              className="flex flex-col gap-3 rounded-2xl bg-card/80 p-4 shadow-sm md:flex-row md:items-center"
+              className="flex flex-col gap-3 rounded-md shadow-sm md:flex-row md:items-center"
             >
-              <div className="flex flex-1 items-center gap-3 rounded-xl border bg-background px-4 py-2 shadow-sm">
+              <div className="flex flex-1 items-center gap-3 rounded-xl border bg-background shadow-sm">
                 <FiSearch aria-hidden="true" className="size-5 text-muted-foreground" />
                 <Input
                   value={ searchValue }
@@ -218,12 +218,11 @@ export default function Marketplace() {
                   aria-label="Search spaces"
                   className="border-none bg-transparent text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
                 />
+                <Button type="submit" className="w-full rounded-xl md:w-auto">
+                  Search marketplace
+                </Button>
               </div>
-              <Button type="submit" className="w-full rounded-xl md:w-auto">
-                Search marketplace
-              </Button>
             </form>
-
             <div className="flex flex-wrap items-center gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
