@@ -192,8 +192,8 @@ export default function Marketplace() {
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="grid gap-8 lg:grid-cols-[320px,1fr]">
-          <aside className="hidden lg:block">
+        <div className="grid gap-8 lg:grid-cols-12">
+          <aside className="hidden lg:col-span-4 lg:block">
             <div className="sticky top-6 rounded-2xl border bg-card/70 p-5 shadow-sm">
               <div className="space-y-1">
                 <p className="text-sm font-semibold uppercase tracking-wide text-primary">Filters</p>
@@ -214,7 +214,7 @@ export default function Marketplace() {
             </div>
           </aside>
 
-          <div className="space-y-6">
+          <div className="space-y-6 lg:col-span-8">
             <div className="flex flex-wrap items-center gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">

@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { updateSpaceLocationPoint } from '@/lib/spaces/location';
 import { richTextPlainTextLength, sanitizeRichText } from '@/lib/rich-text';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 
 // JSON-safe replacer: BigInt->string, Date->ISO
 const replacer = (_k: string, v: unknown) =>
@@ -171,6 +172,7 @@ const padTime = (value: number) => value.toString().padStart(2, '0');
 const formatTime = (value: Date) => `${padTime(value.getUTCHours())}:${padTime(value.getUTCMinutes())}`;
 const SUPABASE_DEFAULT_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://dfnwebbpjajrlfmeaarx.supabase.co';
 const SUPABASE_BASE_URL = SUPABASE_DEFAULT_URL.replace(/\/$/, '');
+const SIGNED_URL_TTL_SECONDS = 60 * 60;
 const isAbsoluteUrl = (value: string | null | undefined) => Boolean(value && /^https?:\/\//i.test(value));
 const buildPublicObjectUrl = (path: string | null | undefined) => {
   if (!path) {
@@ -184,6 +186,97 @@ const buildPublicObjectUrl = (path: string | null | undefined) => {
     return null;
   }
   return `${SUPABASE_BASE_URL}/storage/v1/object/public/${normalized}`;
+};
+
+type StoragePathParts = {
+  bucket: string;
+  objectPath: string;
+  fullPath: string;
+};
+
+const parseStoragePath = (path: string | null | undefined): StoragePathParts | null => {
+  if (!path || isAbsoluteUrl(path)) {
+    return null;
+  }
+
+  const segments = path.split('/').filter(Boolean);
+  if (segments.length < 2) {
+    return null;
+  }
+
+  const [bucket, ...objectParts] = segments;
+  if (!bucket || objectParts.length === 0) {
+    return null;
+  }
+
+  return {
+    bucket,
+    objectPath: objectParts.join('/'),
+    fullPath: path,
+  };
+};
+
+const resolveSignedImageUrls = async (
+  images: { path: string | null }[]
+): Promise<Map<string, string>> => {
+  const urlMap = new Map<string, string>();
+  if (!images.length) {
+    return urlMap;
+  }
+
+  const candidates = images
+    .map((image) => parseStoragePath(image.path))
+    .filter((value): value is StoragePathParts => Boolean(value));
+
+  if (!candidates.length) {
+    return urlMap;
+  }
+
+  let adminClient;
+  try {
+    adminClient = getSupabaseAdminClient();
+  } catch (error) {
+    console.error('Failed to initialize Supabase admin client for signed URLs.', error);
+    return urlMap;
+  }
+
+  const bucketGroups = candidates.reduce((group, entry) => {
+    const collection = group.get(entry.bucket) ?? [];
+    collection.push(entry);
+    group.set(entry.bucket, collection);
+    return group;
+  }, new Map<string, StoragePathParts[]>());
+
+  for (const [bucket, entries] of bucketGroups) {
+    try {
+      const {
+        data,
+        error,
+      } = await adminClient.storage.from(bucket).createSignedUrls(
+        entries.map((entry) => entry.objectPath),
+        SIGNED_URL_TTL_SECONDS
+      );
+
+      if (error || !data) {
+        console.error(`Failed to create signed URLs for bucket ${bucket}.`, error);
+        continue;
+      }
+
+      data.forEach((result, index) => {
+        if (!result || result.error || !result.signedUrl) {
+          return;
+        }
+        const source = entries[index];
+        if (source) {
+          urlMap.set(source.fullPath, result.signedUrl);
+        }
+      });
+    } catch (error) {
+      console.error(`Unable to create signed URLs for bucket ${bucket}.`, error);
+    }
+  }
+
+  return urlMap;
 };
 
 class HttpError extends Error {
@@ -681,6 +774,8 @@ mode: 'insensitive' as const,
       },
     });
 
+    const signedImageUrlMap = await resolveSignedImageUrls(rows.flatMap((space) => space.space_image));
+
     const hasNext = rows.length > limit;
     const items = hasNext ? rows.slice(0, limit) : rows;
     const nextCursor = hasNext ? items[items.length - 1].id : null;
@@ -689,11 +784,17 @@ mode: 'insensitive' as const,
       const base = serializeSpace(space);
       const primaryImage = space.space_image[0];
       const priceSummary = summarizeRates(space.area);
+      const resolvedImageUrl = (() => {
+        const path = primaryImage?.path ?? null;
+        if (!path) return null;
+        if (isAbsoluteUrl(path)) return path;
+        return signedImageUrlMap.get(path) ?? buildPublicObjectUrl(path);
+      })();
 
       return {
         ...base,
         status: deriveSpaceStatus(space.verification[0]?.status ?? null),
-        image_url: buildPublicObjectUrl(primaryImage?.path ?? null),
+        image_url: resolvedImageUrl,
         min_rate_price: priceSummary?.min ?? null,
         max_rate_price: priceSummary?.max ?? null,
         rate_time_unit: priceSummary?.unit ?? null,
