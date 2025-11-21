@@ -62,7 +62,6 @@ type FiltersState = {
   region: string;
   city: string;
   barangay: string;
-  street: string;
   available_from: string;
   available_to: string;
   priceRange: [number, number];
@@ -73,7 +72,6 @@ const DEFAULT_FILTERS: FiltersState = {
   region: '',
   city: '',
   barangay: '',
-  street: '',
   available_from: '',
   available_to: '',
   priceRange: [PRICE_MIN, PRICE_MAX],
@@ -90,7 +88,6 @@ const areFiltersEqual = (a: FiltersState, b: FiltersState) =>
   a.region === b.region &&
   a.city === b.city &&
   a.barangay === b.barangay &&
-  a.street === b.street &&
   a.available_from === b.available_from &&
   a.available_to === b.available_to &&
   a.priceRange[0] === b.priceRange[0] &&
@@ -102,7 +99,6 @@ const buildActiveFilters = (filters: FiltersState) => {
   if (filters.region.trim()) chips.push(`Region · ${filters.region.trim()}`);
   if (filters.city.trim()) chips.push(`City · ${filters.city.trim()}`);
   if (filters.barangay.trim()) chips.push(`Barangay · ${filters.barangay.trim()}`);
-  if (filters.street.trim()) chips.push(`Street · ${filters.street.trim()}`);
   if (filters.available_from || filters.available_to) {
     chips.push(`Hours · ${filters.available_from || 'Any'} – ${filters.available_to || 'Any'}`);
   }
@@ -120,7 +116,6 @@ const buildQueryParams = (filters: FiltersState) => ({
   region: filters.region.trim() || undefined,
   city: filters.city.trim() || undefined,
   barangay: filters.barangay.trim() || undefined,
-  street: filters.street.trim() || undefined,
   available_from: filters.available_from || undefined,
   available_to: filters.available_to || undefined,
   min_rate_price: filters.priceRange[0] > PRICE_MIN ? filters.priceRange[0] : undefined,
@@ -151,16 +146,6 @@ export default function Marketplace() {
   });
 
   const spaces = React.useMemo(() => data?.data ?? [], [data]);
-  const streetOptions = React.useMemo(() => {
-    const seen = new Set<string>();
-    for (const space of spaces) {
-      const street = space.street?.trim();
-      if (street) {
-        seen.add(street);
-      }
-    }
-    return Array.from(seen).sort((a, b) => a.localeCompare(b));
-  }, [spaces]);
   const activeFilters = buildActiveFilters(filters);
   const hasActiveFilters = activeFilters.length > 0;
   const draftHasChanges = !areFiltersEqual(draftFilters, filters);
@@ -194,9 +179,9 @@ export default function Marketplace() {
   return (
     <div className="bg-muted/20">
       <section className="px-4 py-10 sm:px-6 lg:px-10">
-        <div className="grid gap-8 lg:grid-cols-12">
-          <aside className="hidden lg:col-span-4 lg:block">
-            <Card className="sticky top-6 border-border/70 shadow-sm">
+        <div className="grid gap-8 lg:grid-cols-[320px_minmax(0,1fr)]">
+          <aside className="hidden lg:block">
+            <Card className="sticky top-6 h-full border-border/70 shadow-sm">
               <CardHeader className="space-y-3">
                 <div className="space-y-1">
                   <CardTitle>Advanced Filters</CardTitle>
@@ -214,16 +199,15 @@ export default function Marketplace() {
                   onReset={ resetFilters }
                   hasChanges={ draftHasChanges }
                   priceBounds={ [PRICE_MIN, PRICE_MAX] }
-                  streetOptions={ streetOptions }
                 />
               </CardContent>
             </Card>
           </aside>
 
-          <div className="space-y-6 lg:col-span-8">
+          <div className="space-y-6">
             <form
               onSubmit={ handleSearchSubmit }
-              className="flex flex-col gap-3 rounded-2xl border bg-card/80 p-4 shadow-sm md:flex-row md:items-center"
+              className="flex flex-col gap-3 rounded-2xl bg-card/80 p-4 shadow-sm md:flex-row md:items-center"
             >
               <div className="flex flex-1 items-center gap-3 rounded-xl border bg-background px-4 py-2 shadow-sm">
                 <FiSearch aria-hidden="true" className="size-5 text-muted-foreground" />
@@ -278,7 +262,6 @@ export default function Marketplace() {
                       onReset={ resetFilters }
                       hasChanges={ draftHasChanges }
                       priceBounds={ [PRICE_MIN, PRICE_MAX] }
-                      streetOptions={ streetOptions }
                     />
                   </div>
                   <SheetFooter>
@@ -339,110 +322,6 @@ const dedupeAddressOptions = <T extends { code: string; name: string }>(options:
   });
 };
 
-type StreetComboboxProps = {
-  id?: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: string[];
-};
-
-function StreetCombobox({
- id, value, onChange, options, 
-}: StreetComboboxProps) {
-  const [open, setOpen] = React.useState(false);
-  const [searchValue, setSearchValue] = React.useState('');
-
-  const normalizedOptions = React.useMemo(() => {
-    const unique = new Set<string>();
-    for (const option of options) {
-      const trimmed = option.trim();
-      if (trimmed) {
-        unique.add(trimmed);
-      }
-    }
-    return Array.from(unique).sort((a, b) => a.localeCompare(b));
-  }, [options]);
-
-  const handleSelect = (street: string) => {
-    onChange(street);
-    setOpen(false);
-    setSearchValue('');
-  };
-
-  const handleCustomSubmit = () => {
-    const trimmed = searchValue.trim();
-    if (!trimmed) {
-      return;
-    }
-    onChange(trimmed);
-    setOpen(false);
-    setSearchValue('');
-  };
-
-  return (
-    <Popover open={ open } onOpenChange={ setOpen }>
-      <PopoverTrigger asChild>
-        <Button
-          id={ id }
-          type="button"
-          variant="outline"
-          role="combobox"
-          className="w-full justify-between"
-        >
-          <span className="truncate text-left">
-            { value ? value : 'Select street or enter custom' }
-          </span>
-          <FiMapPin className="ml-2 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[min(320px,90vw)] p-0" align="start">
-        <Command>
-          <CommandInput
-            value={ searchValue }
-            onValueChange={ setSearchValue }
-            placeholder="Search streets"
-            onKeyDown={ (event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                handleCustomSubmit();
-              }
-            } }
-          />
-          <CommandList>
-            <CommandEmpty>
-              { searchValue.trim()
-                ? (
-                  <button
-                    type="button"
-                    className="text-left text-sm text-primary underline underline-offset-2"
-                    onMouseDown={ (event) => event.preventDefault() }
-                    onClick={ handleCustomSubmit }
-                  >
-                    Use “{ searchValue.trim() }”
-                  </button>
-                )
-                : 'No streets found'
-              }
-            </CommandEmpty>
-            <CommandGroup>
-              { value && (
-                <CommandItem value="__clear-street" onSelect={ () => handleSelect('') }>
-                  Clear selection
-                </CommandItem>
-              ) }
-              { normalizedOptions.map((street) => (
-                <CommandItem key={ street } value={ street } onSelect={ () => handleSelect(street) }>
-                  { street }
-                </CommandItem>
-              )) }
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
 type FiltersFormProps = {
   value: FiltersState;
   onChange: <K extends keyof FiltersState>(key: K, value: FiltersState[K]) => void;
@@ -450,7 +329,6 @@ type FiltersFormProps = {
   onReset: () => void;
   hasChanges: boolean;
   priceBounds: [number, number];
-  streetOptions: string[];
 };
 
 function FiltersForm({
@@ -460,7 +338,6 @@ function FiltersForm({
   onReset,
   hasChanges,
   priceBounds,
-  streetOptions,
 }: FiltersFormProps) {
   const [regionCode, setRegionCode] = React.useState<string | null>(null);
   const [cityCode, setCityCode] = React.useState<string | null>(null);
@@ -729,18 +606,6 @@ function FiltersForm({
               )) }
             </SelectContent>
           </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="street-combobox">Street</Label>
-          <StreetCombobox
-            id="street-combobox"
-            value={ value.street }
-            onChange={ (street) => onChange('street', street) }
-            options={ streetOptions }
-          />
-          <p className="text-xs text-muted-foreground">
-            Start typing to pick from known streets or press Enter to keep your custom entry.
-          </p>
         </div>
       </div>
 
