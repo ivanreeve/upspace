@@ -11,8 +11,8 @@ export default function Marketplace() {
       </header>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Placeholder content; replace with real listings */}
-        {[...Array(6)].map((_, i) => (
+        { /* Placeholder content; replace with real listings */ }
+        { [...Array(6)].map((_, i) => (
           <div
             key={ i }
             className="rounded-lg border bg-card text-card-foreground shadow-sm p-6"
@@ -23,7 +23,7 @@ export default function Marketplace() {
               A short description of the space.
             </p>
           </div>
-        ))}
+        )) }
       </section>
     </div>
   );
