@@ -7,7 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { updateSpaceLocationPoint } from '@/lib/spaces/location';
 import { richTextPlainTextLength, sanitizeRichText } from '@/lib/rich-text';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { getSupabaseAdminClient } from '@/lib/supabase/admin';
+import { buildPublicObjectUrl, isAbsoluteUrl, resolveSignedImageUrls } from '@/lib/spaces/image-urls';
 
 // JSON-safe replacer: BigInt->string, Date->ISO
 const replacer = (_k: string, v: unknown) =>
@@ -170,135 +170,6 @@ const DAY_NAME_TO_INDEX: Record<WeekdayName, number> = {
 
 const padTime = (value: number) => value.toString().padStart(2, '0');
 const formatTime = (value: Date) => `${padTime(value.getUTCHours())}:${padTime(value.getUTCMinutes())}`;
-const SUPABASE_DEFAULT_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://dfnwebbpjajrlfmeaarx.supabase.co';
-const SUPABASE_BASE_URL = SUPABASE_DEFAULT_URL.replace(/\/$/, '');
-const SIGNED_URL_TTL_SECONDS = 60 * 60;
-const isAbsoluteUrl = (value: string | null | undefined) => Boolean(value && /^https?:\/\//i.test(value));
-const buildPublicObjectUrl = (path: string | null | undefined) => {
-  if (!path) {
-    return null;
-  }
-  if (isAbsoluteUrl(path)) {
-    return path;
-  }
-  const normalized = path.replace(/^\/+/, '');
-  if (!SUPABASE_BASE_URL) {
-    return null;
-  }
-  return `${SUPABASE_BASE_URL}/storage/v1/object/public/${normalized}`;
-};
-
-type StoragePathParts = {
-  bucket: string;
-  objectPath: string;
-  fullPath: string;
-};
-
-const parseStoragePath = (path: string | null | undefined): StoragePathParts | null => {
-  if (!path || isAbsoluteUrl(path)) {
-    return null;
-  }
-
-  const segments = path.split('/').filter(Boolean);
-  if (segments.length < 2) {
-    return null;
-  }
-
-  const [bucket, ...objectParts] = segments;
-  if (!bucket || objectParts.length === 0) {
-    return null;
-  }
-
-  return {
-    bucket,
-    objectPath: objectParts.join('/'),
-    fullPath: path,
-  };
-};
-
-const resolveSignedImageUrls = async (
-  images: { path: string | null }[]
-): Promise<Map<string, string>> => {
-  const urlMap = new Map<string, string>();
-  if (!images.length) {
-    return urlMap;
-  }
-
-  const candidates = images
-    .map((image) => parseStoragePath(image.path))
-    .filter((value): value is StoragePathParts => Boolean(value));
-
-  if (!candidates.length) {
-    return urlMap;
-  }
-
-  let adminClient;
-  try {
-    adminClient = getSupabaseAdminClient();
-  } catch (error) {
-    console.error('Failed to initialize Supabase admin client for signed URLs.', error);
-    return urlMap;
-  }
-
-  const bucketGroups = candidates.reduce((group, entry) => {
-    const collection = group.get(entry.bucket) ?? [];
-    collection.push(entry);
-    group.set(entry.bucket, collection);
-    return group;
-  }, new Map<string, StoragePathParts[]>());
-
-  for (const [bucket, entries] of bucketGroups) {
-    try {
-      const {
-        data,
-        error,
-      } = await adminClient.storage.from(bucket).createSignedUrls(
-        entries.map((entry) => entry.objectPath),
-        SIGNED_URL_TTL_SECONDS
-      );
-
-      if (error || !data) {
-        console.error(`Failed to create signed URLs for bucket ${bucket}.`, error);
-        continue;
-      }
-
-      data.forEach((result, index) => {
-        if (!result || result.error || !result.signedUrl) {
-          return;
-        }
-        const source = entries[index];
-        if (source) {
-          urlMap.set(source.fullPath, result.signedUrl);
-        }
-      });
-    } catch (error) {
-      console.error(`Unable to create signed URLs for bucket ${bucket}.`, error);
-    }
-  }
-
-  return urlMap;
-};
-
-class HttpError extends Error {
-  status: number;
-
-  constructor(status: number, message: string) {
-    super(message);
-    this.name = 'HttpError';
-    this.status = status;
-  }
-}
-
-const deriveSpaceStatus = (latestStatus?: Prisma.verificationStatus | null) => {
-  if (latestStatus === 'approved') {
-    return 'Live';
-  }
-  if (latestStatus === 'in_review') {
-    return 'Pending';
-  }
-  return 'Draft';
-};
-
 const summarizeRates = (
   areas: {
     price_rate: {

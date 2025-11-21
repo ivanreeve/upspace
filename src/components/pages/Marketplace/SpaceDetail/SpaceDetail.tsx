@@ -4,23 +4,13 @@ import HostInfo from './HostInfo';
 import AmenitiesList from './AmenitiesList';
 import ReviewsSection from './ReviewsSection';
 import WhereYoullBe from './WhereYoullBe';
+import AreasWithRates from './AreasWithRates';
+import AvailabilityTable from './AvailabilityTable';
 
-type Space = {
-  space_id: bigint;
-  name: string;
-  overview?: string | null;
-  unit_number: string;
-  street: string;
-  address_subunit: string;
-  city: string;
-  region: string;
-  country: string;
-  postal_code: string;
-  amenity: { amenity_id: bigint; name: string }[];
-};
+import type { MarketplaceSpaceDetail } from '@/lib/queries/space';
 
-export default function SpaceDetail({ space, }: { space: Space }) {
-  const locationParts = [space.city, space.region].filter(Boolean);
+export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail }) {
+  const locationParts = [space.city, space.region, space.countryCode].filter(Boolean);
   const location = locationParts.length > 0 ? locationParts.join(', ') : 'Global City, Taguig';
 
   const rating = {
@@ -84,6 +74,14 @@ value: 4.7,
     }
   ];
 
+  const galleryImages = (() => {
+    if (space.heroImageUrl) {
+      const rest = space.galleryImageUrls.filter((url) => url !== space.heroImageUrl);
+      return [space.heroImageUrl, ...rest];
+    }
+    return space.galleryImageUrls;
+  })();
+
   const overviewFallback =
     'Located in the heart of the city, Downtown Space offers a modern and flexible coworking environment designed for entrepreneurs, freelancers, and small teams. With high-speed Wi-Fi, ergonomic workstations, private meeting rooms, and a cozy lounge area, it is the perfect place to stay productive and inspired.';
 
@@ -111,16 +109,20 @@ available: true,
       <div className="mx-auto max-w-[1440px] px-4 py-10 space-y-12">
         <SpaceHeader name={ space.name } rating={ rating } location={ location } />
 
-        <ImageGallery />
+        <ImageGallery images={ galleryImages } />
 
-        <HostInfo hostName={ hostName } />
+        <HostInfo hostName={ space.hostName ?? hostName } />
 
         <section className="space-y-4 border-b pb-6">
           <h2 className="text-xl font-medium text-foreground">About { space.name }</h2>
           <p className="text-sm leading-relaxed text-foreground/80">
-            { space.overview?.trim() || overviewFallback }
+            { space.description?.trim() || overviewFallback }
           </p>
         </section>
+
+        <AreasWithRates areas={ space.areas } />
+
+        <AvailabilityTable items={ space.availability } />
 
         <section className="space-y-4 border-b pb-6">
           <details className="group space-y-2 rounded-lg border p-4">
@@ -143,11 +145,11 @@ available: true,
           </details>
         </section>
 
-        <AmenitiesList amenities={ space.amenity } features={ featureList } />
+        <AmenitiesList amenities={ space.amenities } features={ featureList } />
 
         <ReviewsSection rating={ rating } highlights={ reviewHighlights } testimonials={ testimonials } />
 
-        <WhereYoullBe city={ space.city } region={ space.region } country={ space.country } />
+        <WhereYoullBe city={ space.city } region={ space.region } country={ space.countryCode } />
       </div>
     </main>
   );

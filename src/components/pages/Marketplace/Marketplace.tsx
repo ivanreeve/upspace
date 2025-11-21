@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FiSearch, FiSliders } from 'react-icons/fi';
+import { FiMapPin, FiSearch, FiSliders } from 'react-icons/fi';
 
 import { CardsGrid, SkeletonGrid } from './Marketplace.Cards';
 
@@ -22,6 +22,37 @@ import {
   SheetTrigger
 } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList
+} from '@/components/ui/command';
+import {
+  fetchPhilippineBarangaysByCity,
+  fetchPhilippineCitiesByRegion,
+  fetchPhilippineRegions,
+  type PhilippineBarangayOption,
+  type PhilippineCityOption,
+  type PhilippineRegionOption
+} from '@/lib/philippines-addresses/client';
 
 const PRICE_MIN = 200;
 const PRICE_MAX = 5000;
@@ -119,7 +150,17 @@ export default function Marketplace() {
     keepPreviousData: true,
   });
 
-  const spaces = data?.data ?? [];
+  const spaces = React.useMemo(() => data?.data ?? [], [data]);
+  const streetOptions = React.useMemo(() => {
+    const seen = new Set<string>();
+    for (const space of spaces) {
+      const street = space.street?.trim();
+      if (street) {
+        seen.add(street);
+      }
+    }
+    return Array.from(seen).sort((a, b) => a.localeCompare(b));
+  }, [spaces]);
   const activeFilters = buildActiveFilters(filters);
   const hasActiveFilters = activeFilters.length > 0;
   const draftHasChanges = !areFiltersEqual(draftFilters, filters);
@@ -152,26 +193,13 @@ export default function Marketplace() {
 
   return (
     <div className="bg-muted/20">
-      <section className="bg-gradient-to-br from-primary via-primary to-secondary text-primary-foreground">
-        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-12 sm:px-6 lg:px-8">
-          <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary-foreground/70">
-              UpSpace marketplace
-            </p>
-            <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">
-              Discover trusted coworking, studio, and event spaces
-            </h1>
-            <p className="max-w-2xl text-base text-primary-foreground/80">
-              Browse live and pending partner spaces while we expand our catalog. Search by
-              neighborhood, filter by availability, and compare rates in one view.
-            </p>
-          </div>
-
+      <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-6">
           <form
             onSubmit={ handleSearchSubmit }
-            className="flex flex-col gap-3 rounded-2xl bg-white/10 p-4 shadow-2xl shadow-black/10 backdrop-blur md:flex-row md:items-center"
+            className="flex flex-col gap-3 rounded-2xl border bg-card/80 p-4 shadow-sm md:flex-row md:items-center"
           >
-            <div className="flex flex-1 items-center gap-3 rounded-xl bg-white/90 px-4 py-2 text-foreground">
+            <div className="flex flex-1 items-center gap-3 rounded-xl border bg-background px-4 py-2 shadow-sm">
               <FiSearch aria-hidden="true" className="size-5 text-muted-foreground" />
               <Input
                 value={ searchValue }
@@ -181,37 +209,37 @@ export default function Marketplace() {
                 className="border-none bg-transparent text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
               />
             </div>
-            <Button
-              type="submit"
-              className="w-full rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/90 md:w-auto"
-            >
+            <Button type="submit" className="w-full rounded-xl md:w-auto">
               Search marketplace
             </Button>
           </form>
         </div>
-      </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="grid gap-8 lg:grid-cols-12">
+        <div className="mt-8 grid gap-8 lg:grid-cols-12">
           <aside className="hidden lg:col-span-4 lg:block">
-            <div className="sticky top-6 rounded-2xl border bg-card/70 p-5 shadow-sm">
-              <div className="space-y-1">
-                <p className="text-sm font-semibold uppercase tracking-wide text-primary">Filters</p>
-                <h2 className="text-lg font-semibold">Advanced options</h2>
-                <p className="text-sm text-muted-foreground">
-                  Narrow spaces by exact location, availability window, and price range.
-                </p>
-              </div>
-              <Separator className="my-4" />
-              <FiltersForm
-                value={ draftFilters }
-                onChange={ handleDraftChange }
-                onApply={ applyFilters }
-                onReset={ resetFilters }
-                hasChanges={ draftHasChanges }
-                priceBounds={ [PRICE_MIN, PRICE_MAX] }
-              />
-            </div>
+            <Card className="sticky top-6 border-border/70 shadow-sm">
+              <CardHeader className="space-y-3">
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">Filters</p>
+                  <CardTitle>Advanced options</CardTitle>
+                  <CardDescription>
+                    Narrow spaces by exact location, availability window, and price range.
+                  </CardDescription>
+                </div>
+              </CardHeader>
+              <Separator />
+              <CardContent className="pt-6">
+                <FiltersForm
+                  value={ draftFilters }
+                  onChange={ handleDraftChange }
+                  onApply={ applyFilters }
+                  onReset={ resetFilters }
+                  hasChanges={ draftHasChanges }
+                  priceBounds={ [PRICE_MIN, PRICE_MAX] }
+                  streetOptions={ streetOptions }
+                />
+              </CardContent>
+            </Card>
           </aside>
 
           <div className="space-y-6 lg:col-span-8">
@@ -253,6 +281,7 @@ export default function Marketplace() {
                       onReset={ resetFilters }
                       hasChanges={ draftHasChanges }
                       priceBounds={ [PRICE_MIN, PRICE_MAX] }
+                      streetOptions={ streetOptions }
                     />
                   </div>
                   <SheetFooter>
@@ -302,6 +331,121 @@ export default function Marketplace() {
   );
 }
 
+const dedupeAddressOptions = <T extends { code: string; name: string }>(options: readonly T[]) => {
+  const seen = new Set<string>();
+  return options.filter((option) => {
+    if (seen.has(option.code)) {
+      return false;
+    }
+    seen.add(option.code);
+    return true;
+  });
+};
+
+type StreetComboboxProps = {
+  id?: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+};
+
+function StreetCombobox({
+ id, value, onChange, options, 
+}: StreetComboboxProps) {
+  const [open, setOpen] = React.useState(false);
+  const [searchValue, setSearchValue] = React.useState('');
+
+  const normalizedOptions = React.useMemo(() => {
+    const unique = new Set<string>();
+    for (const option of options) {
+      const trimmed = option.trim();
+      if (trimmed) {
+        unique.add(trimmed);
+      }
+    }
+    return Array.from(unique).sort((a, b) => a.localeCompare(b));
+  }, [options]);
+
+  const handleSelect = (street: string) => {
+    onChange(street);
+    setOpen(false);
+    setSearchValue('');
+  };
+
+  const handleCustomSubmit = () => {
+    const trimmed = searchValue.trim();
+    if (!trimmed) {
+      return;
+    }
+    onChange(trimmed);
+    setOpen(false);
+    setSearchValue('');
+  };
+
+  return (
+    <Popover open={ open } onOpenChange={ setOpen }>
+      <PopoverTrigger asChild>
+        <Button
+          id={ id }
+          type="button"
+          variant="outline"
+          role="combobox"
+          className="w-full justify-between"
+        >
+          <span className="truncate text-left">
+            { value ? value : 'Select street or enter custom' }
+          </span>
+          <FiMapPin className="ml-2 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[min(320px,90vw)] p-0" align="start">
+        <Command>
+          <CommandInput
+            value={ searchValue }
+            onValueChange={ setSearchValue }
+            placeholder="Search streets"
+            onKeyDown={ (event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                handleCustomSubmit();
+              }
+            } }
+          />
+          <CommandList>
+            <CommandEmpty>
+              { searchValue.trim()
+                ? (
+                  <button
+                    type="button"
+                    className="text-left text-sm text-primary underline underline-offset-2"
+                    onMouseDown={ (event) => event.preventDefault() }
+                    onClick={ handleCustomSubmit }
+                  >
+                    Use “{ searchValue.trim() }”
+                  </button>
+                )
+                : 'No streets found'
+              }
+            </CommandEmpty>
+            <CommandGroup>
+              { value && (
+                <CommandItem value="__clear-street" onSelect={ () => handleSelect('') }>
+                  Clear selection
+                </CommandItem>
+              ) }
+              { normalizedOptions.map((street) => (
+                <CommandItem key={ street } value={ street } onSelect={ () => handleSelect(street) }>
+                  { street }
+                </CommandItem>
+              )) }
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 type FiltersFormProps = {
   value: FiltersState;
   onChange: <K extends keyof FiltersState>(key: K, value: FiltersState[K]) => void;
@@ -309,6 +453,7 @@ type FiltersFormProps = {
   onReset: () => void;
   hasChanges: boolean;
   priceBounds: [number, number];
+  streetOptions: string[];
 };
 
 function FiltersForm({
@@ -318,8 +463,143 @@ function FiltersForm({
   onReset,
   hasChanges,
   priceBounds,
+  streetOptions,
 }: FiltersFormProps) {
+  const [regionCode, setRegionCode] = React.useState<string | null>(null);
+  const [cityCode, setCityCode] = React.useState<string | null>(null);
+  const [barangayCode, setBarangayCode] = React.useState<string | null>(null);
+
+  const {
+    data: regionOptionsData = [],
+    isLoading: isRegionsLoading,
+    isError: isRegionsError,
+  } = useQuery<PhilippineRegionOption[]>({
+    queryKey: ['philippines', 'regions'],
+    queryFn: fetchPhilippineRegions,
+    staleTime: 1000 * 60 * 60 * 24,
+  });
+
+  const regionOptions = React.useMemo(
+    () => dedupeAddressOptions(regionOptionsData),
+    [regionOptionsData]
+  );
+
+  const {
+    data: cityOptionsData = [],
+    isLoading: isCitiesLoading,
+    isError: isCitiesError,
+  } = useQuery<PhilippineCityOption[]>({
+    queryKey: ['philippines', 'cities', regionCode],
+    queryFn: () => {
+      if (!regionCode) {
+        return Promise.resolve<PhilippineCityOption[]>([]);
+      }
+      return fetchPhilippineCitiesByRegion(regionCode);
+    },
+    enabled: Boolean(regionCode),
+    staleTime: 1000 * 60 * 60 * 12,
+  });
+
+  const cityOptions = React.useMemo(
+    () => dedupeAddressOptions(cityOptionsData),
+    [cityOptionsData]
+  );
+
+  const {
+    data: barangayOptionsData = [],
+    isLoading: isBarangaysLoading,
+    isError: isBarangaysError,
+  } = useQuery<PhilippineBarangayOption[]>({
+    queryKey: ['philippines', 'barangays', cityCode],
+    queryFn: () => {
+      if (!cityCode) {
+        return Promise.resolve<PhilippineBarangayOption[]>([]);
+      }
+      return fetchPhilippineBarangaysByCity(cityCode);
+    },
+    enabled: Boolean(cityCode),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const barangayOptions = React.useMemo(
+    () => dedupeAddressOptions(barangayOptionsData),
+    [barangayOptionsData]
+  );
+
+  React.useEffect(() => {
+    if (!value.region) {
+      setRegionCode(null);
+      return;
+    }
+    const match = regionOptions.find((region) => region.name === value.region);
+    setRegionCode(match?.code ?? null);
+  }, [regionOptions, value.region]);
+
+  React.useEffect(() => {
+    if (!value.city) {
+      setCityCode(null);
+      return;
+    }
+    const match = cityOptions.find((city) => city.name === value.city);
+    setCityCode(match?.code ?? null);
+  }, [cityOptions, value.city]);
+
+  React.useEffect(() => {
+    if (!value.barangay) {
+      setBarangayCode(null);
+      return;
+    }
+    const match = barangayOptions.find((barangay) => barangay.name === value.barangay);
+    setBarangayCode(match?.code ?? null);
+  }, [barangayOptions, value.barangay]);
+
   const [minPrice, maxPrice] = value.priceRange;
+
+  const handleRegionSelect = (code: string | null) => {
+    if (!code) {
+      setRegionCode(null);
+      onChange('region', '');
+      setCityCode(null);
+      onChange('city', '');
+      setBarangayCode(null);
+      onChange('barangay', '');
+      return;
+    }
+    setRegionCode(code);
+    const selected = regionOptions.find((region) => region.code === code);
+    onChange('region', selected?.name ?? '');
+    setCityCode(null);
+    onChange('city', '');
+    setBarangayCode(null);
+    onChange('barangay', '');
+  };
+
+  const handleCitySelect = (code: string | null) => {
+    if (!code) {
+      setCityCode(null);
+      onChange('city', '');
+      setBarangayCode(null);
+      onChange('barangay', '');
+      return;
+    }
+    setCityCode(code);
+    const selected = cityOptions.find((city) => city.code === code);
+    onChange('city', selected?.name ?? '');
+    setBarangayCode(null);
+    onChange('barangay', '');
+  };
+
+  const handleBarangaySelect = (code: string | null) => {
+    if (!code) {
+      setBarangayCode(null);
+      onChange('barangay', '');
+      return;
+    }
+    setBarangayCode(code);
+    const selected = barangayOptions.find((barangay) => barangay.code === code);
+    onChange('barangay', selected?.name ?? '');
+  };
+
   return (
     <form
       onSubmit={ (event) => {
@@ -330,40 +610,140 @@ function FiltersForm({
     >
       <div className="space-y-3">
         <div className="space-y-1.5">
-          <Label htmlFor="region-input">Region</Label>
-          <Input
-            id="region-input"
-            placeholder="e.g. Metro Manila"
-            value={ value.region }
-            onChange={ (event) => onChange('region', event.target.value) }
-          />
+          <Label htmlFor="region-select">Region</Label>
+          <Select
+            value={ regionCode ?? undefined }
+            onValueChange={ (next) => {
+              if (next === '__clear-region') {
+                handleRegionSelect(null);
+                return;
+              }
+              handleRegionSelect(next);
+            } }
+            disabled={ isRegionsLoading }
+          >
+            <SelectTrigger id="region-select" aria-label="Region">
+              <SelectValue
+                placeholder={
+                  isRegionsError
+                    ? 'Regions unavailable'
+                    : isRegionsLoading
+                      ? 'Loading regions...'
+                      : 'Select region'
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              { regionCode && (
+                <SelectItem value="__clear-region" className="text-destructive">
+                  Clear selection
+                </SelectItem>
+              ) }
+              { isRegionsLoading && <SelectItem value="regions-loading" disabled>Loading regions…</SelectItem> }
+              { isRegionsError && <SelectItem value="regions-error" disabled>Unable to load regions</SelectItem> }
+              { !isRegionsLoading && !isRegionsError && regionOptions.map((region) => (
+                <SelectItem key={ region.code } value={ region.code }>
+                  { region.name }
+                </SelectItem>
+              )) }
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="city-input">City</Label>
-          <Input
-            id="city-input"
-            placeholder="e.g. Makati"
-            value={ value.city }
-            onChange={ (event) => onChange('city', event.target.value) }
-          />
+          <Label htmlFor="city-select">City</Label>
+          <Select
+            value={ cityCode ?? undefined }
+            onValueChange={ (next) => {
+              if (next === '__clear-city') {
+                handleCitySelect(null);
+                return;
+              }
+              handleCitySelect(next);
+            } }
+            disabled={ !regionCode || isCitiesLoading }
+          >
+            <SelectTrigger id="city-select" aria-label="City">
+              <SelectValue
+                placeholder={
+                  !regionCode
+                    ? 'Select a region first'
+                    : isCitiesError
+                      ? 'Cities unavailable'
+                      : isCitiesLoading
+                        ? 'Loading cities...'
+                        : 'Select city'
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              { cityCode && (
+                <SelectItem value="__clear-city" className="text-destructive">
+                  Clear selection
+                </SelectItem>
+              ) }
+              { isCitiesLoading && <SelectItem value="cities-loading" disabled>Loading cities…</SelectItem> }
+              { isCitiesError && <SelectItem value="cities-error" disabled>Unable to load cities</SelectItem> }
+              { !isCitiesLoading && !isCitiesError && cityOptions.map((city) => (
+                <SelectItem key={ city.code } value={ city.code }>
+                  { city.name }
+                </SelectItem>
+              )) }
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="barangay-input">Barangay</Label>
-          <Input
-            id="barangay-input"
-            placeholder="e.g. San Lorenzo"
-            value={ value.barangay }
-            onChange={ (event) => onChange('barangay', event.target.value) }
-          />
+          <Label htmlFor="barangay-select">Barangay</Label>
+          <Select
+            value={ barangayCode ?? undefined }
+            onValueChange={ (next) => {
+              if (next === '__clear-barangay') {
+                handleBarangaySelect(null);
+                return;
+              }
+              handleBarangaySelect(next);
+            } }
+            disabled={ !cityCode || isBarangaysLoading }
+          >
+            <SelectTrigger id="barangay-select" aria-label="Barangay">
+              <SelectValue
+                placeholder={
+                  !cityCode
+                    ? 'Select a city first'
+                    : isBarangaysError
+                      ? 'Barangays unavailable'
+                      : isBarangaysLoading
+                        ? 'Loading barangays...'
+                        : 'Select barangay'
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              { barangayCode && (
+                <SelectItem value="__clear-barangay" className="text-destructive">
+                  Clear selection
+                </SelectItem>
+              ) }
+              { isBarangaysLoading && <SelectItem value="barangays-loading" disabled>Loading barangays…</SelectItem> }
+              { isBarangaysError && <SelectItem value="barangays-error" disabled>Unable to load barangays</SelectItem> }
+              { !isBarangaysLoading && !isBarangaysError && barangayOptions.map((barangay) => (
+                <SelectItem key={ barangay.code } value={ barangay.code }>
+                  { barangay.name }
+                </SelectItem>
+              )) }
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="street-input">Street</Label>
-          <Input
-            id="street-input"
-            placeholder="Street or business park"
+          <Label htmlFor="street-combobox">Street</Label>
+          <StreetCombobox
+            id="street-combobox"
             value={ value.street }
-            onChange={ (event) => onChange('street', event.target.value) }
+            onChange={ (street) => onChange('street', street) }
+            options={ streetOptions }
           />
+          <p className="text-xs text-muted-foreground">
+            Start typing to pick from known streets or press Enter to keep your custom entry.
+          </p>
         </div>
       </div>
 

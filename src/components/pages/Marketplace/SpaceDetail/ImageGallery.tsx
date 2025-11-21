@@ -6,9 +6,10 @@ const DEFAULT_IMAGES = [
   'https://images.unsplash.com/photo-1460353581641-37baddab0fa2?auto=format&fit=crop&w=900&q=80'
 ];
 
-export default function ImageGallery({ images = DEFAULT_IMAGES, }: { images?: string[] }) {
-  const primary = images[0];
-  const secondary = images.slice(1, 5);
+export default function ImageGallery({ images, }: { images?: string[] }) {
+  const resolved = images && images.length > 0 ? images : DEFAULT_IMAGES;
+  const primary = resolved[0];
+  const secondary = resolved.slice(1, 5);
 
   return (
     <section className="rounded-3xl border bg-muted/20 p-3">

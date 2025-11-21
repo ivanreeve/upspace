@@ -1,7 +1,19 @@
-type Rate = { rate_id: bigint; time_unit: string; price: any };
-type Area = { area_id: bigint; name: string; capacity: bigint; rate_rate_area_idToarea: Rate[] };
+import type { SpaceAreaWithRates } from '@/lib/queries/space';
 
-export default function AreasWithRates({ areas, }: { areas: Area[] }) {
+const peso = new Intl.NumberFormat('en-PH', {
+  style: 'currency',
+  currency: 'PHP',
+  maximumFractionDigits: 0,
+});
+
+const formatCapacity = (area: SpaceAreaWithRates) => {
+  if (area.maxCapacity && area.maxCapacity !== area.minCapacity) {
+    return `${area.minCapacity.toLocaleString()} – ${area.maxCapacity.toLocaleString()} guests`;
+  }
+  return `${area.minCapacity.toLocaleString()} guests`;
+};
+
+export default function AreasWithRates({ areas, }: { areas: SpaceAreaWithRates[] }) {
   if (areas.length === 0) return (
     <section className="space-y-4">
       <h2 className="text-xl font-medium">Areas & Rates</h2>
@@ -13,22 +25,22 @@ export default function AreasWithRates({ areas, }: { areas: Area[] }) {
     <section className="space-y-4">
       <h2 className="text-xl font-medium">Areas & Rates</h2>
       <div className="space-y-4">
-        { areas.map((ar) => (
-          <div key={ ar.area_id.toString() } className="rounded-lg border p-4">
+        { areas.map((area) => (
+          <div key={ area.id } className="rounded-lg border p-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium">{ ar.name }</h3>
+              <h3 className="text-lg font-medium">{ area.name }</h3>
               <span className="text-sm text-muted-foreground">
-                Capacity: { ar.capacity.toString() }
+                Capacity: { formatCapacity(area) }
               </span>
             </div>
             <div className="mt-2">
-              { ar.rate_rate_area_idToarea.length === 0 ? (
+              { area.rates.length === 0 ? (
                 <p className="text-muted-foreground">No rates set.</p>
               ) : (
                 <ul className="list-disc pl-5 text-sm">
-                  { ar.rate_rate_area_idToarea.map((r) => (
-                    <li key={ r.rate_id.toString() }>
-                      { r.time_unit }: { typeof r.price?.toString === 'function' ? r.price.toString() : String(r.price) }
+                  { area.rates.map((rate) => (
+                    <li key={ rate.id }>
+                      { rate.timeUnit }: { peso.format(rate.price) }
                     </li>
                   )) }
                 </ul>

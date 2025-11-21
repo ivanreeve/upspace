@@ -1,3 +1,5 @@
+import type { SpaceAvailabilityDisplay } from '@/lib/queries/space';
+
 const mondayFirstDays = [
   'Monday',
   'Tuesday',
@@ -8,25 +10,16 @@ const mondayFirstDays = [
   'Sunday'
 ] as const;
 
-type Availability = {
-  availability_id: bigint;
-  day_of_week: string;
-  opening_time: Date | string;
-  closing_time: Date | string;
-};
+const dayIndex = mondayFirstDays.reduce<Record<string, number>>((acc, day, idx) => {
+  acc[day] = idx;
+  return acc;
+}, {});
 
-function formatTimeHHmm(date: Date | string) {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  const h = d.getUTCHours().toString().padStart(2, '0');
-  const m = d.getUTCMinutes().toString().padStart(2, '0');
-  return `${h}:${m}`;
-}
-
-export default function AvailabilityTable({ items, }: { items: Availability[] }) {
+export default function AvailabilityTable({ items, }: { items: SpaceAvailabilityDisplay[] }) {
   const rows = [...items].sort(
     (a, b) =>
-      mondayFirstDays.indexOf(a.day_of_week as typeof mondayFirstDays[number]) -
-      mondayFirstDays.indexOf(b.day_of_week as typeof mondayFirstDays[number])
+      (dayIndex[a.dayLabel] ?? Number.POSITIVE_INFINITY) -
+      (dayIndex[b.dayLabel] ?? Number.POSITIVE_INFINITY)
   );
 
   if (rows.length === 0) return (
@@ -49,11 +42,11 @@ export default function AvailabilityTable({ items, }: { items: Availability[] })
             </tr>
           </thead>
           <tbody>
-            { rows.map((s) => (
-              <tr key={ s.availability_id.toString() } className="border-t">
-                <td className="px-3 py-2">{ s.day_of_week }</td>
-                <td className="px-3 py-2">{ formatTimeHHmm(s.opening_time) }</td>
-                <td className="px-3 py-2">{ formatTimeHHmm(s.closing_time) }</td>
+            { rows.map((slot) => (
+              <tr key={ slot.id } className="border-t">
+                <td className="px-3 py-2">{ slot.dayLabel }</td>
+                <td className="px-3 py-2">{ slot.opensAt }</td>
+                <td className="px-3 py-2">{ slot.closesAt }</td>
               </tr>
             )) }
           </tbody>

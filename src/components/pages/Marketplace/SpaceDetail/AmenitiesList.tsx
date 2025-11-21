@@ -1,11 +1,12 @@
-type Amenity = { amenity_id: bigint; name: string };
+import type { SpaceAmenityDisplay } from '@/lib/queries/space';
+
 type Feature = { name: string; available: boolean };
 
 export default function AmenitiesList({
   amenities,
   features,
 }: {
-  amenities: Amenity[];
+  amenities: SpaceAmenityDisplay[];
   features: Feature[];
 }) {
   const amenityNames = amenities.length > 0 ? amenities.map((a) => a.name) : [

@@ -11,7 +11,7 @@ import {
   cloneWeeklyAvailability,
   createDefaultWeeklyAvailability
 } from '@/data/spaces';
-import { getSupabaseAdminClient } from '@/lib/supabase/admin';
+import { buildPublicObjectUrl, isAbsoluteUrl, resolveSignedImageUrls } from '@/lib/spaces/image-urls';
 
 const DAY_INDEX_TO_WEEKDAY: Record<number, WeekdayName> = {
   0: 'Monday',
@@ -25,11 +25,20 @@ const DAY_INDEX_TO_WEEKDAY: Record<number, WeekdayName> = {
 
 const padTime = (value: number) => value.toString().padStart(2, '0');
 const formatTime = (value: Date) => `${padTime(value.getUTCHours())}:${padTime(value.getUTCMinutes())}`;
-const SUPABASE_BASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '') ?? '';
-const SIGNED_URL_TTL_SECONDS = 60 * 60; // 1 hour
 
 export const partnerSpaceInclude = {
-  amenity: { select: { amenity_choice_id: true, }, },
+  amenity: {
+    select: {
+      amenity_choice_id: true,
+      amenity_choice: {
+        select: {
+          id: true,
+          name: true,
+          category: true,
+        },
+      },
+    },
+  },
   space_availability: { orderBy: { day_of_week: 'asc' as const, }, },
   area: {
     orderBy: { created_at: 'asc' as const, },
@@ -49,6 +58,13 @@ export const partnerSpaceInclude = {
     orderBy: { created_at: 'desc' as const, },
     take: 1,
     select: { status: true, },
+  },
+  user: {
+    select: {
+      first_name: true,
+      last_name: true,
+      handle: true,
+    },
   },
 } satisfies Prisma.spaceInclude;
 
@@ -132,7 +148,11 @@ const serializeImage = (
   display_order: Number(image.display_order ?? 0),
 });
 
-const deriveSpaceStatus = (space: PartnerSpaceRow): SpaceStatus => {
+type VerificationContainer = {
+  verification: { status: Prisma.verificationStatus }[];
+};
+
+export const deriveSpaceStatus = (space: VerificationContainer): SpaceStatus => {
   const latest = space.verification[0]?.status;
   if (latest === 'approved') {
     return 'Live';
@@ -142,100 +162,6 @@ const deriveSpaceStatus = (space: PartnerSpaceRow): SpaceStatus => {
   }
   return 'Draft';
 };
-
-type StoragePathParts = {
-  bucket: string;
-  objectPath: string;
-  fullPath: string;
-};
-
-const isAbsoluteUrl = (value: string | null | undefined) => Boolean(value && /^https?:\/\//i.test(value));
-
-const buildPublicObjectUrl = (path: string) =>
-  SUPABASE_BASE_URL ? `${SUPABASE_BASE_URL}/storage/v1/object/public/${path}` : null;
-
-const parseStoragePath = (path: string | null | undefined): StoragePathParts | null => {
-  if (!path || isAbsoluteUrl(path)) {
-    return null;
-  }
-
-  const segments = path.split('/').filter(Boolean);
-  if (segments.length < 2) {
-    return null;
-  }
-
-  const [bucket, ...objectParts] = segments;
-  if (!bucket || objectParts.length === 0) {
-    return null;
-  }
-
-  return {
-    bucket,
-    objectPath: objectParts.join('/'),
-    fullPath: path,
-  };
-};
-
-async function resolveSignedImageUrls(images: PartnerSpaceRow['space_image']): Promise<Map<string, string>> {
-  const urlMap = new Map<string, string>();
-  if (!images.length) {
-    return urlMap;
-  }
-
-  const candidates = images
-    .map((image) => parseStoragePath(image.path))
-    .filter((value): value is StoragePathParts => Boolean(value));
-
-  if (!candidates.length) {
-    return urlMap;
-  }
-
-  let adminClient;
-  try {
-    adminClient = getSupabaseAdminClient();
-  } catch (error) {
-    console.error('Failed to initialize Supabase admin client for signed URLs.', error);
-    return urlMap;
-  }
-
-  const bucketGroups = candidates.reduce((group, entry) => {
-    const collection = group.get(entry.bucket) ?? [];
-    collection.push(entry);
-    group.set(entry.bucket, collection);
-    return group;
-  }, new Map<string, StoragePathParts[]>());
-
-  for (const [bucket, entries] of bucketGroups) {
-    try {
-      const {
-        data,
-        error,
-      } = await adminClient.storage.from(bucket).createSignedUrls(
-        entries.map((entry) => entry.objectPath),
-        SIGNED_URL_TTL_SECONDS
-      );
-
-      if (error || !data) {
-        console.error(`Failed to create signed URLs for bucket ${bucket}.`, error);
-        continue;
-      }
-
-      data.forEach((result, index) => {
-        if (!result || result.error || !result.signedUrl) {
-          return;
-        }
-        const source = entries[index];
-        if (source) {
-          urlMap.set(source.fullPath, result.signedUrl);
-        }
-      });
-    } catch (error) {
-      console.error(`Unable to create signed URLs for bucket ${bucket}.`, error);
-    }
-  }
-
-  return urlMap;
-}
 
 async function buildImageRecords(images: PartnerSpaceRow['space_image']): Promise<SpaceImageRecord[]> {
   if (!images.length) {
