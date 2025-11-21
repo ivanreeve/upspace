@@ -1081,7 +1081,7 @@ export default function SpaceCreateRoute() {
                           key={ item.step }
                           type="button"
                           className={ cn(
-                            'flex w-full flex-col gap-2 rounded-lg border px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                            'flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                             isCurrent ? 'border-primary bg-primary/10' : 'border-border/60 bg-background/80',
                             !isAccessible && 'cursor-not-allowed opacity-60'
                           ) }
@@ -1094,19 +1094,17 @@ export default function SpaceCreateRoute() {
                             navigateToStep(item.step);
                           } }
                         >
-                          <div className="flex items-center justify-between">
-                            <span className="sr-only">Step { item.step }</span>
-                            { isComplete && (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
-                                <FiCheck className="size-3" aria-hidden="true" />
-                                Complete
-                              </span>
-                            ) }
-                          </div>
+                          <span className="sr-only">Step { item.step }</span>
                           <div className="flex items-center gap-2">
                             <Icon className="size-4" aria-hidden="true" />
                             <span className="text-sm font-semibold text-foreground">{ item.label }</span>
                           </div>
+                          { isComplete && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
+                              <FiCheck className="size-3" aria-hidden="true" />
+                              Complete
+                            </span>
+                          ) }
                         </button>
                       );
                     }) }

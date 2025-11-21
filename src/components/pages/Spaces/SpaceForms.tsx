@@ -311,9 +311,7 @@ export function DescriptionEditor<TFieldValues extends { description: string }>(
     immediatelyRender: false,
     extensions: [
       StarterKit.configure({
-        heading: {
-          levels: [1, 2, 3],
-        },
+        heading: { levels: [1, 2, 3], },
         link: false,
       }),
       Link.configure({
