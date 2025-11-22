@@ -12,6 +12,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import {
   Sheet,
@@ -481,132 +487,139 @@ function FiltersForm({
       } }
       className="flex flex-col gap-5"
     >
-      <div className="space-y-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="region-select">Region</Label>
-          <Select
-            value={ regionCode ?? undefined }
-            onValueChange={ (next) => {
-              if (next === '__clear-region') {
-                handleRegionSelect(null);
-                return;
-              }
-              handleRegionSelect(next);
-            } }
-            disabled={ isRegionsLoading }
-          >
-            <SelectTrigger id="region-select" aria-label="Region" className="w-full">
-              <SelectValue
-                placeholder={
-                  isRegionsError
-                    ? 'Regions unavailable'
-                    : isRegionsLoading
-                      ? 'Loading regions...'
-                      : 'Select region'
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              { regionCode && (
-                <SelectItem value="__clear-region" className="text-destructive">
-                  Clear selection
-                </SelectItem>
-              ) }
-              { isRegionsLoading && <SelectItem value="regions-loading" disabled>Loading regions…</SelectItem> }
-              { isRegionsError && <SelectItem value="regions-error" disabled>Unable to load regions</SelectItem> }
-              { !isRegionsLoading && !isRegionsError && regionOptions.map((region) => (
-                <SelectItem key={ region.code } value={ region.code }>
-                  { region.name }
-                </SelectItem>
-              )) }
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="city-select">City</Label>
-          <Select
-            value={ cityCode ?? undefined }
-            onValueChange={ (next) => {
-              if (next === '__clear-city') {
-                handleCitySelect(null);
-                return;
-              }
-              handleCitySelect(next);
-            } }
-            disabled={ !regionCode || isCitiesLoading }
-          >
-            <SelectTrigger id="city-select" aria-label="City" className="w-full">
-              <SelectValue
-                placeholder={
-                  !regionCode
-                    ? 'Select a region first'
-                    : isCitiesError
-                      ? 'Cities unavailable'
-                      : isCitiesLoading
-                        ? 'Loading cities...'
-                        : 'Select city'
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              { cityCode && (
-                <SelectItem value="__clear-city" className="text-destructive">
-                  Clear selection
-                </SelectItem>
-              ) }
-              { isCitiesLoading && <SelectItem value="cities-loading" disabled>Loading cities…</SelectItem> }
-              { isCitiesError && <SelectItem value="cities-error" disabled>Unable to load cities</SelectItem> }
-              { !isCitiesLoading && !isCitiesError && cityOptions.map((city) => (
-                <SelectItem key={ city.code } value={ city.code }>
-                  { city.name }
-                </SelectItem>
-              )) }
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="barangay-select">Barangay</Label>
-          <Select
-            value={ barangayCode ?? undefined }
-            onValueChange={ (next) => {
-              if (next === '__clear-barangay') {
-                handleBarangaySelect(null);
-                return;
-              }
-              handleBarangaySelect(next);
-            } }
-            disabled={ !cityCode || isBarangaysLoading }
-          >
-            <SelectTrigger id="barangay-select" aria-label="Barangay" className="w-full">
-              <SelectValue
-                placeholder={
-                  !cityCode
-                    ? 'Select a city first'
-                    : isBarangaysError
-                      ? 'Barangays unavailable'
-                      : isBarangaysLoading
-                        ? 'Loading barangays...'
-                        : 'Select barangay'
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              { barangayCode && (
-                <SelectItem value="__clear-barangay" className="text-destructive">
-                  Clear selection
-                </SelectItem>
-              ) }
-              { isBarangaysLoading && <SelectItem value="barangays-loading" disabled>Loading barangays…</SelectItem> }
-              { isBarangaysError && <SelectItem value="barangays-error" disabled>Unable to load barangays</SelectItem> }
-              { !isBarangaysLoading && !isBarangaysError && barangayOptions.map((barangay) => (
-                <SelectItem key={ barangay.code } value={ barangay.code }>
-                  { barangay.name }
-                </SelectItem>
-              )) }
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <Accordion type="single" collapsible defaultValue="advanced-filters" className="w-full">
+        <AccordionItem value="advanced-filters">
+          <AccordionTrigger className="text-base font-semibold">
+            Advanced Filters
+          </AccordionTrigger>
+          <AccordionContent className="space-y-3 pt-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="region-select">Region</Label>
+              <Select
+                value={ regionCode ?? undefined }
+                onValueChange={ (next) => {
+                  if (next === '__clear-region') {
+                    handleRegionSelect(null);
+                    return;
+                  }
+                  handleRegionSelect(next);
+                } }
+                disabled={ isRegionsLoading }
+              >
+                <SelectTrigger id="region-select" aria-label="Region" className="w-full">
+                  <SelectValue
+                    placeholder={
+                      isRegionsError
+                        ? 'Regions unavailable'
+                        : isRegionsLoading
+                          ? 'Loading regions...'
+                          : 'Select region'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  { regionCode && (
+                    <SelectItem value="__clear-region" className="text-destructive">
+                      Clear selection
+                    </SelectItem>
+                  ) }
+                  { isRegionsLoading && <SelectItem value="regions-loading" disabled>Loading regions…</SelectItem> }
+                  { isRegionsError && <SelectItem value="regions-error" disabled>Unable to load regions</SelectItem> }
+                  { !isRegionsLoading && !isRegionsError && regionOptions.map((region) => (
+                    <SelectItem key={ region.code } value={ region.code }>
+                      { region.name }
+                    </SelectItem>
+                  )) }
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="city-select">City</Label>
+              <Select
+                value={ cityCode ?? undefined }
+                onValueChange={ (next) => {
+                  if (next === '__clear-city') {
+                    handleCitySelect(null);
+                    return;
+                  }
+                  handleCitySelect(next);
+                } }
+                disabled={ !regionCode || isCitiesLoading }
+              >
+                <SelectTrigger id="city-select" aria-label="City" className="w-full">
+                  <SelectValue
+                    placeholder={
+                      !regionCode
+                        ? 'Select a region first'
+                        : isCitiesError
+                          ? 'Cities unavailable'
+                          : isCitiesLoading
+                            ? 'Loading cities...'
+                            : 'Select city'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  { cityCode && (
+                    <SelectItem value="__clear-city" className="text-destructive">
+                      Clear selection
+                    </SelectItem>
+                  ) }
+                  { isCitiesLoading && <SelectItem value="cities-loading" disabled>Loading cities…</SelectItem> }
+                  { isCitiesError && <SelectItem value="cities-error" disabled>Unable to load cities</SelectItem> }
+                  { !isCitiesLoading && !isCitiesError && cityOptions.map((city) => (
+                    <SelectItem key={ city.code } value={ city.code }>
+                      { city.name }
+                    </SelectItem>
+                  )) }
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="barangay-select">Barangay</Label>
+              <Select
+                value={ barangayCode ?? undefined }
+                onValueChange={ (next) => {
+                  if (next === '__clear-barangay') {
+                    handleBarangaySelect(null);
+                    return;
+                  }
+                  handleBarangaySelect(next);
+                } }
+                disabled={ !cityCode || isBarangaysLoading }
+              >
+                <SelectTrigger id="barangay-select" aria-label="Barangay" className="w-full">
+                  <SelectValue
+                    placeholder={
+                      !cityCode
+                        ? 'Select a city first'
+                        : isBarangaysError
+                          ? 'Barangays unavailable'
+                          : isBarangaysLoading
+                            ? 'Loading barangays...'
+                            : 'Select barangay'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  { barangayCode && (
+                    <SelectItem value="__clear-barangay" className="text-destructive">
+                      Clear selection
+                    </SelectItem>
+                  ) }
+                  { isBarangaysLoading && <SelectItem value="barangays-loading" disabled>Loading barangays…</SelectItem> }
+                  { isBarangaysError && <SelectItem value="barangays-error" disabled>Unable to load barangays</SelectItem> }
+                  { !isBarangaysLoading && !isBarangaysError && barangayOptions.map((barangay) => (
+                    <SelectItem key={ barangay.code } value={ barangay.code }>
+                      { barangay.name }
+                    </SelectItem>
+                  )) }
+                </SelectContent>
+              </Select>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
       <Separator />
 
