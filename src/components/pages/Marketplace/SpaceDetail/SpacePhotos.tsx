@@ -85,9 +85,7 @@ export default function SpacePhotos({
                             className="object-cover"
                           />
                         ) : (
-                          <div className="flex h-full items-center justify-center text-[11px] text-muted-foreground">
-                            No image
-                          </div>
+                          <div className="h-full w-full" aria-hidden="true" />
                         ) }
                         <div className="pointer-events-none absolute inset-0 bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100" />
                         { isSeeMoreSlot ? (
