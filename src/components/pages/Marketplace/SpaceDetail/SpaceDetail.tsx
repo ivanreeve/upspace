@@ -1,5 +1,5 @@
 import SpaceHeader from './SpaceHeader';
-import ImageGallery from './ImageGallery';
+import SpacePhotos from './SpacePhotos';
 import HostInfo from './HostInfo';
 import AmenitiesList from './AmenitiesList';
 import ReviewsSection from './ReviewsSection';
@@ -74,14 +74,6 @@ value: 4.7,
     }
   ];
 
-  const galleryImages = (() => {
-    if (space.heroImageUrl) {
-      const rest = space.galleryImageUrls.filter((url) => url !== space.heroImageUrl);
-      return [space.heroImageUrl, ...rest];
-    }
-    return space.galleryImageUrls;
-  })();
-
   const overviewFallback =
     'Located in the heart of the city, Downtown Space offers a modern and flexible coworking environment designed for entrepreneurs, freelancers, and small teams. With high-speed Wi-Fi, ergonomic workstations, private meeting rooms, and a cozy lounge area, it is the perfect place to stay productive and inspired.';
 
@@ -109,7 +101,11 @@ available: true,
       <div className="mx-auto max-w-[1440px] px-4 py-10 space-y-12">
         <SpaceHeader name={ space.name } rating={ rating } location={ location } />
 
-        <ImageGallery images={ galleryImages } />
+        <SpacePhotos
+          spaceName={ space.name }
+          heroImageUrl={ space.heroImageUrl }
+          galleryImageUrls={ space.galleryImageUrls }
+        />
 
         <HostInfo hostName={ space.hostName ?? hostName } />
 

@@ -185,7 +185,7 @@ export default function Marketplace() {
   return (
     <div className="bg-background relative lg:pl-[360px]">
       <aside className="hidden lg:block absolute top-0 left-0 h-screen w-[340px] px-5 py-10">
-        <Card className="h-full border-border/70 shadow-sm">
+        <Card className="h-full">
           <CardHeader className="space-y-3">
             <div className="space-y-1">
               <CardTitle>Advanced Filters</CardTitle>
