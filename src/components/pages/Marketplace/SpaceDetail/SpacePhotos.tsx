@@ -209,7 +209,7 @@ export default function SpacePhotos({
                             type="button"
                             onClick={ () => handleCategoryClick(group.anchor) }
                             aria-label={ `Jump to ${group.label} photos` }
-                            className="relative inline-flex w-44 min-w-[176px] flex-col text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                            className="group relative inline-flex w-44 min-w-[176px] flex-col text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                           >
                             <div className="relative h-28 w-full overflow-hidden bg-muted">
                               { preview ? (
@@ -225,6 +225,7 @@ export default function SpacePhotos({
                                   No preview
                                 </div>
                               ) }
+                              <div className="pointer-events-none absolute inset-0 bg-black/40 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
                               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
                             </div>
                             <div className="flex items-center justify-between py-2">
@@ -257,7 +258,7 @@ export default function SpacePhotos({
                         { group.images.map((image, index) => (
                           <div
                             key={ `dialog-gallery-${group.anchor}-${image.id}` }
-                            className="relative aspect-[3/2] min-h-[220px] overflow-hidden border border-border/60 bg-muted shadow-sm"
+                            className="group relative aspect-[3/2] min-h-[220px] overflow-hidden border border-border/60 bg-muted shadow-sm"
                           >
                             <Image
                               src={ image.url }
@@ -266,6 +267,7 @@ export default function SpacePhotos({
                               sizes="(min-width: 1280px) 360px, (min-width: 1024px) 300px, 100vw"
                               className="object-cover transition-transform cursor-pointer"
                             />
+                            <div className="pointer-events-none absolute inset-0 bg-black/40 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
                           </div>
                         )) }
                       </div>
