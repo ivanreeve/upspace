@@ -80,7 +80,9 @@ value: 4.7,
   const overviewFallback =
     'Located in the heart of the city, Downtown Space offers a modern and flexible coworking environment designed for entrepreneurs, freelancers, and small teams. With high-speed Wi-Fi, ergonomic workstations, private meeting rooms, and a cozy lounge area, it is the perfect place to stay productive and inspired.';
 
-  const aboutHtml = sanitizeRichText(space.description?.trim() || overviewFallback);
+  const rawAbout = space.description?.trim();
+  const aboutSource = rawAbout && rawAbout.length > 0 ? rawAbout : `<p>${overviewFallback}</p>`;
+  const aboutHtml = sanitizeRichText(aboutSource);
 
   return (
     <main className="bg-background">
@@ -106,7 +108,13 @@ value: 4.7,
             <section className="space-y-4 border-b pb-6">
               <h2 className="text-xl font-medium text-foreground">About { space.name }</h2>
               <div
-                className={`${SPACE_DESCRIPTION_VIEWER_CLASSNAME} whitespace-pre-line`}
+                className={ `
+                  ${SPACE_DESCRIPTION_VIEWER_CLASSNAME}
+                  whitespace-pre-line
+                  [&_p]:my-3 [&_p:first-of-type]:mt-0 [&_p:last-of-type]:mb-0
+                  [&_ul]:my-3 [&_ol]:my-3 [&_li]:leading-relaxed
+                  [&_h1]:mt-5 [&_h2]:mt-4 [&_h3]:mt-3
+                ` }
                 dangerouslySetInnerHTML={ { __html: aboutHtml, } }
               />
             </section>
