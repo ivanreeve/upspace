@@ -7,8 +7,8 @@ import ReviewsSection from './ReviewsSection';
 import WhereYoullBe from './WhereYoullBe';
 import AreasWithRates from './AreasWithRates';
 import AvailabilityTable from './AvailabilityTable';
-import { SPACE_DESCRIPTION_VIEWER_CLASSNAME } from '@/components/pages/Spaces/space-description-rich-text';
 
+import { SPACE_DESCRIPTION_VIEWER_CLASSNAME } from '@/components/pages/Spaces/space-description-rich-text';
 import type { MarketplaceSpaceDetail } from '@/lib/queries/space';
 import { sanitizeRichText } from '@/lib/rich-text';
 
@@ -106,7 +106,7 @@ value: 4.7,
             <section className="space-y-4 border-b pb-6">
               <h2 className="text-xl font-medium text-foreground">About { space.name }</h2>
               <div
-                className={ SPACE_DESCRIPTION_VIEWER_CLASSNAME }
+                className={`${SPACE_DESCRIPTION_VIEWER_CLASSNAME} whitespace-pre-line`}
                 dangerouslySetInnerHTML={ { __html: aboutHtml, } }
               />
             </section>
