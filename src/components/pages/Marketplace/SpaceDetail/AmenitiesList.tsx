@@ -1,5 +1,8 @@
 'use client';
 
+import type { IconType } from 'react-icons';
+import { FiList } from 'react-icons/fi';
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -11,9 +14,11 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AMENITY_CATEGORY_DISPLAY_MAP } from '@/lib/amenity/amenity_category_display_map';
+import { AMENITY_ICON_MAPPINGS } from '@/lib/amenity/amenity_icon_mappings';
 import type { SpaceAmenityDisplay } from '@/lib/queries/space';
 
 type Feature = { name: string; available: boolean };
+type AmenityWithIcon = SpaceAmenityDisplay & { Icon: IconType; };
 
 const MAX_VISIBLE_AMENITIES = 10;
 
@@ -63,19 +68,20 @@ export default function AmenitiesList({
   features: Feature[];
 }) {
   const normalizedAmenities = amenities.length > 0 ? amenities : FALLBACK_AMENITIES;
-  const visibleAmenities = normalizedAmenities.slice(0, MAX_VISIBLE_AMENITIES);
-  const groupedAmenities = groupAmenitiesByCategory(normalizedAmenities);
+  const amenitiesWithIcons: AmenityWithIcon[] = normalizedAmenities.map((amenity) => ({
+    ...amenity,
+    Icon: getIconForAmenity(amenity.name),
+  }));
+  const visibleAmenities = amenitiesWithIcons.slice(0, MAX_VISIBLE_AMENITIES);
+  const groupedAmenities = groupAmenitiesByCategory(amenitiesWithIcons);
 
   return (
     <section className="space-y-6 border-t pt-6">
       <h2 className="text-xl font-medium">What this place offers</h2>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Features
-          </h3>
-          <ul className="grid gap-2 text-sm text-foreground/80">
+      <div className="space-y-6">
+        { features.length > 0 ? (
+          <ul className="grid gap-3.5 text-sm text-foreground/80">
             { features.map((feature) => (
               <li
                 key={ feature.name }
@@ -85,59 +91,59 @@ export default function AmenitiesList({
               </li>
             )) }
           </ul>
-        </div>
+        ) : null }
 
-        <div className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Amenities
-          </h3>
-          <ul className="grid gap-2 text-sm text-foreground/80">
-            { visibleAmenities.map((amenity) => (
-              <li key={ amenity.id }>{ amenity.name }</li>
-            )) }
-          </ul>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" aria-label="Show all amenities">
-                Show all amenities
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl">
-              <DialogHeader className="space-y-1">
-                <DialogTitle>All amenities</DialogTitle>
-                <DialogDescription>Grouped by category for this space.</DialogDescription>
-              </DialogHeader>
-              { groupedAmenities.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No amenities listed yet.</p>
-              ) : (
-                <ScrollArea className="max-h-[60vh] pr-3">
-                  <div className="space-y-6 pr-2">
-                    { groupedAmenities.map((group) => (
-                      <section key={ group.key } className="space-y-2">
-                        <div className="flex items-center justify-between gap-3">
-                          <h3 className="text-sm font-semibold text-foreground">{ group.label }</h3>
-                          <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                            { group.amenities.length } item{ group.amenities.length === 1 ? '' : 's' }
-                          </span>
-                        </div>
-                        <ul className="grid grid-cols-1 gap-2 text-sm text-foreground/80 sm:grid-cols-2">
-                          { group.amenities.map((name, index) => (
-                            <li
-                              key={ `${group.key}-${index}` }
-                              className="rounded-sm border border-border/60 bg-muted/40 px-3 py-2"
-                            >
-                              { name }
-                            </li>
-                          )) }
-                        </ul>
-                      </section>
-                    )) }
-                  </div>
-                </ScrollArea>
-              ) }
-            </DialogContent>
-          </Dialog>
-        </div>
+        <ul className="grid gap-3.5 text-sm text-foreground/80">
+          { visibleAmenities.map((amenity) => {
+            const Icon = amenity.Icon;
+            return (
+              <li key={ amenity.id } className="flex items-center gap-3.5">
+                <Icon className="size-4 text-muted-foreground" aria-hidden="true" />
+                <span>{ amenity.name }</span>
+              </li>
+            );
+          }) }
+        </ul>
+
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" aria-label="Show all amenities">
+              Show all amenities
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader className="space-y-1">
+              <DialogTitle>All amenities</DialogTitle>
+              <DialogDescription>Grouped by category for this space.</DialogDescription>
+            </DialogHeader>
+            { groupedAmenities.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No amenities listed yet.</p>
+            ) : (
+              <ScrollArea className="max-h-[60vh] pr-3">
+                <div className="space-y-6 pr-2">
+                  { groupedAmenities.map((group) => (
+                    <section key={ group.key } className="space-y-2.5">
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-sm font-semibold text-foreground">{ group.label }</h3>
+                      </div>
+                      <ul className="grid grid-cols-1 gap-3 text-sm text-foreground/80 sm:grid-cols-2">
+                        { group.amenities.map((amenity) => (
+                          <li
+                            key={ amenity.id }
+                            className="flex items-center gap-3 rounded-sm border border-border/60 bg-muted/40 px-3.5 py-3"
+                          >
+                            <amenity.Icon className="size-4 text-muted-foreground" aria-hidden="true" />
+                            <span>{ amenity.name }</span>
+                          </li>
+                        )) }
+                      </ul>
+                    </section>
+                  )) }
+                </div>
+              </ScrollArea>
+            ) }
+          </DialogContent>
+        </Dialog>
       </div>
 
       <p className="text-sm text-muted-foreground">
@@ -156,7 +162,7 @@ export default function AmenitiesList({
 type AmenityGroup = {
   key: string;
   label: string;
-  amenities: string[];
+  amenities: AmenityWithIcon[];
 };
 
 const formatCategoryLabel = (category: string | null) => {
@@ -170,7 +176,7 @@ const formatCategoryLabel = (category: string | null) => {
     .join(' ');
 };
 
-const groupAmenitiesByCategory = (amenityList: SpaceAmenityDisplay[]): AmenityGroup[] => {
+const groupAmenitiesByCategory = (amenityList: AmenityWithIcon[]): AmenityGroup[] => {
   const grouped = new Map<string, AmenityGroup>();
 
   for (const amenity of amenityList) {
@@ -183,7 +189,7 @@ const groupAmenitiesByCategory = (amenityList: SpaceAmenityDisplay[]): AmenityGr
         label,
         amenities: [],
       };
-    existing.amenities.push(amenity.name);
+    existing.amenities.push(amenity);
     grouped.set(categoryKey, existing);
   }
 
@@ -191,6 +197,16 @@ const groupAmenitiesByCategory = (amenityList: SpaceAmenityDisplay[]): AmenityGr
     .sort((a, b) => a.label.localeCompare(b.label))
     .map((group) => ({
       ...group,
-      amenities: group.amenities.slice().sort((a, b) => a.localeCompare(b)),
+      amenities: group.amenities
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name)),
     }));
+};
+
+const getIconForAmenity = (name: string): IconType => {
+  const normalized = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return (AMENITY_ICON_MAPPINGS[normalized] as IconType) ?? FiList;
 };

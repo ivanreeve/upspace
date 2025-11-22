@@ -77,25 +77,6 @@ value: 4.7,
   const overviewFallback =
     'Located in the heart of the city, Downtown Space offers a modern and flexible coworking environment designed for entrepreneurs, freelancers, and small teams. With high-speed Wi-Fi, ergonomic workstations, private meeting rooms, and a cozy lounge area, it is the perfect place to stay productive and inspired.';
 
-  const featureList = [
-    {
- name: 'Breakout Spaces',
-available: true, 
-},
-    {
- name: 'Wheelchair Accessible',
-available: true, 
-},
-    {
- name: 'Parking Space(s)',
-available: false, 
-},
-    {
- name: 'Restrooms',
-available: true, 
-}
-  ];
-
   return (
     <main className="bg-background">
       <div className="mx-auto max-w-[1100px] px-4 py-10 space-y-12">
@@ -146,7 +127,7 @@ available: true,
           </details>
         </section>
 
-        <AmenitiesList amenities={ space.amenities } features={ featureList } />
+        <AmenitiesList amenities={ space.amenities } features={ [] } />
 
         <ReviewsSection rating={ rating } highlights={ reviewHighlights } testimonials={ testimonials } />
 
