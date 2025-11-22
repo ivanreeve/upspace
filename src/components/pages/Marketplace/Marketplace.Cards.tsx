@@ -2,19 +2,15 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { FiBookmark } from 'react-icons/fi';
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Space } from '@/lib/api/spaces';
 
-const statusVariant = (status?: Space['status']): 'secondary' | 'outline' => {
-  if (status === 'Live') return 'secondary';
-  return 'outline';
-};
-
 export function SkeletonGrid({ count = 6, }: { count?: number }) {
   return (
-    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
       { Array.from({ length: count, }).map((_, i) => (
         <Card key={ i }>
           <Skeleton className="h-44 w-full rounded-t-lg" />
@@ -35,7 +31,7 @@ export function CardsGrid({ items, }: { items: Space[] }) {
     );
   }
   return (
-    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
       { items.map((space) => (
         <SpaceCard key={ space.space_id } space={ space } />
       )) }
@@ -58,6 +54,9 @@ export function SpaceCard({ space, }: { space: Space }) {
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/20" />
         ) }
+        <div className="absolute right-3 top-3 rounded-full bg-black/30 cursor-pointer backdrop-blur-2xl p-2 text-white shadow-md transition-colors group-hover:bg-black/70">
+          <FiBookmark aria-hidden="true" className="size-5" />
+        </div>
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
       </div>
 
