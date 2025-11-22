@@ -20,11 +20,11 @@ export function BookingCard({ spaceName, }: BookingCardProps) {
         <CardTitle className="text-lg">Book a reservation</CardTitle>
         <CardDescription>Reserve { spaceName } for your next session.</CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-1 flex-col gap-4 pt-2">
+      <CardContent className="flex flex-1 flex-col gap-4 pt-2 justify-end">
         <p className="text-sm text-muted-foreground">
           Share your details and we will confirm availability with the host.
         </p>
-        <Button type="button" className="mt-auto w-full">
+        <Button type="button" className="w-full">
           <FiCalendar className="mr-2 size-4" aria-hidden="true" />
           Book a reservation
         </Button>

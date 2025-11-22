@@ -7,6 +7,7 @@ import ReviewsSection from './ReviewsSection';
 import WhereYoullBe from './WhereYoullBe';
 import AreasWithRates from './AreasWithRates';
 import AvailabilityTable from './AvailabilityTable';
+import { SPACE_DESCRIPTION_VIEWER_CLASSNAME } from '@/components/pages/Spaces/space-description-rich-text';
 
 import type { MarketplaceSpaceDetail } from '@/lib/queries/space';
 import { sanitizeRichText } from '@/lib/rich-text';
@@ -105,7 +106,7 @@ value: 4.7,
             <section className="space-y-4 border-b pb-6">
               <h2 className="text-xl font-medium text-foreground">About { space.name }</h2>
               <div
-                className="space-y-2 text-sm leading-relaxed text-foreground/80 [h1]:text-lg [h1]:font-semibold [h2]:text-base [h2]:font-semibold [ul]:list-disc [ul]:pl-5 [ol]:list-decimal [ol]:pl-5 [a]:text-primary [a]:underline"
+                className={ SPACE_DESCRIPTION_VIEWER_CLASSNAME }
                 dangerouslySetInnerHTML={ { __html: aboutHtml, } }
               />
             </section>
