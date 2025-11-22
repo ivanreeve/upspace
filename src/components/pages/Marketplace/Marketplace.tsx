@@ -231,18 +231,6 @@ export default function Marketplace() {
             </div>
           </form>
           <div className="flex flex-wrap items-center gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-                Results
-              </p>
-              <h2 className="text-2xl font-semibold leading-tight">
-                { hasError ? '—' : spaces.length } spaces loaded
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Showing approved spaces plus pending submissions (testing mode).
-              </p>
-            </div>
-
             <Sheet open={ isSheetOpen } onOpenChange={ setSheetOpen }>
               <SheetTrigger asChild>
                 <Button
