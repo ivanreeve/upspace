@@ -109,7 +109,7 @@ export default function SpaceHeader({
             type="button"
             onClick={ handleShare }
             disabled={ isSharing }
-            className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium cursor-pointer transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed"
           >
             <FiShare2 className="size-4" aria-hidden="true" />
             { isSharing ? 'Sharing…' : 'Share' }
@@ -120,7 +120,7 @@ export default function SpaceHeader({
             disabled={ isSaving }
             aria-busy={ isSaving }
             aria-pressed={ isSaved }
-            className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium cursor-pointer transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed"
           >
             { isSaving ? (
               <CgSpinner className="size-4 animate-spin" aria-hidden="true" />
