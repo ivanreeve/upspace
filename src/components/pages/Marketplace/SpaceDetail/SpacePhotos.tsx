@@ -46,7 +46,6 @@ export default function SpacePhotos({
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
             <CardTitle className="text-2xl">Uploaded photos</CardTitle>
-            <CardDescription>Images stored for this listing.</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
