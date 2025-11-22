@@ -1,6 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+useCallback,
+useEffect,
+useMemo,
+useState
+} from 'react';
 import type { IconType } from 'react-icons';
 import { CgSpinner } from 'react-icons/cg';
 import {
@@ -9,7 +14,7 @@ import {
   FaFacebookMessenger,
   FaInstagram,
   FaRegBookmark,
-  FaTelegramPlane,
+  FaTelegramPlane
 } from 'react-icons/fa';
 import { FaXTwitter } from 'react-icons/fa6';
 import { FiLink, FiShare2 } from 'react-icons/fi';
@@ -22,7 +27,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogTrigger
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 
@@ -76,15 +81,31 @@ export default function SpaceHeader({
       : `https://www.messenger.com/t?link=${encodedUrl}&text=${encodedMessage}`;
 
     return [
-      { label: 'Messenger', href: messengerShareUrl, icon: FaFacebookMessenger },
-      { label: 'Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`, icon: FaFacebook },
-      { label: 'X.com', href: `https://x.com/intent/post?text=${encodedMessageWithUrl}`, icon: FaXTwitter },
+      {
+ label: 'Messenger',
+href: messengerShareUrl,
+icon: FaFacebookMessenger, 
+},
+      {
+ label: 'Facebook',
+href: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+icon: FaFacebook, 
+},
+      {
+ label: 'X.com',
+href: `https://x.com/intent/post?text=${encodedMessageWithUrl}`,
+icon: FaXTwitter, 
+},
       {
         label: 'Instagram',
         href: `https://www.instagram.com/direct/new/?text=${encodedMessageWithUrl}`,
         icon: FaInstagram,
       },
-      { label: 'Telegram', href: `https://t.me/share/url?url=${encodedUrl}&text=${encodedMessage}`, icon: FaTelegramPlane },
+      {
+ label: 'Telegram',
+href: `https://t.me/share/url?url=${encodedUrl}&text=${encodedMessage}`,
+icon: FaTelegramPlane, 
+}
     ];
   }, [shareMessage, shareUrl]);
 
