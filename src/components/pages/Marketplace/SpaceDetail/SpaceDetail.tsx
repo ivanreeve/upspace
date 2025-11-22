@@ -1,6 +1,7 @@
 import SpaceHeader from './SpaceHeader';
 import SpacePhotos from './SpacePhotos';
 import HostInfo from './HostInfo';
+import { BookingCard } from './BookingCard';
 import AmenitiesList from './AmenitiesList';
 import ReviewsSection from './ReviewsSection';
 import WhereYoullBe from './WhereYoullBe';
@@ -94,14 +95,20 @@ value: 4.7,
           galleryImages={ space.galleryImages }
         />
 
-        <HostInfo hostName={ space.hostName ?? hostName } avatarUrl={ space.hostAvatarUrl } />
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
+          <div className="space-y-4">
+            <HostInfo hostName={ space.hostName ?? hostName } avatarUrl={ space.hostAvatarUrl } />
 
-        <section className="space-y-4 border-b pb-6">
-          <h2 className="text-xl font-medium text-foreground">About { space.name }</h2>
-          <p className="text-sm leading-relaxed text-foreground/80">
-            { space.description?.trim() || overviewFallback }
-          </p>
-        </section>
+            <section className="space-y-4 border-b pb-6">
+              <h2 className="text-xl font-medium text-foreground">About { space.name }</h2>
+              <p className="text-sm leading-relaxed text-foreground/80">
+                { space.description?.trim() || overviewFallback }
+              </p>
+            </section>
+          </div>
+
+          <BookingCard spaceName={ space.name } />
+        </div>
 
         <AreasWithRates areas={ space.areas } />
 
