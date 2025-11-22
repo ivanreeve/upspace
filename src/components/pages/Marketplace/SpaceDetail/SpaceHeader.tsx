@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import { CgSpinner } from 'react-icons/cg';
+import { FaBookmark } from 'react-icons/fa';
 import { FiBookmark, FiShare2 } from 'react-icons/fi';
 import { toast } from 'sonner';
 
@@ -119,6 +120,8 @@ export default function SpaceHeader({
         >
           { isSaving ? (
             <CgSpinner className="size-4 animate-spin" aria-hidden="true" />
+          ) : isSaved ? (
+            <FaBookmark className="size-4" aria-hidden="true" />
           ) : (
             <FiBookmark className="size-4" aria-hidden="true" />
           ) }
