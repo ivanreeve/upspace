@@ -511,7 +511,7 @@ function FiltersForm({
 
       <Separator />
 
-      <Accordion type="single" collapsible defaultValue="advanced-filters" className="w-full">
+      <Accordion type="single" collapsible className="w-full">
         <AccordionItem value="advanced-filters">
           <AccordionTrigger className="text-base font-semibold hover:no-underline cursor-pointer">
             Advanced Filters
