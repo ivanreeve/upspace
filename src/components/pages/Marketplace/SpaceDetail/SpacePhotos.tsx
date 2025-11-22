@@ -50,8 +50,8 @@ export default function SpacePhotos({
         </CardHeader>
         <CardContent className="px-0">
           { hasImages ? (
-            <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_260px] lg:items-stretch xl:grid-cols-[minmax(0,1fr)_320px]">
-              <figure className="group relative h-56 flex-1 cursor-pointer overflow-hidden border border-border/60 bg-muted sm:h-64 lg:h-72 xl:h-[22rem]">
+            <div className="flex flex-col gap-2.5 lg:grid lg:grid-cols-[minmax(0,1fr)_260px] lg:items-stretch xl:grid-cols-[minmax(0,1fr)_320px]">
+              <figure className="group relative h-64 flex-1 cursor-pointer overflow-hidden rounded-tl-lg rounded-bl-lg border border-border/60 bg-muted sm:h-72 lg:h-80 xl:h-[24rem]">
                 { primaryImageUrl ? (
                   <Image
                     src={ primaryImageUrl }
@@ -65,17 +65,26 @@ export default function SpacePhotos({
                     Missing public URL
                   </div>
                 ) }
-                <div className="pointer-events-none absolute inset-0 bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100" />
+                <div className="pointer-events-none absolute inset-0 rounded-tl-lg rounded-bl-lg bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100 lg:rounded-l-lg" />
               </figure>
 
-              <div className="grid grid-cols-2 grid-rows-2 gap-4 lg:h-full">
+              <div className="grid grid-cols-2 grid-rows-2 gap-2.5 lg:h-full">
                 { Array.from({ length: 4, }).map((_, index) => {
                   const imageSrc = galleryWithoutPrimary[index];
                   const isSeeMoreSlot = index === 3;
+                  const isTopRightTile = index === 1;
+                  const isBottomRightTile = index === 3;
+                  const tileRoundingClass = isTopRightTile
+                    ? 'rounded-tr-lg'
+                    : isBottomRightTile
+                      ? 'rounded-br-lg'
+                      : '';
 
                   return (
                     <figure key={ `gallery-tile-${index}` }>
-                      <div className="group relative aspect-square w-full cursor-pointer overflow-hidden border border-border/60 bg-muted lg:aspect-auto lg:h-full">
+                      <div
+                        className={ `group relative aspect-square w-full cursor-pointer overflow-hidden border border-border/60 bg-muted lg:aspect-auto lg:h-full ${tileRoundingClass}` }
+                      >
                         { imageSrc ? (
                           <Image
                             src={ imageSrc }
@@ -87,13 +96,15 @@ export default function SpacePhotos({
                         ) : (
                           <div className="h-full w-full" aria-hidden="true" />
                         ) }
-                        <div className="pointer-events-none absolute inset-0 bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100" />
+                        <div
+                          className={ `pointer-events-none absolute inset-0 bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100 ${tileRoundingClass}` }
+                        />
                         { isSeeMoreSlot ? (
                           <button
                             type="button"
                             onClick={ () => setGalleryOpen(true) }
                             aria-label="Open full image gallery"
-                            className="absolute inset-0 flex items-center justify-center rounded-md bg-background/55 text-sm font-medium text-foreground backdrop-blur-md transition hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                            className={ `absolute inset-0 flex items-center justify-center ${tileRoundingClass || 'rounded-md'} bg-background/55 text-sm font-medium text-foreground backdrop-blur-md transition hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background` }
                           >
                             See all photos
                           </button>
