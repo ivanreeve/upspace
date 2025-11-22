@@ -1,6 +1,3 @@
-const MAP_PLACEHOLDER =
-  'https://images.unsplash.com/photo-1502920764203-b859c2384716?auto=format&fit=crop&w=1400&q=80';
-
 export default function WhereYoullBe({
   city,
   region,
@@ -11,15 +8,16 @@ export default function WhereYoullBe({
   return (
     <section className="space-y-4 border-t pt-6">
       <h2 className="text-xl font-medium text-foreground">Where you will be</h2>
-      <p className="text-sm text-muted-foreground">{ label } - Map coming soon</p>
-      <figure className="overflow-hidden rounded-2xl border">
-        <img
-          src={ MAP_PLACEHOLDER }
-          alt="Map preview of the surrounding area"
-          className="h-full w-full object-cover"
+      <p className="text-sm text-muted-foreground">{ label }</p>
+      <div className="overflow-hidden rounded-2xl border">
+        <iframe
+          title="Location map"
+          src={ `https://www.google.com/maps?q=${ encodeURIComponent(label) }&output=embed` }
           loading="lazy"
+          className="h-[420px] w-full border-0"
+          allowFullScreen
         />
-      </figure>
+      </div>
     </section>
   );
 }
