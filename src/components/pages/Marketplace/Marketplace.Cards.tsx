@@ -13,7 +13,7 @@ import type { Space } from '@/lib/api/spaces';
 
 export function SkeletonGrid({ count = 6, }: { count?: number }) {
   return (
-    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
       { Array.from({ length: count, }).map((_, i) => (
         <Card key={ i }>
           <Skeleton className="h-44 w-full rounded-t-lg" />
@@ -34,7 +34,7 @@ export function CardsGrid({ items, }: { items: Space[] }) {
     );
   }
   return (
-    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
       { items.map((space) => (
         <SpaceCard key={ space.space_id } space={ space } />
       )) }
