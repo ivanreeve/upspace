@@ -11,15 +11,18 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Space } from '@/lib/api/spaces';
 
-export function SkeletonGrid({ count = 6, }: { count?: number }) {
+export function SkeletonGrid({ count = 12, }: { count?: number }) {
   return (
     <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
       { Array.from({ length: count, }).map((_, i) => (
-        <Card key={ i }>
-          <Skeleton className="h-44 w-full rounded-t-lg" />
-          <CardContent className="space-y-3 p-4">
+        <Card key={ i } className="group flex flex-col overflow-hidden text-card-foreground border-none">
+          <div className="relative aspect-[16/9] w-full overflow-hidden">
+            <Skeleton className="absolute inset-0 h-full w-full rounded-md" />
+            <Skeleton className="absolute right-3 top-3 h-9 w-9 rounded-full" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
+          </div>
+          <CardContent className="flex flex-1 flex-col gap-3 p-0">
             <Skeleton className="h-5 w-3/4" />
-            <Skeleton className="h-10 w-full rounded-md" />
           </CardContent>
         </Card>
       )) }
