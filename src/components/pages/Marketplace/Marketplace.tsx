@@ -2,14 +2,10 @@
 
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-FiAlertCircle,
-FiMapPin,
-FiSearch,
-FiSliders
-} from 'react-icons/fi';
+import { FiSearch, FiSliders } from 'react-icons/fi';
 
 import { CardsGrid, SkeletonGrid } from './Marketplace.Cards';
+import { MarketplaceErrorState } from './Marketplace.ErrorState';
 
 import { listSpaces } from '@/lib/api/spaces';
 import BackToTopButton from '@/components/ui/back-to-top';
@@ -297,9 +293,8 @@ export default function Marketplace() {
           ) }
 
           { hasError ? (
-            <div className="flex min-h-[70vh] w-full flex-col items-center justify-center rounded-xl border border-destructive/40 bg-destructive/5 px-6 py-12 text-center text-destructive">
-              <FiAlertCircle aria-hidden="true" className="size-10" />
-              <p className="mt-3 text-base font-semibold">Failed to load spaces. Please try again in a moment.</p>
+            <div className="flex min-h-[70vh] w-full items-center justify-center px-4">
+              <MarketplaceErrorState />
             </div>
           ) : (
             <div className="space-y-3">
