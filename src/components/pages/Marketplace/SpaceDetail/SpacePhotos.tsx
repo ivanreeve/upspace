@@ -50,7 +50,7 @@ export default function SpacePhotos({
         </CardHeader>
         <CardContent className="px-0">
           { hasImages ? (
-            <div className="flex flex-col gap-2.5 lg:grid lg:grid-cols-[minmax(0,1fr)_260px] lg:items-stretch xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="flex flex-col gap-2.5 lg:grid lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start xl:grid-cols-[minmax(0,1fr)_480px]">
               <figure className="group relative h-96 flex-1 cursor-pointer overflow-hidden rounded-tl-lg rounded-bl-lg border border-border/60 bg-muted sm:h-[28rem] lg:h-[30rem] xl:h-[32rem]">
                 { primaryImageUrl ? (
                   <Image
@@ -68,7 +68,7 @@ export default function SpacePhotos({
                 <div className="pointer-events-none absolute inset-0 rounded-tl-lg rounded-bl-lg bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100 lg:rounded-l-lg" />
               </figure>
 
-              <div className="grid grid-cols-2 grid-rows-2 gap-2.5 lg:h-full">
+              <div className="grid grid-cols-2 grid-rows-2 gap-2.5">
                 { Array.from({ length: 4, }).map((_, index) => {
                   const imageSrc = galleryWithoutPrimary[index];
                   const isSeeMoreSlot = index === 3;
@@ -83,7 +83,7 @@ export default function SpacePhotos({
                   return (
                     <figure key={ `gallery-tile-${index}` }>
                       <div
-                        className={ `group relative aspect-square w-full cursor-pointer overflow-hidden border border-border/60 bg-muted lg:aspect-auto lg:h-full ${tileRoundingClass}` }
+                        className={ `group relative aspect-square w-full cursor-pointer overflow-hidden border border-border/60 bg-muted ${tileRoundingClass}` }
                       >
                         { imageSrc ? (
                           <Image
