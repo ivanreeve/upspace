@@ -40,6 +40,10 @@ export default function SpacePhotos({
   );
   const primaryFromGallery = normalizedGallery[0]?.url ?? null;
   const primaryImageUrl = heroImageUrl ?? primaryFromGallery;
+  const primaryImage = useMemo(
+    () => normalizedGallery.find((image) => image.url === primaryImageUrl) ?? null,
+    [normalizedGallery, primaryImageUrl]
+  );
   const galleryWithoutPrimary = heroImageUrl
     ? normalizedGallery.filter((value) => value.url !== heroImageUrl)
     : normalizedGallery.slice(1);
@@ -118,9 +122,13 @@ export default function SpacePhotos({
     ? formatCategoryLabel(activeCarouselImage.category ?? null)
     : 'photo';
 
-  const openCarousel = (imageId: string) => {
-    const index = normalizedGallery.findIndex((image) => image.id === imageId);
-    setCarouselIndex(index >= 0 ? index : 0);
+  const openCarouselFromImage = (image?: SpaceImageDisplay | null) => {
+    if (!image) return;
+    const index = normalizedGallery.findIndex(
+      (item) => item.id === image.id || (!!image.url && item.url === image.url)
+    );
+    if (index < 0) return;
+    setCarouselIndex(index);
     setCarouselOpen(true);
   };
 
@@ -168,11 +176,22 @@ export default function SpacePhotos({
                   </div>
                 ) }
                 <div className="pointer-events-none absolute inset-0 rounded-tl-lg rounded-bl-lg bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100 lg:rounded-l-lg" />
+                { primaryImage ? (
+                  <button
+                    type="button"
+                    onClick={ () => openCarouselFromImage(primaryImage) }
+                    aria-label="Open featured photo carousel"
+                    className="absolute inset-0 z-10 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  >
+                    <span className="sr-only">Open featured photo carousel</span>
+                  </button>
+                ) : null }
               </figure>
 
               <div className="grid grid-cols-2 grid-rows-2 gap-2.5">
                 { Array.from({ length: 4, }).map((_, index) => {
-                  const imageSrc = galleryWithoutPrimary[index]?.url;
+                  const tileImage = galleryWithoutPrimary[index];
+                  const imageSrc = tileImage?.url;
                   const isSeeMoreSlot = index === 3;
                   const isTopRightTile = index === 1;
                   const isBottomRightTile = index === 3;
@@ -209,6 +228,15 @@ export default function SpacePhotos({
                             className={ `absolute inset-0 flex items-center justify-center ${tileRoundingClass || 'rounded-md'} bg-background/55 text-sm font-medium text-foreground backdrop-blur-md transition hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background` }
                           >
                             See all photos
+                          </button>
+                        ) : tileImage ? (
+                          <button
+                            type="button"
+                            onClick={ () => openCarouselFromImage(tileImage) }
+                            aria-label={ `Open carousel for gallery photo ${index + 1}` }
+                            className={ `absolute inset-0 ${tileRoundingClass || 'rounded-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background` }
+                          >
+                            <span className="sr-only">Open carousel for gallery photo { index + 1 }</span>
                           </button>
                         ) : null }
                       </div>
@@ -302,7 +330,7 @@ export default function SpacePhotos({
                           <button
                             key={ `dialog-gallery-${group.anchor}-${image.id}` }
                             type="button"
-                            onClick={ () => openCarousel(image.id) }
+                            onClick={ () => openCarouselFromImage(image) }
                             aria-label={ `Open carousel for ${group.label} photo ${index + 1}` }
                             className="group relative block w-full cursor-pointer overflow-hidden border border-border/60 bg-muted shadow-sm aspect-[3/2] min-h-[220px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                           >
