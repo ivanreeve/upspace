@@ -15,7 +15,7 @@ type BookingCardProps = {
 
 export function BookingCard({ spaceName, }: BookingCardProps) {
   return (
-    <Card className="shadow-sm lg:sticky lg:top-28 h-full">
+    <Card className="shadow-sm lg:sticky lg:top-28 h-full rounded-md">
       <CardHeader className="pb-0">
         <CardTitle className="text-lg">Book a reservation</CardTitle>
         <CardDescription>Reserve { spaceName } for your next session.</CardDescription>

@@ -12,7 +12,7 @@ export default function HostInfo({
   const avatarAlt = resolvedName === 'Your host' ? 'Host avatar' : `${resolvedName}'s avatar`;
 
   return (
-    <section className="flex flex-col gap-4 rounded-2xl border px-6 py-5 shadow-sm md:flex-row md:items-center md:justify-between">
+    <section className="flex flex-col gap-4 rounded-md border px-6 py-5 shadow-sm md:flex-row md:items-center md:justify-between">
       <div className="flex items-center gap-4">
         <Avatar>
           { avatarUrl ? <AvatarImage src={ avatarUrl } alt={ avatarAlt } /> : null }
