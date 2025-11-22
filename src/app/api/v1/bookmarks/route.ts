@@ -8,7 +8,9 @@ const payloadSchema = z.object({ space_id: z.string().uuid(), });
 
 const convertSpaceIdToBigInt = (value: string): bigint => {
   const normalized = value.replace(/-/g, '');
-  return BigInt(`0x${normalized}`);
+  const as128Bit = BigInt(`0x${normalized}`);
+  // Clamp to the positive signed BIGINT range so Postgres can store it.
+  return BigInt.asUintN(63, as128Bit);
 };
 
 export async function POST(req: NextRequest) {
