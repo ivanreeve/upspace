@@ -79,7 +79,7 @@ value: 4.7,
 
   return (
     <main className="bg-background">
-      <div className="mx-auto max-w-[1100px] px-4 py-10 space-y-12">
+      <div className="mx-auto max-w-[1100px] px-4 py-10 space-y-4">
         <SpaceHeader
           name={ space.name }
           rating={ rating }
