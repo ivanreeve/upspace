@@ -115,6 +115,7 @@ export type SpaceAmenityDisplay = {
 export type MarketplaceSpaceDetail = {
   id: string;
   name: string;
+  isBookmarked: boolean;
   description: string;
   unitNumber: string;
   addressSubunit: string;
@@ -219,7 +220,16 @@ gallery,
 };
 };
 
-export async function getSpaceDetail(spaceId: string): Promise<MarketplaceSpaceDetail | null> {
+type SpaceDetailOptions = {
+  bookmarkUserId?: bigint;
+};
+
+export async function getSpaceDetail(
+  spaceId: string,
+  options: SpaceDetailOptions = {}
+): Promise<MarketplaceSpaceDetail | null> {
+  const { bookmarkUserId, } = options;
+
   const space = await prisma.space.findFirst({
     where: {
       id: spaceId,
@@ -236,6 +246,15 @@ export async function getSpaceDetail(spaceId: string): Promise<MarketplaceSpaceD
   const {
  hero, gallery, 
 } = await buildGallery(space.space_image);
+  const isBookmarked = bookmarkUserId
+    ? Boolean(await prisma.bookmark.findFirst({
+      where: {
+        user_id: bookmarkUserId,
+        space_id: space.id,
+      },
+      select: { bookmark_id: true, },
+    }))
+    : false;
   const availability = buildAvailabilityDisplay(space.space_availability);
   const areas = buildAreaSummaries(space.area);
   const amenities = buildAmenities(space.amenity);
@@ -243,6 +262,7 @@ export async function getSpaceDetail(spaceId: string): Promise<MarketplaceSpaceD
   return {
     id: space.id,
     name: space.name,
+    isBookmarked,
     description: space.description ?? '',
     unitNumber: space.unit_number,
     addressSubunit: space.address_subunit,

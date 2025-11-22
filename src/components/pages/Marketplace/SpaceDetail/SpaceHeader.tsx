@@ -13,6 +13,7 @@ type SpaceHeaderProps = {
   rating: Rating;
   location: string;
   spaceId: string;
+  isBookmarked?: boolean;
 };
 
 export default function SpaceHeader({
@@ -20,10 +21,11 @@ export default function SpaceHeader({
   rating,
   location,
   spaceId,
+  isBookmarked = false,
 }: SpaceHeaderProps) {
   const [isSharing, setIsSharing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
+  const [isSaved, setIsSaved] = useState(isBookmarked);
 
   const handleShare = useCallback(async () => {
     if (isSharing) {
@@ -62,14 +64,15 @@ export default function SpaceHeader({
   }, [isSharing, name]);
 
   const handleSave = useCallback(async () => {
-    if (isSaving || isSaved) {
+    if (isSaving) {
       return;
     }
 
+    const shouldRemove = isSaved;
     setIsSaving(true);
     try {
       const response = await fetch('/api/v1/bookmarks', {
-        method: 'POST',
+        method: shouldRemove ? 'DELETE' : 'POST',
         headers: { 'content-type': 'application/json', },
         body: JSON.stringify({ space_id: spaceId, }),
       });
@@ -83,8 +86,8 @@ export default function SpaceHeader({
         );
       }
 
-      setIsSaved(true);
-      toast.success('Saved to your bookmarks.');
+      setIsSaved(!shouldRemove);
+      toast.success(shouldRemove ? 'Removed from your bookmarks.' : 'Saved to your bookmarks.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to save right now.');
     } finally {
@@ -114,18 +117,19 @@ export default function SpaceHeader({
           <button
             type="button"
             onClick={ handleSave }
-          disabled={ isSaving || isSaved }
-          aria-busy={ isSaving }
-          className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed"
-        >
-          { isSaving ? (
-            <CgSpinner className="size-4 animate-spin" aria-hidden="true" />
-          ) : isSaved ? (
-            <FaBookmark className="size-4" aria-hidden="true" />
-          ) : (
-            <FiBookmark className="size-4" aria-hidden="true" />
-          ) }
-            { isSaved ? 'Saved' : isSaving ? 'Saving…' : 'Save' }
+            disabled={ isSaving }
+            aria-busy={ isSaving }
+            aria-pressed={ isSaved }
+            className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed"
+          >
+            { isSaving ? (
+              <CgSpinner className="size-4 animate-spin" aria-hidden="true" />
+            ) : isSaved ? (
+              <FaBookmark className="size-4" aria-hidden="true" />
+            ) : (
+              <FiBookmark className="size-4" aria-hidden="true" />
+            ) }
+            { isSaving ? (isSaved ? 'Removing…' : 'Saving…') : isSaved ? 'Saved' : 'Save' }
           </button>
         </div>
       </div>

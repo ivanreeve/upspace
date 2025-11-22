@@ -85,6 +85,7 @@ value: 4.7,
           rating={ rating }
           location={ location }
           spaceId={ space.id }
+          isBookmarked={ space.isBookmarked }
         />
 
         <SpacePhotos

@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 
 import { prisma } from '@/lib/prisma';
 import { getSpaceDetail } from '@/lib/queries/space';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import SpaceDetail from '@/components/pages/Marketplace/SpaceDetail/SpaceDetail';
 import NavBar from '@/components/ui/navbar';
 import { Footer } from '@/components/ui/footer';
@@ -29,7 +30,21 @@ export async function generateMetadata({ params, }: Props): Promise<Metadata> {
 
 export default async function SpaceDetailPage({ params, }: Props) {
   if (!isUuid(params.space_id)) notFound();
-  const space = await getSpaceDetail(params.space_id);
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: authData,
+  } = await supabase.auth.getUser();
+
+  const bookmarkUser = authData?.user
+    ? await prisma.user.findFirst({
+      where: { auth_user_id: authData.user.id, },
+      select: { user_id: true, },
+    })
+    : null;
+
+  const space = await getSpaceDetail(params.space_id, {
+    bookmarkUserId: bookmarkUser?.user_id,
+  });
   if (!space) notFound();
   return (
     <>
