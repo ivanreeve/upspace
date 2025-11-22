@@ -181,7 +181,7 @@ export default function SpacePhotos({
       </Card>
 
       <Dialog open={ galleryOpen } onOpenChange={ setGalleryOpen }>
-        <DialogContent className="flex h-[90vh] w-full max-w-[95vw] sm:max-w-[90vw] lg:max-w-6xl flex-col p-0">
+        <DialogContent className="flex h-screen w-screen max-w-[100vw] flex-col p-0 sm:max-w-[100vw]">
           <DialogHeader className="border-b border-border/50 px-6 py-4">
             <DialogTitle>Photo Tour</DialogTitle>
           </DialogHeader>
