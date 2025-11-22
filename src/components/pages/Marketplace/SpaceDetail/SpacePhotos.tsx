@@ -51,7 +51,7 @@ export default function SpacePhotos({
         <CardContent>
           { hasImages ? (
             <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_260px] lg:items-stretch xl:grid-cols-[minmax(0,1fr)_320px]">
-              <figure className="relative h-56 flex-1 overflow-hidden rounded-md border border-border/60 bg-muted sm:h-64 lg:h-72 xl:h-[22rem]">
+              <figure className="relative h-56 flex-1 overflow-hidden border border-border/60 bg-muted sm:h-64 lg:h-72 xl:h-[22rem]">
                 { primaryImageUrl ? (
                   <Image
                     src={ primaryImageUrl }
@@ -77,7 +77,7 @@ export default function SpacePhotos({
 
                   return (
                     <figure key={ `gallery-tile-${index}` }>
-                      <div className="relative aspect-square w-full overflow-hidden rounded-md border border-border/60 bg-muted lg:aspect-auto lg:h-full">
+                      <div className="relative aspect-square w-full overflow-hidden border border-border/60 bg-muted lg:aspect-auto lg:h-full">
                         { imageSrc ? (
                           <Image
                             src={ imageSrc }
