@@ -155,6 +155,7 @@ export default function Marketplace() {
   const activeFilters = buildActiveFilters(filters);
   const hasActiveFilters = activeFilters.length > 0;
   const draftHasChanges = !areFiltersEqual(draftFilters, filters);
+  const hasError = Boolean(error);
 
   const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -234,7 +235,7 @@ export default function Marketplace() {
                 Results
               </p>
               <h2 className="text-2xl font-semibold leading-tight">
-                { spaces.length } spaces loaded
+                { hasError ? '—' : spaces.length } spaces loaded
               </h2>
               <p className="text-sm text-muted-foreground">
                 Showing approved spaces plus pending submissions (testing mode).
@@ -296,16 +297,18 @@ export default function Marketplace() {
             </div>
           ) }
 
-          <div className="space-y-3">
-            { isLoading ? (
-              <SkeletonGrid />
-            ) : (
-              <CardsGrid items={ spaces } />
-            ) }
-            { isFetching && !isLoading && (
-              <p className="text-xs text-muted-foreground">Refreshing latest availability…</p>
-            ) }
-          </div>
+          { !hasError && (
+            <div className="space-y-3">
+              { isLoading ? (
+                <SkeletonGrid />
+              ) : (
+                <CardsGrid items={ spaces } />
+              ) }
+              { isFetching && !isLoading && (
+                <p className="text-xs text-muted-foreground">Refreshing latest availability…</p>
+              ) }
+            </div>
+          ) }
         </div>
 
         <BackToTopButton />
