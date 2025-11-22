@@ -65,9 +65,6 @@ export default function SpacePhotos({
                     Missing public URL
                   </div>
                 ) }
-                <figcaption className="absolute bottom-0 left-0 right-0 flex items-center justify-between gap-2 border-t border-border/50 bg-gradient-to-t from-background/90 to-transparent px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground">
-                  <span>Featured</span>
-                </figcaption>
               </figure>
 
               <div className="grid grid-cols-2 grid-rows-2 gap-4 lg:h-full">
