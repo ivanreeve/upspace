@@ -42,13 +42,13 @@ export default function SpacePhotos({
 
   return (
     <>
-      <Card className="border-border/70 bg-background/80">
+      <Card className="border-0 bg-background/80">
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
             <CardTitle className="text-2xl">Uploaded photos</CardTitle>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-0">
           { hasImages ? (
             <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_260px] lg:items-stretch xl:grid-cols-[minmax(0,1fr)_320px]">
               <figure className="relative h-56 flex-1 overflow-hidden border border-border/60 bg-muted sm:h-64 lg:h-72 xl:h-[22rem]">
