@@ -1,10 +1,30 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { IconType } from 'react-icons';
 import { CgSpinner } from 'react-icons/cg';
-import { FaBookmark, FaRegBookmark } from 'react-icons/fa';
-import { FiBookmark, FiShare2 } from 'react-icons/fi';
+import {
+  FaBookmark,
+  FaFacebook,
+  FaFacebookMessenger,
+  FaInstagram,
+  FaRegBookmark,
+  FaTelegramPlane,
+} from 'react-icons/fa';
+import { FaXTwitter } from 'react-icons/fa6';
+import { FiLink, FiShare2 } from 'react-icons/fi';
 import { toast } from 'sonner';
+
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 
 type Rating = { score: number; count: number };
 
@@ -16,6 +36,12 @@ type SpaceHeaderProps = {
   isBookmarked?: boolean;
 };
 
+type ShareOption = {
+  label: string;
+  href: string;
+  icon: IconType;
+};
+
 export default function SpaceHeader({
   name,
   rating,
@@ -23,45 +49,82 @@ export default function SpaceHeader({
   spaceId,
   isBookmarked = false,
 }: SpaceHeaderProps) {
-  const [isSharing, setIsSharing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(isBookmarked);
+  const [isCopying, setIsCopying] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
 
-  const handleShare = useCallback(async () => {
-    if (isSharing) {
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setShareUrl(window.location.href);
+    }
+  }, []);
+
+  const shareMessage = useMemo(() => `Check out ${name} on UpSpace.`, [name]);
+
+  const shareOptions = useMemo<ShareOption[]>(() => {
+    if (!shareUrl) {
+      return [];
+    }
+
+    const encodedUrl = encodeURIComponent(shareUrl);
+    const encodedMessage = encodeURIComponent(shareMessage);
+    const encodedMessageWithUrl = encodeURIComponent(`${shareMessage} ${shareUrl}`);
+    const messengerAppId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID;
+    const messengerShareUrl = messengerAppId
+      ? `https://www.facebook.com/dialog/send?link=${encodedUrl}&app_id=${encodeURIComponent(messengerAppId)}&redirect_uri=${encodedUrl}`
+      : `https://www.messenger.com/t?link=${encodedUrl}&text=${encodedMessage}`;
+
+    return [
+      { label: 'Messenger', href: messengerShareUrl, icon: FaFacebookMessenger },
+      { label: 'Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`, icon: FaFacebook },
+      { label: 'X.com', href: `https://x.com/intent/post?text=${encodedMessageWithUrl}`, icon: FaXTwitter },
+      {
+        label: 'Instagram',
+        href: `https://www.instagram.com/direct/new/?text=${encodedMessageWithUrl}`,
+        icon: FaInstagram,
+      },
+      { label: 'Telegram', href: `https://t.me/share/url?url=${encodedUrl}&text=${encodedMessage}`, icon: FaTelegramPlane },
+    ];
+  }, [shareMessage, shareUrl]);
+
+  const openShareLink = useCallback(
+    (href: string) => {
+      if (!shareUrl) {
+        toast.error('Unable to share right now. Please try again.');
+        return;
+      }
+
+      const shareWindow = window.open(href, '_blank', 'noopener,noreferrer');
+
+      if (shareWindow === null) {
+        toast.error('Please allow pop-ups to share this space.');
+      }
+    },
+    [shareUrl]
+  );
+
+  const handleCopyLink = useCallback(async () => {
+    if (!shareUrl) {
+      toast.error('Unable to copy link right now.');
       return;
     }
 
-    setIsSharing(true);
-    try {
-      const currentUrl =
-        typeof window !== 'undefined' ? window.location.href : '';
-
-      if (!currentUrl) {
-        throw new Error('Unable to determine the current URL.');
-      }
-
-      const sharePayload = {
-        title: `${name} · UpSpace`,
-        text: `Take a look at ${name} on UpSpace.`,
-        url: currentUrl,
-      };
-
-      if (navigator.share) {
-        await navigator.share(sharePayload);
-        toast.success('Shared the space link.');
-      } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(currentUrl);
-        toast.success('Link copied to clipboard.');
-      } else {
-        throw new Error('Sharing is not supported in this browser.');
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Unable to share right now.');
-    } finally {
-      setIsSharing(false);
+    if (!navigator.clipboard) {
+      toast.error('Clipboard is not supported in this browser.');
+      return;
     }
-  }, [isSharing, name]);
+
+    setIsCopying(true);
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success('Link copied to clipboard.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to copy link right now.');
+    } finally {
+      setIsCopying(false);
+    }
+  }, [shareUrl]);
 
   const handleSave = useCallback(async () => {
     if (isSaving) {
@@ -105,15 +168,82 @@ export default function SpaceHeader({
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm text-foreground">
-          <button
-            type="button"
-            onClick={ handleShare }
-            disabled={ isSharing }
-            className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium cursor-pointer transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed"
-          >
-            <FiShare2 className="size-4" aria-hidden="true" />
-            { isSharing ? 'Sharing…' : 'Share' }
-          </button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <button
+                type="button"
+                aria-haspopup="dialog"
+                className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium cursor-pointer transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed"
+              >
+                <FiShare2 className="size-4" aria-hidden="true" />
+                Share
+              </button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Share this space</DialogTitle>
+                <DialogDescription>
+                  Send { name } to your favorite apps or copy the link below.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                { shareOptions.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    { shareOptions.map((option) => (
+                      <Button
+                        key={ option.label }
+                        type="button"
+                        variant="outline"
+                        className="justify-start"
+                        onClick={ () => openShareLink(option.href) }
+                        disabled={ !shareUrl }
+                        aria-label={ `Share on ${option.label}` }
+                      >
+                        <option.icon className="size-4" aria-hidden="true" />
+                        { option.label }
+                      </Button>
+                    )) }
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Preparing share options…</p>
+                ) }
+
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Copy link</p>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <Input
+                      id="share-link-input"
+                      type="text"
+                      value={ shareUrl }
+                      readOnly
+                      aria-label="Share link"
+                      className="sm:flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={ handleCopyLink }
+                      disabled={ !shareUrl || isCopying }
+                      aria-busy={ isCopying }
+                      className="sm:w-auto"
+                    >
+                      { isCopying ? (
+                        <>
+                          <CgSpinner className="size-4 animate-spin" aria-hidden="true" />
+                          Copying…
+                        </>
+                      ) : (
+                        <>
+                          <FiLink className="size-4" aria-hidden="true" />
+                          Copy link
+                        </>
+                      ) }
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
           <button
             type="button"
             onClick={ handleSave }
