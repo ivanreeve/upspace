@@ -257,14 +257,14 @@ export default function SpacePhotos({
                         { group.images.map((image, index) => (
                           <div
                             key={ `dialog-gallery-${group.anchor}-${image.id}` }
-                            className="relative aspect-[3/2] min-h-[220px] overflow-hidden rounded-lg border border-border/60 bg-muted shadow-sm"
+                            className="relative aspect-[3/2] min-h-[220px] overflow-hidden border border-border/60 bg-muted shadow-sm"
                           >
                             <Image
                               src={ image.url }
                               alt={ `${spaceName} ${group.label} photo ${index + 1}` }
                               fill
                               sizes="(min-width: 1280px) 360px, (min-width: 1024px) 300px, 100vw"
-                              className="object-cover transition-transform hover:scale-105"
+                              className="object-cover transition-transform cursor-pointer"
                             />
                           </div>
                         )) }
