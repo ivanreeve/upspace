@@ -8,18 +8,20 @@ import SpaceDetail from '@/components/pages/Marketplace/SpaceDetail/SpaceDetail'
 import NavBar from '@/components/ui/navbar';
 import { Footer } from '@/components/ui/footer';
 
-type Props = { params: { space_id: string } };
+type Params = { space_id: string };
+type Props = { params: Promise<Params> };
 
 const isUuid = (value: string | undefined) =>
   typeof value === 'string' &&
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
 export async function generateMetadata({ params, }: Props): Promise<Metadata> {
-  if (!isUuid(params.space_id)) return { title: 'Space Not Found - UpSpace', };
+  const { space_id } = await params;
+  if (!isUuid(space_id)) return { title: 'Space Not Found - UpSpace', };
 
   const space = await prisma.space.findFirst({
     where: {
-      id: params.space_id,
+      id: space_id,
       verification: { some: { status: { in: ['approved', 'in_review'], }, }, },
     },
     select: { name: true, },
@@ -29,7 +31,8 @@ export async function generateMetadata({ params, }: Props): Promise<Metadata> {
 }
 
 export default async function SpaceDetailPage({ params, }: Props) {
-  if (!isUuid(params.space_id)) notFound();
+  const { space_id } = await params;
+  if (!isUuid(space_id)) notFound();
   const supabase = await createSupabaseServerClient();
   const { data: authData, } = await supabase.auth.getUser();
 
@@ -40,7 +43,7 @@ export default async function SpaceDetailPage({ params, }: Props) {
     })
     : null;
 
-  const space = await getSpaceDetail(params.space_id, { bookmarkUserId: bookmarkUser?.user_id, });
+  const space = await getSpaceDetail(space_id, { bookmarkUserId: bookmarkUser?.user_id, });
   if (!space) notFound();
   return (
     <>

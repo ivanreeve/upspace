@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import {
   Card,
@@ -17,28 +17,87 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import type { SpaceImageDisplay } from '@/lib/queries/space';
 
 type SpacePhotosProps = {
   spaceName: string;
   heroImageUrl: string | null;
-  galleryImageUrls: string[];
+  galleryImages: SpaceImageDisplay[];
 };
 
 export default function SpacePhotos({
   spaceName,
   heroImageUrl,
-  galleryImageUrls,
+  galleryImages,
 }: SpacePhotosProps) {
   const [galleryOpen, setGalleryOpen] = useState(false);
 
-  const normalizedGallery = galleryImageUrls.filter(Boolean);
-  const primaryFromGallery = normalizedGallery[0] ?? null;
+  const normalizedGallery = useMemo(
+    () => galleryImages.filter((image) => Boolean(image.url)),
+    [galleryImages]
+  );
+  const primaryFromGallery = normalizedGallery[0]?.url ?? null;
   const primaryImageUrl = heroImageUrl ?? primaryFromGallery;
   const galleryWithoutPrimary = heroImageUrl
-    ? normalizedGallery.filter((value) => value !== heroImageUrl)
+    ? normalizedGallery.filter((value) => value.url !== heroImageUrl)
     : normalizedGallery.slice(1);
   const hasImages = Boolean(primaryImageUrl || galleryWithoutPrimary.length > 0);
-  const totalImages = galleryImageUrls.length;
+  const totalImages = normalizedGallery.length;
+  const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const formatCategoryLabel = (category: string | null) => {
+    if (!category) return 'Uncategorized';
+    return category
+      .split(/[\s_-]+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  };
+
+  const slugifyCategory = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)+/g, '') || 'category';
+
+  const categoryGroups = useMemo(
+    () => {
+      if (!normalizedGallery.length) return [];
+
+      const groups = new Map<string, SpaceImageDisplay[]>();
+
+      normalizedGallery.forEach((image) => {
+        const categoryKey = image.category?.trim() || 'Uncategorized';
+        const existing = groups.get(categoryKey) ?? [];
+        existing.push(image);
+        groups.set(categoryKey, existing);
+      });
+
+      let index = 0;
+
+      return Array.from(groups.entries()).map(([category, images]) => {
+        const label = formatCategoryLabel(category);
+        const anchor = `photo-category-${slugifyCategory(category || 'Uncategorized')}-${index++}`;
+        return {
+          category,
+          label,
+          anchor,
+          images,
+        };
+      });
+    },
+    [normalizedGallery]
+  );
+
+  const handleCategoryClick = (anchor: string) => {
+    const target = categoryRefs.current[anchor];
+    if (target) {
+      target.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }
+  };
 
   return (
     <>
@@ -70,7 +129,7 @@ export default function SpacePhotos({
 
               <div className="grid grid-cols-2 grid-rows-2 gap-2.5">
                 { Array.from({ length: 4, }).map((_, index) => {
-                  const imageSrc = galleryWithoutPrimary[index];
+                  const imageSrc = galleryWithoutPrimary[index]?.url;
                   const isSeeMoreSlot = index === 3;
                   const isTopRightTile = index === 1;
                   const isBottomRightTile = index === 3;
@@ -88,7 +147,7 @@ export default function SpacePhotos({
                         { imageSrc ? (
                           <Image
                             src={ imageSrc }
-                            alt={ `${spaceName} photo ${index + 2}` }
+                            alt={ `${spaceName} gallery photo ${index + 1}` }
                             fill
                             sizes="(min-width: 1280px) 160px, (min-width: 1024px) 140px, 45vw"
                             className="object-cover"
@@ -128,58 +187,95 @@ export default function SpacePhotos({
           </DialogHeader>
           <ScrollArea className="flex-1">
             <div className="space-y-8 px-6 py-6">
-              <section className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold uppercase tracking-wide text-foreground">Featured</h3>
-                </div>
-                <div className="relative aspect-video w-full overflow-hidden rounded-md border border-border/60 bg-muted">
-                  { primaryImageUrl ? (
-                    <Image
-                      src={ primaryImageUrl }
-                      alt={ `${spaceName} featured photo` }
-                      fill
-                      sizes="(min-width: 1024px) 80vw, 100vw"
-                      className="object-cover"
-                      priority
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                      No featured image
+              { categoryGroups.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No photos uploaded yet.</p>
+              ) : (
+                <>
+                  <section className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-foreground">
+                        Browse by category
+                      </h3>
+                      <span className="text-xs text-muted-foreground">
+                        { totalImages } photo{ totalImages === 1 ? '' : 's' }
+                      </span>
                     </div>
-                  ) }
-                </div>
-              </section>
+                    <div className="flex gap-3 overflow-x-auto pb-1">
+                      { categoryGroups.map((group) => {
+                        const preview = group.images[0];
+                        return (
+                          <button
+                            key={ group.anchor }
+                            type="button"
+                            onClick={ () => handleCategoryClick(group.anchor) }
+                            aria-label={ `Jump to ${group.label} photos` }
+                            className="relative inline-flex w-44 min-w-[176px] flex-col rounded-lg border border-border/50 bg-muted/40 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                          >
+                            <div className="relative h-28 w-full overflow-hidden rounded-t-lg bg-muted">
+                              { preview ? (
+                                <Image
+                                  src={ preview.url }
+                                  alt={ `${group.label} preview photo` }
+                                  fill
+                                  sizes="176px"
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                                  No preview
+                                </div>
+                              ) }
+                              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
+                            </div>
+                            <div className="flex items-center justify-between px-3 py-2">
+                              <span className="truncate text-sm font-medium text-foreground">
+                                { group.label }
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                { group.images.length }
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      }) }
+                    </div>
+                  </section>
 
-              <section className="space-y-3">
-                <div className="flex items-center gap-2 border-b border-border/30 pb-2">
-                  <h3 className="font-semibold text-foreground">Gallery</h3>
-                  <span className="text-xs text-muted-foreground">
-                    { totalImages } photo{ totalImages === 1 ? '' : 's' }
-                  </span>
-                </div>
-                { galleryWithoutPrimary.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No additional photos uploaded yet.
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-1 gap-6 pb-3 pt-3 sm:grid-cols-2 lg:grid-cols-3">
-                    { galleryWithoutPrimary.map((src, index) => (
-                      <div
-                        key={ `dialog-gallery-${index}-${src}` }
-                        className="relative aspect-[3/2] min-h-[220px] overflow-hidden rounded-lg border border-border/60 bg-muted shadow-sm"
-                      >
-                        <Image
-                          src={ src }
-                          alt={ `${spaceName} gallery image ${index + 1}` }
-                          fill
-                          sizes="(min-width: 1280px) 360px, (min-width: 1024px) 300px, 100vw"
-                          className="object-cover transition-transform hover:scale-105"
-                        />
+                  { categoryGroups.map((group) => (
+                    <section
+                      key={ group.anchor }
+                      ref={ (node) => {
+                        categoryRefs.current[group.anchor] = node;
+                      } }
+                      className="space-y-3 scroll-m-16"
+                      id={ group.anchor }
+                    >
+                      <div className="flex items-center gap-2 border-b border-border/30 pb-2">
+                        <h3 className="font-semibold text-foreground">{ group.label }</h3>
+                        <span className="text-xs text-muted-foreground">
+                          { group.images.length } photo{ group.images.length === 1 ? '' : 's' }
+                        </span>
                       </div>
-                    )) }
-                  </div>
-                ) }
-              </section>
+                      <div className="grid grid-cols-1 gap-6 pb-3 pt-3 sm:grid-cols-2 lg:grid-cols-3">
+                        { group.images.map((image, index) => (
+                          <div
+                            key={ `dialog-gallery-${group.anchor}-${image.id}` }
+                            className="relative aspect-[3/2] min-h-[220px] overflow-hidden rounded-lg border border-border/60 bg-muted shadow-sm"
+                          >
+                            <Image
+                              src={ image.url }
+                              alt={ `${spaceName} ${group.label} photo ${index + 1}` }
+                              fill
+                              sizes="(min-width: 1280px) 360px, (min-width: 1024px) 300px, 100vw"
+                              className="object-cover transition-transform hover:scale-105"
+                            />
+                          </div>
+                        )) }
+                      </div>
+                    </section>
+                  )) }
+                </>
+              ) }
             </div>
           </ScrollArea>
         </DialogContent>

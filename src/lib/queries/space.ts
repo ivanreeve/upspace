@@ -112,6 +112,13 @@ export type SpaceAmenityDisplay = {
   category: string | null;
 };
 
+export type SpaceImageDisplay = {
+  id: string;
+  url: string;
+  category: string | null;
+  isPrimary: boolean;
+};
+
 export type MarketplaceSpaceDetail = {
   id: string;
   name: string;
@@ -129,7 +136,7 @@ export type MarketplaceSpaceDetail = {
   lat: number;
   long: number;
   heroImageUrl: string | null;
-  galleryImageUrls: string[];
+  galleryImages: SpaceImageDisplay[];
   amenities: SpaceAmenityDisplay[];
   availability: SpaceAvailabilityDisplay[];
   areas: SpaceAreaWithRates[];
@@ -187,12 +194,14 @@ const buildAmenities = (amenities: MarketplaceSpaceRow['amenity']): SpaceAmenity
     })
     .filter((value): value is SpaceAmenityDisplay => Boolean(value));
 
-const buildGallery = async (images: MarketplaceSpaceRow['space_image']) => {
+const buildGallery = async (
+  images: MarketplaceSpaceRow['space_image']
+): Promise<{ hero: string | null; images: SpaceImageDisplay[] }> => {
   if (!images.length) {
     return {
- hero: null,
-gallery: [] as string[], 
-};
+      hero: null,
+      images: [],
+    };
   }
 
   const signedUrlMap = await resolveSignedImageUrls(images);
@@ -207,17 +216,28 @@ gallery: [] as string[],
     return signedUrlMap.get(path) ?? buildPublicObjectUrl(path);
   };
 
-  const heroImage = images.find((image) => Boolean(image.is_primary)) ?? images[0];
-  const hero = resolvePath(heroImage?.path ?? null);
+  const resolvedImages: SpaceImageDisplay[] = images
+    .map((image) => {
+      const url = resolvePath(image.path);
+      if (!url) {
+        return null;
+      }
+      return {
+        id: image.id,
+        url,
+        category: image.category ?? null,
+        isPrimary: Boolean(image.is_primary),
+      } satisfies SpaceImageDisplay;
+    })
+    .filter((value): value is SpaceImageDisplay => Boolean(value));
 
-  const gallery = images
-    .map((image) => resolvePath(image.path))
-    .filter((value): value is string => Boolean(value));
+  const heroImage = resolvedImages.find((image) => image.isPrimary) ?? resolvedImages[0];
+  const hero = heroImage?.url ?? null;
 
   return {
- hero,
-gallery, 
-};
+    hero,
+    images: resolvedImages,
+  };
 };
 
 type SpaceDetailOptions = {
@@ -244,8 +264,9 @@ export async function getSpaceDetail(
 
   const status = deriveSpaceStatus(space);
   const {
- hero, gallery, 
-} = await buildGallery(space.space_image);
+    hero,
+    images,
+  } = await buildGallery(space.space_image);
   const isBookmarked = bookmarkUserId
     ? Boolean(await prisma.bookmark.findFirst({
       where: {
@@ -276,7 +297,7 @@ export async function getSpaceDetail(
     lat: typeof space.lat === 'number' ? space.lat : Number(space.lat),
     long: typeof space.long === 'number' ? space.long : Number(space.long),
     heroImageUrl: hero,
-    galleryImageUrls: gallery,
+    galleryImages: images,
     amenities,
     availability,
     areas,

@@ -91,7 +91,7 @@ value: 4.7,
         <SpacePhotos
           spaceName={ space.name }
           heroImageUrl={ space.heroImageUrl }
-          galleryImageUrls={ space.galleryImageUrls }
+          galleryImages={ space.galleryImages }
         />
 
         <HostInfo hostName={ space.hostName ?? hostName } />
