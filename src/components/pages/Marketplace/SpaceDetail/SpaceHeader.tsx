@@ -9,11 +9,11 @@ useState
 import type { IconType } from 'react-icons';
 import { CgSpinner } from 'react-icons/cg';
 import {
-  FaBookmark,
   FaFacebook,
   FaFacebookMessenger,
   FaInstagram,
-  FaRegBookmark,
+  FaHeart,
+  FaRegHeart,
   FaTelegramPlane
 } from 'react-icons/fa';
 import { FaXTwitter } from 'react-icons/fa6';
@@ -276,9 +276,9 @@ icon: FaTelegramPlane,
             { isSaving ? (
               <CgSpinner className="size-4 animate-spin" aria-hidden="true" />
             ) : isSaved ? (
-              <FaBookmark className="size-4" aria-hidden="true" />
+              <FaHeart className="size-4" aria-hidden="true" />
             ) : (
-              <FaRegBookmark className="size-4" aria-hidden="true" />
+              <FaRegHeart className="size-4" aria-hidden="true" />
             ) }
             { isSaving ? (isSaved ? 'Removing…' : 'Saving…') : isSaved ? 'Saved' : 'Save' }
           </button>
