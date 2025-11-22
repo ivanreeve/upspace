@@ -183,130 +183,128 @@ export default function Marketplace() {
   };
 
   return (
-    <div className="bg-background">
+    <div className="bg-background relative lg:pl-[360px]">
+      <aside className="hidden lg:block absolute top-0 left-0 h-screen w-[340px] px-5 py-10">
+        <Card className="h-full border-border/70 shadow-sm">
+          <CardHeader className="space-y-3">
+            <div className="space-y-1">
+              <CardTitle>Advanced Filters</CardTitle>
+              <CardDescription>
+                Narrow spaces by exact location, availability window, and price range.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <Separator />
+          <CardContent className="pt-6">
+            <FiltersForm
+              value={ draftFilters }
+              onChange={ handleDraftChange }
+              onApply={ applyFilters }
+              onReset={ resetFilters }
+              hasChanges={ draftHasChanges }
+              priceBounds={ [PRICE_MIN, PRICE_MAX] }
+            />
+          </CardContent>
+        </Card>
+      </aside>
+
       <section className="px-4 py-10 sm:px-6 lg:px-10 max-w-[1400px] mx-auto">
-        <div className="grid gap-8 lg:grid-cols-[320px_minmax(0,1fr)]">
-          <aside className="hidden lg:block">
-            <Card className="sticky top-6 h-full border-border/70 shadow-sm">
-              <CardHeader className="space-y-3">
-                <div className="space-y-1">
-                  <CardTitle>Advanced Filters</CardTitle>
-                  <CardDescription>
-                    Narrow spaces by exact location, availability window, and price range.
-                  </CardDescription>
+        <div className="space-y-6">
+          <form
+            onSubmit={ handleSearchSubmit }
+            className="flex flex-col gap-3 rounded-md shadow-sm md:flex-row md:items-center"
+          >
+            <div className="flex flex-1 items-center gap-3 rounded-xl border bg-background shadow-sm">
+              <FiSearch aria-hidden="true" className="size-5 text-muted-foreground" />
+              <Input
+                value={ searchValue }
+                onChange={ (event) => setSearchValue(event.target.value) }
+                placeholder="Search by space name, neighborhood, or keyword"
+                aria-label="Search spaces"
+                className="border-none bg-transparent text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
+              />
+              <Button type="submit" className="w-full rounded-xl md:w-auto">
+                Search marketplace
+              </Button>
+            </div>
+          </form>
+          <div className="flex flex-wrap items-center gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                Results
+              </p>
+              <h2 className="text-2xl font-semibold leading-tight">
+                { spaces.length } spaces loaded
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Showing approved spaces plus pending submissions (testing mode).
+              </p>
+            </div>
+
+            <Sheet open={ isSheetOpen } onOpenChange={ setSheetOpen }>
+              <SheetTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="ml-auto inline-flex items-center gap-2 lg:hidden"
+                >
+                  <FiSliders aria-hidden="true" className="size-4" />
+                  Filters
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right">
+                <SheetHeader>
+                  <SheetTitle>Advanced filters</SheetTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Tailor results by exact address, hours, and rate range.
+                  </p>
+                </SheetHeader>
+                <div className="flex-1 overflow-y-auto px-4 pb-6">
+                  <FiltersForm
+                    value={ draftFilters }
+                    onChange={ handleDraftChange }
+                    onApply={ applyFilters }
+                    onReset={ resetFilters }
+                    hasChanges={ draftHasChanges }
+                    priceBounds={ [PRICE_MIN, PRICE_MAX] }
+                  />
                 </div>
-              </CardHeader>
-              <Separator />
-              <CardContent className="pt-6">
-                <FiltersForm
-                  value={ draftFilters }
-                  onChange={ handleDraftChange }
-                  onApply={ applyFilters }
-                  onReset={ resetFilters }
-                  hasChanges={ draftHasChanges }
-                  priceBounds={ [PRICE_MIN, PRICE_MAX] }
-                />
-              </CardContent>
-            </Card>
-          </aside>
+                <SheetFooter>
+                  <p className="text-xs text-muted-foreground">
+                    Filters apply immediately after tapping &ldquo;Apply filters.&rdquo;
+                  </p>
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
+          </div>
 
-          <div className="space-y-6">
-            <form
-              onSubmit={ handleSearchSubmit }
-              className="flex flex-col gap-3 rounded-md shadow-sm md:flex-row md:items-center"
-            >
-              <div className="flex flex-1 items-center gap-3 rounded-xl border bg-background shadow-sm">
-                <FiSearch aria-hidden="true" className="size-5 text-muted-foreground" />
-                <Input
-                  value={ searchValue }
-                  onChange={ (event) => setSearchValue(event.target.value) }
-                  placeholder="Search by space name, neighborhood, or keyword"
-                  aria-label="Search spaces"
-                  className="border-none bg-transparent text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
-                />
-                <Button type="submit" className="w-full rounded-xl md:w-auto">
-                  Search marketplace
-                </Button>
-              </div>
-            </form>
-            <div className="flex flex-wrap items-center gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-                  Results
-                </p>
-                <h2 className="text-2xl font-semibold leading-tight">
-                  { spaces.length } spaces loaded
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Showing approved spaces plus pending submissions (testing mode).
-                </p>
-              </div>
-
-              <Sheet open={ isSheetOpen } onOpenChange={ setSheetOpen }>
-                <SheetTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="ml-auto inline-flex items-center gap-2 lg:hidden"
-                  >
-                    <FiSliders aria-hidden="true" className="size-4" />
-                    Filters
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right">
-                  <SheetHeader>
-                    <SheetTitle>Advanced filters</SheetTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Tailor results by exact address, hours, and rate range.
-                    </p>
-                  </SheetHeader>
-                  <div className="flex-1 overflow-y-auto px-4 pb-6">
-                    <FiltersForm
-                      value={ draftFilters }
-                      onChange={ handleDraftChange }
-                      onApply={ applyFilters }
-                      onReset={ resetFilters }
-                      hasChanges={ draftHasChanges }
-                      priceBounds={ [PRICE_MIN, PRICE_MAX] }
-                    />
-                  </div>
-                  <SheetFooter>
-                    <p className="text-xs text-muted-foreground">
-                      Filters apply immediately after tapping &ldquo;Apply filters.&rdquo;
-                    </p>
-                  </SheetFooter>
-                </SheetContent>
-              </Sheet>
+          { hasActiveFilters && (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+              { activeFilters.map((label) => (
+                <Badge key={ label } variant="secondary" className="bg-secondary/20 text-secondary-foreground">
+                  { label }
+                </Badge>
+              )) }
+              <Button variant="link" size="sm" className="text-primary" onClick={ resetFilters }>
+                Reset filters
+              </Button>
             </div>
+          ) }
 
-            { hasActiveFilters && (
-              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-sm">
-                { activeFilters.map((label) => (
-                  <Badge key={ label } variant="secondary" className="bg-secondary/20 text-secondary-foreground">
-                    { label }
-                  </Badge>
-                )) }
-                <Button variant="link" size="sm" className="text-primary" onClick={ resetFilters }>
-                  Reset filters
-                </Button>
-              </div>
-            ) }
-
-            { error && (
-              <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-                Failed to load spaces. Please try again in a moment.
-              </div>
-            ) }
-
-            <div className="space-y-3">
-              { isLoading ? (
-                <SkeletonGrid />
-              ) : (
-                <CardsGrid items={ spaces } />
-              ) }
-              { isFetching && !isLoading && (
-                <p className="text-xs text-muted-foreground">Refreshing latest availability…</p>
-              ) }
+          { error && (
+            <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+              Failed to load spaces. Please try again in a moment.
             </div>
+          ) }
+
+          <div className="space-y-3">
+            { isLoading ? (
+              <SkeletonGrid />
+            ) : (
+              <CardsGrid items={ spaces } />
+            ) }
+            { isFetching && !isLoading && (
+              <p className="text-xs text-muted-foreground">Refreshing latest availability…</p>
+            ) }
           </div>
         </div>
 
