@@ -16,7 +16,7 @@ import {
   Accordion,
   AccordionContent,
   AccordionItem,
-  AccordionTrigger,
+  AccordionTrigger
 } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -487,9 +487,33 @@ function FiltersForm({
       } }
       className="flex flex-col gap-5"
     >
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-sm font-semibold">
+          <Label htmlFor="price-range">Price range (PHP)</Label>
+          <span>{ `${peso.format(minPrice)} – ${peso.format(maxPrice)}` }</span>
+        </div>
+        <Slider
+          id="price-range"
+          step={ 50 }
+          min={ priceBounds[0] }
+          max={ priceBounds[1] }
+          value={ value.priceRange }
+          onValueChange={ (next) => {
+            if (Array.isArray(next) && next.length === 2) {
+              onChange('priceRange', [next[0], next[1]]);
+            }
+          } }
+        />
+        <p className="text-xs text-muted-foreground">
+          We&apos;ll match areas whose base hourly rates fall inside this bracket.
+        </p>
+      </div>
+
+      <Separator />
+
       <Accordion type="single" collapsible defaultValue="advanced-filters" className="w-full">
         <AccordionItem value="advanced-filters">
-          <AccordionTrigger className="text-base font-semibold">
+          <AccordionTrigger className="text-base font-semibold hover:no-underline cursor-pointer">
             Advanced Filters
           </AccordionTrigger>
           <AccordionContent className="space-y-3 pt-3">
@@ -617,58 +641,33 @@ function FiltersForm({
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-3">
+              <Label>Availability window (HH:MM)</Label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input
+                  type="time"
+                  step={ 900 }
+                  value={ value.available_from }
+                  onChange={ (event) => onChange('available_from', event.target.value) }
+                  aria-label="Opens at"
+                />
+                <Input
+                  type="time"
+                  step={ 900 }
+                  value={ value.available_to }
+                  onChange={ (event) => onChange('available_to', event.target.value) }
+                  aria-label="Closes at"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Filter spaces that operate during your preferred window (24-hour format).
+              </p>
+            </div>
           </AccordionContent>
         </AccordionItem>
       </Accordion>
 
       <Separator />
-
-      <div className="space-y-3">
-        <Label>Availability window (HH:MM)</Label>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Input
-            type="time"
-            step={ 900 }
-            value={ value.available_from }
-            onChange={ (event) => onChange('available_from', event.target.value) }
-            aria-label="Opens at"
-          />
-          <Input
-            type="time"
-            step={ 900 }
-            value={ value.available_to }
-            onChange={ (event) => onChange('available_to', event.target.value) }
-            aria-label="Closes at"
-          />
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Filter spaces that operate during your preferred window (24-hour format).
-        </p>
-      </div>
-
-      <Separator />
-
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-sm font-semibold">
-          <Label htmlFor="price-range">Price range (PHP)</Label>
-          <span>{ `${peso.format(minPrice)} – ${peso.format(maxPrice)}` }</span>
-        </div>
-        <Slider
-          id="price-range"
-          step={ 50 }
-          min={ priceBounds[0] }
-          max={ priceBounds[1] }
-          value={ value.priceRange }
-          onValueChange={ (next) => {
-            if (Array.isArray(next) && next.length === 2) {
-              onChange('priceRange', [next[0], next[1]]);
-            }
-          } }
-        />
-        <p className="text-xs text-muted-foreground">
-          We&apos;ll match areas whose base hourly rates fall inside this bracket.
-        </p>
-      </div>
 
       <div className="flex flex-col gap-2 border-t border-dashed pt-4 sm:flex-row">
         <Button type="submit" className="w-full sm:flex-1" disabled={ !hasChanges }>
