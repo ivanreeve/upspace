@@ -16,7 +16,7 @@ const isUuid = (value: string | undefined) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
 export async function generateMetadata({ params, }: Props): Promise<Metadata> {
-  const { space_id } = await params;
+  const { space_id, } = await params;
   if (!isUuid(space_id)) return { title: 'Space Not Found - UpSpace', };
 
   const space = await prisma.space.findFirst({
@@ -31,7 +31,7 @@ export async function generateMetadata({ params, }: Props): Promise<Metadata> {
 }
 
 export default async function SpaceDetailPage({ params, }: Props) {
-  const { space_id } = await params;
+  const { space_id, } = await params;
   if (!isUuid(space_id)) notFound();
   const supabase = await createSupabaseServerClient();
   const { data: authData, } = await supabase.auth.getUser();
