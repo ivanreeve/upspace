@@ -51,7 +51,7 @@ export default function SpacePhotos({
         <CardContent className="px-0">
           { hasImages ? (
             <div className="flex flex-col gap-2.5 lg:grid lg:grid-cols-[minmax(0,1fr)_260px] lg:items-stretch xl:grid-cols-[minmax(0,1fr)_320px]">
-              <figure className="group relative h-64 flex-1 cursor-pointer overflow-hidden rounded-tl-lg rounded-bl-lg border border-border/60 bg-muted sm:h-72 lg:h-80 xl:h-[24rem]">
+              <figure className="group relative h-96 flex-1 cursor-pointer overflow-hidden rounded-tl-lg rounded-bl-lg border border-border/60 bg-muted sm:h-[28rem] lg:h-[30rem] xl:h-[32rem]">
                 { primaryImageUrl ? (
                   <Image
                     src={ primaryImageUrl }
