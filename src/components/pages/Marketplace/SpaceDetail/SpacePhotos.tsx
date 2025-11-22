@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useMemo, useRef, useState } from 'react';
+import { FiChevronLeft, FiChevronRight, FiX } from 'react-icons/fi';
 
 import {
   Card,
@@ -17,7 +18,6 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { SpaceImageDisplay } from '@/lib/queries/space';
-import { FiChevronLeft, FiChevronRight, FiX } from 'react-icons/fi';
 
 type SpacePhotosProps = {
   spaceName: string;
@@ -32,10 +32,7 @@ export default function SpacePhotos({
 }: SpacePhotosProps) {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [carouselOpen, setCarouselOpen] = useState(false);
-  const [carouselSelection, setCarouselSelection] = useState<{
-    groupAnchor: string;
-    index: number;
-  } | null>(null);
+  const [carouselIndex, setCarouselIndex] = useState<number | null>(null);
 
   const normalizedGallery = useMemo(
     () => galleryImages.filter((image) => Boolean(image.url)),
@@ -104,40 +101,44 @@ export default function SpacePhotos({
     }
   };
 
-  const activeCarouselGroup = useMemo(
+  const activeCarouselIndex = useMemo(
     () => {
-      if (!carouselSelection) return null;
-      return categoryGroups.find((group) => group.anchor === carouselSelection.groupAnchor) ?? null;
+      if (normalizedGallery.length === 0) return null;
+      if (carouselIndex === null) return null;
+      return Math.min(Math.max(carouselIndex, 0), normalizedGallery.length - 1);
     },
-    [carouselSelection, categoryGroups]
+    [carouselIndex, normalizedGallery.length]
   );
 
-  const carouselImages = activeCarouselGroup?.images ?? [];
-  const activeCarouselIndex = carouselImages.length
-    ? Math.min(Math.max(carouselSelection?.index ?? 0, 0), carouselImages.length - 1)
-    : 0;
-  const activeCarouselImage = carouselImages[activeCarouselIndex];
+  const activeCarouselImage = activeCarouselIndex === null
+    ? null
+    : normalizedGallery[activeCarouselIndex];
 
-  const openCarousel = (groupAnchor: string, index: number) => {
-    setCarouselSelection({ groupAnchor, index });
+  const activeCarouselCategoryLabel = activeCarouselImage
+    ? formatCategoryLabel(activeCarouselImage.category ?? null)
+    : 'photo';
+
+  const openCarousel = (imageId: string) => {
+    const index = normalizedGallery.findIndex((image) => image.id === imageId);
+    setCarouselIndex(index >= 0 ? index : 0);
     setCarouselOpen(true);
   };
 
-  const isCarouselOpen = carouselOpen && Boolean(activeCarouselGroup) && carouselImages.length > 0;
+  const isCarouselOpen = carouselOpen && activeCarouselIndex !== null && normalizedGallery.length > 0;
 
   const closeCarousel = () => {
     setCarouselOpen(false);
-    setCarouselSelection(null);
+    setCarouselIndex(null);
   };
 
   const handleCarouselNavigate = (direction: 'prev' | 'next') => {
-    setCarouselSelection((previous) => {
-      if (!previous || carouselImages.length === 0) return previous;
-      const total = carouselImages.length;
-      const currentIndex = Math.min(Math.max(previous.index, 0), total - 1);
+    setCarouselIndex((previous) => {
+      if (previous === null || normalizedGallery.length === 0) return previous;
+      const total = normalizedGallery.length;
+      const currentIndex = Math.min(Math.max(previous, 0), total - 1);
       const offset = direction === 'next' ? 1 : -1;
       const nextIndex = (currentIndex + offset + total) % total;
-      return { ...previous, index: nextIndex };
+      return nextIndex;
     });
   };
 
@@ -301,7 +302,7 @@ export default function SpacePhotos({
                           <button
                             key={ `dialog-gallery-${group.anchor}-${image.id}` }
                             type="button"
-                            onClick={ () => openCarousel(group.anchor, index) }
+                            onClick={ () => openCarousel(image.id) }
                             aria-label={ `Open carousel for ${group.label} photo ${index + 1}` }
                             className="group relative block w-full cursor-pointer overflow-hidden border border-border/60 bg-muted shadow-sm aspect-[3/2] min-h-[220px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                           >
@@ -326,15 +327,20 @@ export default function SpacePhotos({
       </Dialog>
 
       <Dialog open={ isCarouselOpen } onOpenChange={ (open) => (open ? setCarouselOpen(true) : closeCarousel()) }>
-        <DialogContent className="flex h-screen w-screen max-w-[100vw] flex-col gap-0 border-none bg-black p-0 text-white sm:max-w-[100vw] sm:rounded-none">
+        <DialogContent
+          showCloseButton={ false }
+          className="flex h-screen w-screen max-w-[100vw] flex-col gap-0 border-none bg-black p-0 text-white sm:max-w-[100vw] sm:rounded-none"
+        >
           <DialogHeader className="flex flex-row items-center justify-between border-b border-white/10 px-4 py-3">
             <DialogTitle className="text-sm font-semibold text-white">
-              { activeCarouselGroup ? `${activeCarouselGroup.label} photos` : 'Photo carousel' }
+              { activeCarouselImage
+                ? `${formatCategoryLabel(activeCarouselImage.category ?? null)} photos`
+                : 'Photo carousel' }
             </DialogTitle>
             <div className="flex items-center gap-3 text-xs text-white/70">
-              { carouselImages.length > 0 ? (
+              { activeCarouselIndex !== null ? (
                 <span className="tabular-nums">
-                  { activeCarouselIndex + 1 } / { carouselImages.length }
+                  { activeCarouselIndex + 1 } / { totalImages }
                 </span>
               ) : null }
               <button
@@ -352,7 +358,7 @@ export default function SpacePhotos({
               <div className="relative h-full w-full max-h-[85vh] max-w-6xl">
                 <Image
                   src={ activeCarouselImage.url }
-                  alt={ `${spaceName} ${activeCarouselGroup?.label ?? 'photo'} ${activeCarouselIndex + 1}` }
+                  alt={ `${spaceName} ${activeCarouselCategoryLabel} ${activeCarouselIndex + 1}` }
                   fill
                   sizes="100vw"
                   className="object-contain"
@@ -362,7 +368,7 @@ export default function SpacePhotos({
               <p className="text-sm text-white/70">No image selected.</p>
             ) }
 
-            { carouselImages.length > 1 ? (
+            { totalImages > 1 ? (
               <>
                 <button
                   type="button"
