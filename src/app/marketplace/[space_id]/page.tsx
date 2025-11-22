@@ -7,6 +7,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import SpaceDetail from '@/components/pages/Marketplace/SpaceDetail/SpaceDetail';
 import NavBar from '@/components/ui/navbar';
 import { Footer } from '@/components/ui/footer';
+import { MarketplaceErrorState } from '@/components/pages/Marketplace/Marketplace.ErrorState';
 
 type Params = { space_id: string };
 type Props = { params: Promise<Params> };
@@ -43,8 +44,27 @@ export default async function SpaceDetailPage({ params, }: Props) {
     })
     : null;
 
-  const space = await getSpaceDetail(space_id, { bookmarkUserId: bookmarkUser?.user_id, });
-  if (!space) notFound();
+  let space: Awaited<ReturnType<typeof getSpaceDetail>> = null;
+
+  try {
+    space = await getSpaceDetail(space_id, { bookmarkUserId: bookmarkUser?.user_id, });
+  } catch (error) {
+    console.error('Failed to fetch marketplace space detail', error);
+  }
+
+  if (!space) {
+    return (
+      <>
+        <NavBar />
+        <main className="bg-background">
+          <div className="mx-auto max-w-[1100px] px-4 py-16">
+            <MarketplaceErrorState />
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
   return (
     <>
       <NavBar />

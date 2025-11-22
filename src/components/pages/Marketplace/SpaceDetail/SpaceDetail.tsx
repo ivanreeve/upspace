@@ -9,6 +9,7 @@ import AreasWithRates from './AreasWithRates';
 import AvailabilityTable from './AvailabilityTable';
 
 import type { MarketplaceSpaceDetail } from '@/lib/queries/space';
+import { sanitizeRichText } from '@/lib/rich-text';
 
 export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail }) {
   const locationParts = [space.city, space.region, space.countryCode].filter(Boolean);
@@ -78,6 +79,8 @@ value: 4.7,
   const overviewFallback =
     'Located in the heart of the city, Downtown Space offers a modern and flexible coworking environment designed for entrepreneurs, freelancers, and small teams. With high-speed Wi-Fi, ergonomic workstations, private meeting rooms, and a cozy lounge area, it is the perfect place to stay productive and inspired.';
 
+  const aboutHtml = sanitizeRichText(space.description?.trim() || overviewFallback);
+
   return (
     <main className="bg-background">
       <div className="mx-auto max-w-[1100px] px-4 py-10 space-y-4">
@@ -101,9 +104,10 @@ value: 4.7,
 
             <section className="space-y-4 border-b pb-6">
               <h2 className="text-xl font-medium text-foreground">About { space.name }</h2>
-              <p className="text-sm leading-relaxed text-foreground/80">
-                { space.description?.trim() || overviewFallback }
-              </p>
+              <div
+                className="space-y-2 text-sm leading-relaxed text-foreground/80 [h1]:text-lg [h1]:font-semibold [h2]:text-base [h2]:font-semibold [ul]:list-disc [ul]:pl-5 [ol]:list-decimal [ol]:pl-5 [a]:text-primary [a]:underline"
+                dangerouslySetInnerHTML={ { __html: aboutHtml, } }
+              />
             </section>
           </div>
 
