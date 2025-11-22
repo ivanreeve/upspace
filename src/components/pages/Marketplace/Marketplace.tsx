@@ -250,13 +250,13 @@ export default function Marketplace() {
                   <FiSliders aria-hidden="true" className="size-4" />
                   Filters
                 </Button>
-              </SheetTrigger>
-              <SheetContent side="right">
-                <SheetHeader>
-                  <SheetTitle>Advanced filters</SheetTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Tailor results by exact address, hours, and rate range.
-                  </p>
+            </SheetTrigger>
+            <SheetContent side="right" className="pt-12">
+              <SheetHeader>
+                <SheetTitle>Advanced filters</SheetTitle>
+                <p className="text-sm text-muted-foreground">
+                  Tailor results by exact address, hours, and rate range.
+                </p>
                 </SheetHeader>
                 <div className="flex-1 overflow-y-auto px-4 pb-6">
                   <FiltersForm
