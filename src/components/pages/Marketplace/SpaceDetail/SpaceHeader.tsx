@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { FiBookmark, FiShare2 } from 'react-icons/fi';
+import { FiBookmark, FiLoader, FiShare2 } from 'react-icons/fi';
 import { toast } from 'sonner';
 
 type Rating = { score: number; count: number };
@@ -113,9 +113,14 @@ export default function SpaceHeader({
             type="button"
             onClick={ handleSave }
             disabled={ isSaving || isSaved }
+            aria-busy={ isSaving }
             className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed"
           >
-            <FiBookmark className="size-4" aria-hidden="true" />
+            { isSaving ? (
+              <FiLoader className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <FiBookmark className="size-4" aria-hidden="true" />
+            ) }
             { isSaved ? 'Saved' : isSaving ? 'Saving…' : 'Save' }
           </button>
         </div>
