@@ -1,8 +1,11 @@
 'use client';
 
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { FiHeart } from 'react-icons/fi';
+import { CgSpinner } from 'react-icons/cg';
+import { FaHeart, FaRegHeart } from 'react-icons/fa';
+import { toast } from 'sonner';
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -40,6 +43,45 @@ export function CardsGrid({ items, }: { items: Space[] }) {
 }
 
 export function SpaceCard({ space, }: { space: Space }) {
+  const [isSaved, setIsSaved] = useState(Boolean(space.isBookmarked));
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    setIsSaved(Boolean(space.isBookmarked));
+  }, [space.isBookmarked]);
+
+  const handleToggleSave = useCallback(async () => {
+    if (isSaving) {
+      return;
+    }
+
+    const shouldRemove = isSaved;
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/v1/bookmarks', {
+        method: shouldRemove ? 'DELETE' : 'POST',
+        headers: { 'content-type': 'application/json', },
+        body: JSON.stringify({ space_id: space.space_id, }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(
+          data?.error ??
+            data?.message ??
+            'Unable to save the space. Please try again.'
+        );
+      }
+
+      setIsSaved(!shouldRemove);
+      toast.success(shouldRemove ? 'Removed from your bookmarks.' : 'Saved to your bookmarks.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to save right now.');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [isSaved, isSaving, space.space_id]);
+
   return (
     <Card className="group flex flex-col overflow-hidden text-card-foreground border-none">
       <div className="relative aspect-[16/9] w-full overflow-hidden">
@@ -54,9 +96,24 @@ export function SpaceCard({ space, }: { space: Space }) {
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/20" />
         ) }
-        <div className="absolute right-3 top-3 rounded-full bg-black/30 cursor-pointer backdrop-blur-2xl p-2 text-white shadow-md transition-colors group-hover:bg-black/70">
-          <FiHeart aria-hidden="true" className="size-5" />
-        </div>
+        <button
+          type="button"
+          onClick={ handleToggleSave }
+          disabled={ isSaving }
+          aria-busy={ isSaving }
+          aria-pressed={ isSaved }
+          aria-label={ isSaved ? 'Remove from saved spaces' : 'Save this space' }
+          className="absolute right-3 top-3 rounded-full bg-black/30 cursor-pointer backdrop-blur-2xl p-2 text-white shadow-md transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          { isSaving ? (
+            <CgSpinner className="size-5 animate-spin" aria-hidden="true" />
+          ) : isSaved ? (
+            <FaHeart aria-hidden="true" className="size-5" />
+          ) : (
+            <FaRegHeart aria-hidden="true" className="size-5" />
+          ) }
+          <span className="sr-only">{ isSaved ? 'Remove from saved spaces' : 'Save this space' }</span>
+        </button>
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
       </div>
 

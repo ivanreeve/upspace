@@ -16,6 +16,7 @@ export type Space = {
   country_code?: string | null;
   postal_code?: string | null;
   image_url?: string | null;
+  isBookmarked?: boolean;
   created_at?: string;
   updated_at?: string;
   status?: 'Live' | 'Pending' | 'Draft';
