@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import { CgSpinner } from 'react-icons/cg';
-import { FaBookmark } from 'react-icons/fa';
+import { FaBookmark, FaRegBookmark } from 'react-icons/fa';
 import { FiBookmark, FiShare2 } from 'react-icons/fi';
 import { toast } from 'sonner';
 
@@ -127,7 +127,7 @@ export default function SpaceHeader({
             ) : isSaved ? (
               <FaBookmark className="size-4" aria-hidden="true" />
             ) : (
-              <FiBookmark className="size-4" aria-hidden="true" />
+              <FaRegBookmark className="size-4" aria-hidden="true" />
             ) }
             { isSaving ? (isSaved ? 'Removing…' : 'Saving…') : isSaved ? 'Saved' : 'Save' }
           </button>
