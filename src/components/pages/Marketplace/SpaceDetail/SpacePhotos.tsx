@@ -6,7 +6,6 @@ import { useMemo, useRef, useState } from 'react';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle
 } from '@/components/ui/card';
@@ -18,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { SpaceImageDisplay } from '@/lib/queries/space';
+import { FiChevronLeft, FiChevronRight, FiX } from 'react-icons/fi';
 
 type SpacePhotosProps = {
   spaceName: string;
@@ -31,6 +31,11 @@ export default function SpacePhotos({
   galleryImages,
 }: SpacePhotosProps) {
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [carouselOpen, setCarouselOpen] = useState(false);
+  const [carouselSelection, setCarouselSelection] = useState<{
+    groupAnchor: string;
+    index: number;
+  } | null>(null);
 
   const normalizedGallery = useMemo(
     () => galleryImages.filter((image) => Boolean(image.url)),
@@ -97,6 +102,43 @@ export default function SpacePhotos({
         block: 'start',
       });
     }
+  };
+
+  const activeCarouselGroup = useMemo(
+    () => {
+      if (!carouselSelection) return null;
+      return categoryGroups.find((group) => group.anchor === carouselSelection.groupAnchor) ?? null;
+    },
+    [carouselSelection, categoryGroups]
+  );
+
+  const carouselImages = activeCarouselGroup?.images ?? [];
+  const activeCarouselIndex = carouselImages.length
+    ? Math.min(Math.max(carouselSelection?.index ?? 0, 0), carouselImages.length - 1)
+    : 0;
+  const activeCarouselImage = carouselImages[activeCarouselIndex];
+
+  const openCarousel = (groupAnchor: string, index: number) => {
+    setCarouselSelection({ groupAnchor, index });
+    setCarouselOpen(true);
+  };
+
+  const isCarouselOpen = carouselOpen && Boolean(activeCarouselGroup) && carouselImages.length > 0;
+
+  const closeCarousel = () => {
+    setCarouselOpen(false);
+    setCarouselSelection(null);
+  };
+
+  const handleCarouselNavigate = (direction: 'prev' | 'next') => {
+    setCarouselSelection((previous) => {
+      if (!previous || carouselImages.length === 0) return previous;
+      const total = carouselImages.length;
+      const currentIndex = Math.min(Math.max(previous.index, 0), total - 1);
+      const offset = direction === 'next' ? 1 : -1;
+      const nextIndex = (currentIndex + offset + total) % total;
+      return { ...previous, index: nextIndex };
+    });
   };
 
   return (
@@ -256,9 +298,12 @@ export default function SpacePhotos({
                       </div>
                       <div className="grid grid-cols-1 gap-6 pb-3 pt-3 sm:grid-cols-2 lg:grid-cols-3">
                         { group.images.map((image, index) => (
-                          <div
+                          <button
                             key={ `dialog-gallery-${group.anchor}-${image.id}` }
-                            className="group relative aspect-[3/2] min-h-[220px] overflow-hidden border border-border/60 bg-muted shadow-sm"
+                            type="button"
+                            onClick={ () => openCarousel(group.anchor, index) }
+                            aria-label={ `Open carousel for ${group.label} photo ${index + 1}` }
+                            className="group relative block w-full cursor-pointer overflow-hidden border border-border/60 bg-muted shadow-sm aspect-[3/2] min-h-[220px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                           >
                             <Image
                               src={ image.url }
@@ -268,7 +313,7 @@ export default function SpacePhotos({
                               className="object-cover transition-transform cursor-pointer"
                             />
                             <div className="pointer-events-none absolute inset-0 bg-black/40 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
-                          </div>
+                          </button>
                         )) }
                       </div>
                     </section>
@@ -277,6 +322,67 @@ export default function SpacePhotos({
               ) }
             </div>
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={ isCarouselOpen } onOpenChange={ (open) => (open ? setCarouselOpen(true) : closeCarousel()) }>
+        <DialogContent className="flex h-screen w-screen max-w-[100vw] flex-col gap-0 border-none bg-black p-0 text-white sm:max-w-[100vw] sm:rounded-none">
+          <DialogHeader className="flex flex-row items-center justify-between border-b border-white/10 px-4 py-3">
+            <DialogTitle className="text-sm font-semibold text-white">
+              { activeCarouselGroup ? `${activeCarouselGroup.label} photos` : 'Photo carousel' }
+            </DialogTitle>
+            <div className="flex items-center gap-3 text-xs text-white/70">
+              { carouselImages.length > 0 ? (
+                <span className="tabular-nums">
+                  { activeCarouselIndex + 1 } / { carouselImages.length }
+                </span>
+              ) : null }
+              <button
+                type="button"
+                onClick={ closeCarousel }
+                aria-label="Close carousel"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+              >
+                <FiX className="size-5" aria-hidden="true" />
+              </button>
+            </div>
+          </DialogHeader>
+          <div className="relative flex flex-1 items-center justify-center overflow-hidden">
+            { activeCarouselImage ? (
+              <div className="relative h-full w-full max-h-[85vh] max-w-6xl">
+                <Image
+                  src={ activeCarouselImage.url }
+                  alt={ `${spaceName} ${activeCarouselGroup?.label ?? 'photo'} ${activeCarouselIndex + 1}` }
+                  fill
+                  sizes="100vw"
+                  className="object-contain"
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-white/70">No image selected.</p>
+            ) }
+
+            { carouselImages.length > 1 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={ () => handleCarouselNavigate('prev') }
+                  aria-label="Previous photo"
+                  className="absolute left-4 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                >
+                  <FiChevronLeft className="size-6" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={ () => handleCarouselNavigate('next') }
+                  aria-label="Next photo"
+                  className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                >
+                  <FiChevronRight className="size-6" aria-hidden="true" />
+                </button>
+              </>
+            ) : null }
+          </div>
         </DialogContent>
       </Dialog>
     </>
