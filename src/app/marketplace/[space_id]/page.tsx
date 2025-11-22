@@ -31,9 +31,7 @@ export async function generateMetadata({ params, }: Props): Promise<Metadata> {
 export default async function SpaceDetailPage({ params, }: Props) {
   if (!isUuid(params.space_id)) notFound();
   const supabase = await createSupabaseServerClient();
-  const {
-    data: authData,
-  } = await supabase.auth.getUser();
+  const { data: authData, } = await supabase.auth.getUser();
 
   const bookmarkUser = authData?.user
     ? await prisma.user.findFirst({
@@ -42,9 +40,7 @@ export default async function SpaceDetailPage({ params, }: Props) {
     })
     : null;
 
-  const space = await getSpaceDetail(params.space_id, {
-    bookmarkUserId: bookmarkUser?.user_id,
-  });
+  const space = await getSpaceDetail(params.space_id, { bookmarkUserId: bookmarkUser?.user_id, });
   if (!space) notFound();
   return (
     <>
