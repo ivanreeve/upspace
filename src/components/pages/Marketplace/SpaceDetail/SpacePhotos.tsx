@@ -209,9 +209,9 @@ export default function SpacePhotos({
                             type="button"
                             onClick={ () => handleCategoryClick(group.anchor) }
                             aria-label={ `Jump to ${group.label} photos` }
-                            className="relative inline-flex w-44 min-w-[176px] flex-col rounded-lg border border-border/50 bg-muted/40 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                            className="relative inline-flex w-44 min-w-[176px] flex-col text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                           >
-                            <div className="relative h-28 w-full overflow-hidden rounded-t-lg bg-muted">
+                            <div className="relative h-28 w-full overflow-hidden bg-muted">
                               { preview ? (
                                 <Image
                                   src={ preview.url }
@@ -227,12 +227,9 @@ export default function SpacePhotos({
                               ) }
                               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
                             </div>
-                            <div className="flex items-center justify-between px-3 py-2">
+                            <div className="flex items-center justify-between py-2">
                               <span className="truncate text-sm font-medium text-foreground">
                                 { group.label }
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                { group.images.length }
                               </span>
                             </div>
                           </button>
