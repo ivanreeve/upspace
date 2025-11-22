@@ -77,6 +77,7 @@ const marketplaceSpaceInclude = {
       first_name: true,
       last_name: true,
       handle: true,
+      avatar: true,
     },
   },
 } satisfies Prisma.spaceInclude;
@@ -141,6 +142,7 @@ export type MarketplaceSpaceDetail = {
   availability: SpaceAvailabilityDisplay[];
   areas: SpaceAreaWithRates[];
   hostName: string | null;
+  hostAvatarUrl: string | null;
 };
 
 const buildHostName = (user: MarketplaceSpaceRow['user'] | null) => {
@@ -155,6 +157,15 @@ const buildHostName = (user: MarketplaceSpaceRow['user'] | null) => {
     return user.handle;
   }
   return null;
+};
+
+const buildHostAvatarUrl = (user: MarketplaceSpaceRow['user'] | null) => {
+  const avatar = user?.avatar?.trim();
+  if (!avatar) {
+    return null;
+  }
+
+  return buildPublicObjectUrl(avatar) ?? avatar;
 };
 
 const buildAvailabilityDisplay = (
@@ -302,5 +313,6 @@ export async function getSpaceDetail(
     availability,
     areas,
     hostName: buildHostName(space.user),
+    hostAvatarUrl: buildHostAvatarUrl(space.user),
   };
 }

@@ -94,7 +94,7 @@ value: 4.7,
           galleryImages={ space.galleryImages }
         />
 
-        <HostInfo hostName={ space.hostName ?? hostName } />
+        <HostInfo hostName={ space.hostName ?? hostName } avatarUrl={ space.hostAvatarUrl } />
 
         <section className="space-y-4 border-b pb-6">
           <h2 className="text-xl font-medium text-foreground">About { space.name }</h2>
