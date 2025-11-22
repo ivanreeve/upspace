@@ -98,7 +98,7 @@ available: true,
 
   return (
     <main className="bg-background">
-      <div className="mx-auto max-w-[1440px] px-4 py-10 space-y-12">
+      <div className="mx-auto max-w-[1100px] px-4 py-10 space-y-12">
         <SpaceHeader name={ space.name } rating={ rating } location={ location } />
 
         <SpacePhotos
