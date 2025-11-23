@@ -188,7 +188,7 @@ export default function Marketplace() {
         />
       ) }
       <div className="flex min-h-screen w-full">
-        <Sidebar collapsible="none" className="hidden md:flex">
+        <Sidebar collapsible="none" className="hidden md:flex border-1 border-r-muted">
           <SidebarHeader className="pt-4">
             <SidebarMenu>
               <SidebarMenuItem>
@@ -296,7 +296,7 @@ function MarketplaceSearchDialog({
       <CommandInput
         value={ searchValue }
         onValueChange={ onSearchChange }
-        placeholder="Search by space name, neighborhood, or keyword"
+        placeholder="Search Spaces..."
         aria-label="Search spaces"
         onKeyDown={ (event) => {
           if (event.key === 'Enter') {
