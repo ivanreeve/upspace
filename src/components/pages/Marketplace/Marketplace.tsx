@@ -84,10 +84,19 @@ function SidebarToggleMenuItem() {
   return (
     <SidebarMenuItem
       className={ cn(
-        'flex',
-        isExpanded ? 'justify-end' : 'justify-center'
+        'flex items-center gap-2',
+        isExpanded ? 'justify-between pr-2 pl-1' : 'justify-center'
       ) }
     >
+      { isExpanded && (
+        <Link
+          href="/"
+          className="flex items-center gap-2 text-sm font-semibold text-foreground"
+        >
+          <LogoSymbolic className="size-5 text-primary dark:text-secondary" />
+          <span className="leading-tight">UpSpace</span>
+        </Link>
+      ) }
       <SidebarMenuButton
         tooltip={ isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }
         type="button"
@@ -95,7 +104,7 @@ function SidebarToggleMenuItem() {
         className="w-10 justify-center p-2"
         aria-label={ isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }
       >
-        <Icon className="w-9 h-9" aria-hidden="true" />
+        <Icon className="size-4" aria-hidden="true" />
         <span className="sr-only">{ isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }</span>
       </SidebarMenuButton>
     </SidebarMenuItem>
