@@ -65,7 +65,7 @@ export function ThemeSwitcher({
         type="button"
         onClick={ cycleTheme }
         className={ cn(
-          'flex size-10 items-center justify-center rounded-full border border-border bg-card/80 text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+          'flex size-8 items-center justify-center rounded-full border border-border bg-card/80 text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
           className
         ) }
         aria-label={ `Toggle theme (current: ${activeOption.label})` }
