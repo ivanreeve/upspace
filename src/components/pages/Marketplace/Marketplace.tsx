@@ -33,9 +33,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Sidebar,
   SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
+  SidebarFooter,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -43,6 +41,7 @@ import {
   SidebarMenuItem,
   SidebarProvider
 } from '@/components/ui/sidebar';
+import { ThemeSwitcher } from '@/components/ui/theme-switcher';
 import { useUserProfile } from '@/hooks/use-user-profile';
 
 type FiltersState = {
@@ -252,29 +251,35 @@ export default function Marketplace() {
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarHeader>
-          <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupLabel>Profile</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Account">
-                      <Link href="/onboarding">
-                        <Avatar className="size-8">
-                          { avatarUrl ? (
-                            <AvatarImage src={ avatarUrl } alt="User avatar" />
-                          ) : (
-                            <AvatarFallback>{ avatarFallback }</AvatarFallback>
-                          ) }
-                        </Avatar>
-                        <span className="truncate">{ avatarDisplayName }</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
+          <SidebarContent className="flex-1" />
+          <SidebarFooter className="mt-auto border-t border-sidebar-border/60">
+            <div className="space-y-3 p-2">
+              <ThemeSwitcher className="w-full justify-between" />
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Account">
+                    <Link href="/onboarding" className="flex items-center gap-3">
+                      <Avatar className="size-9">
+                        { avatarUrl ? (
+                          <AvatarImage src={ avatarUrl } alt="User avatar" />
+                        ) : (
+                          <AvatarFallback>{ avatarFallback }</AvatarFallback>
+                        ) }
+                      </Avatar>
+                      <div className="flex min-w-0 flex-col text-left">
+                        <span className="text-sm font-semibold leading-tight">{ avatarDisplayName }</span>
+                        { resolvedHandleLabel && (
+                          <span className="text-xs text-muted-foreground truncate">
+                            { resolvedHandleLabel }
+                          </span>
+                        ) }
+                      </div>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </div>
+          </SidebarFooter>
         </Sidebar>
 
         <SidebarInset
