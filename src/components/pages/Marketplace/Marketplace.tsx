@@ -818,6 +818,7 @@ function LocationFilterDialog({
   const [amenitiesSearch, setAmenitiesSearch] = React.useState('');
   const [amenitiesMode, setAmenitiesMode] = React.useState<FiltersState['amenitiesMode']>(filters.amenitiesMode);
   const [amenitiesNegate, setAmenitiesNegate] = React.useState(filters.amenitiesNegate);
+  const isMobile = useIsMobile();
 
   React.useEffect(() => {
     if (open) {
@@ -1007,7 +1008,15 @@ function LocationFilterDialog({
 
   return (
     <Dialog open={ open } onOpenChange={ onOpenChange }>
-      <DialogContent className="sm:max-w-[720px] space-y-8 pb-0">
+      <DialogContent
+        className={ cn(
+          'space-y-8 pb-0',
+          !isMobile && 'sm:max-w-[720px]'
+        ) }
+        position={ isMobile ? 'top' : 'center' }
+        mobileFullScreen={ isMobile }
+        fullWidth={ isMobile }
+      >
         <DialogHeader>
           <DialogTitle>Advanced Filters</DialogTitle>
           <DialogDescription>Filter spaces by location, price, ratings, and amenities.</DialogDescription>
