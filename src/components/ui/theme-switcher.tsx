@@ -96,7 +96,7 @@ export function ThemeSwitcher({
             className={ cn(
               'flex items-center gap-1 rounded-md px-2 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
               isActive
-                ? 'bg-primary text-primary-foreground shadow-sm'
+                ? 'bg-primary text-white shadow-sm'
                 : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             ) }
             aria-pressed={ isActive }
