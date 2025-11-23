@@ -64,6 +64,15 @@ export default function Marketplace() {
   const isMobile = useIsMobile();
   const { session, } = useSession();
   const { data: userProfile, } = useUserProfile();
+  const mobileInsetPadding = React.useMemo<React.CSSProperties | undefined>(
+    () => (isMobile
+      ? {
+          paddingTop: 'calc(4rem + var(--safe-area-top))',
+          paddingBottom: 'calc(7rem + var(--safe-area-bottom))',
+        }
+      : undefined),
+    [isMobile]
+  );
 
   React.useEffect(() => {
     setSearchValue(filters.q ?? '');
@@ -252,7 +261,10 @@ export default function Marketplace() {
           </SidebarContent>
         </Sidebar>
 
-        <SidebarInset className="flex-1 bg-background w-full pb-28 pt-16 md:pb-10 md:pt-0">
+        <SidebarInset
+          className="flex-1 bg-background w-full pb-28 pt-16 md:pb-10 md:pt-0"
+          style={ mobileInsetPadding }
+        >
           { content }
         </SidebarInset>
       </div>
@@ -352,7 +364,17 @@ function MobileBottomBar({
 }) {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/90 backdrop-blur-md shadow-lg md:hidden">
-      <div className="mx-auto flex max-w-[480px] items-center justify-around px-6 py-3">
+      <div
+        className="mx-auto flex max-w-[480px] items-center justify-around px-6 py-3"
+        style={
+          {
+            paddingTop: '12px',
+            paddingBottom: 'calc(var(--safe-area-bottom) + 12px)',
+            paddingLeft: 'max(1.5rem, var(--safe-area-left))',
+            paddingRight: 'max(1.5rem, var(--safe-area-right))',
+          } as React.CSSProperties
+        }
+      >
         <Link
           href="/"
           className="flex flex-col items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
@@ -403,7 +425,17 @@ function MobileTopNav({
   onSearchOpen: () => void
 }) {
   return (
-    <header className="fixed inset-x-0 top-0 z-40 border-b bg-background/90 px-4 py-3 backdrop-blur-md md:hidden">
+    <header
+      className="fixed inset-x-0 top-0 z-40 border-b bg-background/90 px-4 py-3 backdrop-blur-md md:hidden"
+      style={
+        {
+          paddingTop: 'calc(var(--safe-area-top) + 12px)',
+          paddingBottom: '12px',
+          paddingLeft: 'max(1rem, var(--safe-area-left))',
+          paddingRight: 'max(1rem, var(--safe-area-right))',
+        } as React.CSSProperties
+      }
+    >
       <div className="mx-auto flex max-w-[1440px] items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
           <LogoSymbolic className="text-primary dark:text-secondary" />

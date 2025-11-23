@@ -1,5 +1,6 @@
 'use client';
 
+import type { CSSProperties } from 'react';
 import { useEffect, useState } from 'react';
 import { ArrowUp } from 'lucide-react';
 
@@ -23,13 +24,18 @@ behavior: 'smooth',
 
   if (!visible) return null;
 
+  const positioningStyles = {
+    bottom: 'calc(var(--back-to-top-offset) + var(--safe-area-bottom))',
+  } as CSSProperties;
+
   return (
     <Button
       onClick={ scrollToTop }
-      className="fixed bottom-20 left-1/2 right-auto z-50 flex w-max -translate-x-1/2 rounded-md px-4 shadow-md
+      style={ positioningStyles }
+      className="fixed left-1/2 right-auto z-50 flex w-max -translate-x-1/2 rounded-md px-4 shadow-md
                  bg-foreground/70 backdrop-blur dark:bg-foreground/20 dark:hover:bg-secondary/20
-                 hover:bg-foreground transition-all duration-300
-                 md:bottom-6 md:left-auto md:right-6 md:translate-x-0 mb-2"
+                 hover:bg-foreground transition-all duration-300 [--back-to-top-offset:5rem] md:[--back-to-top-offset:1.5rem]
+                 md:left-auto md:right-6 md:translate-x-0"
     >
       <ArrowUp className="h-5" /> Back to Top
     </Button>

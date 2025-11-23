@@ -101,6 +101,10 @@
 
 :root {
   --radius: 8px;
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
   --background: oklch(0.9942 0.021 112.56);
   --foreground: oklch(0.1776 0 0);
   --card: oklch(94.261% 0.03157 78.124);
