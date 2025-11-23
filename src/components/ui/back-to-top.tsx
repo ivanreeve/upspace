@@ -17,9 +17,9 @@ export default function BackToTopButton() {
 
   const scrollToTop = () => {
     window.scrollTo({
- top: 0,
-behavior: 'smooth', 
-});
+      top: 0,
+      behavior: 'smooth',
+    });
   };
 
   if (!visible) return null;
@@ -32,8 +32,8 @@ behavior: 'smooth',
       style={ positioningStyles }
       className="fixed left-1/2 right-auto z-50 flex w-max -translate-x-1/2 rounded-md px-4 shadow-md
                  bg-foreground/70 backdrop-blur dark:bg-foreground/20 dark:hover:bg-secondary/20
-                 hover:bg-foreground transition-all duration-300 [--back-to-top-offset:5rem] md:[--back-to-top-offset:1.5rem]
-                 md:left-auto md:right-6 md:translate-x-0"
+                 hover:bg-foreground transition-all duration-300 [--back-to-top-offset:1.5rem]
+                 md:[--back-to-top-offset:1.5rem] md:left-auto md:right-6 md:translate-x-0"
     >
       <ArrowUp className="h-5" /> Back to Top
     </Button>
