@@ -154,7 +154,7 @@ export function SpaceCard({ space, }: { space: Space }) {
 
       <CardContent className="flex flex-1 flex-col gap-2 p-0">
         <Link href={ `/marketplace/${space.space_id}` } className="group inline-flex flex-col">
-          <span className="text-base font-semibold leading-tight text-foreground group-hover:text-primary group-hover:underline">
+          <span className="text-base font-semibold leading-tight text-foreground">
             { space.name }
           </span>
           <span className="text-sm text-muted-foreground">{ priceLabel }</span>
