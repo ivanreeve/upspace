@@ -106,6 +106,7 @@ import {
   type PhilippineCityOption,
   type PhilippineRegionOption
 } from '@/lib/philippines-addresses/client';
+import { dedupeAddressOptions } from '@/lib/addresses';
 import {
   areaSchema,
   rateUnits,
@@ -137,17 +138,6 @@ const formatCoordinate = (value: number | undefined) => {
   return Math.round(value * 1_000_000) / 1_000_000;
 };
 
-const dedupeAddressOptions = <T extends { code: string; name: string }>(options: readonly T[]) => {
-  const seen = new Set<string>();
-  return options.filter((option) => {
-    const identifier = `${option.code}-${option.name}`.trim().toLowerCase();
-    if (seen.has(identifier)) {
-      return false;
-    }
-    seen.add(identifier);
-    return true;
-  });
-};
 const GOOGLE_AUTOCOMPLETE_MIN_QUERY_LENGTH = 3;
 const FORM_SET_OPTIONS = {
   shouldDirty: true,

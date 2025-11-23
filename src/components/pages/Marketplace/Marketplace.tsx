@@ -6,6 +6,7 @@ import Link from 'next/link';
 import {
   FiBell,
   FiCommand,
+  FiFilter,
   FiHome,
   FiLoader,
   FiSearch,
@@ -20,6 +21,8 @@ import { listSpaces, suggestSpaces, type SpaceSuggestion } from '@/lib/api/space
 import { useSession } from '@/components/auth/SessionProvider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import BackToTopButton from '@/components/ui/back-to-top';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   CommandDialog,
   CommandGroup,
@@ -28,9 +31,34 @@ import {
   CommandList,
   CommandShortcut
 } from '@/components/ui/command';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
 import { Kbd } from '@/components/ui/kbd';
+import { Label } from '@/components/ui/label';
 import { LogoSymbolic } from '@/components/ui/logo-symbolic';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  fetchPhilippineBarangaysByCity,
+  fetchPhilippineCitiesByRegion,
+  fetchPhilippineRegions,
+  type PhilippineBarangayOption,
+  type PhilippineCityOption,
+  type PhilippineRegionOption
+} from '@/lib/philippines-addresses/client';
+import { dedupeAddressOptions } from '@/lib/addresses';
 import {
   Sidebar,
   SidebarContent,
@@ -50,13 +78,26 @@ import { useUserProfile } from '@/hooks/use-user-profile';
 
 type FiltersState = {
   q: string;
+  region: string;
+  city: string;
+  barangay: string;
 };
 
-const DEFAULT_FILTERS: FiltersState = { q: '', };
+const DEFAULT_FILTERS: FiltersState = {
+  q: '',
+  region: '',
+  city: '',
+  barangay: '',
+};
+
+const normalizeFilterValue = (value?: string) => (value ?? '').trim();
 
 const buildQueryParams = (filters: FiltersState) => ({
   limit: 24,
-  q: filters.q.trim() || undefined,
+  q: normalizeFilterValue(filters.q) || undefined,
+  region: normalizeFilterValue(filters.region) || undefined,
+  city: normalizeFilterValue(filters.city) || undefined,
+  barangay: normalizeFilterValue(filters.barangay) || undefined,
   include_pending: true,
 });
 
@@ -177,6 +218,16 @@ export default function Marketplace() {
   const [filters, setFilters] = React.useState<FiltersState>(DEFAULT_FILTERS);
   const [searchValue, setSearchValue] = React.useState('');
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
+  const applyFilters = React.useCallback((updates: Partial<FiltersState>) => {
+    setFilters((prev) => ({
+      ...prev,
+      ...updates,
+      q: normalizeFilterValue(updates.q ?? prev.q),
+      region: normalizeFilterValue(updates.region ?? prev.region),
+      city: normalizeFilterValue(updates.city ?? prev.city),
+      barangay: normalizeFilterValue(updates.barangay ?? prev.barangay),
+    }));
+  }, []);
   const isMobile = useIsMobile();
   const { session, } = useSession();
   const { data: userProfile, } = useUserProfile();
@@ -206,11 +257,8 @@ export default function Marketplace() {
   }, [filters.q]);
 
   const applySearch = React.useCallback((value: string) => {
-    setFilters((prev) => ({
-      ...prev,
-      q: value.trim(),
-    }));
-  }, []);
+    applyFilters({ q: value });
+  }, [applyFilters]);
 
   const handleSearchSubmit = React.useCallback(
     (value?: string) => {
@@ -249,6 +297,7 @@ export default function Marketplace() {
   const spaces = React.useMemo(() => data?.data ?? [], [data]);
   const hasError = Boolean(error);
   const hasActiveSearch = Boolean(filters.q.trim());
+  const hasLocationFilters = Boolean(filters.region || filters.city || filters.barangay);
   React.useEffect(() => {
     if (typeof document === 'undefined') return undefined;
 
@@ -322,6 +371,9 @@ export default function Marketplace() {
         onSearchChange={ setSearchValue }
         onSearchSubmit={ handleSearchSubmit }
         hasActiveSearch={ hasActiveSearch }
+        hasLocationFilters={ hasLocationFilters }
+        filters={ filters }
+        onFiltersApply={ applyFilters }
       />
       { isMobile && (
         <MobileTopNav
@@ -427,9 +479,12 @@ type MarketplaceSearchDialogProps = {
   open: boolean
   searchValue: string
   hasActiveSearch: boolean
+  hasLocationFilters: boolean
+  filters: FiltersState
   onOpenChange: (open: boolean) => void
   onSearchChange: (value: string) => void
   onSearchSubmit: (value?: string) => void
+  onFiltersApply: (updates: Partial<FiltersState>) => void
 };
 
 function MarketplaceSearchDialog({
@@ -439,11 +494,21 @@ function MarketplaceSearchDialog({
   onSearchChange,
   onSearchSubmit,
   hasActiveSearch,
+  hasLocationFilters,
+  filters,
+  onFiltersApply,
 }: MarketplaceSearchDialogProps) {
   const trimmedValue = searchValue.trim();
   const debouncedQuery = useDebouncedValue(trimmedValue, 200);
   const isMobile = useIsMobile();
   const shouldFetchSuggestions = debouncedQuery.length >= 2;
+  const [isFilterDialogOpen, setIsFilterDialogOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!open) {
+      setIsFilterDialogOpen(false);
+    }
+  }, [open]);
 
   const {
     data: suggestionData,
@@ -467,127 +532,438 @@ function MarketplaceSearchDialog({
     : 'Type at least two characters to see suggestions.';
 
   return (
-    <CommandDialog
-      open={ open }
-      onOpenChange={ onOpenChange }
-      title="Search spaces"
-      description="Search the UpSpace marketplace"
-      position="top"
-      mobileFullScreen={ isMobile }
-      fullWidth
-    >
-      <CommandInput
-        value={ searchValue }
-        onValueChange={ onSearchChange }
-        placeholder="Search Spaces..."
-        aria-label="Search spaces"
-        onKeyDown={ (event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            onSearchSubmit();
-          }
+    <>
+      <CommandDialog
+        open={ open }
+        onOpenChange={ onOpenChange }
+        title="Search spaces"
+        description="Search the UpSpace marketplace"
+        position="top"
+        mobileFullScreen={ isMobile }
+        fullWidth
+      >
+        <CommandInput
+          value={ searchValue }
+          onValueChange={ onSearchChange }
+          placeholder="Search Spaces..."
+          aria-label="Search spaces"
+          onKeyDown={ (event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              onSearchSubmit();
+            }
+          } }
+        />
+        <CommandList className={ isMobile ? 'flex-1 max-h-full' : undefined }>
+          { hasLocationFilters && (
+            <CommandGroup heading="Filters">
+              <div className="flex flex-wrap items-center gap-2 px-2 pb-2">
+                { filters.region && (
+                  <FilterBadge
+                    label={ `Region: ${filters.region}` }
+                    onClear={ () => onFiltersApply({ region: '', city: '', barangay: '' }) }
+                  />
+                ) }
+                { filters.city && (
+                  <FilterBadge
+                    label={ `City: ${filters.city}` }
+                    onClear={ () => onFiltersApply({ city: '', barangay: '' }) }
+                  />
+                ) }
+                { filters.barangay && (
+                  <FilterBadge
+                    label={ `Barangay: ${filters.barangay}` }
+                    onClear={ () => onFiltersApply({ barangay: '' }) }
+                  />
+                ) }
+              </div>
+            </CommandGroup>
+          ) }
+
+          <CommandGroup heading="Actions">
+            <CommandItem
+              value="apply filters"
+              onSelect={ () => setIsFilterDialogOpen(true) }
+            >
+              <FiFilter className="size-4" aria-hidden="true" />
+              <span>Apply filters</span>
+              { hasLocationFilters && (
+                <Badge variant="secondary" className="ml-auto">
+                  Active
+                </Badge>
+              ) }
+            </CommandItem>
+            <CommandItem
+              value={ trimmedValue ? `search ${trimmedValue}` : 'search marketplace' }
+              onSelect={ () => onSearchSubmit() }
+            >
+              <FiSearch className="size-4" aria-hidden="true" />
+              <span>Search marketplace</span>
+              { trimmedValue && (
+                <span className="truncate text-muted-foreground">
+                  &quot;{ trimmedValue }&quot;
+                </span>
+              ) }
+              <CommandShortcut className="flex items-center gap-1">
+                <Kbd>Enter</Kbd>
+              </CommandShortcut>
+            </CommandItem>
+            { hasActiveSearch && (
+              <CommandItem
+                value="clear search"
+                onSelect={ () => onSearchSubmit('') }
+              >
+                <FiX className="size-4" aria-hidden="true" />
+                <span>Clear search</span>
+              </CommandItem>
+            ) }
+            { hasLocationFilters && (
+              <CommandItem
+                value="clear filters"
+                onSelect={ () => onFiltersApply({ region: '', city: '', barangay: '' }) }
+              >
+                <FiX className="size-4" aria-hidden="true" />
+                <span>Clear filters</span>
+              </CommandItem>
+            ) }
+          </CommandGroup>
+
+          <CommandGroup heading="Suggestions">
+            <p className="sr-only" aria-live="polite">{ suggestionStatusMessage }</p>
+
+            { !shouldFetchSuggestions && (
+              <CommandItem disabled>
+                <FiSearch className="size-4" aria-hidden="true" />
+                <span>Type at least 2 characters to see suggestions</span>
+              </CommandItem>
+            ) }
+
+            { shouldFetchSuggestions && isSuggestionError && (
+              <CommandItem disabled>
+                <FiX className="size-4" aria-hidden="true" />
+                <div className="flex flex-col text-left">
+                  <span>Suggestions unavailable</span>
+                  <span className="text-xs text-muted-foreground">Try again in a moment.</span>
+                </div>
+              </CommandItem>
+            ) }
+
+            { shouldFetchSuggestions && isFetchingSuggestions && (
+              <CommandItem disabled>
+                <FiLoader className="size-4 animate-spin" aria-hidden="true" />
+                <span>Fetching suggestions…</span>
+              </CommandItem>
+            ) }
+
+            { shouldFetchSuggestions && suggestions.map((suggestion) => (
+              <CommandItem
+                key={ suggestion.space_id }
+                value={ `suggest ${suggestion.name}` }
+                onSelect={ () => {
+                  onSearchChange(suggestion.name);
+                  onSearchSubmit(suggestion.name);
+                } }
+              >
+                <Avatar
+                  className="size-9 border border-border shadow-sm"
+                  style={ { borderRadius: 4, } }
+                >
+                  { suggestion.image_url ? (
+                    <AvatarImage
+                      src={ suggestion.image_url }
+                      alt="Space preview"
+                      style={ { borderRadius: 4, } }
+                    />
+                  ) : (
+                    <AvatarFallback style={ { borderRadius: 4, } }>
+                      { suggestion.name.slice(0, 2).toUpperCase() }
+                    </AvatarFallback>
+                  ) }
+                </Avatar>
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="line-clamp-1 font-medium">{ suggestion.name }</span>
+                  { suggestion.location && (
+                    <span className="text-xs text-muted-foreground line-clamp-1">
+                      { suggestion.location }
+                    </span>
+                  ) }
+                </div>
+              </CommandItem>
+            )) }
+
+            { shouldFetchSuggestions && !isFetchingSuggestions && suggestions.length === 0 && !isSuggestionError && (
+              <CommandItem disabled>
+                <FiX className="size-4" aria-hidden="true" />
+                <span>No matching spaces yet.</span>
+              </CommandItem>
+            ) }
+          </CommandGroup>
+        </CommandList>
+      </CommandDialog>
+      <LocationFilterDialog
+        open={ isFilterDialogOpen }
+        onOpenChange={ setIsFilterDialogOpen }
+        filters={ filters }
+        onApply={ (nextFilters) => {
+          onFiltersApply(nextFilters);
+          setIsFilterDialogOpen(false);
         } }
       />
-      <CommandList className={ isMobile ? 'flex-1 max-h-full' : undefined }>
-        <CommandGroup heading="Actions">
-          <CommandItem
-            value={ trimmedValue ? `search ${trimmedValue}` : 'search marketplace' }
-            onSelect={ () => onSearchSubmit() }
-          >
-            <FiSearch className="size-4" aria-hidden="true" />
-            <span>Search marketplace</span>
-            { trimmedValue && (
-              <span className="truncate text-muted-foreground">
-                &quot;{ trimmedValue }&quot;
-              </span>
-            ) }
-            <CommandShortcut className="flex items-center gap-1">
-              <Kbd>Enter</Kbd>
-            </CommandShortcut>
-          </CommandItem>
-          { hasActiveSearch && (
-            <CommandItem
-              value="clear search"
-              onSelect={ () => onSearchSubmit('') }
-            >
-              <FiX className="size-4" aria-hidden="true" />
-              <span>Clear search</span>
-            </CommandItem>
-          ) }
-        </CommandGroup>
+    </>
+  );
+}
 
-        <CommandGroup heading="Suggestions">
-          <p className="sr-only" aria-live="polite">{ suggestionStatusMessage }</p>
+type LocationFilterDialogProps = {
+  open: boolean
+  filters: FiltersState
+  onApply: (filters: Partial<FiltersState>) => void
+  onOpenChange: (open: boolean) => void
+};
 
-          { !shouldFetchSuggestions && (
-            <CommandItem disabled>
-              <FiSearch className="size-4" aria-hidden="true" />
-              <span>Type at least 2 characters to see suggestions</span>
-            </CommandItem>
-          ) }
+function LocationFilterDialog({
+  open,
+  filters,
+  onApply,
+  onOpenChange,
+}: LocationFilterDialogProps) {
+  const [draftRegion, setDraftRegion] = React.useState(filters.region);
+  const [draftCity, setDraftCity] = React.useState(filters.city);
+  const [draftBarangay, setDraftBarangay] = React.useState(filters.barangay);
 
-          { shouldFetchSuggestions && isSuggestionError && (
-            <CommandItem disabled>
-              <FiX className="size-4" aria-hidden="true" />
-              <div className="flex flex-col text-left">
-                <span>Suggestions unavailable</span>
-                <span className="text-xs text-muted-foreground">Try again in a moment.</span>
-              </div>
-            </CommandItem>
-          ) }
+  React.useEffect(() => {
+    if (open) {
+      setDraftRegion(filters.region);
+      setDraftCity(filters.city);
+      setDraftBarangay(filters.barangay);
+    }
+  }, [filters.barangay, filters.city, filters.region, open]);
 
-          { shouldFetchSuggestions && isFetchingSuggestions && (
-            <CommandItem disabled>
-              <FiLoader className="size-4 animate-spin" aria-hidden="true" />
-              <span>Fetching suggestions…</span>
-            </CommandItem>
-          ) }
+  const {
+    data: regionOptions = [],
+    isLoading: isRegionsLoading,
+    isError: isRegionsError,
+  } = useQuery<PhilippineRegionOption[]>({
+    queryKey: ['philippines', 'regions'],
+    queryFn: fetchPhilippineRegions,
+    enabled: open,
+    staleTime: 1000 * 60 * 30,
+  });
 
-          { shouldFetchSuggestions && suggestions.map((suggestion) => (
-            <CommandItem
-              key={ suggestion.space_id }
-              value={ `suggest ${suggestion.name}` }
-              onSelect={ () => {
-                onSearchChange(suggestion.name);
-                onSearchSubmit(suggestion.name);
+  const selectedRegion = React.useMemo(
+    () => regionOptions.find((region) => region.name === draftRegion) ?? null,
+    [draftRegion, regionOptions]
+  );
+  const regionCodeForQuery = selectedRegion?.code;
+
+  const {
+    data: cityOptions = [],
+    isLoading: isCitiesLoading,
+    isError: isCitiesError,
+  } = useQuery<PhilippineCityOption[]>({
+    queryKey: ['philippines', 'cities', regionCodeForQuery],
+    queryFn: () => {
+      if (!regionCodeForQuery) {
+        return Promise.resolve<PhilippineCityOption[]>([]);
+      }
+
+      return fetchPhilippineCitiesByRegion(regionCodeForQuery);
+    },
+    enabled: open && Boolean(regionCodeForQuery),
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const dedupedCityOptions = React.useMemo(() => dedupeAddressOptions(cityOptions), [cityOptions]);
+  const selectedCity = React.useMemo(
+    () => dedupedCityOptions.find((city) => city.name === draftCity) ?? null,
+    [dedupedCityOptions, draftCity]
+  );
+  const cityCodeForQuery = selectedCity?.code;
+
+  const {
+    data: barangayOptions = [],
+    isLoading: isBarangaysLoading,
+    isError: isBarangaysError,
+  } = useQuery<PhilippineBarangayOption[]>({
+    queryKey: ['philippines', 'barangays', cityCodeForQuery],
+    queryFn: () => {
+      if (!cityCodeForQuery) {
+        return Promise.resolve<PhilippineBarangayOption[]>([]);
+      }
+
+      return fetchPhilippineBarangaysByCity(cityCodeForQuery);
+    },
+    enabled: open && Boolean(cityCodeForQuery),
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const dedupedBarangayOptions = React.useMemo(
+    () => dedupeAddressOptions(barangayOptions),
+    [barangayOptions]
+  );
+
+  const regionDisabled = isRegionsLoading;
+  const cityDisabled = !selectedRegion || isCitiesLoading;
+  const barangayDisabled =
+    !selectedCity || isBarangaysLoading || dedupedBarangayOptions.length === 0;
+
+  const handleApplyFilters = () => {
+    onApply({
+      region: draftRegion,
+      city: draftCity,
+      barangay: draftBarangay,
+    });
+  };
+
+  return (
+    <Dialog open={ open } onOpenChange={ onOpenChange }>
+      <DialogContent className="sm:max-w-[560px]">
+        <DialogHeader>
+          <DialogTitle>Location filters</DialogTitle>
+          <DialogDescription>Filter spaces by region, city, and barangay.</DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="space-y-2">
+            <Label htmlFor="marketplace-filter-region">Region / State</Label>
+            <Select
+              value={ draftRegion }
+              onValueChange={ (value) => {
+                setDraftRegion(value);
+                setDraftCity('');
+                setDraftBarangay('');
               } }
+              disabled={ regionDisabled }
             >
-              <Avatar
-                className="size-9 border border-border shadow-sm"
-                style={ { borderRadius: 4, } }
+              <SelectTrigger
+                id="marketplace-filter-region"
+                aria-label="Select region or state"
+                className="w-full"
               >
-                { suggestion.image_url ? (
-                  <AvatarImage
-                    src={ suggestion.image_url }
-                    alt="Space preview"
-                    style={ { borderRadius: 4, } }
-                  />
-                ) : (
-                  <AvatarFallback style={ { borderRadius: 4, } }>
-                    { suggestion.name.slice(0, 2).toUpperCase() }
-                  </AvatarFallback>
+                <SelectValue placeholder={ isRegionsLoading ? 'Loading regions...' : 'Select region / state' } />
+              </SelectTrigger>
+              <SelectContent>
+                { isRegionsError && (
+                  <SelectItem value="regions-error" disabled>
+                    Unable to load regions
+                  </SelectItem>
                 ) }
-              </Avatar>
-              <div className="flex min-w-0 flex-col gap-0.5">
-                <span className="line-clamp-1 font-medium">{ suggestion.name }</span>
-                { suggestion.location && (
-                  <span className="text-xs text-muted-foreground line-clamp-1">
-                    { suggestion.location }
-                  </span>
+                { regionOptions.map((region) => (
+                  <SelectItem key={ region.code } value={ region.name }>
+                    { region.name }
+                  </SelectItem>
+                )) }
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="marketplace-filter-city">City</Label>
+            <Select
+              value={ draftCity }
+              onValueChange={ (value) => {
+                setDraftCity(value);
+                setDraftBarangay('');
+              } }
+              disabled={ cityDisabled }
+            >
+              <SelectTrigger
+                id="marketplace-filter-city"
+                aria-label="Select city"
+                className="w-full"
+              >
+                <SelectValue placeholder={ isCitiesLoading ? 'Loading cities...' : 'Select city' } />
+              </SelectTrigger>
+              <SelectContent>
+                { isCitiesError && (
+                  <SelectItem value="cities-error" disabled>
+                    Unable to load cities
+                  </SelectItem>
                 ) }
-              </div>
-            </CommandItem>
-          )) }
+                { dedupedCityOptions.map((city) => (
+                  <SelectItem key={ `${city.code}-${city.name}` } value={ city.name }>
+                    { city.name }
+                  </SelectItem>
+                )) }
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="marketplace-filter-barangay">Barangay</Label>
+            <Select
+              value={ draftBarangay }
+              onValueChange={ (value) => setDraftBarangay(value) }
+              disabled={ barangayDisabled }
+            >
+              <SelectTrigger
+                id="marketplace-filter-barangay"
+                aria-label="Select barangay"
+                className="w-full"
+              >
+                <SelectValue
+                  placeholder={
+                    !selectedCity
+                      ? 'Select a city first'
+                      : isBarangaysLoading
+                        ? 'Loading barangays...'
+                        : dedupedBarangayOptions.length === 0
+                          ? 'No barangays available'
+                          : 'Select barangay'
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                { isBarangaysError && (
+                  <SelectItem value="barangays-error" disabled>
+                    Unable to load barangays
+                  </SelectItem>
+                ) }
+                { dedupedBarangayOptions.map((barangay) => (
+                  <SelectItem key={ `${barangay.code}-${barangay.name}` } value={ barangay.name }>
+                    { barangay.name }
+                  </SelectItem>
+                )) }
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
-          { shouldFetchSuggestions && !isFetchingSuggestions && suggestions.length === 0 && !isSuggestionError && (
-            <CommandItem disabled>
-              <FiX className="size-4" aria-hidden="true" />
-              <span>No matching spaces yet.</span>
-            </CommandItem>
-          ) }
-        </CommandGroup>
-      </CommandList>
-    </CommandDialog>
+        <DialogFooter className="gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={ () => onOpenChange(false) }
+          >
+            Cancel
+          </Button>
+          <Button type="button" onClick={ handleApplyFilters }>
+            Apply filters
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function FilterBadge({
+  label,
+  onClear,
+}: {
+  label: string
+  onClear: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={ (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onClear();
+      } }
+      className="flex max-w-full items-center gap-2 rounded-full bg-secondary px-3 py-1 text-xs text-foreground transition hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      aria-label={ `Clear ${label}` }
+    >
+      <span className="truncate">{ label }</span>
+      <FiX className="size-3" aria-hidden="true" />
+    </button>
   );
 }
 
