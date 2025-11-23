@@ -92,7 +92,7 @@ function SidebarToggleMenuItem() {
         tooltip={ isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }
         type="button"
         onClick={ toggleSidebar }
-        className="!w-fit justify-center"
+        className="w-10 justify-center p-2"
         aria-label={ isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }
       >
         <Icon className="w-9 h-9" aria-hidden="true" />
