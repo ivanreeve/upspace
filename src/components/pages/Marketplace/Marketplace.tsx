@@ -286,6 +286,7 @@ function MarketplaceSearchDialog({
   hasActiveSearch,
 }: MarketplaceSearchDialogProps) {
   const trimmedValue = searchValue.trim();
+  const isMobile = useIsMobile();
 
   return (
     <CommandDialog
@@ -294,6 +295,7 @@ function MarketplaceSearchDialog({
       title="Search spaces"
       description="Search the UpSpace marketplace"
       position="top"
+      mobileFullScreen={ isMobile }
     >
       <CommandInput
         value={ searchValue }
@@ -307,7 +309,7 @@ function MarketplaceSearchDialog({
           }
         } }
       />
-      <CommandList>
+      <CommandList className={ isMobile ? 'flex-1 max-h-full' : undefined }>
         <CommandGroup heading="Actions">
           <CommandItem
             value={ trimmedValue ? `search ${trimmedValue}` : 'search marketplace' }
