@@ -6,9 +6,9 @@ import Link from 'next/link';
 import {
   FiBell,
   FiCommand,
-  FiFilter,
   FiHome,
   FiLoader,
+  FiList,
   FiSearch,
   FiX
 } from 'react-icons/fi';
@@ -24,6 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import BackToTopButton from '@/components/ui/back-to-top';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   CommandDialog,
   CommandGroup,
@@ -50,6 +51,8 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   fetchPhilippineBarangaysByCity,
@@ -74,6 +77,8 @@ import {
   useSidebar
 } from '@/components/ui/sidebar';
 import { ThemeSwitcher } from '@/components/ui/theme-switcher';
+import { AMENITY_CATEGORY_DISPLAY_MAP } from '@/lib/amenity/amenity_category_display_map';
+import { AMENITY_ICON_MAPPINGS } from '@/lib/amenity/amenity_icon_mappings';
 import { cn } from '@/lib/utils';
 import { useUserProfile } from '@/hooks/use-user-profile';
 
@@ -82,6 +87,9 @@ type FiltersState = {
   region: string;
   city: string;
   barangay: string;
+  amenities: string[];
+  amenitiesMode: 'all' | 'any';
+  amenitiesNegate: boolean;
 };
 
 const DEFAULT_FILTERS: FiltersState = {
@@ -89,18 +97,38 @@ const DEFAULT_FILTERS: FiltersState = {
   region: '',
   city: '',
   barangay: '',
+  amenities: [],
+  amenitiesMode: 'any',
+  amenitiesNegate: false,
 };
 
 const normalizeFilterValue = (value?: string) => (value ?? '').trim();
+const normalizeAmenityValues = (amenities?: string[]) =>
+  Array.from(
+    new Set(
+      (amenities ?? [])
+        .map((value) => normalizeFilterValue(value))
+        .filter(Boolean)
+    )
+  );
+const ORDERED_AMENITY_CATEGORIES = Object.keys(AMENITY_CATEGORY_DISPLAY_MAP);
 
-const buildQueryParams = (filters: FiltersState) => ({
-  limit: 24,
-  q: normalizeFilterValue(filters.q) || undefined,
-  region: normalizeFilterValue(filters.region) || undefined,
-  city: normalizeFilterValue(filters.city) || undefined,
-  barangay: normalizeFilterValue(filters.barangay) || undefined,
-  include_pending: true,
-});
+const buildQueryParams = (filters: FiltersState) => {
+  const amenities = normalizeAmenityValues(filters.amenities);
+  const hasAmenities = amenities.length > 0;
+
+  return {
+    limit: 24,
+    q: normalizeFilterValue(filters.q) || undefined,
+    region: normalizeFilterValue(filters.region) || undefined,
+    city: normalizeFilterValue(filters.city) || undefined,
+    barangay: normalizeFilterValue(filters.barangay) || undefined,
+    amenities: hasAmenities ? amenities : undefined,
+    amenities_mode: hasAmenities ? filters.amenitiesMode : undefined,
+    amenities_negate: hasAmenities ? filters.amenitiesNegate : undefined,
+    include_pending: true,
+  };
+};
 
 function useDebouncedValue<T>(value: T, delayMs: number) {
   const [debounced, setDebounced] = React.useState(value);
@@ -227,6 +255,9 @@ export default function Marketplace() {
       region: normalizeFilterValue(updates.region ?? prev.region),
       city: normalizeFilterValue(updates.city ?? prev.city),
       barangay: normalizeFilterValue(updates.barangay ?? prev.barangay),
+      amenities: normalizeAmenityValues(updates.amenities ?? prev.amenities),
+      amenitiesMode: updates.amenitiesMode ?? prev.amenitiesMode,
+      amenitiesNegate: updates.amenitiesNegate ?? prev.amenitiesNegate,
     }));
   }, []);
   const isMobile = useIsMobile();
@@ -299,6 +330,8 @@ export default function Marketplace() {
   const hasError = Boolean(error);
   const hasActiveSearch = Boolean(filters.q.trim());
   const hasLocationFilters = Boolean(filters.region || filters.city || filters.barangay);
+  const hasAmenityFilters = filters.amenities.length > 0;
+  const hasAnyFilters = hasLocationFilters || hasAmenityFilters;
   React.useEffect(() => {
     if (typeof document === 'undefined') return undefined;
 
@@ -373,7 +406,7 @@ export default function Marketplace() {
         onSearchChange={ setSearchValue }
         onSearchSubmit={ handleSearchSubmit }
         hasActiveSearch={ hasActiveSearch }
-        hasLocationFilters={ hasLocationFilters }
+        hasAnyFilters={ hasAnyFilters }
         filters={ filters }
         onFiltersApply={ applyFilters }
       />
@@ -481,7 +514,7 @@ type MarketplaceSearchDialogProps = {
   open: boolean
   searchValue: string
   hasActiveSearch: boolean
-  hasLocationFilters: boolean
+  hasAnyFilters: boolean
   filters: FiltersState
   onOpenChange: (open: boolean) => void
   onSearchChange: (value: string) => void
@@ -496,7 +529,7 @@ function MarketplaceSearchDialog({
   onSearchChange,
   onSearchSubmit,
   hasActiveSearch,
-  hasLocationFilters,
+  hasAnyFilters,
   filters,
   onFiltersApply,
 }: MarketplaceSearchDialogProps) {
@@ -541,6 +574,14 @@ function MarketplaceSearchDialog({
   const suggestionStatusMessage = shouldFetchSuggestions
     ? `Showing ${suggestions.length} suggestion${suggestions.length === 1 ? '' : 's'}.`
     : 'Type at least two characters to see suggestions.';
+  const handleAmenityRemove = React.useCallback((name: string) => {
+    const next = filters.amenities.filter((value) => value !== name);
+    onFiltersApply({
+      amenities: next,
+      amenitiesMode: next.length ? filters.amenitiesMode : 'any',
+      amenitiesNegate: next.length ? filters.amenitiesNegate : false,
+    });
+  }, [filters.amenities, filters.amenitiesMode, filters.amenitiesNegate, onFiltersApply]);
 
   return (
     <>
@@ -566,26 +607,26 @@ function MarketplaceSearchDialog({
           } }
         />
         <CommandList className={ isMobile ? 'flex-1 max-h-full' : undefined }>
-          { hasLocationFilters && (
+          { hasAnyFilters && (
             <CommandGroup heading="Filters">
               <div className="flex flex-wrap items-center gap-2 px-2 pb-2">
                 { filters.region && (
                   <FilterBadge
                     label={ `Region: ${filters.region}` }
                     onClear={ () => onFiltersApply({
- region: '',
-city: '',
-barangay: '', 
-}) }
+                      region: '',
+                      city: '',
+                      barangay: '',
+                    }) }
                   />
                 ) }
                 { filters.city && (
                   <FilterBadge
                     label={ `City: ${filters.city}` }
                     onClear={ () => onFiltersApply({
- city: '',
-barangay: '', 
-}) }
+                      city: '',
+                      barangay: '',
+                    }) }
                   />
                 ) }
                 { filters.barangay && (
@@ -594,6 +635,13 @@ barangay: '',
                     onClear={ () => onFiltersApply({ barangay: '', }) }
                   />
                 ) }
+                { filters.amenities.map((amenity) => (
+                  <FilterBadge
+                    key={ `amenity-${amenity}` }
+                    label={ filters.amenitiesNegate ? `Exclude: ${amenity}` : `Amenity: ${amenity}` }
+                    onClear={ () => handleAmenityRemove(amenity) }
+                  />
+                )) }
               </div>
             </CommandGroup>
           ) }
@@ -605,7 +653,7 @@ barangay: '',
             >
               <CgOptions className="size-4" aria-hidden="true" />
               <span>Apply filters</span>
-              { hasLocationFilters && (
+              { hasAnyFilters && (
                 <Badge variant="secondary" className="ml-auto">
                   Active
                 </Badge>
@@ -635,14 +683,17 @@ barangay: '',
                 <span>Clear search</span>
               </CommandItem>
             ) }
-            { hasLocationFilters && (
+            { hasAnyFilters && (
               <CommandItem
                 value="clear filters"
                 onSelect={ () => onFiltersApply({
- region: '',
-city: '',
-barangay: '', 
-}) }
+                  region: '',
+                  city: '',
+                  barangay: '',
+                  amenities: [],
+                  amenitiesMode: 'any',
+                  amenitiesNegate: false,
+                }) }
               >
                 <FiX className="size-4" aria-hidden="true" />
                 <span>Clear filters</span>
@@ -742,6 +793,13 @@ type LocationFilterDialogProps = {
   onOpenChange: (open: boolean) => void
 };
 
+type AmenityChoice = {
+  id: string;
+  name: string;
+  category: string | null;
+  identifier: string | null;
+};
+
 function LocationFilterDialog({
   open,
   filters,
@@ -751,14 +809,28 @@ function LocationFilterDialog({
   const [draftRegion, setDraftRegion] = React.useState(filters.region);
   const [draftCity, setDraftCity] = React.useState(filters.city);
   const [draftBarangay, setDraftBarangay] = React.useState(filters.barangay);
+  const [draftAmenities, setDraftAmenities] = React.useState<string[]>(filters.amenities);
+  const [amenitiesSearch, setAmenitiesSearch] = React.useState('');
+  const [amenitiesMode, setAmenitiesMode] = React.useState<FiltersState['amenitiesMode']>(filters.amenitiesMode);
+  const [amenitiesNegate, setAmenitiesNegate] = React.useState(filters.amenitiesNegate);
 
   React.useEffect(() => {
     if (open) {
       setDraftRegion(filters.region);
       setDraftCity(filters.city);
       setDraftBarangay(filters.barangay);
+      setDraftAmenities(filters.amenities);
+      setAmenitiesMode(filters.amenitiesMode);
+      setAmenitiesNegate(filters.amenitiesNegate);
+      setAmenitiesSearch('');
     }
-  }, [filters.barangay, filters.city, filters.region, open]);
+  }, [filters.amenities, filters.amenitiesMode, filters.amenitiesNegate, filters.barangay, filters.city, filters.region, open]);
+
+  React.useEffect(() => {
+    if (draftAmenities.length === 0 && amenitiesNegate) {
+      setAmenitiesNegate(false);
+    }
+  }, [amenitiesNegate, draftAmenities.length]);
 
   const {
     data: regionOptions = [],
@@ -823,22 +895,114 @@ function LocationFilterDialog({
     [barangayOptions]
   );
 
+  const {
+    data: amenityChoices = [],
+    isLoading: isAmenitiesLoading,
+    isError: isAmenitiesError,
+    refetch: refetchAmenities,
+  } = useQuery<AmenityChoice[]>({
+    queryKey: ['amenity-choices'],
+    queryFn: async () => {
+      const response = await fetch('/api/v1/amenities/choices');
+      if (!response.ok) {
+        throw new Error('Failed to fetch amenity choices');
+      }
+
+      const payload = (await response.json()) as { data: AmenityChoice[]; };
+      return payload.data;
+    },
+    staleTime: 1000 * 60 * 10,
+    enabled: open,
+  });
+
+  const groupedAmenities = React.useMemo(() => {
+    if (!amenityChoices.length) return [];
+
+    const grouped = new Map<string, AmenityChoice[]>();
+    for (const amenity of amenityChoices) {
+      const key = amenity.category ?? 'others';
+      const group = grouped.get(key) ?? [];
+      group.push(amenity);
+      grouped.set(key, group);
+    }
+
+    const ordered: { key: string; label: string; amenities: AmenityChoice[]; }[] = [];
+    for (const key of ORDERED_AMENITY_CATEGORIES) {
+      if (!grouped.has(key)) continue;
+      ordered.push({
+        key,
+        label: AMENITY_CATEGORY_DISPLAY_MAP[key] ?? key,
+        amenities: grouped.get(key)?.slice() ?? [],
+      });
+      grouped.delete(key);
+    }
+
+    for (const [key, amenitiesForKey] of grouped.entries()) {
+      ordered.push({
+        key,
+        label: AMENITY_CATEGORY_DISPLAY_MAP[key] ?? key,
+        amenities: amenitiesForKey.slice(),
+      });
+    }
+
+    return ordered;
+  }, [amenityChoices]);
+
+  const normalizedAmenitySearch = amenitiesSearch.trim().toLowerCase();
+  const filteredAmenityGroups = React.useMemo(() => {
+    if (!normalizedAmenitySearch) return groupedAmenities;
+
+    return groupedAmenities
+      .map((group) => ({
+        ...group,
+        amenities: group.amenities.filter((amenity) =>
+          amenity.name.toLowerCase().includes(normalizedAmenitySearch)
+        ),
+      }))
+      .filter((group) => group.amenities.length > 0);
+  }, [groupedAmenities, normalizedAmenitySearch]);
+
+  const selectedAmenities = React.useMemo(
+    () => normalizeAmenityValues(draftAmenities),
+    [draftAmenities]
+  );
+
   const regionDisabled = isRegionsLoading;
   const cityDisabled = !selectedRegion || isCitiesLoading;
   const barangayDisabled =
     !selectedCity || isBarangaysLoading || dedupedBarangayOptions.length === 0;
+
+  const handleAmenityToggle = (amenityName: string) => {
+    setDraftAmenities((prev) => {
+      const normalized = normalizeFilterValue(amenityName);
+      if (!normalized) return prev;
+
+      if (prev.includes(normalized)) {
+        return prev.filter((value) => value !== normalized);
+      }
+
+      return [...prev, normalized];
+    });
+  };
+
+  const handleAmenityRemove = (amenityName: string) => {
+    setDraftAmenities((prev) => prev.filter((value) => value !== amenityName));
+  };
 
   const handleApplyFilters = () => {
     onApply({
       region: draftRegion,
       city: draftCity,
       barangay: draftBarangay,
+      amenities: selectedAmenities,
+      amenitiesMode: selectedAmenities.length > 0 ? amenitiesMode : 'any',
+      amenitiesNegate: selectedAmenities.length > 0 ? amenitiesNegate : false,
     });
   };
 
   return (
     <Dialog open={ open } onOpenChange={ onOpenChange }>
-      <DialogContent className="sm:max-w-[560px] space-y-8 pb-0">
+      <DialogContent className="sm:max-w-[720px] space-y-8 pb-0">
         <DialogHeader>
           <DialogTitle>Filters</DialogTitle>
           <DialogDescription>Filter spaces by location, price, ratings, and amenities.</DialogDescription>
@@ -945,6 +1109,155 @@ function LocationFilterDialog({
                 )) }
               </SelectContent>
             </Select>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="amenities-search-input">Amenities</Label>
+              <p className="text-sm text-muted-foreground">
+                Search and select amenities to refine results. Click an amenity to add or remove it.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <div className="sm:w-48">
+                <Label htmlFor="amenities-match-type">Match type</Label>
+                <Select
+                  value={ amenitiesMode }
+                  onValueChange={ (value) => setAmenitiesMode(value as FiltersState['amenitiesMode']) }
+                  disabled={ amenitiesNegate }
+                >
+                  <SelectTrigger
+                    id="amenities-match-type"
+                    aria-label="Amenities match type"
+                    className="w-full"
+                  >
+                    <SelectValue placeholder="Any amenity" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="any">Any selected amenity</SelectItem>
+                    <SelectItem value="all">All selected amenities</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-3 rounded-md border border-border/60 px-3 py-2">
+                <div className="flex flex-col">
+                  <Label htmlFor="amenities-negate-toggle">Exclude</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Hide spaces that have any selected amenity.
+                  </p>
+                </div>
+                <Switch
+                  id="amenities-negate-toggle"
+                  checked={ amenitiesNegate }
+                  onCheckedChange={ setAmenitiesNegate }
+                  disabled={ selectedAmenities.length === 0 }
+                  aria-label="Exclude selected amenities"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="relative">
+            <FiSearch className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input
+              id="amenities-search-input"
+              placeholder="Search amenities (click results to add)"
+              value={ amenitiesSearch }
+              onChange={ (event) => setAmenitiesSearch(event.target.value) }
+              aria-label="Search amenities to filter"
+              className="pl-9"
+            />
+          </div>
+
+          { selectedAmenities.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/30 px-3 py-2">
+              { selectedAmenities.map((amenity) => (
+                <FilterBadge
+                  key={ `selected-${amenity}` }
+                  label={ amenitiesNegate ? `Exclude: ${amenity}` : amenity }
+                  onClear={ () => handleAmenityRemove(amenity) }
+                />
+              )) }
+            </div>
+          ) }
+
+          <div className="rounded-lg border border-border/60 bg-muted/20">
+            <ScrollArea className="h-[320px] w-full px-1">
+              <div className="space-y-5 p-3">
+                { isAmenitiesLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <FiLoader className="size-4 animate-spin" aria-hidden="true" />
+                    Loading amenities…
+                  </div>
+                ) : isAmenitiesError ? (
+                  <div className="flex items-center justify-between rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    <span>Unable to load amenities.</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive underline"
+                      onClick={ () => refetchAmenities() }
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                ) : filteredAmenityGroups.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    { normalizedAmenitySearch
+                      ? 'No amenities match your search.'
+                      : 'No amenities available yet.' }
+                  </p>
+                ) : (
+                  filteredAmenityGroups.map((group) => (
+                    <section key={ group.key } className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-foreground">{ group.label }</h3>
+                        <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                          { group.amenities.length } option{ group.amenities.length === 1 ? '' : 's' }
+                        </span>
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        { group.amenities.map((amenity) => {
+                          const Icon = amenity.identifier
+                            ? AMENITY_ICON_MAPPINGS[amenity.identifier] ?? FiList
+                            : FiList;
+                          const isSelected = selectedAmenities.includes(amenity.name);
+
+                          return (
+                            <button
+                              key={ amenity.id }
+                              type="button"
+                              onClick={ () => handleAmenityToggle(amenity.name) }
+                              className={ cn(
+                                'flex items-center gap-3 rounded-md border px-3 py-2 text-left transition hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                                isSelected
+                                  ? 'border-primary bg-primary/5 shadow-sm'
+                                  : 'border-border/60 bg-background/60'
+                              ) }
+                              aria-pressed={ isSelected }
+                              aria-label={ `${isSelected ? 'Remove' : 'Add'} amenity ${amenity.name}` }
+                            >
+                              <Icon className="size-4 text-foreground" aria-hidden="true" />
+                              <span className="flex-1 text-sm font-medium text-foreground">
+                                { amenity.name }
+                              </span>
+                              { isSelected && (
+                                <Badge variant="secondary" className="shrink-0">
+                                  Selected
+                                </Badge>
+                              ) }
+                            </button>
+                          );
+                        }) }
+                      </div>
+                    </section>
+                  ))
+                ) }
+              </div>
+            </ScrollArea>
           </div>
         </div>
 

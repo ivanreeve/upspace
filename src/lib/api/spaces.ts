@@ -39,6 +39,7 @@ export type ListSpacesParams = Partial<{
   country: string;
   amenities: string[]; // names
   amenities_mode: 'all' | 'any';
+  amenities_negate: boolean;
   min_rate_price: number;
   max_rate_price: number;
   available_from: string;
@@ -73,6 +74,9 @@ export async function listSpaces(params: ListSpacesParams = {}) {
   if (params.country) sp.set('country', params.country);
   if (params.amenities?.length) sp.set('amenities', params.amenities.join(','));
   if (params.amenities_mode) sp.set('amenities_mode', params.amenities_mode);
+  if (typeof params.amenities_negate === 'boolean') {
+    sp.set('amenities_negate', String(params.amenities_negate));
+  }
   if (typeof params.min_rate_price === 'number') sp.set('min_rate_price', String(params.min_rate_price));
   if (typeof params.max_rate_price === 'number') sp.set('max_rate_price', String(params.max_rate_price));
   if (params.available_from) sp.set('available_from', params.available_from);

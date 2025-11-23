@@ -304,6 +304,7 @@ export async function GET(req: NextRequest) {
       // relational filters
       amenities: z.string().optional(), // comma-separated list of names
       amenities_mode: z.enum(['all', 'any']).optional(),
+      amenities_negate: z.coerce.boolean().optional().default(false),
       min_capacity: z.coerce.number().int().min(0).optional(),
       bookmark_user_id: z.string().regex(/^\d+$/).optional(),
       available_days: z.string().optional(), // comma-separated day_of_week
@@ -339,6 +340,7 @@ export async function GET(req: NextRequest) {
       space_ids: searchParams.get('space_ids') ?? undefined,
       amenities: searchParams.get('amenities') ?? undefined,
       amenities_mode: searchParams.get('amenities_mode') ?? undefined,
+      amenities_negate: searchParams.get('amenities_negate') ?? undefined,
       min_capacity: searchParams.get('min_capacity') ?? undefined,
       bookmark_user_id: searchParams.get('bookmark_user_id') ?? undefined,
       available_days: searchParams.get('available_days') ?? undefined,
@@ -374,6 +376,7 @@ export async function GET(req: NextRequest) {
       space_ids,
       amenities,
       amenities_mode,
+      amenities_negate,
       min_capacity,
       bookmark_user_id,
       available_days,
@@ -506,7 +509,18 @@ mode: 'insensitive' as const,
       .map((s) => s.trim())
       .filter(Boolean);
     if (amenityNames.length > 0) {
-      if ((amenities_mode ?? 'any') === 'all') {
+      if (amenities_negate) {
+        and.push({
+          amenity: {
+            none: {
+              name: {
+                in: amenityNames,
+                mode: 'insensitive' as const,
+              },
+            },
+          },
+        });
+      } else if ((amenities_mode ?? 'any') === 'all') {
         for (const name of amenityNames) {
           and.push({
  amenity: {
