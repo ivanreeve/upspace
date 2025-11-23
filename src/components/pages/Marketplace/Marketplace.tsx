@@ -132,10 +132,9 @@ export default function Marketplace() {
   const preferredUsernameLabel =
     preferredUsername && preferredUsername.includes('@') ? undefined : preferredUsername;
   const resolvedHandleLabel = profileHandleLabel ?? preferredUsernameLabel;
+  const resolvedHandleValue = userProfile?.handle ?? preferredUsernameLabel ?? null;
   const avatarFallback =
-    session?.user?.user_metadata?.full_name?.slice(0, 2)?.toUpperCase()
-    ?? userProfile?.handle?.slice(0, 2)?.toUpperCase()
-    ?? session?.user?.email?.slice(0, 2)?.toUpperCase()
+    resolvedHandleValue?.slice(0, 2)?.toUpperCase()
     ?? 'US';
   const avatarDisplayName =
     resolvedHandleLabel
