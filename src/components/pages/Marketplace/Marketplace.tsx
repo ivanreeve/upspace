@@ -3,7 +3,13 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { FiBell, FiHome, FiSearch } from 'react-icons/fi';
+import {
+  FiBell,
+  FiCommand,
+  FiHome,
+  FiSearch,
+  FiX
+} from 'react-icons/fi';
 
 import { CardsGrid, SkeletonGrid } from './Marketplace.Cards';
 import { MarketplaceErrorState } from './Marketplace.ErrorState';
@@ -12,8 +18,15 @@ import { listSpaces } from '@/lib/api/spaces';
 import { useSession } from '@/components/auth/SessionProvider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import BackToTopButton from '@/components/ui/back-to-top';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import {
+  CommandDialog,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandShortcut
+} from '@/components/ui/command';
+import { Kbd } from '@/components/ui/kbd';
 import { LogoSymbolic } from '@/components/ui/logo-symbolic';
 import {
   Sidebar,
@@ -44,11 +57,53 @@ const buildQueryParams = (filters: FiltersState) => ({
 export default function Marketplace() {
   const [filters, setFilters] = React.useState<FiltersState>(DEFAULT_FILTERS);
   const [searchValue, setSearchValue] = React.useState('');
+  const [isSearchOpen, setIsSearchOpen] = React.useState(false);
   const { session, } = useSession();
 
   React.useEffect(() => {
-    setSearchValue(filters.q);
-  }, [filters]);
+    setSearchValue(filters.q ?? '');
+  }, [filters.q]);
+
+  const openSearchModal = React.useCallback(() => {
+    setIsSearchOpen(true);
+  }, []);
+
+  const handleSearchOpenChange = React.useCallback((open: boolean) => {
+    setIsSearchOpen(open);
+    if (!open) {
+      setSearchValue(filters.q ?? '');
+    }
+  }, [filters.q]);
+
+  const applySearch = React.useCallback((value: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      q: value.trim(),
+    }));
+  }, []);
+
+  const handleSearchSubmit = React.useCallback(
+    (value?: string) => {
+      const nextValue = typeof value === 'string' ? value : searchValue;
+      const normalized = nextValue.trim();
+      setSearchValue(normalized);
+      applySearch(normalized);
+      setIsSearchOpen(false);
+    },
+    [applySearch, searchValue]
+  );
+
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        openSearchModal();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [openSearchModal]);
 
   const {
     data,
@@ -63,14 +118,7 @@ export default function Marketplace() {
 
   const spaces = React.useMemo(() => data?.data ?? [], [data]);
   const hasError = Boolean(error);
-
-  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setFilters((prev) => ({
-      ...prev,
-      q: searchValue.trim(),
-    }));
-  };
+  const hasActiveSearch = Boolean(filters.q.trim());
 
   const avatarUrl = session?.user?.user_metadata?.avatar_url
     ?? session?.user?.user_metadata?.picture
@@ -88,33 +136,17 @@ export default function Marketplace() {
   const content = (
     <section className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-10">
       <div className="space-y-6">
-        <form
-          onSubmit={ handleSearchSubmit }
-          className="flex w-full flex-1 flex-col gap-3 rounded-md shadow-sm md:flex-row md:items-center"
-        >
-          <div className="flex w-full flex-col gap-3 rounded-xl border bg-background p-3 shadow-sm sm:flex-row sm:items-center sm:p-2">
-            <div className="flex flex-1 items-center gap-3 rounded-lg bg-transparent sm:rounded-none">
-              <FiSearch aria-hidden="true" className="size-5 text-muted-foreground" />
-              <Input
-                value={ searchValue }
-                onChange={ (event) => setSearchValue(event.target.value) }
-                placeholder="Search by space name, neighborhood, or keyword"
-                aria-label="Search spaces"
-                className="border-none bg-transparent text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
-              />
-            </div>
-            <Button type="submit" className="w-full sm:w-auto">
-              Search marketplace
-            </Button>
-          </div>
-        </form>
-
         { hasError ? (
           <div className="flex min-h-[70vh] w-full items-center justify-center px-4">
             <MarketplaceErrorState />
           </div>
         ) : (
           <div className="space-y-3">
+            { hasActiveSearch && (
+              <p className="text-sm text-muted-foreground">
+                Showing results for &quot;{ filters.q }&quot;
+              </p>
+            ) }
             { isLoading ? (
               <SkeletonGrid />
             ) : (
@@ -133,9 +165,18 @@ export default function Marketplace() {
 
   return (
     <SidebarProvider className="bg-background min-h-screen">
+      <MarketplaceSearchDialog
+        open={ isSearchOpen }
+        onOpenChange={ handleSearchOpenChange }
+        searchValue={ searchValue }
+        onSearchChange={ setSearchValue }
+        onSearchSubmit={ handleSearchSubmit }
+        hasActiveSearch={ hasActiveSearch }
+      />
       <MobileTopNav
         avatarUrl={ avatarUrl }
         avatarFallback={ avatarFallback }
+        onSearchOpen={ openSearchModal }
       />
       <div className="flex min-h-screen w-full">
         <Sidebar collapsible="none" className="hidden md:flex">
@@ -150,11 +191,20 @@ export default function Marketplace() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Search">
-                  <Link href="/marketplace">
+                <SidebarMenuButton
+                  tooltip="Search"
+                  className="justify-between"
+                  type="button"
+                  onClick={ openSearchModal }
+                >
+                  <span className="flex items-center gap-2">
                     <FiSearch className="size-4" />
                     <span>Search</span>
-                  </Link>
+                  </span>
+                  <Kbd className="ml-2 hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex">
+                    <FiCommand className="size-3" aria-hidden="true" />
+                    <span>K</span>
+                  </Kbd>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
@@ -200,17 +250,88 @@ export default function Marketplace() {
       <MobileBottomBar
         avatarUrl={ avatarUrl }
         avatarFallback={ avatarFallback }
+        onSearchOpen={ openSearchModal }
       />
     </SidebarProvider>
+  );
+}
+
+type MarketplaceSearchDialogProps = {
+  open: boolean
+  searchValue: string
+  hasActiveSearch: boolean
+  onOpenChange: (open: boolean) => void
+  onSearchChange: (value: string) => void
+  onSearchSubmit: (value?: string) => void
+};
+
+function MarketplaceSearchDialog({
+  open,
+  onOpenChange,
+  searchValue,
+  onSearchChange,
+  onSearchSubmit,
+  hasActiveSearch,
+}: MarketplaceSearchDialogProps) {
+  const trimmedValue = searchValue.trim();
+
+  return (
+    <CommandDialog
+      open={ open }
+      onOpenChange={ onOpenChange }
+      title="Search spaces"
+      description="Search the UpSpace marketplace"
+    >
+      <CommandInput
+        value={ searchValue }
+        onValueChange={ onSearchChange }
+        placeholder="Search by space name, neighborhood, or keyword"
+        aria-label="Search spaces"
+        onKeyDown={ (event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            onSearchSubmit();
+          }
+        } }
+      />
+      <CommandList>
+        <CommandGroup heading="Actions">
+          <CommandItem
+            value={ trimmedValue ? `search ${trimmedValue}` : 'search marketplace' }
+            onSelect={ () => onSearchSubmit() }
+          >
+            <FiSearch className="size-4" aria-hidden="true" />
+            <span>Search marketplace</span>
+            { trimmedValue && (
+              <span className="truncate text-muted-foreground">
+                &quot;{ trimmedValue }&quot;
+              </span>
+            ) }
+            <CommandShortcut>Enter</CommandShortcut>
+          </CommandItem>
+          { hasActiveSearch && (
+            <CommandItem
+              value="clear search"
+              onSelect={ () => onSearchSubmit('') }
+            >
+              <FiX className="size-4" aria-hidden="true" />
+              <span>Clear search</span>
+            </CommandItem>
+          ) }
+        </CommandGroup>
+      </CommandList>
+    </CommandDialog>
   );
 }
 
 function MobileBottomBar({
   avatarUrl,
   avatarFallback,
+  onSearchOpen,
 }: {
   avatarUrl: string | null
   avatarFallback: string
+  onSearchOpen: () => void
 }) {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/90 backdrop-blur-md shadow-lg md:hidden">
@@ -223,14 +344,15 @@ function MobileBottomBar({
           <FiHome className="size-5" aria-hidden="true" />
           <span>Home</span>
         </Link>
-        <Link
-          href="/marketplace"
+        <button
+          type="button"
+          onClick={ onSearchOpen }
           className="flex flex-col items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
-          aria-label="Search"
+          aria-label="Open search"
         >
           <FiSearch className="size-5" aria-hidden="true" />
           <span>Search</span>
-        </Link>
+        </button>
         <Link
           href="/notifications"
           className="flex flex-col items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
@@ -261,9 +383,11 @@ function MobileBottomBar({
 function MobileTopNav({
   avatarUrl,
   avatarFallback,
+  onSearchOpen,
 }: {
   avatarUrl: string | null
   avatarFallback: string
+  onSearchOpen: () => void
 }) {
   return (
     <header className="fixed inset-x-0 top-0 z-40 border-b bg-background/90 px-4 py-3 backdrop-blur-md md:hidden">
@@ -280,13 +404,14 @@ function MobileTopNav({
           >
             <FiBell className="size-5" aria-hidden="true" />
           </Link>
-          <Link
-            href="/marketplace"
+          <button
+            type="button"
             aria-label="Search"
+            onClick={ onSearchOpen }
             className="rounded-full p-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <FiSearch className="size-5" aria-hidden="true" />
-          </Link>
+          </button>
           <Link
             href="/onboarding"
             aria-label="Account"
