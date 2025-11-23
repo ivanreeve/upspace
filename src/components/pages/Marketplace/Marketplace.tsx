@@ -133,6 +133,22 @@ export default function Marketplace() {
   const spaces = React.useMemo(() => data?.data ?? [], [data]);
   const hasError = Boolean(error);
   const hasActiveSearch = Boolean(filters.q.trim());
+  React.useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousDocOverflow = document.documentElement.style.overflow;
+
+    if (hasError) {
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousDocOverflow;
+    };
+  }, [hasError]);
 
   const avatarUrl = session?.user?.user_metadata?.avatar_url
     ?? session?.user?.user_metadata?.picture
