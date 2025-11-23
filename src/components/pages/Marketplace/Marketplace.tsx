@@ -151,31 +151,39 @@ function SidebarFooterContent({
   resolvedHandleLabel: string | undefined
 }) {
   const { state, } = useSidebar();
-
-  if (state === 'collapsed') return null;
+  const isCollapsed = state === 'collapsed';
 
   return (
-    <div className="space-y-3 p-2">
-      <ThemeSwitcher className="w-full justify-between" />
+    <div className={ cn('p-2', isCollapsed ? 'flex items-center justify-center' : 'space-y-2') }>
+      { !isCollapsed && <ThemeSwitcher className="w-full justify-between" /> }
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton asChild tooltip="Account">
-            <Link href="/onboarding" className="flex items-center gap-3">
-              <Avatar className="size-9">
+          <SidebarMenuButton
+            asChild
+            tooltip={ isCollapsed ? undefined : 'Account' }
+            className={ isCollapsed ? 'justify-center' : undefined }
+          >
+            <Link href="/onboarding" className={`flex items-center gap-3 py-8 ${isCollapsed ? 'ml-[-5px]' : ''}`}>
+              <Avatar className={ cn('size-9', isCollapsed && 'size-8') }>
                 { avatarUrl ? (
                   <AvatarImage src={ avatarUrl } alt="User avatar" />
                 ) : (
                   <AvatarFallback>{ avatarFallback }</AvatarFallback>
                 ) }
               </Avatar>
-              <div className="flex min-w-0 flex-col text-left">
-                <span className="text-sm font-semibold leading-tight">{ avatarDisplayName }</span>
-                { resolvedHandleLabel && (
-                  <span className="text-xs text-muted-foreground truncate">
-                    { resolvedHandleLabel }
-                  </span>
-                ) }
-              </div>
+              { !isCollapsed && (
+                <div className="flex min-w-0 flex-col text-left">
+                  <span className="text-sm font-semibold leading-tight">{ avatarDisplayName }</span>
+                  { resolvedHandleLabel && (
+                    <span className="text-xs text-muted-foreground truncate">
+                      { resolvedHandleLabel }
+                    </span>
+                  ) }
+                </div>
+              ) }
+              <span className="sr-only">
+                { `Open account for ${avatarDisplayName}${resolvedHandleLabel ? ` (${resolvedHandleLabel})` : ''}` }
+              </span>
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
