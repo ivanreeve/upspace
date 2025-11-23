@@ -134,9 +134,9 @@ export default function Marketplace() {
     ?? session?.user?.email?.slice(0, 2)?.toUpperCase()
     ?? 'US';
   const avatarDisplayName =
-    session?.user?.user_metadata?.full_name
+    profileHandleLabel
+    ?? session?.user?.user_metadata?.full_name
     ?? session?.user?.user_metadata?.preferred_username
-    ?? profileHandleLabel
     ?? session?.user?.email
     ?? 'Account';
 
