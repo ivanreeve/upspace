@@ -285,7 +285,7 @@ export default function Marketplace() {
       <div
         aria-hidden="true"
         style={ { bottom: '0', } }
-        className="pointer-events-none fixed left-1/2 z-30 h-[20vh] w-full -translate-x-1/2 bg-black transition-all duration-300 md:bottom-[1.25rem] lg:bottom-[1.75rem]"
+        className="pointer-events-none fixed left-1/2 z-30 h-[20vh] w-full -translate-x-1/2 bg-gradient-to-t from-background via-background/60 to-background/0 transition-all duration-300 md:bottom-[1.25rem] lg:bottom-[1.75rem]"
       />
     </section>
   );
