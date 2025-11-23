@@ -643,6 +643,7 @@ function MarketplaceSearchDialog({
                     key={ `amenity-${amenity}` }
                     label={ filters.amenitiesNegate ? `Exclude: ${amenity}` : `Amenity: ${amenity}` }
                     onClear={ () => handleAmenityRemove(amenity) }
+                    variant="destructive"
                   />
                 )) }
               </div>
@@ -1181,6 +1182,7 @@ function LocationFilterDialog({
                   key={ `selected-${amenity}` }
                   label={ amenitiesNegate ? `Exclude: ${amenity}` : amenity }
                   onClear={ () => handleAmenityRemove(amenity) }
+                  variant="destructive"
                 />
               )) }
             </div>
@@ -1284,9 +1286,11 @@ function LocationFilterDialog({
 function FilterBadge({
   label,
   onClear,
+  variant = 'default',
 }: {
   label: string
   onClear: () => void
+  variant?: 'default' | 'destructive'
 }) {
   return (
     <button
@@ -1296,7 +1300,12 @@ function FilterBadge({
         event.stopPropagation();
         onClear();
       } }
-      className="flex max-w-full items-center gap-2 rounded-full bg-secondary px-3 py-1 text-xs text-foreground transition hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className={ cn(
+        'flex max-w-full items-center gap-2 rounded-full px-3 py-1 text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+        variant === 'destructive'
+          ? 'border border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/20'
+          : 'bg-secondary text-foreground hover:bg-secondary/80'
+      ) }
       aria-label={ `Clear ${label}` }
     >
       <span className="truncate">{ label }</span>
