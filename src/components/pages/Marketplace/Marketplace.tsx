@@ -1188,14 +1188,14 @@ function LocationFilterDialog({
                 { isAmenitiesLoading ? (
                   <div className="space-y-4" role="status" aria-label="Loading amenities">
                     <span className="sr-only">Loading amenities</span>
-                    { Array.from({ length: 2 }).map((_, index) => (
+                    { Array.from({ length: 2, }).map((_, index) => (
                       <div key={ index } className="space-y-3">
                         <div className="flex items-center justify-between">
                           <Skeleton className="h-4 w-28" />
                           <Skeleton className="h-3 w-16" />
                         </div>
                         <div className="grid gap-2 sm:grid-cols-2">
-                          { Array.from({ length: 4 }).map((_, cardIndex) => (
+                          { Array.from({ length: 4, }).map((_, cardIndex) => (
                             <div
                               key={ `${index}-${cardIndex}` }
                               className="rounded-md border border-border/60 bg-background/60 p-3"
