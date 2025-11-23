@@ -9,9 +9,11 @@ const DAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Sat
 
 const formatTime = (value: Date | string) => {
   const date = value instanceof Date ? value : new Date(value);
-  const hours = date.getUTCHours().toString().padStart(2, '0');
+  const hours = date.getUTCHours();
   const minutes = date.getUTCMinutes().toString().padStart(2, '0');
-  return `${hours}:${minutes}`;
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const twelveHour = hours % 12 || 12;
+  return `${twelveHour}:${minutes} ${period}`;
 };
 
 const marketplaceSpaceInclude = {

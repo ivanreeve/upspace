@@ -19,23 +19,8 @@ import {
   AccordionItem,
   AccordionTrigger
 } from '@/components/ui/accordion';
-import { Separator } from '@/components/ui/separator';
-import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger
-} from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import {
   Select,
   SelectContent,
@@ -43,15 +28,20 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList
-} from '@/components/ui/command';
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarProvider,
+  SidebarRail,
+  SidebarTrigger,
+  useSidebar
+} from '@/components/ui/sidebar';
 import {
   fetchPhilippineBarangaysByCity,
   fetchPhilippineCitiesByRegion,
@@ -134,7 +124,6 @@ export default function Marketplace() {
   const [filters, setFilters] = React.useState<FiltersState>(DEFAULT_FILTERS);
   const [draftFilters, setDraftFilters] = React.useState<FiltersState>(DEFAULT_FILTERS);
   const [searchValue, setSearchValue] = React.useState('');
-  const [isSheetOpen, setSheetOpen] = React.useState(false);
 
   React.useEffect(() => {
     setSearchValue(filters.q);
@@ -175,132 +164,175 @@ export default function Marketplace() {
 
   const applyFilters = () => {
     setFilters(draftFilters);
-    setSheetOpen(false);
   };
 
   const resetFilters = () => {
     setDraftFilters(DEFAULT_FILTERS);
     setFilters(DEFAULT_FILTERS);
-    setSheetOpen(false);
   };
 
   return (
-    <div className="bg-background relative lg:pl-[360px]">
-      <aside className="hidden lg:block absolute top-0 left-0 h-screen w-[340px] px-5 py-10">
-        <Card className="h-full">
-          <CardHeader className="space-y-3">
-            <div className="space-y-1">
-              <CardTitle>Advanced Filters</CardTitle>
-              <CardDescription>
-                Narrow spaces by exact location, availability window, and price range.
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <Separator />
-          <CardContent className="pt-6">
-            <FiltersForm
-              value={ draftFilters }
-              onChange={ handleDraftChange }
-              onApply={ applyFilters }
-              onReset={ resetFilters }
-              hasChanges={ draftHasChanges }
-              priceBounds={ [PRICE_MIN, PRICE_MAX] }
-            />
-          </CardContent>
-        </Card>
-      </aside>
+    <SidebarProvider className="bg-background">
+      <FiltersSidebar
+        value={ draftFilters }
+        onChange={ handleDraftChange }
+        onApply={ applyFilters }
+        onReset={ resetFilters }
+        hasChanges={ draftHasChanges }
+        priceBounds={ [PRICE_MIN, PRICE_MAX] }
+        activeFiltersCount={ activeFilters.length }
+      />
 
-      <section className="px-4 py-10 sm:px-6 lg:px-10 max-w-[1400px] mx-auto">
-        <div className="space-y-6">
-          <form
-            onSubmit={ handleSearchSubmit }
-            className="flex flex-col gap-3 rounded-md shadow-sm md:flex-row md:items-center"
-          >
-            <div className="flex flex-1 items-center gap-3 rounded-xl border bg-background shadow-sm">
-              <FiSearch aria-hidden="true" className="size-5 text-muted-foreground" />
-              <Input
-                value={ searchValue }
-                onChange={ (event) => setSearchValue(event.target.value) }
-                placeholder="Search by space name, neighborhood, or keyword"
-                aria-label="Search spaces"
-                className="border-none bg-transparent text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
-              />
-              <Button type="submit" className="w-full rounded-xl md:w-auto">
-                Search marketplace
-              </Button>
-            </div>
-          </form>
-          <div className="flex flex-wrap items-center gap-3">
-            <Sheet open={ isSheetOpen } onOpenChange={ setSheetOpen }>
-              <SheetTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="ml-auto inline-flex items-center gap-2 lg:hidden"
-                >
-                  <FiSliders aria-hidden="true" className="size-4" />
-                  Filters
-                </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="pt-12">
-              <SheetHeader>
-                <SheetTitle>Advanced filters</SheetTitle>
-                <p className="text-sm text-muted-foreground">
-                  Tailor results by exact address, hours, and rate range.
-                </p>
-                </SheetHeader>
-                <div className="flex-1 overflow-y-auto px-4 pb-6">
-                  <FiltersForm
-                    value={ draftFilters }
-                    onChange={ handleDraftChange }
-                    onApply={ applyFilters }
-                    onReset={ resetFilters }
-                    hasChanges={ draftHasChanges }
-                    priceBounds={ [PRICE_MIN, PRICE_MAX] }
+      <SidebarInset className="bg-background">
+        <section className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-10">
+          <div className="space-y-6">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <SidebarTrigger className="h-9 w-9" />
+                <span className="hidden md:inline">Filters</span>
+              </div>
+              <form
+                onSubmit={ handleSearchSubmit }
+                className="flex w-full flex-1 flex-col gap-3 rounded-md shadow-sm md:flex-row md:items-center"
+              >
+                <div className="flex flex-1 items-center gap-3 rounded-xl border bg-background shadow-sm">
+                  <FiSearch aria-hidden="true" className="size-5 text-muted-foreground" />
+                  <Input
+                    value={ searchValue }
+                    onChange={ (event) => setSearchValue(event.target.value) }
+                    placeholder="Search by space name, neighborhood, or keyword"
+                    aria-label="Search spaces"
+                    className="border-none bg-transparent text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
                   />
+                  <Button type="submit" className="w-full rounded-xl md:w-auto">
+                    Search marketplace
+                  </Button>
                 </div>
-                <SheetFooter>
-                  <p className="text-xs text-muted-foreground">
-                    Filters apply immediately after tapping &ldquo;Apply filters.&rdquo;
-                  </p>
-                </SheetFooter>
-              </SheetContent>
-            </Sheet>
+              </form>
+            </div>
+
+            { hasActiveFilters && (
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+                { activeFilters.map((label) => (
+                  <Badge key={ label } variant="secondary" className="bg-secondary/20 text-secondary-foreground">
+                    { label }
+                  </Badge>
+                )) }
+                <Button variant="link" size="sm" className="text-primary" onClick={ resetFilters }>
+                  Reset filters
+                </Button>
+              </div>
+            ) }
+
+            { hasError ? (
+              <div className="flex min-h-[70vh] w-full items-center justify-center px-4">
+                <MarketplaceErrorState />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                { isLoading ? (
+                  <SkeletonGrid />
+                ) : (
+                  <CardsGrid items={ spaces } />
+                ) }
+                { isFetching && !isLoading && (
+                  <p className="text-xs text-muted-foreground">Refreshing latest availability…</p>
+                ) }
+              </div>
+            ) }
           </div>
 
-          { hasActiveFilters && (
-            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-sm">
-              { activeFilters.map((label) => (
-                <Badge key={ label } variant="secondary" className="bg-secondary/20 text-secondary-foreground">
-                  { label }
-                </Badge>
-              )) }
-              <Button variant="link" size="sm" className="text-primary" onClick={ resetFilters }>
-                Reset filters
-              </Button>
-            </div>
-          ) }
+          <BackToTopButton />
+        </section>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
 
-          { hasError ? (
-            <div className="flex min-h-[70vh] w-full items-center justify-center px-4">
-              <MarketplaceErrorState />
-            </div>
-          ) : (
-            <div className="space-y-3">
-              { isLoading ? (
-                <SkeletonGrid />
-              ) : (
-                <CardsGrid items={ spaces } />
-              ) }
-              { isFetching && !isLoading && (
-                <p className="text-xs text-muted-foreground">Refreshing latest availability…</p>
-              ) }
-            </div>
+type FiltersSidebarProps = {
+  value: FiltersState;
+  onChange: <K extends keyof FiltersState>(key: K, value: FiltersState[K]) => void;
+  onApply: () => void;
+  onReset: () => void;
+  hasChanges: boolean;
+  priceBounds: [number, number];
+  activeFiltersCount: number;
+};
+
+function FiltersSidebar({
+  value,
+  onChange,
+  onApply,
+  onReset,
+  hasChanges,
+  priceBounds,
+  activeFiltersCount,
+}: FiltersSidebarProps) {
+  const {
+    isMobile,
+    setOpenMobile,
+  } = useSidebar();
+
+  const closeMobileSidebar = React.useCallback(() => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  }, [isMobile, setOpenMobile]);
+
+  const handleApply = React.useCallback(() => {
+    onApply();
+    closeMobileSidebar();
+  }, [closeMobileSidebar, onApply]);
+
+  const handleReset = React.useCallback(() => {
+    onReset();
+    closeMobileSidebar();
+  }, [closeMobileSidebar, onReset]);
+
+  return (
+    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
+      <SidebarHeader className="border-b border-sidebar-border">
+        <div className="flex items-center gap-3">
+          <div className="flex size-9 items-center justify-center rounded-md bg-sidebar-accent text-sidebar-foreground">
+            <FiSliders aria-hidden="true" className="size-4" />
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <span className="text-sm font-semibold leading-tight text-sidebar-foreground">
+              Advanced Filters
+            </span>
+            <span className="text-xs leading-tight text-sidebar-foreground/70">
+              Collapse to icons or open on mobile.
+            </span>
+          </div>
+          { activeFiltersCount > 0 && (
+            <Badge variant="secondary" className="text-[11px]">
+              { activeFiltersCount } active
+            </Badge>
           ) }
         </div>
-
-        <BackToTopButton />
-      </section>
-    </div>
+      </SidebarHeader>
+      <SidebarContent className="px-2 pb-4">
+        <SidebarGroup>
+          <SidebarGroupLabel>Marketplace filters</SidebarGroupLabel>
+          <SidebarGroupContent className="space-y-4">
+            <FiltersForm
+              value={ value }
+              onChange={ onChange }
+              onApply={ handleApply }
+              onReset={ handleReset }
+              hasChanges={ hasChanges }
+              priceBounds={ priceBounds }
+            />
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter className="border-t border-sidebar-border px-2 py-3 group-data-[collapsible=icon]:hidden">
+        <p className="text-xs text-sidebar-foreground/70">
+          Press Ctrl+B (Cmd+B on Mac) to collapse the sidebar.
+        </p>
+      </SidebarFooter>
+      <SidebarRail />
+    </Sidebar>
   );
 }
 
