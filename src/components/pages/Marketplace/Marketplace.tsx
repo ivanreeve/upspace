@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/command';
 import { Kbd } from '@/components/ui/kbd';
 import { LogoSymbolic } from '@/components/ui/logo-symbolic';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Sidebar,
   SidebarContent,
@@ -58,6 +59,7 @@ export default function Marketplace() {
   const [filters, setFilters] = React.useState<FiltersState>(DEFAULT_FILTERS);
   const [searchValue, setSearchValue] = React.useState('');
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
+  const isMobile = useIsMobile();
   const { session, } = useSession();
 
   React.useEffect(() => {
@@ -173,11 +175,13 @@ export default function Marketplace() {
         onSearchSubmit={ handleSearchSubmit }
         hasActiveSearch={ hasActiveSearch }
       />
-      <MobileTopNav
-        avatarUrl={ avatarUrl }
-        avatarFallback={ avatarFallback }
-        onSearchOpen={ openSearchModal }
-      />
+      { isMobile && (
+        <MobileTopNav
+          avatarUrl={ avatarUrl }
+          avatarFallback={ avatarFallback }
+          onSearchOpen={ openSearchModal }
+        />
+      ) }
       <div className="flex min-h-screen w-full">
         <Sidebar collapsible="none" className="hidden md:flex">
           <SidebarHeader className="pt-4">
@@ -247,11 +251,13 @@ export default function Marketplace() {
         </SidebarInset>
       </div>
 
-      <MobileBottomBar
-        avatarUrl={ avatarUrl }
-        avatarFallback={ avatarFallback }
-        onSearchOpen={ openSearchModal }
-      />
+      { isMobile && (
+        <MobileBottomBar
+          avatarUrl={ avatarUrl }
+          avatarFallback={ avatarFallback }
+          onSearchOpen={ openSearchModal }
+        />
+      ) }
     </SidebarProvider>
   );
 }
