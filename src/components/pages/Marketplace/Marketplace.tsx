@@ -7,6 +7,8 @@ import {
   FiBell,
   FiCommand,
   FiHome,
+  FiLoader,
+  FiMapPin,
   FiSearch,
   FiX
 } from 'react-icons/fi';
@@ -15,7 +17,7 @@ import { GoSidebarExpand, GoSidebarCollapse } from 'react-icons/go';
 import { CardsGrid, SkeletonGrid } from './Marketplace.Cards';
 import { MarketplaceErrorState } from './Marketplace.ErrorState';
 
-import { listSpaces } from '@/lib/api/spaces';
+import { listSpaces, suggestSpaces, type SpaceSuggestion } from '@/lib/api/spaces';
 import { useSession } from '@/components/auth/SessionProvider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import BackToTopButton from '@/components/ui/back-to-top';
@@ -58,6 +60,17 @@ const buildQueryParams = (filters: FiltersState) => ({
   q: filters.q.trim() || undefined,
   include_pending: true,
 });
+
+function useDebouncedValue<T>(value: T, delayMs: number) {
+  const [debounced, setDebounced] = React.useState(value);
+
+  React.useEffect(() => {
+    const timeoutId = window.setTimeout(() => setDebounced(value), delayMs);
+    return () => window.clearTimeout(timeoutId);
+  }, [value, delayMs]);
+
+  return debounced;
+}
 
 function SidebarToggleMenuItem() {
   const {
@@ -416,7 +429,30 @@ function MarketplaceSearchDialog({
   hasActiveSearch,
 }: MarketplaceSearchDialogProps) {
   const trimmedValue = searchValue.trim();
+  const debouncedQuery = useDebouncedValue(trimmedValue, 200);
   const isMobile = useIsMobile();
+  const shouldFetchSuggestions = debouncedQuery.length >= 2;
+
+  const {
+    data: suggestionData,
+    isFetching: isFetchingSuggestions,
+    isError: isSuggestionError,
+  } = useQuery({
+    queryKey: ['space-suggestions', debouncedQuery],
+    queryFn: ({ signal, }) => suggestSpaces({
+      q: debouncedQuery,
+      limit: 8,
+      include_pending: true,
+      signal,
+    }),
+    enabled: shouldFetchSuggestions,
+    staleTime: 30_000,
+  });
+
+  const suggestions: SpaceSuggestion[] = suggestionData?.suggestions ?? [];
+  const suggestionStatusMessage = shouldFetchSuggestions
+    ? `Showing ${suggestions.length} suggestion${suggestions.length === 1 ? '' : 's'}.`
+    : 'Type at least two characters to see suggestions.';
 
   return (
     <CommandDialog
@@ -464,6 +500,76 @@ function MarketplaceSearchDialog({
             >
               <FiX className="size-4" aria-hidden="true" />
               <span>Clear search</span>
+            </CommandItem>
+          ) }
+        </CommandGroup>
+
+        <CommandGroup heading="Suggestions">
+          <p className="sr-only" aria-live="polite">{ suggestionStatusMessage }</p>
+
+          { !shouldFetchSuggestions && (
+            <CommandItem disabled>
+              <FiSearch className="size-4" aria-hidden="true" />
+              <span>Type at least 2 characters to see suggestions</span>
+            </CommandItem>
+          ) }
+
+          { shouldFetchSuggestions && isSuggestionError && (
+            <CommandItem disabled>
+              <FiX className="size-4" aria-hidden="true" />
+              <div className="flex flex-col text-left">
+                <span>Suggestions unavailable</span>
+                <span className="text-xs text-muted-foreground">Try again in a moment.</span>
+              </div>
+            </CommandItem>
+          ) }
+
+          { shouldFetchSuggestions && isFetchingSuggestions && (
+            <CommandItem disabled>
+              <FiLoader className="size-4 animate-spin" aria-hidden="true" />
+              <span>Fetching suggestions…</span>
+            </CommandItem>
+          ) }
+
+          { shouldFetchSuggestions && suggestions.map((suggestion) => (
+            <CommandItem
+              key={ suggestion.space_id }
+              value={ `suggest ${suggestion.name}` }
+              onSelect={ () => {
+                onSearchChange(suggestion.name);
+                onSearchSubmit(suggestion.name);
+              } }
+            >
+              <Avatar className="size-9 border border-border shadow-sm">
+                { suggestion.image_url ? (
+                  <AvatarImage src={ suggestion.image_url } alt="Space preview" />
+                ) : (
+                  <AvatarFallback>
+                    { suggestion.name.slice(0, 2).toUpperCase() }
+                  </AvatarFallback>
+                ) }
+              </Avatar>
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <span className="line-clamp-1 font-medium">{ suggestion.name }</span>
+                { suggestion.location && (
+                  <span className="text-xs text-muted-foreground line-clamp-1 flex items-center gap-1">
+                    <FiMapPin className="size-3" aria-hidden="true" />
+                    <span>{ suggestion.location }</span>
+                  </span>
+                ) }
+              </div>
+              { suggestion.similarity > 0 && (
+                <span className="ml-auto text-[11px] text-muted-foreground">
+                  { suggestion.similarity.toFixed(2) }
+                </span>
+              ) }
+            </CommandItem>
+          )) }
+
+          { shouldFetchSuggestions && !isFetchingSuggestions && suggestions.length === 0 && !isSuggestionError && (
+            <CommandItem disabled>
+              <FiX className="size-4" aria-hidden="true" />
+              <span>No matching spaces yet.</span>
             </CommandItem>
           ) }
         </CommandGroup>

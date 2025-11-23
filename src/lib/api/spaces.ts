@@ -46,6 +46,21 @@ export type ListSpacesParams = Partial<{
   include_pending: boolean;
 }>;
 
+export type SpaceSuggestion = {
+  space_id: string;
+  name: string;
+  location: string | null;
+  similarity: number;
+  image_url: string | null;
+};
+
+export type SuggestSpacesParams = {
+  q: string;
+  limit?: number;
+  include_pending?: boolean;
+  signal?: AbortSignal;
+};
+
 export async function listSpaces(params: ListSpacesParams = {}) {
   const sp = new URLSearchParams();
   if (typeof params.limit === 'number') sp.set('limit', String(params.limit));
@@ -76,4 +91,32 @@ export async function listSpaces(params: ListSpacesParams = {}) {
   }
   const json = await response.json();
   return json as { data: Space[]; nextCursor: string | null };
+}
+
+export async function suggestSpaces(params: SuggestSpacesParams) {
+  const trimmedQuery = params.q.trim();
+  if (trimmedQuery.length < 2) {
+    return { suggestions: [] as SpaceSuggestion[], };
+  }
+
+  const includePending = params.include_pending ?? true;
+
+  const sp = new URLSearchParams();
+  sp.set('q', trimmedQuery);
+  if (typeof params.limit === 'number') sp.set('limit', String(params.limit));
+  if (typeof includePending === 'boolean') sp.set('include_pending', String(includePending));
+
+  const query = sp.toString();
+  const response = await fetch(`/api/v1/spaces/suggest?${query}`, {
+    headers: { accept: 'application/json', },
+    cache: 'no-store',
+    signal: params.signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch space suggestions (${response.status})`);
+  }
+
+  const json = await response.json();
+  return json as { suggestions: SpaceSuggestion[] };
 }
