@@ -3,7 +3,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { FiHome, FiSearch, FiUser } from 'react-icons/fi';
+import { FiBell, FiHome, FiSearch } from 'react-icons/fi';
 
 import { CardsGrid, SkeletonGrid } from './Marketplace.Cards';
 import { MarketplaceErrorState } from './Marketplace.ErrorState';
@@ -98,6 +98,14 @@ export default function Marketplace() {
                   <Link href="/marketplace">
                     <FiSearch className="size-4" />
                     <span>Search</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Notifications">
+                  <Link href="/notifications">
+                    <FiBell className="size-4" />
+                    <span>Notifications</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -208,6 +216,14 @@ function MobileBottomBar({
         >
           <FiSearch className="size-5" aria-hidden="true" />
           <span>Search</span>
+        </Link>
+        <Link
+          href="/notifications"
+          className="flex flex-col items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+          aria-label="Notifications"
+        >
+          <FiBell className="size-5" aria-hidden="true" />
+          <span>Alerts</span>
         </Link>
         <Link
           href="/onboarding"
