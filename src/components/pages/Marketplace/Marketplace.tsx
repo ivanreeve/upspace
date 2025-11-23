@@ -320,8 +320,7 @@ function MarketplaceSearchDialog({
               </span>
             ) }
             <CommandShortcut className="flex items-center gap-1">
-              <Kbd>Return</Kbd>
-              <FiCornerDownLeft className="size-4" aria-hidden="true" />
+              <Kbd>Enter</Kbd>
             </CommandShortcut>
           </CommandItem>
           { hasActiveSearch && (
