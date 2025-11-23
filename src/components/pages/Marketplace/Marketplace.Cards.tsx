@@ -118,7 +118,7 @@ export function SpaceCard({ space, }: { space: Space }) {
   }, [isSaved, isSaving, space.space_id]);
 
   return (
-    <Card className="w-full group flex flex-col overflow-hidden text-card-foreground border-none !gap-3">
+    <Card className="w-full group flex flex-col overflow-hidden text-card-foreground border-none !gap-3 bg-transparent">
       <div className="relative aspect-[16/9] w-full overflow-hidden">
         { space.image_url ? (
           <Image
