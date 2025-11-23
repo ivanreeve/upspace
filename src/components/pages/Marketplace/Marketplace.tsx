@@ -131,16 +131,15 @@ export default function Marketplace() {
   const preferredUsername = session?.user?.user_metadata?.preferred_username;
   const preferredUsernameLabel =
     preferredUsername && preferredUsername.includes('@') ? undefined : preferredUsername;
+  const resolvedHandleLabel = profileHandleLabel ?? preferredUsernameLabel;
   const avatarFallback =
     session?.user?.user_metadata?.full_name?.slice(0, 2)?.toUpperCase()
     ?? userProfile?.handle?.slice(0, 2)?.toUpperCase()
     ?? session?.user?.email?.slice(0, 2)?.toUpperCase()
     ?? 'US';
   const avatarDisplayName =
-    profileHandleLabel
-    ?? session?.user?.user_metadata?.full_name
-    ?? preferredUsernameLabel
-    ?? 'Account';
+    resolvedHandleLabel
+    ?? 'UpSpace User';
 
   const content = (
     <section className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-10">
