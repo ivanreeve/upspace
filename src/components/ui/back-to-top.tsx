@@ -24,9 +24,7 @@ behavior: 'smooth',
 
   if (!visible) return null;
 
-  const positioningStyles = {
-    bottom: 'calc(var(--back-to-top-offset) + var(--safe-area-bottom))',
-  } as CSSProperties;
+  const positioningStyles = { bottom: 'calc(var(--back-to-top-offset) + var(--safe-area-bottom))', } as CSSProperties;
 
   return (
     <Button
