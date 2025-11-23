@@ -142,7 +142,7 @@ export default function Marketplace() {
     ?? 'UpSpace User';
 
   const content = (
-    <section className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-10">
+    <section className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 lg:px-10">
       <div className="space-y-6">
         { hasError ? (
           <div className="flex min-h-[70vh] w-full items-center justify-center px-4">

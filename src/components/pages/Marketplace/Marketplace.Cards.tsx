@@ -24,9 +24,9 @@ const peso = new Intl.NumberFormat('en-PH', {
 
 export function SkeletonGrid({ count = 12, }: { count?: number }) {
   return (
-    <div className="grid grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid w-full justify-items-stretch grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2 lg:grid-cols-4">
       { Array.from({ length: count, }).map((_, i) => (
-        <Card key={ i } className="group flex flex-col overflow-hidden text-card-foreground border-none !gap-3">
+        <Card key={ i } className="w-full group flex flex-col overflow-hidden text-card-foreground border-none !gap-3">
           <div className="relative aspect-[16/9] w-full overflow-hidden">
             <Skeleton className="absolute inset-0 h-full w-full rounded-md" />
             <Skeleton className="absolute right-3 top-3 h-9 w-9 rounded-full" />
@@ -49,7 +49,7 @@ export function CardsGrid({ items, }: { items: Space[] }) {
     );
   }
   return (
-    <div className="grid grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid w-full justify-items-stretch grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2 lg:grid-cols-4">
       { items.map((space) => (
         <SpaceCard key={ space.space_id } space={ space } />
       )) }
@@ -118,7 +118,7 @@ export function SpaceCard({ space, }: { space: Space }) {
   }, [isSaved, isSaving, space.space_id]);
 
   return (
-    <Card className="group flex flex-col overflow-hidden text-card-foreground border-none !gap-3">
+    <Card className="w-full group flex flex-col overflow-hidden text-card-foreground border-none !gap-3">
       <div className="relative aspect-[16/9] w-full overflow-hidden">
         { space.image_url ? (
           <Image
