@@ -5,8 +5,10 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import {
   FiBell,
+  FiChevronLeft,
+  FiChevronRight,
   FiCommand,
-  FiCornerDownLeft,
+  FiMenu,
   FiHome,
   FiSearch,
   FiX
@@ -19,6 +21,7 @@ import { listSpaces } from '@/lib/api/spaces';
 import { useSession } from '@/components/auth/SessionProvider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import BackToTopButton from '@/components/ui/back-to-top';
+import { Button } from '@/components/ui/button';
 import {
   CommandDialog,
   CommandGroup,
@@ -39,10 +42,14 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarProvider
+  SidebarProvider,
+  SidebarRail,
+  useSidebar
 } from '@/components/ui/sidebar';
 import { ThemeSwitcher } from '@/components/ui/theme-switcher';
+import { cn } from '@/lib/utils';
 import { useUserProfile } from '@/hooks/use-user-profile';
+import { TbLayoutSidebarLeftCollapseFilled, TbLayoutSidebarRightCollapseFilled } from 'react-icons/tb';
 
 type FiltersState = {
   q: string;
@@ -55,6 +62,54 @@ const buildQueryParams = (filters: FiltersState) => ({
   q: filters.q.trim() || undefined,
   include_pending: true,
 });
+
+type SidebarToggleButtonProps = {
+  className?: string
+  size?: React.ComponentProps<typeof Button>['size']
+  variant?: React.ComponentProps<typeof Button>['variant']
+};
+
+function SidebarToggleButton({
+  className,
+  size = 'icon',
+  variant = 'outline',
+}: SidebarToggleButtonProps) {
+  const {
+    isMobile,
+    openMobile,
+    state,
+    toggleSidebar,
+  } = useSidebar();
+
+  const Icon = React.useMemo(() => {
+    if (isMobile) {
+      return openMobile ? FiX : FiMenu;
+    }
+
+    return state === 'expanded' ? TbLayoutSidebarLeftCollapseFilled : TbLayoutSidebarRightCollapseFilled;
+  }, [isMobile, openMobile, state]);
+
+  const ariaLabel = React.useMemo(() => {
+    if (isMobile) {
+      return openMobile ? 'Close navigation' : 'Open navigation';
+    }
+
+    return state === 'expanded' ? 'Collapse sidebar' : 'Expand sidebar';
+  }, [isMobile, openMobile, state]);
+
+  return (
+    <Button
+      type="button"
+      variant={ variant }
+      size={ size }
+      onClick={ toggleSidebar }
+      aria-label={ ariaLabel }
+      className={ cn('text-muted-foreground hover:text-foreground !bg-transparent border-none', className) }
+    >
+      <Icon className="size-4" aria-hidden="true" />
+    </Button>
+  );
+}
 
 export default function Marketplace() {
   const [filters, setFilters] = React.useState<FiltersState>(DEFAULT_FILTERS);
@@ -213,8 +268,11 @@ export default function Marketplace() {
         />
       ) }
       <div className="flex min-h-screen w-full">
-        <Sidebar collapsible="none" className="hidden md:flex border-1 border-r-muted">
+        <Sidebar collapsible="icon" className="hidden md:flex border-1 border-r-muted">
           <SidebarHeader className="pt-4">
+            <div className="flex justify-end px-2">
+              <SidebarToggleButton />
+            </div>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Home">
@@ -280,6 +338,7 @@ export default function Marketplace() {
               </SidebarMenu>
             </div>
           </SidebarFooter>
+          <SidebarRail />
         </Sidebar>
 
         <SidebarInset
@@ -394,6 +453,7 @@ function MobileTopNav({
           <span className="text-base font-semibold text-foreground">UpSpace</span>
         </Link>
         <div className="flex items-center gap-2">
+          <SidebarToggleButton className="rounded-full" />
           <Link
             href="/notifications"
             aria-label="Notifications"

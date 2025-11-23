@@ -88,6 +88,20 @@ function SidebarProvider({
     [setOpenProp, open]
   );
 
+  React.useEffect(() => {
+    if (openProp !== undefined) return;
+    if (typeof document === 'undefined') return;
+
+    const storedState = document.cookie
+      .split('; ')
+      .find((cookie) => cookie.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
+      ?.split('=')[1];
+
+    if (storedState === 'true' || storedState === 'false') {
+      _setOpen(storedState === 'true');
+    }
+  }, [_setOpen, openProp]);
+
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
     return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open);
