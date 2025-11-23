@@ -257,7 +257,7 @@ export default function Marketplace() {
   }, [filters.q]);
 
   const applySearch = React.useCallback((value: string) => {
-    applyFilters({ q: value });
+    applyFilters({ q: value, });
   }, [applyFilters]);
 
   const handleSearchSubmit = React.useCallback(
@@ -561,19 +561,26 @@ function MarketplaceSearchDialog({
                 { filters.region && (
                   <FilterBadge
                     label={ `Region: ${filters.region}` }
-                    onClear={ () => onFiltersApply({ region: '', city: '', barangay: '' }) }
+                    onClear={ () => onFiltersApply({
+ region: '',
+city: '',
+barangay: '', 
+}) }
                   />
                 ) }
                 { filters.city && (
                   <FilterBadge
                     label={ `City: ${filters.city}` }
-                    onClear={ () => onFiltersApply({ city: '', barangay: '' }) }
+                    onClear={ () => onFiltersApply({
+ city: '',
+barangay: '', 
+}) }
                   />
                 ) }
                 { filters.barangay && (
                   <FilterBadge
                     label={ `Barangay: ${filters.barangay}` }
-                    onClear={ () => onFiltersApply({ barangay: '' }) }
+                    onClear={ () => onFiltersApply({ barangay: '', }) }
                   />
                 ) }
               </div>
@@ -620,7 +627,11 @@ function MarketplaceSearchDialog({
             { hasLocationFilters && (
               <CommandItem
                 value="clear filters"
-                onSelect={ () => onFiltersApply({ region: '', city: '', barangay: '' }) }
+                onSelect={ () => onFiltersApply({
+ region: '',
+city: '',
+barangay: '', 
+}) }
               >
                 <FiX className="size-4" aria-hidden="true" />
                 <span>Clear filters</span>
