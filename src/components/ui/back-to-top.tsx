@@ -26,9 +26,10 @@ behavior: 'smooth',
   return (
     <Button
       onClick={ scrollToTop }
-      className="fixed bottom-6 right-6 rounded-md shadow-md z-50 
+      className="fixed bottom-20 left-1/2 right-auto z-50 flex w-max -translate-x-1/2 rounded-md px-4 shadow-md
                  bg-foreground/70 backdrop-blur dark:bg-foreground/20 dark:hover:bg-secondary/20
-                 hover:bg-foreground transition-all duration-300"
+                 hover:bg-foreground transition-all duration-300
+                 md:bottom-6 md:left-auto md:right-6 md:translate-x-0 mb-2"
     >
       <ArrowUp className="h-5" /> Back to Top
     </Button>
