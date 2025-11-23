@@ -133,85 +133,88 @@ export default function Marketplace() {
     </section>
   );
 
-  if (isMobile) {
-    return (
-      <div className="bg-background min-h-screen">
+  return (
+    <SidebarProvider className="bg-background min-h-screen">
+      { isMobile && (
         <MobileTopNav
           avatarUrl={ avatarUrl }
           avatarFallback={ avatarFallback }
         />
-        <main className="w-full flex-1 bg-background pb-28">
-          { content }
-        </main>
+      ) }
+      <div className="flex min-h-screen w-full">
+        { !isMobile && (
+          <Sidebar collapsible="none" className="hidden md:flex">
+            <SidebarHeader className="pt-4">
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Home">
+                    <Link href="/">
+                      <FiHome className="size-4" />
+                      <span>Home</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Search">
+                    <Link href="/marketplace">
+                      <FiSearch className="size-4" />
+                      <span>Search</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Notifications">
+                    <Link href="/notifications">
+                      <FiBell className="size-4" />
+                      <span>Notifications</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarHeader>
+            <SidebarContent>
+              <SidebarGroup>
+                <SidebarGroupLabel>Profile</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild tooltip="Account">
+                        <Link href="/onboarding">
+                          <Avatar className="size-8">
+                            { avatarUrl ? (
+                              <AvatarImage src={ avatarUrl } alt="User avatar" />
+                            ) : (
+                              <AvatarFallback>{ avatarFallback }</AvatarFallback>
+                            ) }
+                          </Avatar>
+                          <span className="truncate">{ avatarDisplayName }</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </SidebarContent>
+          </Sidebar>
+        ) }
+
+        { isMobile ? (
+          <main className="w-full flex-1 bg-background pb-28">
+            { content }
+          </main>
+        ) : (
+          <SidebarInset className="flex-1 bg-background w-full pb-10">
+            { content }
+          </SidebarInset>
+        ) }
+      </div>
+
+      { isMobile && (
         <MobileBottomBar
           avatarUrl={ avatarUrl }
           avatarFallback={ avatarFallback }
         />
-      </div>
-    );
-  }
-
-  return (
-    <SidebarProvider className="bg-background min-h-screen">
-      <div className="flex min-h-screen w-full">
-        <Sidebar collapsible="none">
-          <SidebarHeader className="pt-4">
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Home">
-                  <Link href="/">
-                    <FiHome className="size-4" />
-                    <span>Home</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Search">
-                  <Link href="/marketplace">
-                    <FiSearch className="size-4" />
-                    <span>Search</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Notifications">
-                  <Link href="/notifications">
-                    <FiBell className="size-4" />
-                    <span>Notifications</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarHeader>
-          <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupLabel>Profile</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Account">
-                      <Link href="/onboarding">
-                        <Avatar className="size-8">
-                          { avatarUrl ? (
-                            <AvatarImage src={ avatarUrl } alt="User avatar" />
-                          ) : (
-                            <AvatarFallback>{ avatarFallback }</AvatarFallback>
-                          ) }
-                        </Avatar>
-                        <span className="truncate">{ avatarDisplayName }</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
-        </Sidebar>
-
-        <SidebarInset className="flex-1 bg-background w-full pb-10">
-          { content }
-        </SidebarInset>
-      </div>
+      ) }
     </SidebarProvider>
   );
 }
