@@ -539,11 +539,18 @@ function MarketplaceSearchDialog({
                 onSearchSubmit(suggestion.name);
               } }
             >
-              <Avatar className="size-9 border border-border shadow-sm">
+              <Avatar
+                className="size-9 border border-border shadow-sm"
+                style={ { borderRadius: 4 } }
+              >
                 { suggestion.image_url ? (
-                  <AvatarImage src={ suggestion.image_url } alt="Space preview" />
+                  <AvatarImage
+                    src={ suggestion.image_url }
+                    alt="Space preview"
+                    style={ { borderRadius: 4 } }
+                  />
                 ) : (
-                  <AvatarFallback>
+                  <AvatarFallback style={ { borderRadius: 4 } }>
                     { suggestion.name.slice(0, 2).toUpperCase() }
                   </AvatarFallback>
                 ) }
