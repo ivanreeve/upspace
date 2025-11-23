@@ -293,6 +293,7 @@ function MarketplaceSearchDialog({
       onOpenChange={ onOpenChange }
       title="Search spaces"
       description="Search the UpSpace marketplace"
+      className="!top-[90px] !translate-y-0"
     >
       <CommandInput
         value={ searchValue }
