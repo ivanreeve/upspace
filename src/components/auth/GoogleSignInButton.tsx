@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
 import { FaGoogle } from 'react-icons/fa6';
 import { CgSpinner } from 'react-icons/cg';
 
 import { Button } from '@/components/ui/button';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 type Props = {
   callbackUrl?: string;
@@ -27,7 +27,21 @@ export default function GoogleSignInButton({
       onClick={ async () => {
         setLoading(true);
         try {
-          await signIn('google', { callbackUrl, });
+          const supabase = getSupabaseBrowserClient();
+          const origin = window.location.origin;
+          const nextUrl = callbackUrl.startsWith('http')
+            ? callbackUrl
+            : `${origin}${callbackUrl.startsWith('/') ? callbackUrl : `/${callbackUrl}`}`;
+          const redirectTo = `${origin}/api/auth/callback?next=${encodeURIComponent(nextUrl)}`;
+
+          const { error, } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo, },
+          });
+
+          if (error) {
+            console.error('Supabase Google sign-in failed', error);
+          }
         } finally {
           setLoading(false);
         }

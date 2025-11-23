@@ -3,39 +3,41 @@ import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
 
-type Params = { params: Promise<{ space_id?: string }> };
+const isUuid = (value: string | undefined): value is string =>
+  typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
-const isNumericId = (value: string | undefined): value is string =>
-  typeof value === 'string' && /^\d+$/.test(value);
+type Params = { params: Promise<{ space_id?: string }> };
 
 // List areas under a space
 export async function GET(_req: NextRequest, { params, }: Params) {
   const { space_id, } = await params;
-  if (!isNumericId(space_id)) {
+  if (!isUuid(space_id)) {
     return NextResponse.json(
-      { error: 'space_id is required and must be numeric', },
+      { error: 'space_id is required and must be a valid UUID', },
       { status: 400, }
     );
   }
 
   try {
     const rows = await prisma.area.findMany({
-      where: { space_id: BigInt(space_id), },
+      where: { space_id, },
       orderBy: { name: 'asc', },
       select: {
-        area_id: true,
+        id: true,
         space_id: true,
         name: true,
-        capacity: true,
+        min_capacity: true,
+        max_capacity: true,
       },
     });
 
     return NextResponse.json({
       data: rows.map((r) => ({
-        area_id: r.area_id.toString(),
-        space_id: r.space_id.toString(),
+        area_id: r.id,
+        space_id: r.space_id,
         name: r.name,
-        capacity: r.capacity.toString(),
+        min_capacity: r.min_capacity.toString(),
+        max_capacity: r.max_capacity?.toString() ?? null,
       })),
     });
   } catch {
@@ -51,9 +53,9 @@ const bodySchema = z.object({
 
 export async function POST(req: NextRequest, { params, }: Params) {
   const { space_id, } = await params;
-  if (!isNumericId(space_id)) {
+  if (!isUuid(space_id)) {
     return NextResponse.json(
-      { error: 'space_id is required and must be numeric', },
+      { error: 'space_id is required and must be a valid UUID', },
       { status: 400, }
     );
   }
@@ -65,19 +67,22 @@ export async function POST(req: NextRequest, { params, }: Params) {
   }
 
   try {
+    const capacityValue = BigInt(parsed.data.capacity);
     const created = await prisma.area.create({
       data: {
-        space_id: BigInt(space_id),
+        space_id,
         name: parsed.data.name,
-        capacity: BigInt(parsed.data.capacity),
+        min_capacity: capacityValue,
+        max_capacity: capacityValue,
       },
     });
 
     const payload = {
-      area_id: created.area_id.toString(),
-      space_id: created.space_id.toString(),
+      area_id: created.id,
+      space_id: created.space_id,
       name: created.name,
-      capacity: created.capacity.toString(),
+      min_capacity: created.min_capacity.toString(),
+      max_capacity: created.max_capacity?.toString() ?? null,
     };
 
     const res = NextResponse.json({ data: payload, }, { status: 201, });

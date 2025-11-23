@@ -1,0 +1,15 @@
+export const AMENITY_CATEGORY_DISPLAY_MAP: Record<string, string> = {
+  connectivity: 'Connectivity',
+  seating_workspace_types: 'Seating & Workspace Types',
+  meeting_collaboration: 'Meeting & Collaboration',
+  equipment: 'Equipments',
+  facilities_utilities: 'Facilities & Utilities',
+  food_beverage: 'Food & Beverage',
+  access_security: 'Access & Security',
+  comfort_well_being: 'Comfort & Well-Being',
+  community_events: 'Community & Events',
+  parking_transport: 'Parking & Transport',
+  accessibility: 'Accessibility',
+  policies: 'Policies',
+  others: 'Others',
+};

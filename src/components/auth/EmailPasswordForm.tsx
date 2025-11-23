@@ -1,6 +1,11 @@
 'use client';
 
-import { useEffect, useState, useActionState } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  useActionState
+} from 'react';
 import { useFormStatus } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -12,10 +17,12 @@ import { loginAction } from '@/app/(auth)/signin/actions';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 const initialState: LoginState = {
   ok: false,
   redirectTo: undefined,
+  supabaseSession: undefined,
 };
 
 function SubmitButton() {
@@ -31,13 +38,13 @@ function SubmitButton() {
       ].join(' ') }
     >
       { pending && <CgSpinner className="h-4 w-4 animate-spin" /> }
-      <span>{ pending ? 'Validating…' : 'Sign In' }</span>
+      <span>{ pending ? 'Signing In...' : 'Sign In' }</span>
     </Button>
   );
 }
 
 export default function EmailPasswordForm({
-  callbackUrl = '/dashboard',
+  callbackUrl = '/',
   forgotHref = '/forgot-password',
 }: { callbackUrl?: string; forgotHref?: string }) {
   // Controlled inputs to mirror the form state locally.
@@ -48,12 +55,52 @@ export default function EmailPasswordForm({
     useActionState<LoginState, FormData>(loginAction, initialState);
 
   const router = useRouter();
+  const lastSyncedAccessTokenRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!state.ok || !state.redirectTo) return;
 
     router.push(state.redirectTo);
   }, [state.ok, state.redirectTo, router]);
+
+  useEffect(() => {
+    const accessToken = state.supabaseSession?.access_token ?? null;
+    const refreshToken = state.supabaseSession?.refresh_token ?? null;
+
+    if (!accessToken || !refreshToken) {
+      lastSyncedAccessTokenRef.current = null;
+      return;
+    }
+
+    if (lastSyncedAccessTokenRef.current === accessToken) {
+      return;
+    }
+
+    lastSyncedAccessTokenRef.current = accessToken;
+    const supabase = getSupabaseBrowserClient();
+    let isCurrent = true;
+
+    supabase.auth
+      .setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      })
+      .then(({ error, }) => {
+        if (!isCurrent) return;
+        if (error) {
+          console.error('Failed to sync Supabase session on client', error);
+          lastSyncedAccessTokenRef.current = null;
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to sync Supabase session on client', error);
+        lastSyncedAccessTokenRef.current = null;
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [state.supabaseSession]);
 
   useEffect(() => {
     if (state.ok) return;

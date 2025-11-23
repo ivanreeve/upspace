@@ -33,8 +33,7 @@ function getLatestCommitMessage() {
     return runGit(['log', '-1', '--pretty=%B']).trim();
   } catch (error) {
     throw new Error(
-      `Failed to read latest commit message: ${
-        error?.message ?? String(error)
+      `Failed to read latest commit message: ${error?.message ?? String(error)
       }`
     );
   }
@@ -100,7 +99,7 @@ async function callGemini(prompt) {
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-flash-latest',
       contents: prompt,
       config: { responseMimeType: 'application/json', },
     });
@@ -133,13 +132,12 @@ function parseGeminiResponse(rawText) {
     }
 
     return {
- subject,
-description, 
-};
+      subject,
+      description,
+    };
   } catch (error) {
     throw new Error(
-      `Failed to parse Gemini response as JSON: ${
-        error?.message ?? String(error)
+      `Failed to parse Gemini response as JSON: ${error?.message ?? String(error)
       }`
     );
   }
@@ -178,8 +176,8 @@ async function main() {
 
   const rawResponse = await callGemini(prompt);
   const {
- subject, description, 
-} = parseGeminiResponse(rawResponse);
+    subject, description,
+  } = parseGeminiResponse(rawResponse);
 
   amendLatestCommit(subject, description);
 
@@ -202,8 +200,7 @@ function loadDotEnv() {
     content = readFileSync(envPath, 'utf8');
   } catch (error) {
     logError(
-      `Failed to read .env file at ${envPath}: ${
-        error?.message ?? String(error)
+      `Failed to read .env file at ${envPath}: ${error?.message ?? String(error)
       }`
     );
     return;

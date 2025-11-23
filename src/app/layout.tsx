@@ -2,8 +2,11 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ThemeProvider } from 'next-themes';
 
-import { Toaster } from '@/components/ui/sonner';
+import { AuthProfileSync } from '@/components/auth/AuthProfileSync';
+import { SessionProvider } from '@/components/auth/SessionProvider';
 import { ServiceWorkerRegistration } from '@/components/common/ServiceWorkerRegistration';
+import { QueryProvider } from '@/components/providers/QueryProvider';
+import { Toaster } from '@/components/ui/sonner';
 
 export const metadata: Metadata = {
   title: 'UpSpace',
@@ -42,16 +45,20 @@ export default function RootLayout({ children, }: Readonly<{
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
-          { children }
-          <Toaster />
-          <ServiceWorkerRegistration />
-        </ThemeProvider>
+        <SessionProvider>
+          <QueryProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="light"
+              disableTransitionOnChange
+            >
+              <AuthProfileSync />
+              { children }
+              <Toaster />
+              <ServiceWorkerRegistration />
+            </ThemeProvider>
+          </QueryProvider>
+        </SessionProvider>
       </body>
     </html>
   );

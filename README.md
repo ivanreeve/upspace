@@ -16,3 +16,11 @@
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Environment setup
+
+Address autocomplete for the space form relies on the Google Maps Places API. Add the API key to your `.env` file before running the app:
+
+```bash
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_key
+```

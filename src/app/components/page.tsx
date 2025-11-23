@@ -6,6 +6,8 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ThemeSwitcher } from '@/components/ui/theme-switcher';
 import { SemanticSearchIcon } from '@/components/pages/LandingPage/LandingPage.Feature.SemanticSearchIcon';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+
 
 export default function Home() {
   return (
@@ -57,6 +59,17 @@ export default function Home() {
 
       <h2>Semantic Search Icon</h2>
       <SemanticSearchIcon />
+
+      <h2>Avatar - Ivan Github Account</h2>
+      <Avatar>
+        <AvatarImage src="https://avatars.githubusercontent.com/u/74288935?v=4" />
+        <AvatarFallback>US</AvatarFallback>
+      </Avatar>
+
+      <h2>Avatar - Fallback</h2>
+      <Avatar>
+        <AvatarFallback>US</AvatarFallback>
+      </Avatar>
     </div>
   );
 }
