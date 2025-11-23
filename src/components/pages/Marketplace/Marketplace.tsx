@@ -6,7 +6,6 @@ import Link from 'next/link';
 import {
   FiBell,
   FiCommand,
-  FiMenu,
   FiHome,
   FiSearch,
   FiX
@@ -20,7 +19,6 @@ import { listSpaces } from '@/lib/api/spaces';
 import { useSession } from '@/components/auth/SessionProvider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import BackToTopButton from '@/components/ui/back-to-top';
-import { Button } from '@/components/ui/button';
 import {
   CommandDialog,
   CommandGroup,
@@ -60,58 +58,6 @@ const buildQueryParams = (filters: FiltersState) => ({
   q: filters.q.trim() || undefined,
   include_pending: true,
 });
-
-type SidebarToggleButtonProps = {
-  className?: string
-  size?: React.ComponentProps<typeof Button>['size']
-  variant?: React.ComponentProps<typeof Button>['variant']
-};
-
-function SidebarToggleButton({
-  className,
-  size = 'icon',
-  variant = 'ghost',
-}: SidebarToggleButtonProps) {
-  const {
-    isMobile,
-    openMobile,
-    state,
-    toggleSidebar,
-  } = useSidebar();
-
-  const Icon = React.useMemo(() => {
-    if (isMobile) {
-      return openMobile ? FiX : FiMenu;
-    }
-
-    return state === 'expanded' ? GoSidebarExpand : GoSidebarCollapse;
-  }, [isMobile, openMobile, state]);
-
-  const ariaLabel = React.useMemo(() => {
-    if (isMobile) {
-      return openMobile ? 'Close navigation' : 'Open navigation';
-    }
-
-    return state === 'expanded' ? 'Collapse sidebar' : 'Expand sidebar';
-  }, [isMobile, openMobile, state]);
-
-  return (
-    <Button
-      type="button"
-      variant={ variant }
-      size={ size }
-      onClick={ toggleSidebar }
-      aria-label={ ariaLabel }
-      className={ cn(
-        'text-sidebar-foreground hover:text-sidebar-foreground !bg-transparent border-none',
-        size !== 'icon' && 'w-full justify-center',
-        className
-      ) }
-    >
-      <Icon className="size-4" aria-hidden="true" />
-    </Button>
-  );
-}
 
 function SidebarToggleMenuItem() {
   const {
@@ -520,7 +466,6 @@ function MobileTopNav({
           <span className="text-base font-semibold text-foreground">UpSpace</span>
         </Link>
         <div className="flex items-center gap-2">
-          <SidebarToggleButton className="rounded-full" />
           <Link
             href="/notifications"
             aria-label="Notifications"
