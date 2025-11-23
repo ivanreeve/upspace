@@ -42,6 +42,7 @@ import {
   SidebarMenuItem,
   SidebarProvider
 } from '@/components/ui/sidebar';
+import { useUserProfile } from '@/hooks/use-user-profile';
 
 type FiltersState = {
   q: string;
@@ -61,6 +62,7 @@ export default function Marketplace() {
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
   const isMobile = useIsMobile();
   const { session, } = useSession();
+  const { data: userProfile, } = useUserProfile();
 
   React.useEffect(() => {
     setSearchValue(filters.q ?? '');
@@ -125,13 +127,16 @@ export default function Marketplace() {
   const avatarUrl = session?.user?.user_metadata?.avatar_url
     ?? session?.user?.user_metadata?.picture
     ?? null;
+  const profileHandleLabel = userProfile?.handle ? `@${userProfile.handle}` : undefined;
   const avatarFallback =
     session?.user?.user_metadata?.full_name?.slice(0, 2)?.toUpperCase()
+    ?? userProfile?.handle?.slice(0, 2)?.toUpperCase()
     ?? session?.user?.email?.slice(0, 2)?.toUpperCase()
     ?? 'US';
   const avatarDisplayName =
     session?.user?.user_metadata?.full_name
     ?? session?.user?.user_metadata?.preferred_username
+    ?? profileHandleLabel
     ?? session?.user?.email
     ?? 'Account';
 
@@ -207,7 +212,7 @@ export default function Marketplace() {
                   </span>
                   <Kbd className="ml-2 hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex">
                     <FiCommand className="size-3" aria-hidden="true" />
-                    <span>K</span>
+                    <span> + K</span>
                   </Kbd>
                 </SidebarMenuButton>
               </SidebarMenuItem>
