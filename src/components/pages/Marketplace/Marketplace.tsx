@@ -367,11 +367,16 @@ export default function Marketplace() {
 }
 
 function MarketplaceGradientOverlay() {
-  const { state, isMobile, } = useSidebar();
+  const {
+ state, isMobile, 
+} = useSidebar();
 
   const overlayStyles = React.useMemo<React.CSSProperties>(() => {
     if (isMobile) {
-      return { left: 0, right: 0 };
+      return {
+ left: 0,
+right: 0, 
+};
     }
 
     const sidebarOffset = state === 'collapsed'
@@ -388,7 +393,7 @@ function MarketplaceGradientOverlay() {
     <div
       aria-hidden="true"
       style={ overlayStyles }
-      className="pointer-events-none fixed bottom-0 z-30 h-[20vh] bg-gradient-to-t from-background via-background/80 to-background/0 transition-all duration-300 md:bottom-[1.25rem] lg:bottom-[1.75rem]"
+      className="pointer-events-none fixed bottom-0 z-30 h-[20vh] bg-gradient-to-t from-background via-background/80 to-background/0 transition-all duration-300"
     />
   );
 }
