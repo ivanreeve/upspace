@@ -163,7 +163,7 @@ function SidebarFooterContent({
             tooltip={ isCollapsed ? undefined : 'Account' }
             className={ isCollapsed ? 'justify-center' : undefined }
           >
-            <Link href="/onboarding" className={`flex items-center gap-3 py-8 ${isCollapsed ? 'ml-[-5px]' : ''}`}>
+            <Link href="/onboarding" className={ `flex items-center gap-3 py-8 ${isCollapsed ? 'ml-[-5px]' : ''}` }>
               <Avatar className={ cn('size-9', isCollapsed && 'size-8') }>
                 { avatarUrl ? (
                   <AvatarImage src={ avatarUrl } alt="User avatar" />
