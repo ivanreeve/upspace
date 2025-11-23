@@ -11,7 +11,7 @@ import {
   FiSearch,
   FiX
 } from 'react-icons/fi';
-import { GoSidebarExpand, GoSidebarCollapse } from 'react-icons/go';
+import { TbLayoutSidebarFilled } from 'react-icons/tb';
 
 import { CardsGrid, SkeletonGrid } from './Marketplace.Cards';
 import { MarketplaceErrorState } from './Marketplace.ErrorState';
@@ -78,8 +78,8 @@ function SidebarToggleMenuItem() {
   } = useSidebar();
   const isExpanded = state === 'expanded';
   const Icon = isExpanded
-    ? GoSidebarCollapse
-    : GoSidebarExpand;
+    ? TbLayoutSidebarFilled
+    : TbLayoutSidebarFilled;
 
   return (
     <SidebarMenuItem>
@@ -130,6 +130,7 @@ function SidebarFooterContent({
             className={ cn('w-full ml-[-5px]', isCollapsed && 'justify-center') }
           >
             <Link href="/onboarding" className={ `flex items-center gap-3 py-8 ${isCollapsed ? 'ml-[-10px]' : ''}` }>
+            
               <Avatar className={ cn('size-9', isCollapsed && 'size-8') }>
                 { avatarUrl ? (
                   <AvatarImage src={ avatarUrl } alt="User avatar" />
