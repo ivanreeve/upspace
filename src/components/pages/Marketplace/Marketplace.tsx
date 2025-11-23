@@ -643,7 +643,7 @@ function MarketplaceSearchDialog({
                     key={ `amenity-${amenity}` }
                     label={ filters.amenitiesNegate ? `Exclude: ${amenity}` : `Amenity: ${amenity}` }
                     onClear={ () => handleAmenityRemove(amenity) }
-                    variant="destructive"
+                    variant={ filters.amenitiesNegate ? 'destructive' : 'default' }
                   />
                 )) }
               </div>
@@ -1182,7 +1182,7 @@ function LocationFilterDialog({
                   key={ `selected-${amenity}` }
                   label={ amenitiesNegate ? `Exclude: ${amenity}` : amenity }
                   onClear={ () => handleAmenityRemove(amenity) }
-                  variant="destructive"
+                  variant={ amenitiesNegate ? 'destructive' : 'default' }
                 />
               )) }
             </div>
@@ -1237,10 +1237,12 @@ function LocationFilterDialog({
                               type="button"
                               onClick={ () => handleAmenityToggle(amenity.name) }
                               className={ cn(
-                                'flex items-center gap-3 rounded-md border px-3 py-2 text-left transition hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                                'flex items-center gap-3 rounded-md border px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                                 isSelected
-                                  ? 'border-destructive/60 bg-destructive/10 text-destructive shadow-sm'
-                                  : 'border-border/60 bg-background/60'
+                                  ? amenitiesNegate
+                                    ? 'border-destructive/60 bg-destructive/10 text-destructive shadow-sm hover:border-destructive/80'
+                                    : 'border-primary bg-primary/5 text-foreground shadow-sm hover:border-primary/70'
+                                  : 'border-border/60 bg-background/60 hover:border-primary/60'
                               ) }
                               aria-pressed={ isSelected }
                               aria-label={ `${isSelected ? 'Remove' : 'Add'} amenity ${amenity.name}` }
@@ -1250,7 +1252,10 @@ function LocationFilterDialog({
                                 { amenity.name }
                               </span>
                               { isSelected && (
-                                <Badge variant="destructive" className="shrink-0">
+                                <Badge
+                                  variant={ amenitiesNegate ? 'destructive' : 'secondary' }
+                                  className="shrink-0"
+                                >
                                   Selected
                                 </Badge>
                               ) }
