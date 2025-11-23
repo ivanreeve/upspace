@@ -11,7 +11,7 @@ import {
   FiSearch,
   FiX
 } from 'react-icons/fi';
-import { TbLayoutSidebarLeftCollapseFilled, TbLayoutSidebarRightCollapseFilled } from 'react-icons/tb';
+import { GoSidebarExpand, GoSidebarCollapse } from 'react-icons/go';
 
 import { CardsGrid, SkeletonGrid } from './Marketplace.Cards';
 import { MarketplaceErrorState } from './Marketplace.ErrorState';
@@ -48,7 +48,6 @@ import {
 import { ThemeSwitcher } from '@/components/ui/theme-switcher';
 import { cn } from '@/lib/utils';
 import { useUserProfile } from '@/hooks/use-user-profile';
-import { GoSidebarExpand, GoSidebarCollapse } from 'react-icons/go';
 
 type FiltersState = {
   q: string;
@@ -121,8 +120,8 @@ function SidebarToggleMenuItem() {
   } = useSidebar();
   const isExpanded = state === 'expanded';
   const Icon = isExpanded
-    ? TbLayoutSidebarLeftCollapseFilled
-    : TbLayoutSidebarRightCollapseFilled;
+    ? GoSidebarCollapse
+    : GoSidebarExpand;
 
   return (
     <SidebarMenuItem>
