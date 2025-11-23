@@ -48,6 +48,7 @@ import {
 import { ThemeSwitcher } from '@/components/ui/theme-switcher';
 import { cn } from '@/lib/utils';
 import { useUserProfile } from '@/hooks/use-user-profile';
+import { GoSidebarExpand, GoSidebarCollapse } from 'react-icons/go';
 
 type FiltersState = {
   q: string;
@@ -84,7 +85,7 @@ function SidebarToggleButton({
       return openMobile ? FiX : FiMenu;
     }
 
-    return state === 'expanded' ? TbLayoutSidebarLeftCollapseFilled : TbLayoutSidebarRightCollapseFilled;
+    return state === 'expanded' ? GoSidebarExpand : GoSidebarCollapse;
   }, [isMobile, openMobile, state]);
 
   const ariaLabel = React.useMemo(() => {
@@ -95,11 +96,6 @@ function SidebarToggleButton({
     return state === 'expanded' ? 'Collapse sidebar' : 'Expand sidebar';
   }, [isMobile, openMobile, state]);
 
-  const label = React.useMemo(() => {
-    if (isMobile) return undefined;
-    return state === 'expanded' ? 'Collapse' : 'Expand';
-  }, [isMobile, state]);
-
   return (
     <Button
       type="button"
@@ -109,12 +105,11 @@ function SidebarToggleButton({
       aria-label={ ariaLabel }
       className={ cn(
         'text-sidebar-foreground hover:text-sidebar-foreground !bg-transparent border-none',
-        size !== 'icon' && 'w-full justify-between',
+        size !== 'icon' && 'w-full justify-center',
         className
       ) }
     >
       <Icon className="size-4" aria-hidden="true" />
-      { label ? <span>{ label }</span> : null }
     </Button>
   );
 }
@@ -135,12 +130,11 @@ function SidebarToggleMenuItem() {
         tooltip={ isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }
         type="button"
         onClick={ toggleSidebar }
-        className="justify-between"
+        className="justify-center"
+        aria-label={ isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }
       >
-        <span className="flex items-center gap-2">
-          <Icon className="size-4" aria-hidden="true" />
-          <span>{ isExpanded ? 'Collapse' : 'Expand' }</span>
-        </span>
+        <Icon className="size-4" aria-hidden="true" />
+        <span className="sr-only">{ isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }</span>
       </SidebarMenuButton>
     </SidebarMenuItem>
   );
