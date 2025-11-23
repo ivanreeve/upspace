@@ -47,12 +47,12 @@ function DialogContent({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
-  position?: 'center' | 'top'
+  position?: 'center' | 'top',
 }) {
-  const positionClasses =
-    position === 'top'
-      ? 'items-start pt-[90px]'
-      : 'items-center';
+  const isTopPosition = position === 'top';
+  const topPositionPadding: React.CSSProperties | undefined = isTopPosition
+    ? { paddingTop: 'calc(env(safe-area-inset-top, 0px) + 90px)', }
+    : undefined;
 
   return (
     <DialogPortal data-slot="dialog-portal">
@@ -60,13 +60,15 @@ function DialogContent({
       <div
         className={ cn(
           'fixed inset-0 z-[60] flex justify-center px-4 sm:px-0 pointer-events-none',
-          positionClasses
+          isTopPosition ? 'items-start' : 'items-center'
         ) }
+        style={ topPositionPadding }
       >
         <DialogPrimitive.Content
           data-slot="dialog-content"
           className={ cn(
             'bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 w-full max-w-[calc(100%-2rem)] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg pointer-events-auto',
+            isTopPosition && 'mt-3 sm:mt-4',
             className
           ) }
           style={ style }
