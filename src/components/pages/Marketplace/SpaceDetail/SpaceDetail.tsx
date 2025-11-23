@@ -1,5 +1,3 @@
-import Link from 'next/link';
-
 import SpaceHeader from './SpaceHeader';
 import SpacePhotos from './SpacePhotos';
 import HostInfo from './HostInfo';
@@ -9,18 +7,11 @@ import ReviewsSection from './ReviewsSection';
 import WhereYoullBe from './WhereYoullBe';
 import AreasWithRates from './AreasWithRates';
 import AvailabilityTable from './AvailabilityTable';
+import SpaceBreadcrumbs from './SpaceBreadcrumbs';
 
 import { SPACE_DESCRIPTION_VIEWER_CLASSNAME } from '@/components/pages/Spaces/space-description-rich-text';
 import type { MarketplaceSpaceDetail } from '@/lib/queries/space';
 import { sanitizeRichText } from '@/lib/rich-text';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator
-} from '@/components/ui/breadcrumb';
 
 export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail }) {
   const locationParts = [space.city, space.region, space.countryCode].filter(Boolean);
@@ -97,21 +88,7 @@ value: 4.7,
   return (
     <main className="bg-background">
       <div className="mx-auto max-w-[1100px] px-4 py-10 space-y-4">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link href="/marketplace">Marketplace</Link>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage className="max-w-[min(70vw,480px)] truncate" title={ space.name }>
-                { space.name }
-              </BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+        <SpaceBreadcrumbs spaceName={ space.name } />
 
         <SpaceHeader
           name={ space.name }
