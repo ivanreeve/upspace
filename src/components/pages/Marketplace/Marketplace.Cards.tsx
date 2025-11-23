@@ -19,7 +19,7 @@ const peso = new Intl.NumberFormat('en-PH', {
 
 export function SkeletonGrid({ count = 12, }: { count?: number }) {
   return (
-    <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-x-5 sm:grid-cols-2 lg:grid-cols-4">
       { Array.from({ length: count, }).map((_, i) => (
         <Card key={ i } className="group flex flex-col overflow-hidden text-card-foreground border-none !gap-3">
           <div className="relative aspect-[16/9] w-full overflow-hidden">
@@ -44,7 +44,7 @@ export function CardsGrid({ items, }: { items: Space[] }) {
     );
   }
   return (
-    <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-x-5 gap-y-0 sm:grid-cols-2 lg:grid-cols-4">
       { items.map((space) => (
         <SpaceCard key={ space.space_id } space={ space } />
       )) }
