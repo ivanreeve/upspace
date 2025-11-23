@@ -53,6 +53,7 @@ import {
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   fetchPhilippineBarangaysByCity,
@@ -1185,9 +1186,32 @@ function LocationFilterDialog({
             <ScrollArea className="h-[320px] w-full px-1">
               <div className="space-y-5 p-3">
                 { isAmenitiesLoading ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <FiLoader className="size-4 animate-spin" aria-hidden="true" />
-                    Loading amenities…
+                  <div className="space-y-4" role="status" aria-label="Loading amenities">
+                    <span className="sr-only">Loading amenities</span>
+                    { Array.from({ length: 2 }).map((_, index) => (
+                      <div key={ index } className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Skeleton className="h-4 w-28" />
+                          <Skeleton className="h-3 w-16" />
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          { Array.from({ length: 4 }).map((_, cardIndex) => (
+                            <div
+                              key={ `${index}-${cardIndex}` }
+                              className="rounded-md border border-border/60 bg-background/60 p-3"
+                            >
+                              <div className="flex items-center gap-3">
+                                <Skeleton className="size-8 rounded-md" />
+                                <div className="space-y-2">
+                                  <Skeleton className="h-4 w-28" />
+                                  <Skeleton className="h-3 w-16" />
+                                </div>
+                              </div>
+                            </div>
+                          )) }
+                        </div>
+                      </div>
+                    )) }
                   </div>
                 ) : isAmenitiesError ? (
                   <div className="flex items-center justify-between rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
