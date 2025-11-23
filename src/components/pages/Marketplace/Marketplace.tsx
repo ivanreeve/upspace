@@ -128,6 +128,9 @@ export default function Marketplace() {
     ?? session?.user?.user_metadata?.picture
     ?? null;
   const profileHandleLabel = userProfile?.handle ? `@${userProfile.handle}` : undefined;
+  const preferredUsername = session?.user?.user_metadata?.preferred_username;
+  const preferredUsernameLabel =
+    preferredUsername && preferredUsername.includes('@') ? undefined : preferredUsername;
   const avatarFallback =
     session?.user?.user_metadata?.full_name?.slice(0, 2)?.toUpperCase()
     ?? userProfile?.handle?.slice(0, 2)?.toUpperCase()
@@ -136,8 +139,7 @@ export default function Marketplace() {
   const avatarDisplayName =
     profileHandleLabel
     ?? session?.user?.user_metadata?.full_name
-    ?? session?.user?.user_metadata?.preferred_username
-    ?? session?.user?.email
+    ?? preferredUsernameLabel
     ?? 'Account';
 
   const content = (
