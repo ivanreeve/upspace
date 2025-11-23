@@ -40,6 +40,7 @@ model area {
   space_id     String       @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   space        space        @relation(fields: [space_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   price_rate   price_rate[]
+  image        image[]
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -97,12 +98,12 @@ model bookmark {
 model image {
   image_id      BigInt   @id @unique @default(autoincrement())
   space_id      BigInt
-  area_id       BigInt
+  area_id       String   @db.Uuid
   url           String   @db.VarChar
   display_order BigInt
   is_primary    Float
   created_at    DateTime @db.Timestamptz(6)
-  area          area     @relation(fields: [area_id], references: [area_id], onDelete: NoAction, onUpdate: NoAction)
+  area          area     @relation(fields: [area_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   image         image    @relation("imageToimage", fields: [space_id], references: [image_id], onDelete: NoAction, onUpdate: NoAction)
   other_image   image[]  @relation("imageToimage")
 }
