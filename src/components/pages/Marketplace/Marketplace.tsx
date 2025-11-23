@@ -82,15 +82,20 @@ function SidebarToggleMenuItem() {
     : TbLayoutSidebarFilled;
 
   return (
-    <SidebarMenuItem>
+    <SidebarMenuItem
+      className={ cn(
+        'flex',
+        isExpanded ? 'justify-end' : 'justify-center'
+      ) }
+    >
       <SidebarMenuButton
         tooltip={ isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }
         type="button"
         onClick={ toggleSidebar }
-        className="justify-center"
+        className="!w-fit justify-center"
         aria-label={ isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }
       >
-        <Icon className="size-4" aria-hidden="true" />
+        <Icon className="w-9 h-9" aria-hidden="true" />
         <span className="sr-only">{ isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }</span>
       </SidebarMenuButton>
     </SidebarMenuItem>
