@@ -324,22 +324,20 @@ export default function Marketplace() {
                 <SidebarMenuButton asChild tooltip="Home">
                   <Link href="/">
                     <FiHome className="size-4" strokeWidth={ 1.4 } />
-                    <span>Home</span>
+                    <span data-sidebar-label>Home</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   tooltip="Search"
-                  className="justify-between"
+                  className="justify-between group-data-[collapsible=icon]:justify-center"
                   type="button"
                   onClick={ openSearchModal }
                 >
-                  <span className="flex items-center gap-2">
-                    <FiSearch className="size-4" />
-                    <span>Search</span>
-                  </span>
-                  <Kbd className="ml-2 hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex">
+                  <FiSearch className="size-4" strokeWidth={ 1.4 }/>
+                  <span data-sidebar-label>Search</span>
+                  <Kbd className="ml-auto hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden">
                     <FiCommand className="size-3" aria-hidden="true" />
                     <span> + K</span>
                   </Kbd>
@@ -349,7 +347,7 @@ export default function Marketplace() {
                 <SidebarMenuButton asChild tooltip="Notifications">
                   <Link href="/notifications">
                     <FiBell className="size-4" strokeWidth={ 1.4 } />
-                    <span>Notifications</span>
+                    <span data-sidebar-label>Notifications</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
