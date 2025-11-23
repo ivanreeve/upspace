@@ -13,6 +13,7 @@ import {
   FiX
 } from 'react-icons/fi';
 import { TbLayoutSidebarFilled } from 'react-icons/tb';
+import { CgOptions } from 'react-icons/cg';
 
 import { CardsGrid, SkeletonGrid } from './Marketplace.Cards';
 import { MarketplaceErrorState } from './Marketplace.ErrorState';
@@ -75,7 +76,6 @@ import {
 import { ThemeSwitcher } from '@/components/ui/theme-switcher';
 import { cn } from '@/lib/utils';
 import { useUserProfile } from '@/hooks/use-user-profile';
-import { CgOptions } from 'react-icons/cg';
 
 type FiltersState = {
   q: string;
@@ -837,10 +837,10 @@ function LocationFilterDialog({
 
   return (
     <Dialog open={ open } onOpenChange={ onOpenChange }>
-      <DialogContent className="sm:max-w-[560px] space-y-8">
+      <DialogContent className="sm:max-w-[560px] space-y-8 pb-0">
         <DialogHeader>
-          <DialogTitle>Location filters</DialogTitle>
-          <DialogDescription>Filter spaces by region, city, and barangay.</DialogDescription>
+          <DialogTitle>Filters</DialogTitle>
+          <DialogDescription>Filter spaces by location, price, ratings, and amenities.</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 sm:grid-cols-3">
@@ -950,12 +950,12 @@ function LocationFilterDialog({
         <DialogFooter className="gap-2">
           <Button
             type="button"
-            variant="secondary"
+            variant="outline"
             onClick={ () => onOpenChange(false) }
           >
             Cancel
           </Button>
-          <Button type="button" onClick={ handleApplyFilters }>
+          <Button type="button" variant="default" onClick={ handleApplyFilters }>
             Apply filters
           </Button>
         </DialogFooter>
