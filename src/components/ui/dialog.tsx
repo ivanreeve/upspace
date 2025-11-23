@@ -65,7 +65,7 @@ function DialogContent({
   const containerPaddingClass = mobileFullScreen
     ? 'px-0 sm:px-0'
     : fullWidth
-      ? 'px-0 sm:px-0'
+      ? 'px-0 sm:px-0 md:px-4'
       : 'px-4 sm:px-0';
   const containerStyle = fullWidth
     ? {
@@ -75,7 +75,7 @@ function DialogContent({
       }
     : topPositionPadding;
   const widthClasses = fullWidth
-    ? 'w-full max-w-full lg:max-w-[900px]'
+    ? 'w-full max-w-full sm:max-w-full md:max-w-[720px] lg:max-w-[900px]'
     : 'w-full max-w-[calc(100%-2rem)] sm:max-w-lg';
 
   return (
