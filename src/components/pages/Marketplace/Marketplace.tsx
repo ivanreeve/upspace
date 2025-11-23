@@ -8,7 +8,6 @@ import {
   FiCommand,
   FiHome,
   FiLoader,
-  FiMapPin,
   FiSearch,
   FiX
 } from 'react-icons/fi';
@@ -552,17 +551,11 @@ function MarketplaceSearchDialog({
               <div className="flex min-w-0 flex-col gap-0.5">
                 <span className="line-clamp-1 font-medium">{ suggestion.name }</span>
                 { suggestion.location && (
-                  <span className="text-xs text-muted-foreground line-clamp-1 flex items-center gap-1">
-                    <FiMapPin className="size-3" aria-hidden="true" />
-                    <span>{ suggestion.location }</span>
+                  <span className="text-xs text-muted-foreground line-clamp-1">
+                    { suggestion.location }
                   </span>
                 ) }
               </div>
-              { suggestion.similarity > 0 && (
-                <span className="ml-auto text-[11px] text-muted-foreground">
-                  { suggestion.similarity.toFixed(2) }
-                </span>
-              ) }
             </CommandItem>
           )) }
 

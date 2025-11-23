@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
-import { buildPublicObjectUrl, isAbsoluteUrl } from '@/lib/spaces/image-urls';
+import { resolveImageUrl, resolveSignedImageUrls } from '@/lib/spaces/image-urls';
 
 const SIMILARITY_THRESHOLD = 0.12;
 
@@ -12,12 +12,6 @@ const querySchema = z.object({
   limit: z.coerce.number().int().min(1).max(15).default(8),
   include_pending: z.coerce.boolean().optional().default(true),
 });
-
-const resolveImageUrl = (path: string | null) => {
-  if (!path) return null;
-  if (isAbsoluteUrl(path)) return path;
-  return buildPublicObjectUrl(path);
-};
 
 type SuggestionRow = {
   id: string;
@@ -83,10 +77,12 @@ export async function GET(req: NextRequest) {
       LIMIT ${limit};
     `;
 
+    const signedImageUrlMap = await resolveSignedImageUrls(rows.map((row) => ({ path: row.image_path, })));
+
     const suggestions = rows.map((row) => ({
       space_id: row.id,
       name: row.name,
-      image_url: resolveImageUrl(row.image_path),
+      image_url: resolveImageUrl(row.image_path, signedImageUrlMap),
       location: [row.city, row.region, row.country_code].filter(Boolean).join(', ') || null,
       similarity: Number(row.similarity ?? 0),
     }));
@@ -124,10 +120,12 @@ export async function GET(req: NextRequest) {
         LIMIT ${limit};
       `;
 
+      const signedImageUrlMap = await resolveSignedImageUrls(fallbackRows.map((row) => ({ path: row.image_path, })));
+
       const suggestions = fallbackRows.map((row) => ({
         space_id: row.id,
         name: row.name,
-        image_url: resolveImageUrl(row.image_path),
+        image_url: resolveImageUrl(row.image_path, signedImageUrlMap),
         location: [row.city, row.region, row.country_code].filter(Boolean).join(', ') || null,
         similarity: Number(row.similarity ?? 0),
       }));
