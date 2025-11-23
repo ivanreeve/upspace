@@ -26,7 +26,10 @@ export function SkeletonGrid({ count = 12, }: { count?: number }) {
   return (
     <div className="grid w-full justify-items-stretch grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2 lg:grid-cols-4">
       { Array.from({ length: count, }).map((_, i) => (
-        <Card key={ i } className="w-full group flex flex-col overflow-hidden text-card-foreground border-none !gap-3">
+        <Card
+          key={ i }
+          className="w-full group flex flex-col overflow-hidden text-card-foreground border-none bg-transparent shadow-none py-0 !gap-3"
+        >
           <div className="relative aspect-[16/9] w-full overflow-hidden">
             <Skeleton className="absolute inset-0 h-full w-full rounded-md" />
             <Skeleton className="absolute right-3 top-3 h-9 w-9 rounded-full" />
@@ -118,7 +121,7 @@ export function SpaceCard({ space, }: { space: Space }) {
   }, [isSaved, isSaving, space.space_id]);
 
   return (
-    <Card className="w-full group flex flex-col overflow-hidden text-card-foreground border-none !gap-3 bg-transparent">
+    <Card className="w-full group flex flex-col overflow-hidden text-card-foreground border-none bg-transparent shadow-none py-0 !gap-3">
       <div className="relative aspect-[16/9] w-full overflow-hidden">
         { space.image_url ? (
           <Image
