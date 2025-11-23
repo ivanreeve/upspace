@@ -6,6 +6,7 @@ import Link from 'next/link';
 import {
   FiBell,
   FiCommand,
+  FiCornerDownLeft,
   FiHome,
   FiSearch,
   FiX
@@ -318,7 +319,10 @@ function MarketplaceSearchDialog({
                 &quot;{ trimmedValue }&quot;
               </span>
             ) }
-            <CommandShortcut>Enter</CommandShortcut>
+            <CommandShortcut className="flex items-center gap-1">
+              <Kbd>Return</Kbd>
+              <FiCornerDownLeft className="size-4" aria-hidden="true" />
+            </CommandShortcut>
           </CommandItem>
           { hasActiveSearch && (
             <CommandItem
