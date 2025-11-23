@@ -1125,36 +1125,32 @@ function LocationFilterDialog({
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-              <div className="sm:w-48">
-                <Label htmlFor="amenities-match-type">Match type</Label>
-                <Select
-                  value={ amenitiesMode }
-                  onValueChange={ (value) => setAmenitiesMode(value as FiltersState['amenitiesMode']) }
+              <div className="flex items-center gap-3 rounded-md border border-border/60 px-3 py-2">
+                <div className="flex flex-col">
+                  <Label htmlFor="amenities-match-toggle">
+                    { amenitiesMode === 'any' ? 'Any' : 'All' }
+                  </Label>
+                </div>
+                <Switch
+                  id="amenities-match-toggle"
+                  checked={ amenitiesMode === 'any' }
+                  onCheckedChange={ (checked) => setAmenitiesMode(checked ? 'any' : 'all') }
                   disabled={ amenitiesNegate }
-                >
-                  <SelectTrigger
-                    id="amenities-match-type"
-                    aria-label="Amenities match type"
-                    className="w-full"
-                  >
-                    <SelectValue placeholder="Any amenity" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="any">Any</SelectItem>
-                    <SelectItem value="all">All</SelectItem>
-                  </SelectContent>
-                </Select>
+                  aria-label={ `Match ${amenitiesMode === 'any' ? 'any' : 'all'} amenities` }
+                />
               </div>
               <div className="flex items-center gap-3 rounded-md border border-border/60 px-3 py-2">
                 <div className="flex flex-col">
-                  <Label htmlFor="amenities-negate-toggle">Exclude</Label>
+                  <Label htmlFor="amenities-negate-toggle">
+                    { amenitiesNegate ? 'Exclude' : 'Include' }
+                  </Label>
                 </div>
                 <Switch
                   id="amenities-negate-toggle"
                   checked={ amenitiesNegate }
                   onCheckedChange={ setAmenitiesNegate }
                   disabled={ selectedAmenities.length === 0 }
-                  aria-label="Exclude selected amenities"
+                  aria-label={ amenitiesNegate ? 'Exclude selected amenities' : 'Include selected amenities' }
                 />
               </div>
             </div>
