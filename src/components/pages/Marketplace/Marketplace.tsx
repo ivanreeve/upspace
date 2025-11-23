@@ -85,7 +85,7 @@ function SidebarToggleMenuItem() {
     <SidebarMenuItem
       className={ cn(
         'flex items-center gap-2',
-        isExpanded ? 'justify-between pr-2 pl-1' : 'justify-center'
+        isExpanded ? 'justify-between pr-2 pl-1' : 'justify-center pr-1'
       ) }
     >
       { isExpanded && (
