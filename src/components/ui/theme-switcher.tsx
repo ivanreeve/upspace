@@ -6,6 +6,11 @@ import { FiMonitor, FiMoon, FiSun } from 'react-icons/fi';
 
 import { cn } from '@/lib/utils';
 
+type ThemeSwitcherProps = {
+  className?: string
+  variant?: 'default' | 'compact'
+};
+
 const themeOptions = [
   {
     value: 'light',
@@ -24,7 +29,12 @@ const themeOptions = [
   }
 ] as const;
 
-export function ThemeSwitcher({ className, }: { className?: string }) {
+type ThemeOption = (typeof themeOptions)[number]['value'];
+
+export function ThemeSwitcher({
+  className,
+  variant = 'default',
+}: ThemeSwitcherProps) {
   const {
     theme,
     setTheme,
@@ -36,7 +46,34 @@ export function ThemeSwitcher({ className, }: { className?: string }) {
     setMounted(true);
   }, []);
 
-  const activeValue = mounted ? theme ?? resolvedTheme ?? 'system' : 'system';
+  const activeValue: ThemeOption = mounted
+    ? (theme ?? resolvedTheme ?? 'system') as ThemeOption
+    : 'system';
+  const activeOption = themeOptions.find((option) => option.value === activeValue) ?? themeOptions[2];
+
+  const cycleTheme = React.useCallback(() => {
+    const currentIndex = themeOptions.findIndex((option) => option.value === activeValue);
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % themeOptions.length;
+    setTheme(themeOptions[nextIndex].value);
+  }, [activeValue, setTheme]);
+
+  if (variant === 'compact') {
+    const CompactIcon = activeOption.icon;
+
+    return (
+      <button
+        type="button"
+        onClick={ cycleTheme }
+        className={ cn(
+          'flex size-10 items-center justify-center rounded-full border border-border bg-card/80 text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+          className
+        ) }
+        aria-label={ `Toggle theme (current: ${activeOption.label})` }
+      >
+        <CompactIcon aria-hidden="true" className="size-4" />
+      </button>
+    );
+  }
 
   return (
     <div

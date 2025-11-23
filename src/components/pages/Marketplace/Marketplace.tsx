@@ -154,14 +154,22 @@ function SidebarFooterContent({
   const isCollapsed = state === 'collapsed';
 
   return (
-    <div className={ cn('p-2', isCollapsed ? 'flex items-center justify-center' : 'space-y-2') }>
-      { !isCollapsed && <ThemeSwitcher className="w-full justify-between" /> }
+    <div
+      className={ cn(
+        'p-2 flex flex-col',
+        isCollapsed ? 'items-center gap-3' : 'space-y-2'
+      ) }
+    >
+      <ThemeSwitcher
+        variant={ isCollapsed ? 'compact' : 'default' }
+        className={ isCollapsed ? undefined : 'w-full justify-between' }
+      />
       <SidebarMenu>
         <SidebarMenuItem>
           <SidebarMenuButton
             asChild
             tooltip={ isCollapsed ? undefined : 'Account' }
-            className={ isCollapsed ? 'justify-center' : undefined }
+            className={ cn('w-full', isCollapsed && 'justify-center') }
           >
             <Link href="/onboarding" className={ `flex items-center gap-3 py-8 ${isCollapsed ? 'ml-[-5px]' : ''}` }>
               <Avatar className={ cn('size-9', isCollapsed && 'size-8') }>
