@@ -75,6 +75,7 @@ import {
 import { ThemeSwitcher } from '@/components/ui/theme-switcher';
 import { cn } from '@/lib/utils';
 import { useUserProfile } from '@/hooks/use-user-profile';
+import { CgOptions } from 'react-icons/cg';
 
 type FiltersState = {
   q: string;
@@ -503,12 +504,21 @@ function MarketplaceSearchDialog({
   const isMobile = useIsMobile();
   const shouldFetchSuggestions = debouncedQuery.length >= 2;
   const [isFilterDialogOpen, setIsFilterDialogOpen] = React.useState(false);
+  const searchDialogOpen = open && !isFilterDialogOpen;
 
   React.useEffect(() => {
     if (!open) {
       setIsFilterDialogOpen(false);
     }
   }, [open]);
+
+  const handleSearchDialogOpenChange = React.useCallback((next: boolean) => {
+    if (isFilterDialogOpen && !next) {
+      setIsFilterDialogOpen(false);
+    }
+
+    onOpenChange(next);
+  }, [isFilterDialogOpen, onOpenChange]);
 
   const {
     data: suggestionData,
@@ -534,8 +544,8 @@ function MarketplaceSearchDialog({
   return (
     <>
       <CommandDialog
-        open={ open }
-        onOpenChange={ onOpenChange }
+        open={ searchDialogOpen }
+        onOpenChange={ handleSearchDialogOpenChange }
         title="Search spaces"
         description="Search the UpSpace marketplace"
         position="top"
@@ -592,7 +602,7 @@ barangay: '',
               value="apply filters"
               onSelect={ () => setIsFilterDialogOpen(true) }
             >
-              <FiFilter className="size-4" aria-hidden="true" />
+              <CgOptions className="size-4" aria-hidden="true" />
               <span>Apply filters</span>
               { hasLocationFilters && (
                 <Badge variant="secondary" className="ml-auto">
@@ -827,7 +837,7 @@ function LocationFilterDialog({
 
   return (
     <Dialog open={ open } onOpenChange={ onOpenChange }>
-      <DialogContent className="sm:max-w-[560px]">
+      <DialogContent className="sm:max-w-[560px] space-y-8">
         <DialogHeader>
           <DialogTitle>Location filters</DialogTitle>
           <DialogDescription>Filter spaces by region, city, and barangay.</DialogDescription>
@@ -852,7 +862,7 @@ function LocationFilterDialog({
               >
                 <SelectValue placeholder={ isRegionsLoading ? 'Loading regions...' : 'Select region / state' } />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent side="bottom" align="start" avoidCollisions={ false }>
                 { isRegionsError && (
                   <SelectItem value="regions-error" disabled>
                     Unable to load regions
@@ -883,7 +893,7 @@ function LocationFilterDialog({
               >
                 <SelectValue placeholder={ isCitiesLoading ? 'Loading cities...' : 'Select city' } />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent side="bottom" align="start" avoidCollisions={ false }>
                 { isCitiesError && (
                   <SelectItem value="cities-error" disabled>
                     Unable to load cities
@@ -921,7 +931,7 @@ function LocationFilterDialog({
                   }
                 />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent side="bottom" align="start" avoidCollisions={ false }>
                 { isBarangaysError && (
                   <SelectItem value="barangays-error" disabled>
                     Unable to load barangays
