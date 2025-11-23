@@ -256,7 +256,7 @@ export default function Marketplace() {
     ?? 'UpSpace User';
 
   const content = (
-    <section className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 lg:px-10">
+    <section className="relative mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 lg:px-10">
       <div className="space-y-6">
         { hasError ? (
           <div className="flex min-h-[70vh] w-full items-center justify-center px-4">
@@ -282,6 +282,11 @@ export default function Marketplace() {
       </div>
 
       <BackToTopButton />
+      <div
+        aria-hidden="true"
+        style={ { bottom: '0', } }
+        className="pointer-events-none fixed left-1/2 z-30 h-[20vh] w-full -translate-x-1/2 bg-black transition-all duration-300 md:bottom-[1.25rem] lg:bottom-[1.75rem]"
+      />
     </section>
   );
 
