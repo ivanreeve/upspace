@@ -1148,9 +1148,6 @@ function LocationFilterDialog({
               <div className="flex items-center gap-3 rounded-md border border-border/60 px-3 py-2">
                 <div className="flex flex-col">
                   <Label htmlFor="amenities-negate-toggle">Exclude</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Hide spaces that have any selected amenity.
-                  </p>
                 </div>
                 <Switch
                   id="amenities-negate-toggle"
