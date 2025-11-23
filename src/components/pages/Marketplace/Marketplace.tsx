@@ -68,7 +68,7 @@ export default function Marketplace() {
     () => (isMobile
       ? {
           paddingTop: 'calc(4rem + var(--safe-area-top))',
-          paddingBottom: 'calc(7rem + var(--safe-area-bottom))',
+          paddingBottom: 'calc(2.75rem + var(--safe-area-bottom))',
         }
       : undefined),
     [isMobile]
@@ -278,20 +278,12 @@ export default function Marketplace() {
         </Sidebar>
 
         <SidebarInset
-          className="flex-1 bg-background w-full pb-28 pt-16 md:pb-10 md:pt-0"
+          className="flex-1 bg-background w-full pb-10 pt-16 md:pt-0"
           style={ mobileInsetPadding }
         >
           { content }
         </SidebarInset>
       </div>
-
-      { isMobile && (
-        <MobileBottomBar
-          avatarUrl={ avatarUrl }
-          avatarFallback={ avatarFallback }
-          onSearchOpen={ openSearchModal }
-        />
-      ) }
     </SidebarProvider>
   );
 }
@@ -366,68 +358,6 @@ function MarketplaceSearchDialog({
         </CommandGroup>
       </CommandList>
     </CommandDialog>
-  );
-}
-
-function MobileBottomBar({
-  avatarUrl,
-  avatarFallback,
-  onSearchOpen,
-}: {
-  avatarUrl: string | null
-  avatarFallback: string
-  onSearchOpen: () => void
-}) {
-  return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/90 backdrop-blur-md shadow-lg md:hidden">
-      <div
-        className="mx-auto flex max-w-[480px] items-center justify-around px-6 py-3"
-        style={
-          {
-            paddingTop: '12px',
-            paddingBottom: 'calc(var(--safe-area-bottom) + 12px)',
-            paddingLeft: 'max(1.5rem, var(--safe-area-left))',
-            paddingRight: 'max(1.5rem, var(--safe-area-right))',
-          } as React.CSSProperties
-        }
-      >
-        <Link
-          href="/"
-          className="flex flex-col items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
-          aria-label="Home"
-        >
-          <FiHome className="size-5" aria-hidden="true" />
-        </Link>
-        <button
-          type="button"
-          onClick={ onSearchOpen }
-          className="flex flex-col items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
-          aria-label="Open search"
-        >
-          <FiSearch className="size-5" aria-hidden="true" />
-        </button>
-        <Link
-          href="/notifications"
-          className="flex flex-col items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
-          aria-label="Notifications"
-        >
-          <FiBell className="size-5" aria-hidden="true" />
-        </Link>
-        <Link
-          href="/onboarding"
-          className="flex flex-col items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
-          aria-label="Account"
-        >
-          <Avatar className="size-8">
-            { avatarUrl ? (
-              <AvatarImage src={ avatarUrl } alt="User avatar" />
-            ) : (
-              <AvatarFallback>{ avatarFallback }</AvatarFallback>
-            ) }
-          </Avatar>
-        </Link>
-      </div>
-    </nav>
   );
 }
 
