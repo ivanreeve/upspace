@@ -2,13 +2,16 @@
 
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FiSearch, FiSliders } from 'react-icons/fi';
+import { useRouter } from 'next/navigation';
+import { FiLogOut, FiSearch, FiSliders } from 'react-icons/fi';
 
 import { CardsGrid, SkeletonGrid } from './Marketplace.Cards';
 import { MarketplaceErrorState } from './Marketplace.ErrorState';
 
 import { listSpaces } from '@/lib/api/spaces';
+import { useSession } from '@/components/auth/SessionProvider';
 import BackToTopButton from '@/components/ui/back-to-top';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -20,6 +23,13 @@ import {
   AccordionTrigger
 } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
+import { ThemeSwitcher } from '@/components/ui/theme-switcher';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 import {
   Select,
@@ -37,6 +47,9 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
   SidebarProvider,
   SidebarRail,
   SidebarTrigger,
@@ -50,6 +63,7 @@ import {
   type PhilippineCityOption,
   type PhilippineRegionOption
 } from '@/lib/philippines-addresses/client';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 const PRICE_MIN = 200;
 const PRICE_MAX = 5000;
@@ -272,6 +286,12 @@ function FiltersSidebar({
     isMobile,
     setOpenMobile,
   } = useSidebar();
+  const {
+    session,
+    isLoading: isSessionLoading,
+  } = useSession();
+  const router = useRouter();
+  const supabase = React.useMemo(() => getSupabaseBrowserClient(), []);
 
   const closeMobileSidebar = React.useCallback(() => {
     if (isMobile) {
@@ -288,6 +308,29 @@ function FiltersSidebar({
     onReset();
     closeMobileSidebar();
   }, [closeMobileSidebar, onReset]);
+
+  const avatarUrl = session?.user?.user_metadata?.avatar_url
+    ?? session?.user?.user_metadata?.picture
+    ?? null;
+  const fallbackLabel =
+    session?.user?.user_metadata?.full_name?.slice(0, 2)?.toUpperCase()
+    ?? session?.user?.email?.slice(0, 2)?.toUpperCase()
+    ?? 'US';
+  const displayName =
+    session?.user?.user_metadata?.full_name
+    ?? session?.user?.user_metadata?.preferred_username
+    ?? session?.user?.email
+    ?? 'Guest';
+
+  const handleLogout = React.useCallback(async () => {
+    const { error, } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Supabase sign-out failed', error);
+      return;
+    }
+    router.refresh();
+    closeMobileSidebar();
+  }, [closeMobileSidebar, router, supabase]);
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -311,7 +354,7 @@ function FiltersSidebar({
           ) }
         </div>
       </SidebarHeader>
-      <SidebarContent className="px-2 pb-4">
+      <SidebarContent className="space-y-4 px-2 pb-4">
         <SidebarGroup>
           <SidebarGroupLabel>Marketplace filters</SidebarGroupLabel>
           <SidebarGroupContent className="space-y-4">
@@ -325,9 +368,66 @@ function FiltersSidebar({
             />
           </SidebarGroupContent>
         </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Quick settings</SidebarGroupLabel>
+          <SidebarGroupContent className="space-y-3">
+            <div className="group-data-[collapsible=icon]:hidden">
+              <ThemeSwitcher className="w-full" />
+            </div>
+            <SidebarMenu>
+              { session && !isSessionLoading ? (
+                <SidebarMenuItem>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <SidebarMenuButton
+                        variant="outline"
+                        size="lg"
+                        tooltip={ displayName }
+                        className="justify-start"
+                      >
+                        <Avatar className="size-8">
+                          { avatarUrl ? (
+                            <AvatarImage src={ avatarUrl } alt="User avatar" />
+                          ) : (
+                            <AvatarFallback>{ fallbackLabel }</AvatarFallback>
+                          ) }
+                        </Avatar>
+                        <span className="truncate">{ displayName }</span>
+                      </SidebarMenuButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent side="right" align="start" className="w-[220px]">
+                      <DropdownMenuItem
+                        className="flex items-center gap-2"
+                        onSelect={ (event) => {
+                          event.preventDefault();
+                          handleLogout();
+                        } }
+                      >
+                        <FiLogOut className="size-4" />
+                        <span>Logout</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </SidebarMenuItem>
+              ) : (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    variant="outline"
+                    size="lg"
+                    tooltip="Sign in"
+                    className="justify-center"
+                  >
+                    <a href="/onboarding">Sign in</a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ) }
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="border-t border-sidebar-border px-2 py-3 group-data-[collapsible=icon]:hidden">
-        <p className="text-xs text-sidebar-foreground/70">
+      <SidebarFooter className="border-t border-sidebar-border px-2 py-3">
+        <p className="text-xs text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">
           Press Ctrl+B (Cmd+B on Mac) to collapse the sidebar.
         </p>
       </SidebarFooter>

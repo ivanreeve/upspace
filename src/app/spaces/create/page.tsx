@@ -45,7 +45,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { richTextPlainTextLength } from '@/lib/rich-text';
 import { useSession } from '@/components/auth/SessionProvider';
-import NavBar from '@/components/ui/navbar';
 import { useSpaceFormPersistence } from '@/hooks/useSpaceFormPersistence';
 import { usePersistentSpaceImages } from '@/hooks/usePersistentSpaceImages';
 import { WEEKDAY_ORDER } from '@/data/spaces';
@@ -1040,7 +1039,6 @@ export default function SpaceCreateRoute() {
 
   return (
     <>
-      <NavBar />
       <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>

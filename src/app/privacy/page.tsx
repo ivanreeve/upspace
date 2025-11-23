@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 
-import NavBar from '@/components/ui/navbar';
 import { Footer } from '@/components/ui/footer';
 
 export const metadata: Metadata = {
@@ -12,7 +11,6 @@ export const metadata: Metadata = {
 export default function PrivacyPolicyPage() {
   return (
     <>
-      <NavBar />
       <main className="mx-auto flex max-w-3xl flex-col gap-12 px-4 py-16">
         <section className="space-y-4">
           <h1 className="text-4xl font-bold tracking-tight">Privacy Policy</h1>
