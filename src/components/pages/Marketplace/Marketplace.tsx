@@ -359,7 +359,6 @@ function MobileBottomBar({
           aria-label="Home"
         >
           <FiHome className="size-5" aria-hidden="true" />
-          <span>Home</span>
         </Link>
         <button
           type="button"
@@ -368,7 +367,6 @@ function MobileBottomBar({
           aria-label="Open search"
         >
           <FiSearch className="size-5" aria-hidden="true" />
-          <span>Search</span>
         </button>
         <Link
           href="/notifications"
@@ -376,7 +374,6 @@ function MobileBottomBar({
           aria-label="Notifications"
         >
           <FiBell className="size-5" aria-hidden="true" />
-          <span>Alerts</span>
         </Link>
         <Link
           href="/onboarding"
@@ -390,7 +387,6 @@ function MobileBottomBar({
               <AvatarFallback>{ avatarFallback }</AvatarFallback>
             ) }
           </Avatar>
-          <span>Account</span>
         </Link>
       </div>
     </nav>
