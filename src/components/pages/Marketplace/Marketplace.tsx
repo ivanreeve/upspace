@@ -15,7 +15,6 @@ import BackToTopButton from '@/components/ui/back-to-top';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LogoSymbolic } from '@/components/ui/logo-symbolic';
-import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Sidebar,
   SidebarContent,
@@ -46,7 +45,6 @@ export default function Marketplace() {
   const [filters, setFilters] = React.useState<FiltersState>(DEFAULT_FILTERS);
   const [searchValue, setSearchValue] = React.useState('');
   const { session, } = useSession();
-  const isMobile = useIsMobile();
 
   React.useEffect(() => {
     setSearchValue(filters.q);
@@ -135,86 +133,74 @@ export default function Marketplace() {
 
   return (
     <SidebarProvider className="bg-background min-h-screen">
-      { isMobile && (
-        <MobileTopNav
-          avatarUrl={ avatarUrl }
-          avatarFallback={ avatarFallback }
-        />
-      ) }
+      <MobileTopNav
+        avatarUrl={ avatarUrl }
+        avatarFallback={ avatarFallback }
+      />
       <div className="flex min-h-screen w-full">
-        { !isMobile && (
-          <Sidebar collapsible="none" className="hidden md:flex">
-            <SidebarHeader className="pt-4">
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Home">
-                    <Link href="/">
-                      <FiHome className="size-4" />
-                      <span>Home</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Search">
-                    <Link href="/marketplace">
-                      <FiSearch className="size-4" />
-                      <span>Search</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Notifications">
-                    <Link href="/notifications">
-                      <FiBell className="size-4" />
-                      <span>Notifications</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarHeader>
-            <SidebarContent>
-              <SidebarGroup>
-                <SidebarGroupLabel>Profile</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild tooltip="Account">
-                        <Link href="/onboarding">
-                          <Avatar className="size-8">
-                            { avatarUrl ? (
-                              <AvatarImage src={ avatarUrl } alt="User avatar" />
-                            ) : (
-                              <AvatarFallback>{ avatarFallback }</AvatarFallback>
-                            ) }
-                          </Avatar>
-                          <span className="truncate">{ avatarDisplayName }</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            </SidebarContent>
-          </Sidebar>
-        ) }
+        <Sidebar collapsible="none" className="hidden md:flex">
+          <SidebarHeader className="pt-4">
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Home">
+                  <Link href="/">
+                    <FiHome className="size-4" />
+                    <span>Home</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Search">
+                  <Link href="/marketplace">
+                    <FiSearch className="size-4" />
+                    <span>Search</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Notifications">
+                  <Link href="/notifications">
+                    <FiBell className="size-4" />
+                    <span>Notifications</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupLabel>Profile</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Account">
+                      <Link href="/onboarding">
+                        <Avatar className="size-8">
+                          { avatarUrl ? (
+                            <AvatarImage src={ avatarUrl } alt="User avatar" />
+                          ) : (
+                            <AvatarFallback>{ avatarFallback }</AvatarFallback>
+                          ) }
+                        </Avatar>
+                        <span className="truncate">{ avatarDisplayName }</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+        </Sidebar>
 
-        { isMobile ? (
-          <main className="w-full flex-1 bg-background pb-28">
-            { content }
-          </main>
-        ) : (
-          <SidebarInset className="flex-1 bg-background w-full pb-10">
-            { content }
-          </SidebarInset>
-        ) }
+        <SidebarInset className="flex-1 bg-background w-full pb-28 pt-16 md:pb-10 md:pt-0">
+          { content }
+        </SidebarInset>
       </div>
 
-      { isMobile && (
-        <MobileBottomBar
-          avatarUrl={ avatarUrl }
-          avatarFallback={ avatarFallback }
-        />
-      ) }
+      <MobileBottomBar
+        avatarUrl={ avatarUrl }
+        avatarFallback={ avatarFallback }
+      />
     </SidebarProvider>
   );
 }
@@ -280,7 +266,7 @@ function MobileTopNav({
   avatarFallback: string
 }) {
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/90 px-4 py-3 backdrop-blur-md md:hidden">
+    <header className="fixed inset-x-0 top-0 z-40 border-b bg-background/90 px-4 py-3 backdrop-blur-md md:hidden">
       <div className="mx-auto flex max-w-[1440px] items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
           <LogoSymbolic className="text-primary dark:text-secondary" />

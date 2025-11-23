@@ -1,20 +1,37 @@
 import * as React from 'react';
 
 const MOBILE_BREAKPOINT = 768;
-const useIsomorphicLayoutEffect =
-  typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect;
+const QUERY = `(max-width: ${MOBILE_BREAKPOINT - 1}px)`;
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState(false);
-
-  useIsomorphicLayoutEffect(() => {
-    const mediaQuery = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
-    const onChange = (event: MediaQueryListEvent) => setIsMobile(event.matches);
-
-    setIsMobile(mediaQuery.matches);
-    mediaQuery.addEventListener('change', onChange);
-    return () => mediaQuery.removeEventListener('change', onChange);
+  const getSnapshot = React.useCallback(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia(QUERY).matches;
   }, []);
 
-  return isMobile;
+  const subscribe = React.useCallback((onStoreChange: () => void) => {
+    if (typeof window === 'undefined') return () => {};
+
+    const mediaQuery = window.matchMedia(QUERY);
+    const notify = () => onStoreChange();
+
+    if ('addEventListener' in mediaQuery) {
+      mediaQuery.addEventListener('change', notify);
+      return () => mediaQuery.removeEventListener('change', notify);
+    }
+
+    // Safari < 14 fallback.
+    if ('addListener' in mediaQuery) {
+      // @ts-expect-error - addListener exists on older Safari.
+      mediaQuery.addListener(notify);
+      return () => {
+        // @ts-expect-error - removeListener exists on older Safari.
+        mediaQuery.removeListener(notify);
+      };
+    }
+
+    return () => {};
+  }, []);
+
+  return React.useSyncExternalStore(subscribe, getSnapshot, () => false);
 }
