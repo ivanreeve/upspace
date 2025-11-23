@@ -5,14 +5,13 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import {
   FiBell,
-  FiChevronLeft,
-  FiChevronRight,
   FiCommand,
   FiMenu,
   FiHome,
   FiSearch,
   FiX
 } from 'react-icons/fi';
+import { TbLayoutSidebarLeftCollapseFilled, TbLayoutSidebarRightCollapseFilled } from 'react-icons/tb';
 
 import { CardsGrid, SkeletonGrid } from './Marketplace.Cards';
 import { MarketplaceErrorState } from './Marketplace.ErrorState';
@@ -49,7 +48,6 @@ import {
 import { ThemeSwitcher } from '@/components/ui/theme-switcher';
 import { cn } from '@/lib/utils';
 import { useUserProfile } from '@/hooks/use-user-profile';
-import { TbLayoutSidebarLeftCollapseFilled, TbLayoutSidebarRightCollapseFilled } from 'react-icons/tb';
 
 type FiltersState = {
   q: string;
@@ -72,7 +70,7 @@ type SidebarToggleButtonProps = {
 function SidebarToggleButton({
   className,
   size = 'icon',
-  variant = 'outline',
+  variant = 'ghost',
 }: SidebarToggleButtonProps) {
   const {
     isMobile,
@@ -97,6 +95,11 @@ function SidebarToggleButton({
     return state === 'expanded' ? 'Collapse sidebar' : 'Expand sidebar';
   }, [isMobile, openMobile, state]);
 
+  const label = React.useMemo(() => {
+    if (isMobile) return undefined;
+    return state === 'expanded' ? 'Collapse' : 'Expand';
+  }, [isMobile, state]);
+
   return (
     <Button
       type="button"
@@ -104,10 +107,87 @@ function SidebarToggleButton({
       size={ size }
       onClick={ toggleSidebar }
       aria-label={ ariaLabel }
-      className={ cn('text-muted-foreground hover:text-foreground !bg-transparent border-none', className) }
+      className={ cn(
+        'text-sidebar-foreground hover:text-sidebar-foreground !bg-transparent border-none',
+        size !== 'icon' && 'w-full justify-between',
+        className
+      ) }
     >
       <Icon className="size-4" aria-hidden="true" />
+      { label ? <span>{ label }</span> : null }
     </Button>
+  );
+}
+
+function SidebarToggleMenuItem() {
+  const {
+    state,
+    toggleSidebar,
+  } = useSidebar();
+  const isExpanded = state === 'expanded';
+  const Icon = isExpanded
+    ? TbLayoutSidebarLeftCollapseFilled
+    : TbLayoutSidebarRightCollapseFilled;
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        tooltip={ isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }
+        type="button"
+        onClick={ toggleSidebar }
+        className="justify-between"
+      >
+        <span className="flex items-center gap-2">
+          <Icon className="size-4" aria-hidden="true" />
+          <span>{ isExpanded ? 'Collapse' : 'Expand' }</span>
+        </span>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+}
+
+function SidebarFooterContent({
+  avatarUrl,
+  avatarFallback,
+  avatarDisplayName,
+  resolvedHandleLabel,
+}: {
+  avatarUrl: string | null
+  avatarFallback: string
+  avatarDisplayName: string
+  resolvedHandleLabel: string | undefined
+}) {
+  const { state, } = useSidebar();
+
+  if (state === 'collapsed') return null;
+
+  return (
+    <div className="space-y-3 p-2">
+      <ThemeSwitcher className="w-full justify-between" />
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild tooltip="Account">
+            <Link href="/onboarding" className="flex items-center gap-3">
+              <Avatar className="size-9">
+                { avatarUrl ? (
+                  <AvatarImage src={ avatarUrl } alt="User avatar" />
+                ) : (
+                  <AvatarFallback>{ avatarFallback }</AvatarFallback>
+                ) }
+              </Avatar>
+              <div className="flex min-w-0 flex-col text-left">
+                <span className="text-sm font-semibold leading-tight">{ avatarDisplayName }</span>
+                { resolvedHandleLabel && (
+                  <span className="text-xs text-muted-foreground truncate">
+                    { resolvedHandleLabel }
+                  </span>
+                ) }
+              </div>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    </div>
   );
 }
 
@@ -270,10 +350,8 @@ export default function Marketplace() {
       <div className="flex min-h-screen w-full">
         <Sidebar collapsible="icon" className="hidden md:flex border-1 border-r-muted">
           <SidebarHeader className="pt-4">
-            <div className="flex justify-end px-2">
-              <SidebarToggleButton />
-            </div>
             <SidebarMenu>
+              <SidebarToggleMenuItem />
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Home">
                   <Link href="/">
@@ -311,32 +389,12 @@ export default function Marketplace() {
           </SidebarHeader>
           <SidebarContent className="flex-1" />
           <SidebarFooter className="mt-auto border-t border-sidebar-border/60">
-            <div className="space-y-3 p-2">
-              <ThemeSwitcher className="w-full justify-between" />
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Account">
-                    <Link href="/onboarding" className="flex items-center gap-3">
-                      <Avatar className="size-9">
-                        { avatarUrl ? (
-                          <AvatarImage src={ avatarUrl } alt="User avatar" />
-                        ) : (
-                          <AvatarFallback>{ avatarFallback }</AvatarFallback>
-                        ) }
-                      </Avatar>
-                      <div className="flex min-w-0 flex-col text-left">
-                        <span className="text-sm font-semibold leading-tight">{ avatarDisplayName }</span>
-                        { resolvedHandleLabel && (
-                          <span className="text-xs text-muted-foreground truncate">
-                            { resolvedHandleLabel }
-                          </span>
-                        ) }
-                      </div>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </div>
+            <SidebarFooterContent
+              avatarUrl={ avatarUrl }
+              avatarFallback={ avatarFallback }
+              avatarDisplayName={ avatarDisplayName }
+              resolvedHandleLabel={ resolvedHandleLabel }
+            />
           </SidebarFooter>
           <SidebarRail />
         </Sidebar>
