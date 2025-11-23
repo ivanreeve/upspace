@@ -332,6 +332,7 @@ export default function Marketplace() {
   const hasLocationFilters = Boolean(filters.region || filters.city || filters.barangay);
   const hasAmenityFilters = filters.amenities.length > 0;
   const hasAnyFilters = hasLocationFilters || hasAmenityFilters;
+  const shouldShowResultsHeader = hasActiveSearch || hasAnyFilters;
   React.useEffect(() => {
     if (typeof document === 'undefined') return undefined;
 
@@ -368,7 +369,9 @@ export default function Marketplace() {
   const content = (
     <section className="relative mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 lg:px-10">
       <div className="space-y-6">
-        <h2 className="text-2xl font-semibold text-foreground">Search Results</h2>
+        { shouldShowResultsHeader && (
+          <h2 className="text-2xl font-semibold text-foreground">Search Results</h2>
+        ) }
         { hasError ? (
           <div className="flex min-h-[70vh] w-full items-center justify-center px-4">
             <MarketplaceErrorState />
