@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { CgSpinner } from 'react-icons/cg';
@@ -10,6 +10,12 @@ import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Space } from '@/lib/api/spaces';
+
+const peso = new Intl.NumberFormat('en-PH', {
+  style: 'currency',
+  currency: 'PHP',
+  maximumFractionDigits: 0,
+});
 
 export function SkeletonGrid({ count = 12, }: { count?: number }) {
   return (
@@ -21,8 +27,9 @@ export function SkeletonGrid({ count = 12, }: { count?: number }) {
             <Skeleton className="absolute right-3 top-3 h-9 w-9 rounded-full" />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
           </div>
-          <CardContent className="flex flex-1 flex-col gap-3 p-0">
+          <CardContent className="flex flex-1 flex-col gap-2 p-0">
             <Skeleton className="h-5 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
           </CardContent>
         </Card>
       )) }
@@ -52,6 +59,26 @@ export function SpaceCard({ space, }: { space: Space }) {
   useEffect(() => {
     setIsSaved(Boolean(space.isBookmarked));
   }, [space.isBookmarked]);
+
+  const priceLabel = useMemo(() => {
+    const hasMin = typeof space.min_rate_price === 'number';
+    const hasMax = typeof space.max_rate_price === 'number';
+    const unit = space.rate_time_unit ?? 'hour';
+
+    if (hasMin && hasMax && space.max_rate_price !== space.min_rate_price) {
+      return `${peso.format(space.min_rate_price ?? 0)} – ${peso.format(space.max_rate_price ?? 0)} / ${unit}`;
+    }
+
+    if (hasMin) {
+      return `${peso.format(space.min_rate_price ?? 0)} / ${unit}`;
+    }
+
+    if (hasMax) {
+      return `${peso.format(space.max_rate_price ?? 0)} / ${unit}`;
+    }
+
+    return 'Pricing coming soon';
+  }, [space.max_rate_price, space.min_rate_price, space.rate_time_unit]);
 
   const handleToggleSave = useCallback(async () => {
     if (isSaving) {
@@ -120,11 +147,12 @@ export function SpaceCard({ space, }: { space: Space }) {
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
       </div>
 
-      <CardContent className="flex flex-1 flex-col gap-3 p-0">
+      <CardContent className="flex flex-1 flex-col gap-2 p-0">
         <Link href={ `/marketplace/${space.space_id}` } className="group inline-flex flex-col">
           <span className="text-base font-semibold leading-tight text-foreground group-hover:text-primary group-hover:underline">
             { space.name }
           </span>
+          <span className="text-sm text-muted-foreground">{ priceLabel }</span>
         </Link>
       </CardContent>
     </Card>
