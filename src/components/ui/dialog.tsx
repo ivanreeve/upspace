@@ -62,8 +62,20 @@ function DialogContent({
     : isTopPosition
       ? { paddingTop: 'calc(env(safe-area-inset-top, 0px) + 90px)', }
       : undefined;
+  const containerPaddingClass = mobileFullScreen
+    ? 'px-0 sm:px-0'
+    : fullWidth
+      ? 'px-0 sm:px-0'
+      : 'px-4 sm:px-0';
+  const containerStyle = fullWidth
+    ? {
+        ...(topPositionPadding ?? {}),
+        paddingLeft: 'env(safe-area-inset-left, 0px)',
+        paddingRight: 'env(safe-area-inset-right, 0px)',
+      }
+    : topPositionPadding;
   const widthClasses = fullWidth
-    ? 'w-full max-w-[calc(100%-2rem)] sm:max-w-[min(900px,calc(100%-2rem))]'
+    ? 'w-full max-w-full lg:max-w-[900px]'
     : 'w-full max-w-[calc(100%-2rem)] sm:max-w-lg';
 
   return (
@@ -72,10 +84,10 @@ function DialogContent({
       <div
         className={ cn(
           'fixed inset-0 z-[60] flex justify-center pointer-events-none',
-          mobileFullScreen ? 'px-0 sm:px-0' : 'px-4 sm:px-0',
+          containerPaddingClass,
           isTopPosition ? 'items-start' : 'items-center'
         ) }
-        style={ topPositionPadding }
+        style={ containerStyle }
       >
         <DialogPrimitive.Content
           data-slot="dialog-content"
