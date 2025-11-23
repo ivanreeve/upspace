@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function ForgotPasswordPage() {
   return (
     <>
-      <NavBar menuItems={ [] } />
+      <NavBar variant="logo-only" />
       <main className="min-h-screen bg-background px-4 py-12">
         <div className="mx-auto flex w-full max-w-md flex-col items-center gap-6">
           <div className="space-y-2 text-center">

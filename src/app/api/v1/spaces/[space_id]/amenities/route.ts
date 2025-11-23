@@ -5,12 +5,15 @@ import { prisma } from '@/lib/prisma';
 
 const bodySchema = z.object({ name: z.string().min(1).max(100), });
 
+const isUuid = (value: string | undefined): value is string =>
+  typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
 type Params = { params: Promise<{ space_id: string }> };
 
 export async function POST(req: NextRequest, { params, }: Params) {
   const { space_id, } = await params;
-  if (!space_id) {
-    return NextResponse.json({ error: 'space_id is required', }, { status: 400, });
+  if (!isUuid(space_id)) {
+    return NextResponse.json({ error: 'space_id is required and must be a valid UUID', }, { status: 400, });
   }
 
   const json = await req.json().catch(() => null);
@@ -22,14 +25,19 @@ export async function POST(req: NextRequest, { params, }: Params) {
   try {
     const created = await prisma.amenity.create({
       data: {
-        space_id: BigInt(space_id),
+        space_id,
         name: parsed.data.name,
+      },
+      select: {
+        id: true,
+        space_id: true,
+        name: true,
       },
     });
 
     const payload = {
-      amenity_id: created.amenity_id.toString(),
-      space_id: created.space_id.toString(),
+      amenity_id: created.id,
+      space_id: created.space_id,
       name: created.name,
     };
 
@@ -56,15 +64,15 @@ export async function POST(req: NextRequest, { params, }: Params) {
 
 export async function GET(_req: NextRequest, { params, }: Params) {
   const { space_id, } = await params;
-  if (!space_id) {
-    return NextResponse.json({ error: 'space_id is required', }, { status: 400, });
+  if (!isUuid(space_id)) {
+    return NextResponse.json({ error: 'space_id is required and must be a valid UUID', }, { status: 400, });
   }
 
   const rows = await prisma.amenity.findMany({
-    where: { space_id: BigInt(space_id), },
+    where: { space_id, },
     orderBy: { name: 'asc', },
     select: {
-      amenity_id: true,
+      id: true,
       space_id: true,
       name: true,
     },
@@ -72,8 +80,8 @@ export async function GET(_req: NextRequest, { params, }: Params) {
 
   return NextResponse.json({
     data: rows.map(r => ({
-      amenity_id: r.amenity_id.toString(),
-      space_id: r.space_id.toString(),
+      amenity_id: r.id,
+      space_id: r.space_id,
       name: r.name,
     })),
   });

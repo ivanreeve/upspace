@@ -5,8 +5,8 @@ import { prisma } from '@/lib/prisma';
 
 type Params = { params: Promise<{ space_id?: string; area_id?: string }> };
 
-const isNumericId = (value: string | undefined): value is string =>
-  typeof value === 'string' && /^\d+$/.test(value);
+const isUuid = (value: string | undefined): value is string =>
+  typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
 const updateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -18,9 +18,9 @@ export async function PUT(req: NextRequest, { params, }: Params) {
  space_id, area_id, 
 } = await params;
 
-  if (!isNumericId(space_id) || !isNumericId(area_id)) {
+  if (!isUuid(space_id) || !isUuid(area_id)) {
     return NextResponse.json(
-      { error: 'space_id and area_id are required and must be numeric', },
+      { error: 'space_id and area_id are required and must be valid UUIDs', },
       { status: 400, }
     );
   }
@@ -31,20 +31,21 @@ export async function PUT(req: NextRequest, { params, }: Params) {
     return NextResponse.json({ error: parsed.error.flatten(), }, { status: 400, });
   }
 
-  const spaceId = BigInt(space_id);
-  const areaId = BigInt(area_id);
-
   try {
-    const data: { name?: string; capacity?: bigint } = {};
+    const data: { name?: string; min_capacity?: bigint; max_capacity?: bigint } = {};
     if (parsed.data.name !== undefined) data.name = parsed.data.name;
-    if (parsed.data.capacity !== undefined) data.capacity = BigInt(parsed.data.capacity);
+    if (parsed.data.capacity !== undefined) {
+      const capacityValue = BigInt(parsed.data.capacity);
+      data.min_capacity = capacityValue;
+      data.max_capacity = capacityValue;
+    }
 
     // Ensure the area belongs to the given space_id and update
     const { count, } = await prisma.area.updateMany({
       where: {
- area_id: areaId,
-space_id: spaceId, 
-},
+        id: area_id,
+        space_id,
+      },
       data,
     });
 
@@ -53,13 +54,14 @@ space_id: spaceId,
     }
 
     const updated = await prisma.area.findUnique({
-      where: { area_id: areaId, },
+      where: { id: area_id, },
       select: {
- area_id: true,
-space_id: true,
-name: true,
-capacity: true, 
-},
+        id: true,
+        space_id: true,
+        name: true,
+        min_capacity: true,
+        max_capacity: true,
+      },
     });
 
     if (!updated) {
@@ -68,10 +70,11 @@ capacity: true,
 
     return NextResponse.json({
       data: {
-        area_id: updated.area_id.toString(),
-        space_id: updated.space_id.toString(),
+        area_id: updated.id,
+        space_id: updated.space_id,
         name: updated.name,
-        capacity: updated.capacity.toString(),
+        min_capacity: updated.min_capacity.toString(),
+        max_capacity: updated.max_capacity?.toString() ?? null,
       },
     }, { status: 200, });
   } catch (err: any) {
@@ -93,23 +96,20 @@ export async function DELETE(_req: NextRequest, { params, }: Params) {
  space_id, area_id, 
 } = await params;
 
-  if (!isNumericId(space_id) || !isNumericId(area_id)) {
+  if (!isUuid(space_id) || !isUuid(area_id)) {
     return NextResponse.json(
-      { error: 'space_id and area_id are required and must be numeric', },
+      { error: 'space_id and area_id are required and must be valid UUIDs', },
       { status: 400, }
     );
   }
 
-  const spaceId = BigInt(space_id);
-  const areaId = BigInt(area_id);
-
   try {
     const { count, } = await prisma.area.deleteMany({
- where: {
- area_id: areaId,
-space_id: spaceId, 
-}, 
-});
+      where: {
+        id: area_id,
+        space_id,
+      },
+    });
 
     if (count === 0) {
       return NextResponse.json({ error: 'Area not found', }, { status: 404, });

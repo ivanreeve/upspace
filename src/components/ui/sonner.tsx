@@ -1,4 +1,3 @@
-// sonner.tsx
 import { Toaster as Sonner } from 'sonner';
 import type { ToasterProps } from 'sonner';
 

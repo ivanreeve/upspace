@@ -7,11 +7,18 @@ import { GrHomeRounded } from 'react-icons/gr';
 import { TbSparkles } from 'react-icons/tb';
 import { LuBookOpenText, LuUsers } from 'react-icons/lu';
 import { FaQuestion } from 'react-icons/fa6';
-import { FiSidebar } from 'react-icons/fi';
-
+import { FiSidebar, FiLogOut } from 'react-icons/fi';
+import { useRouter } from 'next/navigation';
 
 import { ThemeSwitcher } from './theme-switcher';
+import { Avatar, AvatarFallback, AvatarImage } from './avatar';
 import { LogoSymbolic } from './logo-symbolic';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from './dropdown-menu';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -28,6 +35,8 @@ import {
   SheetTitle,
   SheetTrigger
 } from '@/components/ui/sheet';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { useSession } from '@/components/auth/SessionProvider';
 
 export type NavItem = {
   href: string;
@@ -35,17 +44,65 @@ export type NavItem = {
   icon?: IconType;
 };
 
+export type NavBarVariant = 'default' | 'logo-only';
+
 export type NavBarProps = React.HTMLAttributes<HTMLElement> & {
   menuItems?: NavItem[];
+  variant?: NavBarVariant;
 };
+
+type AccountMenuProps = {
+  avatarUrl: string | null;
+  fallbackLabel: string;
+  onLogout: () => void;
+};
+
+function AccountMenu({
+ avatarUrl, fallbackLabel, onLogout, 
+}: AccountMenuProps) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label="Open account menu"
+          className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          <Avatar>
+            { avatarUrl && <AvatarImage src={ avatarUrl } alt="User avatar" /> }
+            <AvatarFallback>{ fallbackLabel }</AvatarFallback>
+          </Avatar>
+        </button>
+      </DropdownMenuTrigger>
+        <DropdownMenuContent className="min-w-[180px] px-1 py-1">
+          <DropdownMenuItem
+            onSelect={ () => {
+              onLogout();
+            } }
+            className="rounded-sm text-sm font-medium text-destructive"
+          >
+            <FiLogOut className="size-4" />
+            Logout
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 export default function NavBar({
   className = '',
   menuItems,
+  variant = 'default',
   ...props
 }: NavBarProps) {
   const navRef = React.useRef<HTMLElement>(null);
   const [isOpen, setIsOpen] = React.useState(false);
+  const {
+ session, isLoading: isSessionLoading, 
+} = useSession();
+  const isSessionResolved = !isSessionLoading;
+  const router = useRouter();
+  const isLogoOnly = variant === 'logo-only';
 
   const closeMenu = React.useCallback(() => setIsOpen(false), []);
 
@@ -115,7 +172,26 @@ export default function NavBar({
       icon: FaQuestion,
     }
   ];
-  const resolvedMenuItems = menuItems ?? defaultMenuItems;
+  const shouldShowNavLinks = isSessionResolved && !session;
+  const resolvedMenuItems = shouldShowNavLinks ? (menuItems ?? defaultMenuItems) : [];
+
+  const avatarUrl = session?.user?.user_metadata?.avatar_url
+    ?? session?.user?.user_metadata?.picture
+    ?? null;
+
+  const fallbackLabel = 'US';
+
+  const handleLogout = React.useCallback(async () => {
+    const supabase = getSupabaseBrowserClient();
+    const { error, } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error('Supabase sign-out failed', error);
+      return;
+    }
+
+    router.refresh();
+  }, [router]);
 
   return (
     <nav
@@ -129,81 +205,108 @@ export default function NavBar({
       ].join(' ') }
       { ...props }
     >
-      <div className="mx-auto px-4 max-w-[1440px] h-18 flex items-center self-center justify-between">
-        <div className='flex flex-row gap-2'>
-          <LogoSymbolic className='text-primary dark:text-secondary' />
-          <Link href='/'><h1 className='text-xl font-bold'>UpSpace</h1></Link>
+      { isLogoOnly ? (
+        <div className="mx-auto flex h-18 max-w-[1440px] items-center justify-center px-4">
+          <Link href="/" className="flex items-center gap-2">
+            <LogoSymbolic className="text-primary dark:text-secondary" />
+            <span className="text-xl font-bold tracking-wide text-foreground dark:text-foreground">UpSpace</span>
+          </Link>
         </div>
+      ) : (
+        <div className="mx-auto px-4 max-w-[1440px] h-18 flex items-center self-center justify-between">
+          <div className='flex flex-row gap-2'>
+            <LogoSymbolic className='text-primary dark:text-secondary' />
+            <Link href='/'><h1 className='text-xl font-bold'>UpSpace</h1></Link>
+          </div>
 
-        { /* Desktop Navigation */ }
-        <div className="hidden min-[570px]:flex items-center">
-          <NavigationMenu className="ml-auto">
-            <NavigationMenuList className="gap-1">
-              { resolvedMenuItems.map((item) => (
-                <NavigationMenuItem key={ item.href }>
-                  <NavigationMenuLink asChild>
-                    <Link
-                      href={ item.href }
-                      onClick={ (event) => handleNavLinkClick(event, item.href) }
-                      className={ navigationMenuTriggerStyle() }
-                    >
-                      { item.label }
-                    </Link>
-                  </NavigationMenuLink>
-                </NavigationMenuItem>
-              )) }
+          { /* Desktop Navigation */ }
+          <div className="hidden min-[570px]:flex items-center">
+            <NavigationMenu className="ml-auto">
+              <NavigationMenuList className="gap-1">
+                { resolvedMenuItems.map((item) => (
+                  <NavigationMenuItem key={ item.href }>
+                    <NavigationMenuLink asChild>
+                      <Link
+                        href={ item.href }
+                        onClick={ (event) => handleNavLinkClick(event, item.href) }
+                        className={ navigationMenuTriggerStyle() }
+                      >
+                        { item.label }
+                      </Link>
+                    </NavigationMenuLink>
+                  </NavigationMenuItem>
+                )) }
 
-              <NavigationMenuItem>
-                <ThemeSwitcher />
-              </NavigationMenuItem>
-            </NavigationMenuList>
-          </NavigationMenu>
-        </div>
-
-        { /* Mobile Menu Button */ }
-        <div className="flex min-[570px]:hidden items-center gap-2">
-          <ThemeSwitcher />
-          <Sheet open={ isOpen } onOpenChange={ setIsOpen }>
-            <SheetTrigger asChild>
-              <Button
-                className="p-2 rounded-sm bg-muted text-primary dark:bg-muted dark:text-muted-foreground hover:bg-secondary/20 transition-colors"
-                aria-label="Toggle menu"
-              >
-                <FiSidebar className="size-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent
-              side="right"
-              className="w-[300px] sm:w-[400px]"
-            >
-              <SheetHeader className='border-t-transparent border-r-transparent border-l-transparent border-2 border-b-muted'>
-                <SheetTitle className="flex items-center gap-2">
-                  <LogoSymbolic className='text-primary dark:text-secondary' />
-                  <span className='text-xl font-bold'>UpSpace</span>
-                </SheetTitle>
-              </SheetHeader>
-              <div className="mt-6">
-                { resolvedMenuItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={ item.href }
-                      href={ item.href }
-                      onClick={ (event) => handleNavLinkClick(event, item.href, true) }
-                      className="flex rounded-md items-center gap-3 px-4 py-3 bg-transparent text-sm font-medium transition-colors active:bg-secondary/20 active:text-primary dark:active:bg-secondary/10 dark:active:text-secondary group outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-                    >
-                      { Icon && (
-                        <Icon className="h-5 w-5 group-active:scale-110 transition-transform" />
+                <NavigationMenuItem>
+                    <div className="flex items-center gap-3 px-2">
+                      <ThemeSwitcher />
+                      { session && (
+                        <AccountMenu
+                          avatarUrl={ avatarUrl }
+                          fallbackLabel={ fallbackLabel }
+                          onLogout={ handleLogout }
+                        />
                       ) }
-                      <span>{ item.label }</span>
-                    </Link>
-                  );
-                }) }
-              </div>
-            </SheetContent>
-          </Sheet>
+                    </div>
+                </NavigationMenuItem>
+              </NavigationMenuList>
+            </NavigationMenu>
+          </div>
+
+          { /* Mobile Menu Button */ }
+          <div className="flex min-[570px]:hidden items-center gap-2">
+            <ThemeSwitcher />
+            { session && (
+              <AccountMenu
+                avatarUrl={ avatarUrl }
+                fallbackLabel={ fallbackLabel }
+                onLogout={ handleLogout }
+              />
+            ) }
+            { resolvedMenuItems.length > 0 && (
+              <Sheet open={ isOpen } onOpenChange={ setIsOpen }>
+                <SheetTrigger asChild>
+                  <Button
+                    className="p-2 rounded-sm bg-muted text-primary dark:bg-muted dark:text-muted-foreground hover:bg-secondary/20 transition-colors"
+                    aria-label="Toggle menu"
+                  >
+                    <FiSidebar className="size-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent
+                  side="right"
+                  className="w-[300px] sm:w-[400px]"
+                >
+                  <SheetHeader className='border-t-transparent border-r-transparent border-l-transparent border-2 border-b-muted'>
+                    <SheetTitle className="flex items-center gap-2">
+                      <LogoSymbolic className='text-primary dark:text-secondary' />
+                      <span className='text-xl font-bold'>UpSpace</span>
+                    </SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-6">
+                    { resolvedMenuItems.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <Link
+                          key={ item.href }
+                          href={ item.href }
+                          onClick={ (event) => handleNavLinkClick(event, item.href, true) }
+                          className="flex rounded-md items-center gap-3 px-4 py-3 bg-transparent text-sm font-medium transition-colors active:bg-secondary/20 active:text-primary dark:active:bg-secondary/10 dark:active:text-secondary group outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                        >
+                          { Icon && (
+                            <Icon className="h-5 w-5 group-active:scale-110 transition-transform" />
+                          ) }
+                          <span>{ item.label }</span>
+                        </Link>
+                      );
+                    }) }
+                  </div>
+                </SheetContent>
+              </Sheet>
+            ) }
+          </div>
         </div>
-      </div>
+      ) }
     </nav>
   );
 }
