@@ -1007,7 +1007,7 @@ function LocationFilterDialog({
     <Dialog open={ open } onOpenChange={ onOpenChange }>
       <DialogContent className="sm:max-w-[720px] space-y-8 pb-0">
         <DialogHeader>
-          <DialogTitle>Filters</DialogTitle>
+          <DialogTitle>Advanced Filters</DialogTitle>
           <DialogDescription>Filter spaces by location, price, ratings, and amenities.</DialogDescription>
         </DialogHeader>
 
@@ -1115,7 +1115,7 @@ function LocationFilterDialog({
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-3 mt-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
               <Label htmlFor="amenities-search-input">Amenities</Label>
@@ -1139,8 +1139,8 @@ function LocationFilterDialog({
                     <SelectValue placeholder="Any amenity" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="any">Any selected amenity</SelectItem>
-                    <SelectItem value="all">All selected amenities</SelectItem>
+                    <SelectItem value="any">Any</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
