@@ -208,15 +208,16 @@ export default function Marketplace() {
         <section className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-10">
           <div className="space-y-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <SidebarTrigger className="h-9 w-9" />
-                <span className="hidden md:inline">Filters</span>
-              </div>
-              <form
-                onSubmit={ handleSearchSubmit }
-                className="flex w-full flex-1 flex-col gap-3 rounded-md shadow-sm md:flex-row md:items-center"
-              >
-                <div className="flex flex-1 items-center gap-3 rounded-xl border bg-background shadow-sm">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <SidebarTrigger className="h-9 w-9" />
+              <span className="hidden md:inline">Filters</span>
+            </div>
+            <form
+              onSubmit={ handleSearchSubmit }
+              className="flex w-full flex-1 flex-col gap-3 rounded-md shadow-sm md:flex-row md:items-center"
+            >
+              <div className="flex w-full flex-col gap-3 rounded-xl border bg-background p-3 shadow-sm sm:flex-row sm:items-center sm:p-2">
+                <div className="flex flex-1 items-center gap-3 rounded-lg bg-transparent sm:rounded-none">
                   <FiSearch aria-hidden="true" className="size-5 text-muted-foreground" />
                   <Input
                     value={ searchValue }
@@ -225,12 +226,13 @@ export default function Marketplace() {
                     aria-label="Search spaces"
                     className="border-none bg-transparent text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
                   />
-                  <Button type="submit" className="w-full rounded-xl md:w-auto">
-                    Search marketplace
-                  </Button>
                 </div>
-              </form>
-            </div>
+                <Button type="submit" className="w-full sm:w-auto">
+                  Search marketplace
+                </Button>
+              </div>
+            </form>
+          </div>
 
             { hasActiveFilters && (
               <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-sm">
