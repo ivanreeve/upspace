@@ -323,7 +323,7 @@ export default function Marketplace() {
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Home">
                   <Link href="/">
-                    <FiHome className="size-4" />
+                    <FiHome className="size-4" strokeWidth={ 1.4 } />
                     <span>Home</span>
                   </Link>
                 </SidebarMenuButton>
@@ -348,7 +348,7 @@ export default function Marketplace() {
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Notifications">
                   <Link href="/notifications">
-                    <FiBell className="size-4" />
+                    <FiBell className="size-4" strokeWidth={ 1.4 } />
                     <span>Notifications</span>
                   </Link>
                 </SidebarMenuButton>
