@@ -112,6 +112,28 @@ const normalizeAmenityValues = (amenities?: string[]) =>
         .filter(Boolean)
     )
   );
+const areFiltersEqual = (a: FiltersState, b: FiltersState) => {
+  if (
+    a.q !== b.q
+    || a.region !== b.region
+    || a.city !== b.city
+    || a.barangay !== b.barangay
+    || a.amenitiesMode !== b.amenitiesMode
+    || a.amenitiesNegate !== b.amenitiesNegate
+  ) {
+    return false;
+  }
+
+  if (a.amenities.length !== b.amenities.length) return false;
+
+  for (let index = 0; index < a.amenities.length; index += 1) {
+    if (a.amenities[index] !== b.amenities[index]) {
+      return false;
+    }
+  }
+
+  return true;
+};
 const ORDERED_AMENITY_CATEGORIES = Object.keys(AMENITY_CATEGORY_DISPLAY_MAP);
 
 const buildQueryParams = (filters: FiltersState) => {
@@ -246,20 +268,29 @@ function SidebarFooterContent({
 
 export default function Marketplace() {
   const [filters, setFilters] = React.useState<FiltersState>(DEFAULT_FILTERS);
+  const [pendingFilters, setPendingFilters] = React.useState<FiltersState>(DEFAULT_FILTERS);
   const [searchValue, setSearchValue] = React.useState('');
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
   const applyFilters = React.useCallback((updates: Partial<FiltersState>) => {
-    setFilters((prev) => ({
-      ...prev,
-      ...updates,
-      q: normalizeFilterValue(updates.q ?? prev.q),
-      region: normalizeFilterValue(updates.region ?? prev.region),
-      city: normalizeFilterValue(updates.city ?? prev.city),
-      barangay: normalizeFilterValue(updates.barangay ?? prev.barangay),
-      amenities: normalizeAmenityValues(updates.amenities ?? prev.amenities),
-      amenitiesMode: updates.amenitiesMode ?? prev.amenitiesMode,
-      amenitiesNegate: updates.amenitiesNegate ?? prev.amenitiesNegate,
-    }));
+    setPendingFilters((prev) => {
+      const next: FiltersState = {
+        ...prev,
+        ...updates,
+        q: normalizeFilterValue(updates.q ?? prev.q),
+        region: normalizeFilterValue(updates.region ?? prev.region),
+        city: normalizeFilterValue(updates.city ?? prev.city),
+        barangay: normalizeFilterValue(updates.barangay ?? prev.barangay),
+        amenities: normalizeAmenityValues(updates.amenities ?? prev.amenities),
+        amenitiesMode: updates.amenitiesMode ?? prev.amenitiesMode,
+        amenitiesNegate: updates.amenitiesNegate ?? prev.amenitiesNegate,
+      };
+
+      if (areFiltersEqual(prev, next)) {
+        return prev;
+      }
+
+      return next;
+    });
   }, []);
   const isMobile = useIsMobile();
   const { session, } = useSession();
@@ -289,19 +320,21 @@ export default function Marketplace() {
     }
   }, [filters.q]);
 
-  const applySearch = React.useCallback((value: string) => {
-    applyFilters({ q: value, });
-  }, [applyFilters]);
-
   const handleSearchSubmit = React.useCallback(
     (value?: string) => {
       const nextValue = typeof value === 'string' ? value : searchValue;
-      const normalized = nextValue.trim();
+      const normalized = normalizeFilterValue(nextValue);
+      const nextFilters = {
+        ...pendingFilters,
+        q: normalized,
+      };
+
       setSearchValue(normalized);
-      applySearch(normalized);
+      setPendingFilters((prev) => (areFiltersEqual(prev, nextFilters) ? prev : nextFilters));
+      setFilters((prev) => (areFiltersEqual(prev, nextFilters) ? prev : nextFilters));
       setIsSearchOpen(false);
     },
-    [applySearch, searchValue]
+    [pendingFilters, searchValue]
   );
 
   React.useEffect(() => {
@@ -333,6 +366,9 @@ export default function Marketplace() {
   const hasLocationFilters = Boolean(filters.region || filters.city || filters.barangay);
   const hasAmenityFilters = filters.amenities.length > 0;
   const hasAnyFilters = hasLocationFilters || hasAmenityFilters;
+  const pendingHasLocationFilters = Boolean(pendingFilters.region || pendingFilters.city || pendingFilters.barangay);
+  const pendingHasAmenityFilters = pendingFilters.amenities.length > 0;
+  const pendingHasAnyFilters = pendingHasLocationFilters || pendingHasAmenityFilters;
   const shouldShowResultsHeader = hasActiveSearch || hasAnyFilters;
   React.useEffect(() => {
     if (typeof document === 'undefined') return undefined;
@@ -410,8 +446,8 @@ export default function Marketplace() {
         onSearchChange={ setSearchValue }
         onSearchSubmit={ handleSearchSubmit }
         hasActiveSearch={ hasActiveSearch }
-        hasAnyFilters={ hasAnyFilters }
-        filters={ filters }
+        hasAnyFilters={ pendingHasAnyFilters }
+        filters={ pendingFilters }
         onFiltersApply={ applyFilters }
       />
       { isMobile && (
