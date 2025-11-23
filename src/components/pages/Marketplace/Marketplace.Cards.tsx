@@ -1,11 +1,6 @@
 'use client';
 
-import {
-useCallback,
-useEffect,
-useMemo,
-useState
-} from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { CgSpinner } from 'react-icons/cg';
