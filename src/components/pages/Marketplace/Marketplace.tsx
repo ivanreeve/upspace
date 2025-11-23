@@ -3,7 +3,14 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { FiLogOut, FiSearch, FiSliders } from 'react-icons/fi';
+import { useTheme } from 'next-themes';
+import {
+  FiLogOut,
+  FiMoon,
+  FiSearch,
+  FiSliders,
+  FiSun
+} from 'react-icons/fi';
 
 import { CardsGrid, SkeletonGrid } from './Marketplace.Cards';
 import { MarketplaceErrorState } from './Marketplace.ErrorState';
@@ -285,6 +292,7 @@ function FiltersSidebar({
   const {
     isMobile,
     setOpenMobile,
+    setOpen,
   } = useSidebar();
   const {
     session,
@@ -292,6 +300,15 @@ function FiltersSidebar({
   } = useSession();
   const router = useRouter();
   const supabase = React.useMemo(() => getSupabaseBrowserClient(), []);
+  const {
+    theme,
+    setTheme,
+  } = useTheme();
+  const [isThemeReady, setIsThemeReady] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsThemeReady(true);
+  }, []);
 
   const closeMobileSidebar = React.useCallback(() => {
     if (isMobile) {
@@ -308,6 +325,15 @@ function FiltersSidebar({
     onReset();
     closeMobileSidebar();
   }, [closeMobileSidebar, onReset]);
+
+  const toggleTheme = React.useCallback(() => {
+    if (!isThemeReady) return;
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  }, [isThemeReady, setTheme, theme]);
+
+  const expandSidebar = React.useCallback(() => {
+    setOpen(true);
+  }, [setOpen]);
 
   const avatarUrl = session?.user?.user_metadata?.avatar_url
     ?? session?.user?.user_metadata?.picture
@@ -336,10 +362,39 @@ function FiltersSidebar({
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-md bg-sidebar-accent text-sidebar-foreground">
-            <FiSliders aria-hidden="true" className="size-4" />
-          </div>
-          <div className="flex min-w-0 flex-1 flex-col">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuButton
+                variant="outline"
+                size="lg"
+                tooltip={ displayName }
+                className="h-11 w-full justify-start group-data-[collapsible=icon]:h-10 group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:justify-center"
+              >
+                <Avatar className="size-8">
+                  { avatarUrl ? (
+                    <AvatarImage src={ avatarUrl } alt="User avatar" />
+                  ) : (
+                    <AvatarFallback>{ fallbackLabel }</AvatarFallback>
+                  ) }
+                </Avatar>
+                <span className="truncate group-data-[collapsible=icon]:hidden">{ displayName }</span>
+              </SidebarMenuButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="right" align="start" className="w-[220px]">
+              <DropdownMenuItem
+                className="flex items-center gap-2"
+                onSelect={ (event) => {
+                  event.preventDefault();
+                  handleLogout();
+                } }
+              >
+                <FiLogOut className="size-4" />
+                <span>Logout</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <div className="flex min-w-0 flex-1 flex-col group-data-[collapsible=icon]:hidden">
             <span className="text-sm font-semibold leading-tight text-sidebar-foreground">
               Advanced Filters
             </span>
@@ -348,24 +403,54 @@ function FiltersSidebar({
             </span>
           </div>
           { activeFiltersCount > 0 && (
-            <Badge variant="secondary" className="text-[11px]">
+            <Badge variant="secondary" className="text-[11px] group-data-[collapsible=icon]:hidden">
               { activeFiltersCount } active
             </Badge>
           ) }
         </div>
       </SidebarHeader>
-      <SidebarContent className="space-y-4 px-2 pb-4">
+      <SidebarContent className="flex flex-col gap-4 px-2 pb-4">
+        <SidebarMenu className="hidden flex-col items-stretch gap-2 group-data-[collapsible=icon]:flex">
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              size="sm"
+              tooltip="Open filters"
+              className="justify-center"
+              onClick={ expandSidebar }
+            >
+              <FiSliders aria-hidden="true" className="size-4" />
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              size="sm"
+              tooltip={ theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode' }
+              className="justify-center"
+              onClick={ toggleTheme }
+              disabled={ !isThemeReady }
+            >
+              { theme === 'dark' ? (
+                <FiSun aria-hidden="true" className="size-4" />
+              ) : (
+                <FiMoon aria-hidden="true" className="size-4" />
+              ) }
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+
         <SidebarGroup>
           <SidebarGroupLabel>Marketplace filters</SidebarGroupLabel>
           <SidebarGroupContent className="space-y-4">
-            <FiltersForm
-              value={ value }
-              onChange={ onChange }
-              onApply={ handleApply }
-              onReset={ handleReset }
-              hasChanges={ hasChanges }
-              priceBounds={ priceBounds }
-            />
+            <div className="group-data-[collapsible=icon]:hidden">
+              <FiltersForm
+                value={ value }
+                onChange={ onChange }
+                onApply={ handleApply }
+                onReset={ handleReset }
+                hasChanges={ hasChanges }
+                priceBounds={ priceBounds }
+              />
+            </div>
           </SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup>
@@ -374,7 +459,7 @@ function FiltersSidebar({
             <div className="group-data-[collapsible=icon]:hidden">
               <ThemeSwitcher className="w-full" />
             </div>
-            <SidebarMenu>
+            <SidebarMenu className="group-data-[collapsible=icon]:hidden">
               { session && !isSessionLoading ? (
                 <SidebarMenuItem>
                   <DropdownMenu>
