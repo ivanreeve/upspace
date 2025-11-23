@@ -651,6 +651,42 @@ mode: 'insensitive' as const,
     const hasNext = rows.length > limit;
     const items = hasNext ? rows.slice(0, limit) : rows;
     const nextCursor = hasNext ? items[items.length - 1].id : null;
+    const spaceIds = items.map((space) => space.id);
+
+    let bookmarkLookupUserId: bigint | null = null;
+    if (bookmark_user_id) {
+      bookmarkLookupUserId = BigInt(bookmark_user_id);
+    } else if (spaceIds.length > 0) {
+      try {
+        const supabase = await createSupabaseServerClient();
+        const {
+          data: authData,
+          error: authError,
+        } = await supabase.auth.getUser();
+
+        if (!authError && authData?.user) {
+          const dbUser = await prisma.user.findFirst({
+            where: { auth_user_id: authData.user.id, },
+            select: { user_id: true, },
+          });
+          bookmarkLookupUserId = dbUser?.user_id ?? null;
+        }
+      } catch {
+        bookmarkLookupUserId = null;
+      }
+    }
+
+    const bookmarkedSpaceIds = bookmarkLookupUserId && spaceIds.length > 0
+      ? new Set(
+        (await prisma.bookmark.findMany({
+          where: {
+            user_id: bookmarkLookupUserId,
+            space_id: { in: spaceIds, },
+          },
+          select: { space_id: true, },
+        })).map((bookmark) => bookmark.space_id)
+      )
+      : null;
 
     const payload = items.map((space) => {
       const base = serializeSpace(space);
@@ -671,6 +707,7 @@ mode: 'insensitive' as const,
         max_rate_price: priceSummary?.max ?? null,
         rate_time_unit: priceSummary?.unit ?? null,
         availability: serializeAvailabilitySlots(space.space_availability),
+        isBookmarked: bookmarkedSpaceIds?.has(space.id) ?? false,
       };
     });
 

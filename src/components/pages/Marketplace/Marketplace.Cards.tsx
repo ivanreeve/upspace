@@ -143,7 +143,7 @@ export function SpaceCard({ space, }: { space: Space }) {
           { isSaving ? (
             <CgSpinner className="size-5 animate-spin" aria-hidden="true" />
           ) : isSaved ? (
-            <FaHeart aria-hidden="true" className="size-5" />
+            <FaHeart aria-hidden="true" className="size-5 text-rose-500" />
           ) : (
             <FaRegHeart aria-hidden="true" className="size-5" />
           ) }
