@@ -1239,7 +1239,7 @@ function LocationFilterDialog({
                               className={ cn(
                                 'flex items-center gap-3 rounded-md border px-3 py-2 text-left transition hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                                 isSelected
-                                  ? 'border-primary bg-primary/5 shadow-sm'
+                                  ? 'border-destructive/60 bg-destructive/10 text-destructive shadow-sm'
                                   : 'border-border/60 bg-background/60'
                               ) }
                               aria-pressed={ isSelected }
@@ -1250,7 +1250,7 @@ function LocationFilterDialog({
                                 { amenity.name }
                               </span>
                               { isSelected && (
-                                <Badge variant="secondary" className="shrink-0">
+                                <Badge variant="destructive" className="shrink-0">
                                   Selected
                                 </Badge>
                               ) }
