@@ -316,6 +316,7 @@ function MarketplaceSearchDialog({
       description="Search the UpSpace marketplace"
       position="top"
       mobileFullScreen={ isMobile }
+      fullWidth
     >
       <CommandInput
         value={ searchValue }

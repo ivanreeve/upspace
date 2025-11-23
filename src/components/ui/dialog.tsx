@@ -45,11 +45,13 @@ function DialogContent({
   position = 'center',
   style,
   mobileFullScreen = false,
+  fullWidth = false,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
   position?: 'center' | 'top',
   mobileFullScreen?: boolean,
+  fullWidth?: boolean,
 }) {
   const isTopPosition = position === 'top';
   const topPositionPadding: React.CSSProperties | undefined = mobileFullScreen
@@ -60,6 +62,9 @@ function DialogContent({
     : isTopPosition
       ? { paddingTop: 'calc(env(safe-area-inset-top, 0px) + 90px)', }
       : undefined;
+  const widthClasses = fullWidth
+    ? 'w-full max-w-[calc(100%-2rem)] sm:max-w-[min(900px,calc(100%-2rem))]'
+    : 'w-full max-w-[calc(100%-2rem)] sm:max-w-lg';
 
   return (
     <DialogPortal data-slot="dialog-portal">
@@ -75,7 +80,8 @@ function DialogContent({
         <DialogPrimitive.Content
           data-slot="dialog-content"
           className={ cn(
-            'bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 w-full max-w-[calc(100%-2rem)] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg pointer-events-auto',
+            'bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 gap-4 rounded-lg border p-6 shadow-lg duration-200 pointer-events-auto',
+            widthClasses,
             isTopPosition && !mobileFullScreen && 'mt-3 sm:mt-4',
             mobileFullScreen && 'h-full max-h-full w-full max-w-full rounded-none border-0 shadow-none',
             className
