@@ -9,6 +9,7 @@ useState
 import Link from 'next/link';
 import Image from 'next/image';
 import { CgSpinner } from 'react-icons/cg';
+import { FiStar } from 'react-icons/fi';
 import { FaHeart, FaRegHeart } from 'react-icons/fa';
 import { toast } from 'sonner';
 
@@ -162,6 +163,24 @@ export function SpaceCard({ space, }: { space: Space }) {
           </span>
           <span className="text-sm text-muted-foreground">{ priceLabel }</span>
         </Link>
+        <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+          <FiStar
+            className={ `size-3 ${
+              (space.total_reviews ?? 0) > 0 ? 'text-yellow-400' : 'text-muted-foreground'
+            }` }
+            aria-hidden="true"
+          />
+          <span className="font-medium text-foreground">
+            { (space.total_reviews ?? 0) > 0
+              ? (space.average_rating ?? 0).toFixed(1)
+              : 'New' }
+          </span>
+          { (space.total_reviews ?? 0) > 0 && (
+            <span className="text-[11px] text-muted-foreground">
+              ({ space.total_reviews } review{ space.total_reviews === 1 ? '' : 's' })
+            </span>
+          ) }
+        </div>
       </CardContent>
     </Card>
   );

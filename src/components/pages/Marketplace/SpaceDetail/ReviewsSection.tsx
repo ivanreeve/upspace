@@ -1,79 +1,399 @@
-type Rating = { score: number; count: number };
-type Highlight = { label: string; value: number };
-type Testimonial = { author: string; date: string; content: string; color: string };
+'use client';
 
-export default function ReviewsSection({
-  rating,
-  highlights,
-  testimonials,
+import React from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { FiStar } from 'react-icons/fi';
+import { toast } from 'sonner';
+
+import { COMMON_REVIEW_TAGS } from '@/data/reviews';
+import {
+  createSpaceReview,
+  fetchSpaceReviews,
+  type CreateSpaceReviewPayload,
+  type SpaceReview
+} from '@/lib/api/reviews';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
+
+type ReviewsSectionProps = {
+  spaceId: string;
+};
+
+function StarRatingSelector({
+  value,
+  onChange,
 }: {
-  rating: Rating;
-  highlights: Highlight[];
-  testimonials: Testimonial[];
+  value: number;
+  onChange: (next: number) => void;
 }) {
-  const midpoint = Math.ceil(highlights.length / 2);
-  const leftHighlights = highlights.slice(0, midpoint);
-  const rightHighlights = highlights.slice(midpoint);
+  return (
+    <div className="flex items-center gap-1" aria-label="Rating" role="radiogroup">
+      { [1, 2, 3, 4, 5].map((score) => {
+        const isActive = score <= value;
+        return (
+          <button
+            key={ score }
+            type="button"
+            onClick={ () => onChange(score) }
+            className="p-1"
+            aria-label={ `${score} star${score > 1 ? 's' : ''}` }
+            role="radio"
+            aria-checked={ isActive }
+          >
+            <FiStar
+              className={ `size-5 ${
+                isActive ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'
+              }` }
+              aria-hidden="true"
+            />
+          </button>
+        );
+      }) }
+    </div>
+  );
+}
+
+function ReviewTagsSelector({
+  selected,
+  onChange,
+}: {
+  selected: string[];
+  onChange: (next: string[]) => void;
+}) {
+  const toggleTag = (value: string) => {
+    if (selected.includes(value)) {
+      onChange(selected.filter((tag) => tag !== value));
+    } else {
+      onChange([...selected, value]);
+    }
+  };
+
+  return (
+    <div className="flex flex-wrap gap-2" aria-label="Quick review tags">
+      { COMMON_REVIEW_TAGS.map((tag) => {
+        const isActive = selected.includes(tag.value);
+        return (
+          <button
+            key={ tag.value }
+            type="button"
+            onClick={ () => toggleTag(tag.value) }
+            className={ `
+              rounded-full border px-3 py-1 text-xs
+              ${isActive ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground'}
+            ` }
+            aria-pressed={ isActive }
+          >
+            { tag.label }
+          </button>
+        );
+      }) }
+    </div>
+  );
+}
+
+function ReviewCard({ review, }: { review: SpaceReview }) {
+  const createdAt = new Date(review.created_at);
+  const formattedDate = createdAt.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+
+  return (
+    <article className="space-y-3 rounded-2xl border p-4 shadow-sm">
+      <header className="flex items-center justify-between gap-3 text-sm">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-9 w-9">
+            { review.reviewer.avatar ? (
+              <AvatarImage src={ review.reviewer.avatar } alt={ review.reviewer.name } />
+            ) : null }
+            <AvatarFallback>
+              { review.reviewer.name.charAt(0).toUpperCase() }
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="font-medium text-foreground">{ review.reviewer.name }</p>
+            <p className="text-xs text-muted-foreground">{ formattedDate }</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 text-sm text-foreground">
+          <FiStar className="size-4 text-yellow-400" aria-hidden="true" />
+          <span className="font-medium">{ review.rating_star.toFixed(1) }</span>
+        </div>
+      </header>
+
+      <p className="text-sm leading-relaxed text-foreground/80">{ review.description }</p>
+
+      { review.comments.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          { review.comments.map((comment) => (
+            <Badge key={ comment } variant="outline" className="text-xs">
+              { comment.replace(/_/g, ' ') }
+            </Badge>
+          )) }
+        </div>
+      ) }
+    </article>
+  );
+}
+
+export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
+  const queryClient = useQueryClient();
+  const {
+    data,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ['space-reviews', spaceId],
+    queryFn: () => fetchSpaceReviews(spaceId),
+  });
+
+  const [rating, setRating] = React.useState<number>(5);
+  const [description, setDescription] = React.useState('');
+  const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
+  const [formError, setFormError] = React.useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+
+  const createReviewMutation = useMutation({
+    mutationFn: (payload: CreateSpaceReviewPayload) => createSpaceReview(spaceId, payload),
+    onSuccess: async () => {
+      setDescription('');
+      setSelectedTags([]);
+      setFormError(null);
+      setIsDialogOpen(false);
+      toast.success('Thanks for sharing your review.');
+      await queryClient.invalidateQueries({ queryKey: ['space-reviews', spaceId], });
+    },
+    onError: (error: unknown) => {
+      if (error instanceof Error) {
+        setFormError(error.message);
+      } else {
+        setFormError('Failed to submit review.');
+      }
+    },
+  });
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFormError(null);
+
+    if (!rating) {
+      setFormError('Please select a rating.');
+      return;
+    }
+
+    if (!description.trim()) {
+      setFormError('Please add a short description of your experience.');
+      return;
+    }
+
+    createReviewMutation.mutate({
+      rating_star: rating,
+      description: description.trim(),
+      comments: selectedTags,
+    });
+  };
+
+  const summary = data?.summary ?? {
+    average_rating: 0,
+    total_reviews: 0,
+    breakdown: [
+      {
+        rating: 5,
+        count: 0,
+      },
+      {
+        rating: 4,
+        count: 0,
+      },
+      {
+        rating: 3,
+        count: 0,
+      },
+      {
+        rating: 2,
+        count: 0,
+      },
+      {
+        rating: 1,
+        count: 0,
+      }
+    ],
+  };
+
+  const maxBreakdownCount = summary.breakdown.reduce(
+    (max, entry) => (entry.count > max ? entry.count : max),
+    0
+  );
+
+  const hasReviews = (data?.reviews?.length ?? 0) > 0;
 
   return (
     <section className="space-y-6 border-t pt-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-medium">
-          * { rating.score.toFixed(1) } - { rating.count } reviews
-        </h2>
-        <button
-          type="button"
-          className="text-sm font-medium text-foreground underline underline-offset-4 hover:text-primary"
-        >
-          Show more
-        </button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 text-lg font-medium text-foreground">
+            <FiStar className="size-5 text-yellow-400" aria-hidden="true" />
+            <span>
+              { summary.total_reviews > 0
+                ? summary.average_rating.toFixed(1)
+                : 'No reviews yet' }
+            </span>
+          </div>
+          { summary.total_reviews > 0 && (
+            <span className="text-sm text-muted-foreground">
+              ({ summary.total_reviews } review{ summary.total_reviews === 1 ? '' : 's' })
+            </span>
+          ) }
+        </div>
+        <Dialog open={ isDialogOpen } onOpenChange={ setIsDialogOpen }>
+          <DialogTrigger asChild>
+            <Button type="button" variant="outline">
+              Write a review
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Write a review</DialogTitle>
+              <DialogDescription>
+                Share your experience to help others decide if this space is right for them.
+              </DialogDescription>
+            </DialogHeader>
+            <form className="space-y-4" onSubmit={ handleSubmit }>
+              <div className="space-y-2">
+                <Label htmlFor="rating-modal">Your rating</Label>
+                <StarRatingSelector value={ rating } onChange={ setRating } />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description-modal">Your experience</Label>
+                <Textarea
+                  id="description-modal"
+                  value={ description }
+                  onChange={ (event) => setDescription(event.target.value) }
+                  placeholder="Share what you liked, what could be improved, or any tips for others."
+                  aria-label="Review description"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Quick tags (optional)</Label>
+                <ReviewTagsSelector selected={ selectedTags } onChange={ setSelectedTags } />
+              </div>
+
+              { formError && (
+                <p className="text-sm text-destructive" role="alert">
+                  { formError }
+                </p>
+              ) }
+
+              <DialogFooter>
+                <Button
+                  type="submit"
+                  disabled={ createReviewMutation.isPending }
+                  aria-label="Submit review"
+                >
+                  { createReviewMutation.isPending ? 'Submitting...' : 'Submit review' }
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <dl className="grid gap-4 sm:grid-cols-2">
-          { [leftHighlights, rightHighlights]
-            .filter((group) => group.length > 0)
-            .map((group, index) => (
-              <div key={ index } className="space-y-4">
-                { group.map((item) => (
-                  <div key={ item.label } className="space-y-2">
-                    <div className="flex items-center justify-between text-sm text-foreground/80">
-                      <dt>{ item.label }</dt>
-                      <dd className="font-medium">{ item.value.toFixed(1) }</dd>
+      <div className="grid gap-6 lg:grid-cols-[minmax(240px,0.9fr)_minmax(0,1.4fr)]">
+        <div className="space-y-4">
+          <h3 className="text-sm font-medium text-foreground">Rating breakdown</h3>
+          { summary.total_reviews === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No ratings yet. Once guests start leaving reviews, you&apos;ll see how scores are
+              distributed here.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              { summary.breakdown.map((entry) => {
+                const widthPercent = maxBreakdownCount
+                  ? (entry.count / maxBreakdownCount) * 100
+                  : 0;
+                return (
+                  <div
+                    key={ entry.rating }
+                    className="flex items-center gap-2 text-xs text-foreground"
+                    aria-label={ `Rating ${ entry.rating } stars` }
+                  >
+                    <div className="flex items-center gap-1 w-8">
+                      <span>{ entry.rating }</span>
+                      <FiStar className="size-3 text-muted-foreground" aria-hidden="true" />
                     </div>
-                    <div className="h-1.5 rounded-full bg-muted">
+                    <div className="relative h-2 flex-1 rounded-full bg-muted">
                       <div
-                        className="h-full rounded-full bg-foreground"
-                        style={ { width: `${(item.value / 5) * 100}%`, } }
+                        className="absolute inset-y-0 left-0 rounded-full bg-primary"
+                        style={ { width: `${widthPercent}%`, } }
                       />
                     </div>
+                    <span className="w-10 text-right text-muted-foreground">
+                      { entry.count }
+                    </span>
                   </div>
-                )) }
-              </div>
-            )) }
-        </dl>
+                );
+              }) }
+            </div>
+          ) }
+        </div>
 
-        <div className="grid gap-4">
-          { testimonials.map((review) => (
-            <article
-              key={ review.author }
-              className="gap-3 rounded-2xl border p-4 shadow-sm"
-            >
-              <header className="mb-3 flex items-center gap-3 text-sm">
-                <span
-                  className="flex h-10 w-10 items-center justify-center rounded-full text-white"
-                  style={ { backgroundColor: review.color, } }
-                >
-                  { review.author.charAt(0).toUpperCase() }
-                </span>
-                <div>
-                  <p className="font-medium text-foreground">{ review.author }</p>
-                  <p className="text-muted-foreground">{ review.date }</p>
+        <div className="space-y-4">
+          <h3 className="text-sm font-medium text-foreground">Guest reviews</h3>
+
+          { isLoading && (
+            <div className="space-y-3">
+              { Array.from({ length: 3, }).map((_, index) => (
+                <div key={ index } className="space-y-3 rounded-2xl border p-4">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-9 w-9 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-5/6" />
                 </div>
-              </header>
-              <p className="text-sm leading-relaxed text-foreground/80">{ review.content }</p>
-            </article>
-          )) }
+              )) }
+            </div>
+          ) }
+
+          { isError && !isLoading && (
+            <p className="text-sm text-destructive">
+              Failed to load reviews. Please try again.
+            </p>
+          ) }
+
+          { !isLoading && !isError && !hasReviews && (
+            <p className="text-sm text-muted-foreground">
+              No reviews yet. Be the first to share your experience at this space.
+            </p>
+          ) }
+
+          { !isLoading && !isError && hasReviews && (
+            <div className="space-y-3">
+              { data?.reviews.map((review) => (
+                <ReviewCard key={ review.review_id } review={ review } />
+              )) }
+            </div>
+          ) }
         </div>
       </div>
     </section>

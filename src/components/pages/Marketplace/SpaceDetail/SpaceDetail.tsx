@@ -18,65 +18,10 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
   const location = locationParts.length > 0 ? locationParts.join(', ') : 'Global City, Taguig';
 
   const rating = {
- score: 5,
-count: 7, 
-};
+    score: 0,
+    count: 0,
+  };
   const hostName = 'Trisha M.';
-
-  const reviewHighlights = [
-    {
- label: 'Cleanliness',
-value: 5, 
-},
-    {
- label: 'Communication',
-value: 5, 
-},
-    {
- label: 'Check-in',
-value: 5, 
-},
-    {
- label: 'Accuracy',
-value: 5, 
-},
-    {
- label: 'Location',
-value: 4.9, 
-},
-    {
- label: 'Value',
-value: 4.7, 
-}
-  ];
-
-  const testimonials = [
-    {
-      author: 'Jose',
-      date: 'December 2021',
-      content: 'Clean, modern, and super convenient. Love the atmosphere here!',
-      color: '#4b5563',
-    },
-    {
-      author: 'Shayna',
-      date: 'December 2021',
-      content:
-        'The environment is calm yet energizing, and I have met so many like-minded professionals. The meeting rooms are well-equipped, and the coffee bar is a nice bonus. Definitely...',
-      color: '#0ea5e9',
-    },
-    {
-      author: 'Luke',
-      date: 'December 2021',
-      content: 'Fast Wi-Fi and friendly staff -- great for freelancers like me.',
-      color: '#14b8a6',
-    },
-    {
-      author: 'Josh',
-      date: 'November 2021',
-      content: 'Well designed and fun space, neighborhood has lots of energy and amenities.',
-      color: '#111827',
-    }
-  ];
 
   const overviewFallback =
     'Located in the heart of the city, Downtown Space offers a modern and flexible coworking environment designed for entrepreneurs, freelancers, and small teams. With high-speed Wi-Fi, ergonomic workstations, private meeting rooms, and a cozy lounge area, it is the perfect place to stay productive and inspired.';
@@ -153,7 +98,7 @@ value: 4.7,
 
         <AmenitiesList amenities={ space.amenities } features={ [] } />
 
-        <ReviewsSection rating={ rating } highlights={ reviewHighlights } testimonials={ testimonials } />
+        <ReviewsSection spaceId={ space.id } />
 
         <WhereYoullBe city={ space.city } region={ space.region } country={ space.countryCode } />
       </div>
