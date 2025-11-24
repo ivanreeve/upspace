@@ -667,6 +667,26 @@ mode: 'insensitive' as const,
     const nextCursor = hasNext ? items[items.length - 1].id : null;
     const spaceIds = items.map((space) => space.id);
 
+    // Preload rating aggregates for listed spaces to avoid N+1 queries
+    const ratingAggregates = spaceIds.length > 0
+      ? await prisma.review.groupBy({
+        by: ['space_id'],
+        where: { space_id: { in: spaceIds, }, },
+        _avg: { rating_star: true, },
+        _count: { rating_star: true, },
+      })
+      : [];
+
+    const ratingMap = new Map<string, { average_rating: number; total_reviews: number }>();
+    for (const aggregate of ratingAggregates) {
+      const avg = aggregate._avg.rating_star ?? null;
+      const count = aggregate._count.rating_star ?? 0;
+      ratingMap.set(aggregate.space_id, {
+        average_rating: avg === null ? 0 : Number(avg),
+        total_reviews: count,
+      });
+    }
+
     let bookmarkLookupUserId: bigint | null = null;
     if (bookmark_user_id) {
       bookmarkLookupUserId = BigInt(bookmark_user_id);
@@ -713,6 +733,11 @@ mode: 'insensitive' as const,
         return signedImageUrlMap.get(path) ?? buildPublicObjectUrl(path);
       })();
 
+      const ratingSummary = ratingMap.get(space.id) ?? {
+        average_rating: 0,
+        total_reviews: 0,
+      };
+
       return {
         ...base,
         status: deriveSpaceStatus(space.verification[0]?.status ?? null),
@@ -722,6 +747,8 @@ mode: 'insensitive' as const,
         rate_time_unit: priceSummary?.unit ?? null,
         availability: serializeAvailabilitySlots(space.space_availability),
         isBookmarked: bookmarkedSpaceIds?.has(space.id) ?? false,
+        average_rating: ratingSummary.average_rating,
+        total_reviews: ratingSummary.total_reviews,
       };
     });
 
