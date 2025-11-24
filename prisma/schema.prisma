@@ -94,6 +94,15 @@ model bookmark {
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model common_review {
+  id         String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_at DateTime       @default(now()) @db.Timestamptz(6)
+  review_id  String         @db.Uuid
+  comment    common_comment
+  review     review         @relation(fields: [review_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model price_rate {
   time_unit  String
   price      Decimal   @db.Decimal
@@ -102,6 +111,20 @@ model price_rate {
   id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   area_id    String    @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   area       area      @relation(fields: [area_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model review {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  space_id      String          @db.Uuid
+  user_id       BigInt?
+  rating_star   BigInt
+  description   String
+  created_at    DateTime        @default(now()) @db.Timestamptz(6)
+  common_review common_review[]
+  space         space           @relation(fields: [space_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user          user?           @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -136,6 +159,7 @@ model space {
   amenity            amenity[]
   area               area[]
   bookmark           bookmark[]
+  review             review[]
   user               user                      @relation(fields: [user_id], references: [user_id])
   space_availability space_availability[]
   space_image        space_image[]
@@ -204,6 +228,7 @@ model user {
   audit_event  audit_event[]
   booking      booking[]
   bookmark     bookmark[]
+  review       review[]
   space        space[]
   verification verification[]
 }
@@ -289,6 +314,26 @@ enum booking_status {
 enum booking_type {
   instant
   request
+}
+
+enum common_comment {
+  Clean
+  Well_maintained         @map("Well-maintained")
+  Quiet_workspace         @map("Quiet workspace")
+  Peaceful_environment    @map("Peaceful environment")
+  Cozy_atmosphere         @map("Cozy atmosphere")
+  Professional_vibe       @map("Professional vibe")
+  Inspiring_ambiance      @map("Inspiring ambiance")
+  Comfortable_seating     @map("Comfortable seating")
+  Spacious_desks          @map("Spacious desks")
+  Good_lighting           @map("Good lighting")
+  Comfortable_temperature @map("Comfortable temperature")
+  Reliable_internet       @map("Reliable internet")
+  Helpful_staff           @map("Helpful staff")
+  Responsive_host         @map("Responsive host")
+  Convenient_location     @map("Convenient location")
+  Secure_access           @map("Secure access")
+  Good_value              @map("Good value")
 }
 
 enum gateway {
