@@ -238,7 +238,7 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
       ? reviews
       : reviews.filter((review) => Math.round(review.rating_star) === selectedRatingFilter);
   const hasFilteredReviews = filteredModalReviews.length > 0;
-  const canOpenReviewsModal = !isLoading && !isError && reviewCount >= 3;
+  const canOpenReviewsModal = !isError && (reviewCount >= 3 || (data?.summary?.total_reviews ?? 0) >= 3);
   const handleRatingFilterToggle = (rating: number) => {
     setSelectedRatingFilter((current) => (current === rating ? null : rating));
   };
@@ -418,7 +418,7 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
             { canOpenReviewsModal && (
               <Dialog open={ isReviewsModalOpen } onOpenChange={ handleReviewsModalChange }>
                 <DialogTrigger asChild>
-                  <Button type="button" variant="ghost" size="sm">
+                  <Button type="button" variant="outline" size="sm" aria-label="See more reviews">
                     See more reviews
                   </Button>
                 </DialogTrigger>
