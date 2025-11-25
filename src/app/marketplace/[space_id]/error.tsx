@@ -14,7 +14,8 @@ type SpaceDetailErrorProps = {
 };
 
 export default function SpaceDetailError({
- error, reset: _reset, }: SpaceDetailErrorProps) {
+ error, reset: _reset, 
+}: SpaceDetailErrorProps) {
   useEffect(() => {
     console.error('Failed to render marketplace space detail page', error);
   }, [error]);
