@@ -13,14 +13,7 @@ export function SpaceDetailSkeleton() {
           </div>
         </div>
 
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-          <Skeleton className="h-[320px] rounded-2xl" />
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
-            { Array.from({ length: 4, }).map((_, index) => (
-              <Skeleton key={ index } className="h-[155px] rounded-2xl" />
-            )) }
-          </div>
-        </div>
+        <Skeleton className="h-[360px] w-full rounded-2xl sm:h-[420px]" />
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
           <div className="space-y-6">
