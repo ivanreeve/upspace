@@ -334,6 +334,7 @@ enum common_comment {
   Convenient_location     @map("Convenient location")
   Secure_access           @map("Secure access")
   Good_value              @map("Good value")
+  Sample_Comment          @map("Sample Comment")
 }
 
 enum gateway {
