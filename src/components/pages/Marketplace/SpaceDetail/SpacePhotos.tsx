@@ -196,7 +196,7 @@ export default function SpacePhotos({
       () => setGalleryOpen(true),
       'rounded-br-lg',
       (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/45 text-white backdrop-blur-[1px]">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50 text-white backdrop-blur-md">
           <span className="text-base font-semibold">See all photos</span>
           <span className="text-xs text-white/80">{ totalImages } photo{ totalImages === 1 ? '' : 's' }</span>
         </div>
