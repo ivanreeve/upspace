@@ -15,7 +15,7 @@ import {
   type SpaceReview
 } from '@/lib/api/reviews';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
+import { Badge, badgeVariants } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -29,6 +29,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 
 type ReviewsSectionProps = {
   spaceId: string;
@@ -94,10 +95,10 @@ function ReviewTagsSelector({
             key={ tag.value }
             type="button"
             onClick={ () => toggleTag(tag.value) }
-            className={ `
-              rounded-full border px-3 py-1 text-xs
-              ${isActive ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground'}
-            ` }
+            className={ cn(
+              badgeVariants({ variant: isActive ? 'default' : 'outline', }),
+              'cursor-pointer select-none'
+            ) }
             aria-pressed={ isActive }
           >
             { tag.label }
@@ -453,19 +454,15 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
                               key={ star }
                               type="button"
                               onClick={ () => handleRatingFilterToggle(star) }
-                              className={ `
-                                rounded-full border px-3 py-1 text-xs
-                                ${
-                                  isActive
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'bg-background text-muted-foreground'
-                                }
-                              ` }
+                              className={ cn(
+                                badgeVariants({ variant: isActive ? 'default' : 'outline', }),
+                                'cursor-pointer select-none'
+                              ) }
                               aria-pressed={ isActive }
                             >
                               <span className="flex items-center gap-1">
                                 { star }
-                                <FaStar className="size-3 text-yellow-400" aria-hidden="true" />
+                                <FaStar className="size-3 text-current" aria-hidden="true" />
                               </span>
                             </button>
                           );
@@ -473,14 +470,10 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
                         <button
                           type="button"
                           onClick={ () => setSelectedRatingFilter(null) }
-                          className={ `
-                            rounded-full border px-3 py-1 text-xs
-                            ${
-                              selectedRatingFilter === null
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-background text-muted-foreground'
-                            }
-                          ` }
+                          className={ cn(
+                            badgeVariants({ variant: selectedRatingFilter === null ? 'default' : 'outline', }),
+                            'cursor-pointer select-none'
+                          ) }
                           aria-pressed={ selectedRatingFilter === null }
                         >
                           All reviews
