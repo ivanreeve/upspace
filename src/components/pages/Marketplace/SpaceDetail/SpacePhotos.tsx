@@ -50,6 +50,57 @@ export default function SpacePhotos({
   const hasImages = Boolean(primaryImageUrl || galleryWithoutPrimary.length > 0);
   const totalImages = normalizedGallery.length;
   const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const tileImages = galleryWithoutPrimary.slice(0, 3);
+  const seeAllTileSpansTwo = tileImages.length !== 3;
+
+  type GridTile = {
+    key: string;
+    type: 'image' | 'seeAll';
+    image?: SpaceImageDisplay;
+    imageIndex?: number;
+    colSpan: 1 | 2;
+    row: number;
+    colStart: number;
+  };
+
+  const gridTiles: GridTile[] = [];
+  const gridColumns = 2;
+  let gridRow = 0;
+  let gridCol = 0;
+
+  const addTile = (tile: Omit<GridTile, 'row' | 'colStart'>) => {
+    if (gridCol + tile.colSpan > gridColumns) {
+      gridRow += 1;
+      gridCol = 0;
+    }
+
+    gridTiles.push({
+      ...tile,
+      row: gridRow,
+      colStart: gridCol,
+    });
+
+    gridCol += tile.colSpan;
+  };
+
+  tileImages.forEach((image, index) => {
+    const colSpan: 1 | 2 = tileImages.length === 1 ? 2 : 1;
+    addTile({
+      key: `gallery-tile-${image.id ?? image.url ?? index}`,
+      type: 'image',
+      image,
+      imageIndex: index,
+      colSpan,
+    });
+  });
+
+  addTile({
+    key: 'gallery-see-all',
+    type: 'seeAll',
+    colSpan: seeAllTileSpansTwo ? 2 : 1,
+  });
+
+  const lastGridRow = gridTiles[gridTiles.length - 1]?.row ?? 0;
 
   const formatCategoryLabel = (category: string | null) => {
     if (!category) return 'Uncategorized';
@@ -160,7 +211,7 @@ export default function SpacePhotos({
         </CardHeader>
         <CardContent className="px-0">
           { hasImages ? (
-            <div className="flex flex-col gap-2.5 lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:items-start xl:grid-cols-[minmax(0,1fr)_512px]">
+            <div className="flex flex-col gap-2.5 lg:grid lg:grid-cols-[minmax(0,1fr)_470px] lg:items-start xl:grid-cols-[minmax(0,1fr)_512px]">
               <figure className="group relative h-96 flex-1 cursor-pointer overflow-hidden rounded-tl-lg rounded-bl-lg border border-border/60 bg-muted sm:h-[28rem] lg:h-[30rem] xl:h-[32rem]">
                 { primaryImageUrl ? (
                   <Image
@@ -188,39 +239,36 @@ export default function SpacePhotos({
                 ) : null }
               </figure>
 
-              <div className="grid grid-cols-2 grid-rows-2 gap-2.5">
-                { Array.from({ length: 4, }).map((_, index) => {
-                  const tileImage = galleryWithoutPrimary[index];
-                  const imageSrc = tileImage?.url;
-                  const isSeeMoreSlot = index === 3;
-                  const isTopRightTile = index === 1;
-                  const isBottomRightTile = index === 3;
-                  const tileRoundingClass = isTopRightTile
-                    ? 'rounded-tr-lg'
-                    : isBottomRightTile
-                      ? 'rounded-br-lg'
-                      : '';
-
+              <div className="grid grid-cols-2 gap-2.5">
+                { gridTiles.map((tile) => {
+                  const isImageTile = tile.type === 'image' && tile.image;
+                  const endsAtRightEdge = tile.colStart + tile.colSpan === gridColumns;
+                  const tileRoundingClass = [
+                    tile.row === 0 && endsAtRightEdge ? 'rounded-tr-lg' : '',
+                    tile.row === lastGridRow && endsAtRightEdge ? 'rounded-br-lg' : ''
+                  ].filter(Boolean).join(' ');
+                  const aspectClass = tile.colSpan === 2 ? 'aspect-[2/1]' : 'aspect-square';
                   return (
-                    <figure key={ `gallery-tile-${index}` }>
+                    <figure
+                      key={ tile.key }
+                      className={ tile.colSpan === 2 ? 'col-span-2' : undefined }
+                    >
                       <div
-                        className={ `group relative aspect-square w-full cursor-pointer overflow-hidden border border-border/60 bg-muted ${tileRoundingClass}` }
+                        className={ `group relative w-full cursor-pointer overflow-hidden border border-border/60 bg-muted ${aspectClass} ${tileRoundingClass}` }
                       >
-                        { imageSrc ? (
+                        { isImageTile ? (
                           <Image
-                            src={ imageSrc }
-                            alt={ `${spaceName} gallery photo ${index + 1}` }
+                            src={ tile.image.url }
+                            alt={ `${spaceName} gallery photo ${(tile.imageIndex ?? 0) + 1}` }
                             fill
                             sizes="(min-width: 1280px) 160px, (min-width: 1024px) 140px, 45vw"
                             className="object-cover"
                           />
-                        ) : (
-                          <div className="h-full w-full" aria-hidden="true" />
-                        ) }
+                        ) : null }
                         <div
                           className={ `pointer-events-none absolute inset-0 bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100 ${tileRoundingClass}` }
                         />
-                        { isSeeMoreSlot ? (
+                        { tile.type === 'seeAll' ? (
                           <button
                             type="button"
                             onClick={ () => setGalleryOpen(true) }
@@ -229,14 +277,16 @@ export default function SpacePhotos({
                           >
                             See all photos
                           </button>
-                        ) : tileImage ? (
+                        ) : isImageTile ? (
                           <button
                             type="button"
-                            onClick={ () => openCarouselFromImage(tileImage) }
-                            aria-label={ `Open carousel for gallery photo ${index + 1}` }
+                            onClick={ () => openCarouselFromImage(tile.image) }
+                            aria-label={ `Open carousel for gallery photo ${(tile.imageIndex ?? 0) + 1}` }
                             className={ `absolute inset-0 ${tileRoundingClass || 'rounded-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background` }
                           >
-                            <span className="sr-only">Open carousel for gallery photo { index + 1 }</span>
+                            <span className="sr-only">
+                              Open carousel for gallery photo { (tile.imageIndex ?? 0) + 1 }
+                            </span>
                           </button>
                         ) : null }
                       </div>
