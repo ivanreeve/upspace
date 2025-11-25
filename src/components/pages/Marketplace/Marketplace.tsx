@@ -1541,7 +1541,7 @@ function MobileTopNav({
             <DropdownMenuContent
               align="end"
               side="bottom"
-              sideOffset={ 12 }
+              sideOffset={ 28 }
               className="z-[60] min-w-[240px] border border-border bg-card px-2 py-2 shadow-lg"
             >
               <div className="flex items-center gap-3 rounded-md px-2 py-3">
