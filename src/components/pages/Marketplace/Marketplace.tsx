@@ -456,7 +456,7 @@ export default function Marketplace() {
   const avatarUrl = session?.user?.user_metadata?.avatar_url
     ?? session?.user?.user_metadata?.picture
     ?? null;
-  const profileHandleLabel = userProfile?.handle ? `@${userProfile.handle}` : undefined;
+  const profileHandleLabel = userProfile?.handle ?? undefined;
   const preferredUsername = session?.user?.user_metadata?.preferred_username;
   const preferredUsernameLabel =
     preferredUsername && preferredUsername.includes('@') ? undefined : preferredUsername;
