@@ -50,58 +50,6 @@ export default function SpacePhotos({
   const hasImages = Boolean(primaryImageUrl || galleryWithoutPrimary.length > 0);
   const totalImages = normalizedGallery.length;
   const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const tileImages = galleryWithoutPrimary.slice(0, 3);
-  const seeAllTileSpansTwo = tileImages.length !== 3;
-
-  type GridTile = {
-    key: string;
-    type: 'image' | 'seeAll';
-    image?: SpaceImageDisplay;
-    imageIndex?: number;
-    colSpan: 1 | 2;
-    row: number;
-    colStart: number;
-  };
-
-  const gridTiles: GridTile[] = [];
-  const gridColumns = 2;
-  let gridRow = 0;
-  let gridCol = 0;
-
-  const addTile = (tile: Omit<GridTile, 'row' | 'colStart'>) => {
-    if (gridCol + tile.colSpan > gridColumns) {
-      gridRow += 1;
-      gridCol = 0;
-    }
-
-    gridTiles.push({
-      ...tile,
-      row: gridRow,
-      colStart: gridCol,
-    });
-
-    gridCol += tile.colSpan;
-  };
-
-  tileImages.forEach((image, index) => {
-    const colSpan: 1 | 2 = tileImages.length === 1 ? 2 : 1;
-    addTile({
-      key: `gallery-tile-${image.id ?? image.url ?? index}`,
-      type: 'image',
-      image,
-      imageIndex: index,
-      colSpan,
-    });
-  });
-
-  addTile({
-    key: 'gallery-see-all',
-    type: 'seeAll',
-    colSpan: seeAllTileSpansTwo ? 2 : 1,
-  });
-
-  const lastGridRow = gridTiles[gridTiles.length - 1]?.row ?? 0;
-  const gridRowCount = lastGridRow + 1;
 
   const formatCategoryLabel = (category: string | null) => {
     if (!category) return 'Uncategorized';
@@ -202,6 +150,166 @@ export default function SpacePhotos({
     });
   };
 
+  const renderPhotoTile = (
+    image: SpaceImageDisplay | null | undefined,
+    alt: string,
+    onClick: () => void,
+    className?: string,
+    overlay?: React.ReactNode,
+    blurBackground = false
+  ) => {
+    return (
+      <div
+        className={ `group relative h-full w-full overflow-hidden border border-border/60 bg-muted ${className ?? ''}` }
+      >
+        { image ? (
+          <Image
+            src={ image.url }
+            alt={ alt }
+            fill
+            sizes="(min-width: 1280px) 360px, (min-width: 1024px) 300px, 100vw"
+            className={ `object-cover ${blurBackground ? 'scale-105 blur-[2px] brightness-50' : ''}` }
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+            No preview
+          </div>
+        ) }
+        <div className="pointer-events-none absolute inset-0 bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100" />
+        { overlay }
+        <button
+          type="button"
+          onClick={ onClick }
+          aria-label={ alt }
+          className="absolute inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          <span className="sr-only">{ alt }</span>
+        </button>
+      </div>
+    );
+  };
+
+  const renderSeeMoreTile = (previewImage: SpaceImageDisplay | null | undefined) => {
+    return renderPhotoTile(
+      previewImage,
+      'Open full image gallery',
+      () => setGalleryOpen(true),
+      'rounded-br-lg',
+      (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/45 text-white backdrop-blur-[1px]">
+          <span className="text-base font-semibold">See all photos</span>
+          <span className="text-xs text-white/80">{ totalImages } photo{ totalImages === 1 ? '' : 's' }</span>
+        </div>
+      ),
+      true
+    );
+  };
+
+  const primaryFigure = (
+    <figure className="group relative w-full cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-muted h-96 sm:h-[28rem] lg:h-[30rem] xl:h-[32rem]">
+      { primaryImageUrl ? (
+        <Image
+          src={ primaryImageUrl }
+          alt={ `${spaceName} featured photo` }
+          fill
+          sizes="(min-width: 1280px) 55vw, (min-width: 1024px) 65vw, 100vw"
+          className="object-cover"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+          Missing public URL
+        </div>
+      ) }
+      <div className="pointer-events-none absolute inset-0 rounded-lg bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100" />
+      { primaryImage ? (
+        <button
+          type="button"
+          onClick={ () => openCarouselFromImage(primaryImage) }
+          aria-label="Open featured photo carousel"
+          className="absolute inset-0 z-10 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          <span className="sr-only">Open featured photo carousel</span>
+        </button>
+      ) : null }
+    </figure>
+  );
+
+  const layout = (() => {
+    if (totalImages === 1) {
+      return primaryFigure;
+    }
+
+    if (totalImages === 2) {
+      const secondary = galleryWithoutPrimary[0] ?? null;
+      return (
+        <div className="grid gap-2.5 lg:grid-cols-2">
+          { primaryFigure }
+          { renderPhotoTile(
+            secondary,
+            `${spaceName} gallery photo 2`,
+            () => openCarouselFromImage(secondary),
+            'rounded-lg min-h-[16rem]'
+          ) }
+        </div>
+      );
+    }
+
+    if (totalImages === 3) {
+      const [topTile, bottomTile] = galleryWithoutPrimary;
+      return (
+        <div className="grid gap-2.5 lg:grid-cols-2">
+          { primaryFigure }
+          <div className="grid h-full min-h-[22rem] grid-rows-2 gap-2.5">
+            { renderPhotoTile(
+              topTile,
+              `${spaceName} gallery photo 2`,
+              () => openCarouselFromImage(topTile),
+              'rounded-tr-lg'
+            ) }
+            { renderPhotoTile(
+              bottomTile,
+              `${spaceName} gallery photo 3`,
+              () => openCarouselFromImage(bottomTile),
+              'rounded-br-lg'
+            ) }
+          </div>
+        </div>
+      );
+    }
+
+    const topTile = galleryWithoutPrimary[0] ?? null;
+    const middleTile = galleryWithoutPrimary[1] ?? null;
+    const bottomTile = galleryWithoutPrimary[2] ?? null;
+    const isFiveOrMore = totalImages >= 5;
+
+    return (
+      <div className="grid gap-2.5 lg:grid-cols-2">
+        { primaryFigure }
+        <div className="grid h-full min-h-[24rem] grid-rows-[2fr_1fr_1fr] gap-2.5">
+          { renderPhotoTile(
+            topTile,
+            `${spaceName} gallery photo 2`,
+            () => openCarouselFromImage(topTile),
+            'rounded-tr-lg'
+          ) }
+          { renderPhotoTile(
+            middleTile,
+            `${spaceName} gallery photo 3`,
+            () => openCarouselFromImage(middleTile)
+          ) }
+          { isFiveOrMore
+            ? renderSeeMoreTile(bottomTile ?? topTile ?? middleTile ?? primaryImage)
+            : renderPhotoTile(
+                bottomTile,
+                `${spaceName} gallery photo 4`,
+                () => openCarouselFromImage(bottomTile),
+                'rounded-br-lg'
+              ) }
+        </div>
+      </div>
+    );
+  })();
+
   return (
     <>
       <Card className="border-0 bg-background/80">
@@ -212,92 +320,7 @@ export default function SpacePhotos({
         </CardHeader>
         <CardContent className="px-0">
           { hasImages ? (
-            <div className="flex flex-col gap-2.5 lg:grid lg:grid-cols-[minmax(0,1fr)_470px] lg:items-start xl:grid-cols-[minmax(0,1fr)_512px]">
-              <figure className="group relative h-96 flex-1 cursor-pointer overflow-hidden rounded-tl-lg rounded-bl-lg border border-border/60 bg-muted sm:h-[28rem] lg:h-[30rem] xl:h-[32rem]">
-                { primaryImageUrl ? (
-                  <Image
-                    src={ primaryImageUrl }
-                    alt={ `${spaceName} featured photo` }
-                    fill
-                    sizes="(min-width: 1280px) 55vw, (min-width: 1024px) 65vw, 100vw"
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-                    Missing public URL
-                  </div>
-                ) }
-                <div className="pointer-events-none absolute inset-0 rounded-tl-lg rounded-bl-lg bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100 lg:rounded-l-lg" />
-                { primaryImage ? (
-                  <button
-                    type="button"
-                    onClick={ () => openCarouselFromImage(primaryImage) }
-                    aria-label="Open featured photo carousel"
-                    className="absolute inset-0 z-10 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                  >
-                    <span className="sr-only">Open featured photo carousel</span>
-                  </button>
-                ) : null }
-              </figure>
-
-              <div
-                className="grid grid-cols-2 gap-2.5"
-                style={ { gridTemplateRows: `repeat(${gridRowCount}, minmax(160px, 1fr))`, } }
-              >
-                { gridTiles.map((tile) => {
-                  const isImageTile = tile.type === 'image' && tile.image;
-                  const endsAtRightEdge = tile.colStart + tile.colSpan === gridColumns;
-                  const tileRoundingClass = [
-                    tile.row === 0 && endsAtRightEdge ? 'rounded-tr-lg' : '',
-                    tile.row === lastGridRow && endsAtRightEdge ? 'rounded-br-lg' : ''
-                  ].filter(Boolean).join(' ');
-                  return (
-                    <figure
-                      key={ tile.key }
-                      className={ `h-full min-h-[160px] ${tile.colSpan === 2 ? 'col-span-2' : ''}` }
-                    >
-                      <div
-                        className={ `group relative h-full w-full cursor-pointer overflow-hidden border border-border/60 bg-muted ${tileRoundingClass}` }
-                      >
-                        { isImageTile ? (
-                          <Image
-                            src={ tile.image.url }
-                            alt={ `${spaceName} gallery photo ${(tile.imageIndex ?? 0) + 1}` }
-                            fill
-                            sizes="(min-width: 1280px) 160px, (min-width: 1024px) 140px, 45vw"
-                            className="object-cover"
-                          />
-                        ) : null }
-                        <div
-                          className={ `pointer-events-none absolute inset-0 bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100 ${tileRoundingClass}` }
-                        />
-                        { tile.type === 'seeAll' ? (
-                          <button
-                            type="button"
-                            onClick={ () => setGalleryOpen(true) }
-                            aria-label="Open full image gallery"
-                            className={ `absolute inset-0 flex items-center justify-center ${tileRoundingClass || 'rounded-md'} bg-background/55 text-sm font-medium text-foreground backdrop-blur-md transition hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background` }
-                          >
-                            See all photos
-                          </button>
-                        ) : isImageTile ? (
-                          <button
-                            type="button"
-                            onClick={ () => openCarouselFromImage(tile.image) }
-                            aria-label={ `Open carousel for gallery photo ${(tile.imageIndex ?? 0) + 1}` }
-                            className={ `absolute inset-0 ${tileRoundingClass || 'rounded-md'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background` }
-                          >
-                            <span className="sr-only">
-                              Open carousel for gallery photo { (tile.imageIndex ?? 0) + 1 }
-                            </span>
-                          </button>
-                        ) : null }
-                      </div>
-                    </figure>
-                  );
-                }) }
-              </div>
-            </div>
+            layout
           ) : (
             <p className="text-sm text-muted-foreground">No photos uploaded yet.</p>
           ) }
