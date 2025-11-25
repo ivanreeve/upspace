@@ -336,7 +336,7 @@ right: 0,
     <div
       aria-hidden="true"
       style={ overlayStyles }
-      className="pointer-events-none fixed bottom-0 z-30 h-[20vh] bg-gradient-to-t from-background via-background/50 to-background/0 transition-all duration-300"
+      className="pointer-events-none fixed bottom-0 z-30 h-[20vh] bg-gradient-to-t from-background via-background/50 to-background/0"
     />
   );
 }

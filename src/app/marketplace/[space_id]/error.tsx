@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { FiArrowLeft } from 'react-icons/fi';
 
 import { MarketplaceErrorState } from '@/components/pages/Marketplace/Marketplace.ErrorState';
-import { MarketplaceChrome } from '@/components/pages/Marketplace/MarketplaceChrome';
+import { SpaceDetailShell } from '@/components/pages/Marketplace/SpaceDetail/SpaceDetailShell';
 import { Button } from '@/components/ui/button';
 import { Footer } from '@/components/ui/footer';
 
@@ -22,7 +22,7 @@ export default function SpaceDetailError({
   }, [error]);
 
   return (
-    <MarketplaceChrome>
+    <SpaceDetailShell>
       <div className="bg-background">
         <div className="mx-auto flex max-w-[1100px] flex-col items-center space-y-5 px-4 pb-16">
           <MarketplaceErrorState />
@@ -37,6 +37,6 @@ export default function SpaceDetailError({
         </div>
       </div>
       <Footer />
-    </MarketplaceChrome>
+    </SpaceDetailShell>
   );
 }

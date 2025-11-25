@@ -1,10 +1,10 @@
 'use client';
 
 import {
-useCallback,
-useEffect,
-useMemo,
-useState
+  useCallback,
+  useEffect,
+  useMemo,
+  useState
 } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Space } from '@/lib/api/spaces';
+import { cn } from '@/lib/utils';
 
 const peso = new Intl.NumberFormat('en-PH', {
   style: 'currency',
@@ -142,12 +143,17 @@ export function SpaceCard({ space, }: { space: Space }) {
           aria-busy={ isSaving }
           aria-pressed={ isSaved }
           aria-label={ isSaved ? 'Remove from saved spaces' : 'Save this space' }
-          className="absolute right-3 top-3 rounded-full bg-black/30 cursor-pointer backdrop-blur-2xl p-2 text-white shadow-md transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-70"
+          className={ cn(
+            'absolute right-3 top-3 rounded-full cursor-pointer backdrop-blur-2xl p-2 shadow-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-70',
+            isSaved
+              ? 'bg-white text-rose-600 ring-offset-black/30'
+              : 'bg-black/30 text-white hover:bg-black/70'
+          ) }
         >
           { isSaving ? (
             <CgSpinner className="size-5 animate-spin" aria-hidden="true" />
           ) : isSaved ? (
-            <FaHeart aria-hidden="true" className="size-5 text-rose-500 fill-rose-500" />
+            <FaHeart aria-hidden="true" className="size-5 text-rose-600 fill-rose-600" />
           ) : (
             <FaRegHeart aria-hidden="true" className="size-5" />
           ) }

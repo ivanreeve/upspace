@@ -24,10 +24,6 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
   const locationParts = [space.city, space.region, space.countryCode].filter(Boolean);
   const location = locationParts.length > 0 ? locationParts.join(', ') : 'Global City, Taguig';
 
-  const rating = {
-    score: space.averageRating,
-    count: space.totalReviews,
-  };
   const hostName = 'Trisha M.';
 
   const overviewFallback =
@@ -75,7 +71,6 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
 
         <SpaceHeader
           name={ space.name }
-          rating={ rating }
           location={ location }
           spaceId={ space.id }
           isBookmarked={ space.isBookmarked }
