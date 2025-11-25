@@ -256,11 +256,6 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
     ],
   };
 
-  const maxBreakdownCount = summary.breakdown.reduce(
-    (max, entry) => (entry.count > max ? entry.count : max),
-    0
-  );
-
   const hasReviews = (data?.reviews?.length ?? 0) > 0;
 
   return (
@@ -367,8 +362,8 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
           ) : (
             <div className="space-y-2">
               { summary.breakdown.map((entry) => {
-                const widthPercent = maxBreakdownCount
-                  ? (entry.count / maxBreakdownCount) * 100
+                const widthPercent = summary.total_reviews
+                  ? (entry.count / summary.total_reviews) * 100
                   : 0;
                 return (
                   <div
