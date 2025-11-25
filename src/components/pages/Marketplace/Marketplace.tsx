@@ -144,7 +144,11 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
   return debounced;
 }
 
-export default function Marketplace() {
+type MarketplaceProps = {
+  initialSidebarOpen?: boolean
+};
+
+export default function Marketplace({ initialSidebarOpen, }: MarketplaceProps) {
   const [filters, setFilters] = React.useState<FiltersState>(DEFAULT_FILTERS);
   const [pendingFilters, setPendingFilters] = React.useState<FiltersState>(DEFAULT_FILTERS);
   const [searchValue, setSearchValue] = React.useState('');
@@ -290,6 +294,7 @@ export default function Marketplace() {
   return (
     <MarketplaceChrome
       onSearchOpen={ openSearchModal }
+      initialSidebarOpen={ initialSidebarOpen }
       dialogSlot={ (
         <MarketplaceSearchDialog
           open={ isSearchOpen }

@@ -6,6 +6,7 @@ import { cva, VariantProps } from 'class-variance-authority';
 import { PanelLeftIcon } from 'lucide-react';
 
 import { useIsMobile } from '@/hooks/use-mobile';
+import { SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,7 +26,6 @@ import {
   TooltipTrigger
 } from '@/components/ui/tooltip';
 
-const SIDEBAR_COOKIE_NAME = 'sidebar_state';
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = '16rem';
 const SIDEBAR_WIDTH_MOBILE = '18rem';
@@ -55,6 +55,7 @@ function useSidebar() {
 
 function SidebarProvider({
   defaultOpen = true,
+  initialOpen,
   open: openProp,
   onOpenChange: setOpenProp,
   className,
@@ -63,6 +64,7 @@ function SidebarProvider({
   ...props
 }: React.ComponentProps<'div'> & {
   defaultOpen?: boolean
+  initialOpen?: boolean
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }) {
@@ -71,7 +73,7 @@ function SidebarProvider({
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
-  const [_open, _setOpen] = React.useState(defaultOpen);
+  const [_open, _setOpen] = React.useState(initialOpen ?? defaultOpen);
   const open = openProp ?? _open;
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
@@ -83,24 +85,24 @@ function SidebarProvider({
       }
 
       // This sets the cookie to keep the sidebar state.
-      document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+      document.cookie = `${SIDEBAR_STATE_COOKIE}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
     },
     [setOpenProp, open]
   );
 
   React.useEffect(() => {
-    if (openProp !== undefined) return;
+    if (openProp !== undefined || initialOpen !== undefined) return;
     if (typeof document === 'undefined') return;
 
     const storedState = document.cookie
       .split('; ')
-      .find((cookie) => cookie.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
+      .find((cookie) => cookie.startsWith(`${SIDEBAR_STATE_COOKIE}=`))
       ?.split('=')[1];
 
     if (storedState === 'true' || storedState === 'false') {
       _setOpen(storedState === 'true');
     }
-  }, [_setOpen, openProp]);
+  }, [_setOpen, initialOpen, openProp]);
 
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {

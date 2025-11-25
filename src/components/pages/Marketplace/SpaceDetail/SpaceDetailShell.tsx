@@ -17,9 +17,13 @@ import { Kbd } from '@/components/ui/kbd';
 
 type SpaceDetailShellProps = {
   children: React.ReactNode
+  initialSidebarOpen?: boolean
 };
 
-export function SpaceDetailShell({ children, }: SpaceDetailShellProps) {
+export function SpaceDetailShell({
+  children,
+  initialSidebarOpen,
+}: SpaceDetailShellProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const router = useRouter();
@@ -44,6 +48,7 @@ export function SpaceDetailShell({ children, }: SpaceDetailShellProps) {
 
   return (
     <MarketplaceChrome
+      initialSidebarOpen={ initialSidebarOpen }
       onSearchOpen={ handleSearchOpen }
       dialogSlot={ (
         <CommandDialog

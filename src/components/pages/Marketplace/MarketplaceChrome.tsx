@@ -50,6 +50,7 @@ type MarketplaceChromeProps = {
   onSearchOpen?: () => void
   insetClassName?: string
   insetStyle?: React.CSSProperties
+  initialSidebarOpen?: boolean
 };
 
 type SidebarFooterContentProps = {
@@ -387,6 +388,7 @@ export function MarketplaceChrome({
   onSearchOpen,
   insetClassName,
   insetStyle,
+  initialSidebarOpen,
 }: MarketplaceChromeProps) {
   const navData = useMarketplaceNavData();
   const isMobile = useIsMobile();
@@ -409,7 +411,7 @@ export function MarketplaceChrome({
   }, [navData.onNavigate, onSearchOpen]);
 
   return (
-    <SidebarProvider className="bg-background min-h-screen">
+    <SidebarProvider className="bg-background min-h-screen" initialOpen={ initialSidebarOpen }>
       { dialogSlot }
       { isMobile && (
         <MobileTopNav
