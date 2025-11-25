@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FiStar } from 'react-icons/fi';
+import { FaStar } from 'react-icons/fa';
 import { toast } from 'sonner';
 
 import { COMMON_REVIEW_TAGS } from '@/data/reviews';
@@ -53,7 +53,7 @@ function StarRatingSelector({
             role="radio"
             aria-checked={ isActive }
           >
-            <FiStar
+            <FaStar
               className={ `size-5 ${
                 isActive ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'
               }` }
@@ -130,7 +130,7 @@ function ReviewCard({ review, }: { review: SpaceReview }) {
           </div>
         </div>
         <div className="flex items-center gap-1 text-sm text-foreground">
-          <FiStar className="size-4 text-yellow-400" aria-hidden="true" />
+          <FaStar className="size-4 text-yellow-400" aria-hidden="true" />
           <span className="font-medium">{ review.rating_star.toFixed(1) }</span>
         </div>
       </header>
@@ -246,7 +246,7 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 text-lg font-medium text-foreground">
-            <FiStar className="size-5 text-yellow-400" aria-hidden="true" />
+            <FaStar className="size-5 text-yellow-400" aria-hidden="true" />
             <span>
               { summary.total_reviews > 0
                 ? summary.average_rating.toFixed(1)
@@ -336,7 +336,7 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
                   >
                     <div className="flex items-center gap-1 w-8">
                       <span>{ entry.rating }</span>
-                      <FiStar className="size-3 text-muted-foreground" aria-hidden="true" />
+                      <FaStar className="size-3 text-muted-foreground" aria-hidden="true" />
                     </div>
                     <div className="relative h-2 flex-1 rounded-full bg-muted">
                       <div
