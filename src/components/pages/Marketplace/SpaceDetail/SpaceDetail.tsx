@@ -71,8 +71,6 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
           <BookingCard spaceName={ space.name } />
         </div>
 
-        <AreasWithRates areas={ space.areas } />
-
         <AvailabilityTable items={ space.availability } />
 
         <section className="space-y-4 border-b pb-6">
@@ -97,6 +95,8 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
         </section>
 
         <AmenitiesList amenities={ space.amenities } features={ [] } />
+
+        <AreasWithRates areas={ space.areas } />
 
         <ReviewsSection spaceId={ space.id } />
 
