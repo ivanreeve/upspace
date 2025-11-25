@@ -10,7 +10,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { CgSpinner } from 'react-icons/cg';
 import { FiStar } from 'react-icons/fi';
-import { FaHeart, FaRegHeart } from 'react-icons/fa';
+import { FaHeart, FaRegHeart, FaStar } from 'react-icons/fa';
 import { toast } from 'sonner';
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -122,7 +122,7 @@ export function SpaceCard({ space, }: { space: Space }) {
   }, [isSaved, isSaving, space.space_id]);
 
   return (
-    <Card className="w-full group flex flex-col overflow-hidden text-card-foreground border-none bg-transparent shadow-none py-0 !gap-3">
+    <Card className="w-full rounded-none group flex flex-col overflow-hidden text-card-foreground border-none bg-transparent shadow-none py-0 !gap-3">
       <div className="relative aspect-[16/9] w-full overflow-hidden">
         { space.image_url ? (
           <Image
@@ -164,7 +164,7 @@ export function SpaceCard({ space, }: { space: Space }) {
           <span className="text-sm text-muted-foreground">{ priceLabel }</span>
         </Link>
         <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-          <FiStar
+          <FaStar
             className={ `size-3 ${
               (space.total_reviews ?? 0) > 0 ? 'text-yellow-400' : 'text-muted-foreground'
             }` }
