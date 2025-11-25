@@ -127,6 +127,8 @@ export type MarketplaceSpaceDetail = {
   name: string;
   isBookmarked: boolean;
   description: string;
+  averageRating: number;
+  totalReviews: number;
   unitNumber: string;
   addressSubunit: string;
   street: string;
@@ -275,6 +277,17 @@ export async function getSpaceDetail(
     return null;
   }
 
+  const reviewAggregate = await prisma.review.aggregate({
+    where: { space_id: spaceId, },
+    _avg: { rating_star: true, },
+    _count: { _all: true, },
+  });
+
+  const averageRating = reviewAggregate._avg.rating_star === null
+    ? 0
+    : Number(reviewAggregate._avg.rating_star);
+  const totalReviews = reviewAggregate._count?._all ?? 0;
+
   const status = deriveSpaceStatus(space);
   const {
     hero,
@@ -298,6 +311,8 @@ export async function getSpaceDetail(
     name: space.name,
     isBookmarked,
     description: space.description ?? '',
+    averageRating,
+    totalReviews,
     unitNumber: space.unit_number,
     addressSubunit: space.address_subunit,
     street: space.street,

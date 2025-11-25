@@ -18,8 +18,8 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
   const location = locationParts.length > 0 ? locationParts.join(', ') : 'Global City, Taguig';
 
   const rating = {
-    score: 0,
-    count: 0,
+    score: space.averageRating,
+    count: space.totalReviews,
   };
   const hostName = 'Trisha M.';
 
