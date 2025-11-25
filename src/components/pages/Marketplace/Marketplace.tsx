@@ -1527,7 +1527,7 @@ function MobileTopNav({
               <button
                 type="button"
                 aria-label="Open account menu"
-                className="rounded-full p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="rounded-full p-1 transition-colors focus-visible:outline-none focus-visible:bg-muted/60"
               >
                 <Avatar className="size-8 border border-border">
                   { avatarUrl ? (

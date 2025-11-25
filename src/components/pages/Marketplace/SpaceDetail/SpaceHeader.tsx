@@ -14,6 +14,7 @@ import {
   FaInstagram,
   FaHeart,
   FaRegHeart,
+  FaStar,
   FaTelegramPlane
 } from 'react-icons/fa';
 import { FaXTwitter } from 'react-icons/fa6';
@@ -185,7 +186,8 @@ icon: FaTelegramPlane,
         <div className="space-y-2">
           <h1 className="text-3xl font-semibold text-foreground">{ name }</h1>
           <p className="text-sm text-muted-foreground">
-            * { rating.score.toFixed(1) } - { rating.count } reviews - { location }
+            <FaStar className="mr-1 inline-block size-4 text-yellow-400" aria-hidden="true" />
+            { rating.score.toFixed(1) } • { rating.count } reviews • { location }
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm text-foreground">
