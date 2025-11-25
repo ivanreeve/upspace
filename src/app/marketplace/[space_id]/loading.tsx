@@ -5,8 +5,9 @@ import { SpaceDetailShell } from '@/components/pages/Marketplace/SpaceDetail/Spa
 import { Footer } from '@/components/ui/footer';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
 
-export default function LoadingSpaceDetailPage() {
-  const sidebarCookie = cookies().get(SIDEBAR_STATE_COOKIE)?.value;
+export default async function LoadingSpaceDetailPage() {
+  const cookieStore = await cookies();
+  const sidebarCookie = cookieStore.get(SIDEBAR_STATE_COOKIE)?.value;
   const initialSidebarOpen = parseSidebarState(sidebarCookie);
 
   return (
