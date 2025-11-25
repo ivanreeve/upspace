@@ -3,13 +3,17 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   FiBell,
   FiCommand,
   FiHome,
   FiLoader,
   FiList,
+  FiLogOut,
   FiSearch,
+  FiSettings,
+  FiUser,
   FiX
 } from 'react-icons/fi';
 import { TbLayoutSidebarFilled } from 'react-icons/tb';
@@ -53,6 +57,13 @@ import {
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -82,6 +93,7 @@ import { AMENITY_CATEGORY_DISPLAY_MAP } from '@/lib/amenity/amenity_category_dis
 import { AMENITY_ICON_MAPPINGS } from '@/lib/amenity/amenity_icon_mappings';
 import { cn } from '@/lib/utils';
 import { useUserProfile } from '@/hooks/use-user-profile';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 type FiltersState = {
   q: string;
@@ -209,14 +221,22 @@ function SidebarFooterContent({
   avatarFallback,
   avatarDisplayName,
   resolvedHandleLabel,
+  userEmail,
+  onNavigate,
+  onLogout,
 }: {
   avatarUrl: string | null
   avatarFallback: string
   avatarDisplayName: string
   resolvedHandleLabel: string | undefined
+  userEmail: string | null
+  onNavigate: (href: string) => void
+  onLogout: () => Promise<void> | void
 }) {
   const { state, } = useSidebar();
   const isCollapsed = state === 'collapsed';
+  const secondaryLabel = resolvedHandleLabel ?? userEmail ?? 'Account';
+  const emailLabel = userEmail ?? 'Email unavailable';
 
   return (
     <div
@@ -231,35 +251,80 @@ function SidebarFooterContent({
       />
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton
-            asChild
-            tooltip={ isCollapsed ? undefined : 'Account' }
-            className={ cn('w-full ml-[-5px]', isCollapsed && 'justify-center') }
-          >
-            <Link href="/onboarding" className={ `flex items-center gap-3 py-8 ${isCollapsed ? 'ml-[-10px]' : ''}` }>
-            
-              <Avatar className={ cn('size-9', isCollapsed && 'size-8') }>
-                { avatarUrl ? (
-                  <AvatarImage src={ avatarUrl } alt="User avatar" />
-                ) : (
-                  <AvatarFallback>{ avatarFallback }</AvatarFallback>
-                ) }
-              </Avatar>
-              { !isCollapsed && (
-                <div className="flex min-w-0 flex-col text-left">
-                  <span className="text-sm font-semibold leading-tight">{ avatarDisplayName }</span>
-                  { resolvedHandleLabel && (
-                    <span className="text-xs text-muted-foreground truncate">
-                      { resolvedHandleLabel }
-                    </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuButton
+                type="button"
+                tooltip={ isCollapsed ? 'Open account menu' : undefined }
+                className={ cn('w-full ml-[-5px]', isCollapsed ? 'justify-center' : 'justify-start') }
+                aria-label="Open account menu"
+              >
+                <Avatar className={ cn('size-9', isCollapsed && 'size-8') }>
+                  { avatarUrl ? (
+                    <AvatarImage src={ avatarUrl } alt="User avatar" />
+                  ) : (
+                    <AvatarFallback>{ avatarFallback }</AvatarFallback>
                   ) }
+                </Avatar>
+                { !isCollapsed && (
+                  <div className="flex min-w-0 flex-col text-left">
+                    <span className="text-sm font-semibold leading-tight">{ avatarDisplayName }</span>
+                    { secondaryLabel && (
+                      <span className="text-xs text-muted-foreground truncate">
+                        { secondaryLabel }
+                      </span>
+                    ) }
+                  </div>
+                ) }
+                <span className="sr-only">
+                  { `Open account menu for ${avatarDisplayName}${resolvedHandleLabel ? ` (${resolvedHandleLabel})` : ''}` }
+                </span>
+              </SidebarMenuButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              side="right"
+              align="end"
+              sideOffset={ 8 }
+              className="w-64 border border-border bg-card p-2 shadow-lg"
+            >
+              <div className="flex items-center gap-3 rounded-md px-2 py-3">
+                <Avatar className="size-11 border border-border">
+                  { avatarUrl ? (
+                    <AvatarImage src={ avatarUrl } alt="User avatar" />
+                  ) : (
+                    <AvatarFallback>{ avatarFallback }</AvatarFallback>
+                  ) }
+                </Avatar>
+                <div className="flex min-w-0 flex-col">
+                  <span className="text-sm font-semibold leading-tight">{ avatarDisplayName }</span>
+                  <span className="text-xs text-muted-foreground truncate">{ emailLabel }</span>
                 </div>
-              ) }
-              <span className="sr-only">
-                { `Open account for ${avatarDisplayName}${resolvedHandleLabel ? ` (${resolvedHandleLabel})` : ''}` }
-              </span>
-            </Link>
-          </SidebarMenuButton>
+              </div>
+              <DropdownMenuSeparator className="my-1" />
+              <DropdownMenuItem
+                onSelect={ () => onNavigate('/onboarding') }
+              >
+                <FiUser className="size-4" aria-hidden="true" />
+                <span>Account</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={ () => onNavigate('/settings') }>
+                <FiSettings className="size-4" aria-hidden="true" />
+                <span>Settings</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={ () => onNavigate('/notifications') }>
+                <FiBell className="size-4" aria-hidden="true" />
+                <span>Notifications</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="my-1" />
+              <DropdownMenuItem
+                className="text-destructive focus-visible:text-destructive"
+                onSelect={ () => { void onLogout(); } }
+              >
+                <FiLogOut className="size-4" aria-hidden="true" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>
     </div>
@@ -294,6 +359,7 @@ export default function Marketplace() {
   }, []);
   const isMobile = useIsMobile();
   const { session, } = useSession();
+  const router = useRouter();
   const { data: userProfile, } = useUserProfile();
   const mobileInsetPadding = React.useMemo<React.CSSProperties | undefined>(
     () => (isMobile
@@ -402,6 +468,21 @@ export default function Marketplace() {
   const avatarDisplayName =
     resolvedHandleLabel
     ?? 'UpSpace User';
+  const userEmail = session?.user?.email ?? null;
+  const handleNavigation = React.useCallback((href: string) => {
+    router.push(href);
+  }, [router]);
+  const handleLogout = React.useCallback(async () => {
+    const supabase = getSupabaseBrowserClient();
+    const { error, } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error('Supabase sign-out failed', error);
+      return;
+    }
+
+    router.refresh();
+  }, [router]);
 
   const content = (
     <section className="relative mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 lg:px-10">
@@ -502,6 +583,9 @@ export default function Marketplace() {
               avatarFallback={ avatarFallback }
               avatarDisplayName={ avatarDisplayName }
               resolvedHandleLabel={ resolvedHandleLabel }
+              userEmail={ userEmail }
+              onNavigate={ handleNavigation }
+              onLogout={ handleLogout }
             />
           </SidebarFooter>
           <SidebarRail />
