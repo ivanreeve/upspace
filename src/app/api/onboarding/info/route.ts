@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
+import { ensureUserProfile } from '@/lib/auth/user-profile';
 import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { ALLOWED_USER_ROLES } from '@/lib/user-roles';
@@ -50,6 +51,22 @@ export async function POST(request: Request) {
     const authUser = authData.user;
     if (!authUser) {
       return NextResponse.json({ message: 'Authentication required.', }, { status: 401, });
+    }
+
+    try {
+      await ensureUserProfile({
+        authUserId: authUser.id,
+        preferredHandle: null,
+        avatarUrl: authUser.user_metadata?.avatar_url ?? null,
+        email: authUser.email ?? null,
+        metadata: authUser.user_metadata ?? {},
+      });
+    } catch (dbError) {
+      console.error('Failed to ensure user profile before onboarding update', dbError);
+      return NextResponse.json(
+        { message: 'Unable to prepare your profile for onboarding.', },
+        { status: 500, }
+      );
     }
 
     const birthdayDate = parsed.data.birthday

@@ -1,3 +1,7 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react';
+
 import SpaceHeader from './SpaceHeader';
 import SpacePhotos from './SpacePhotos';
 import HostInfo from './HostInfo';
@@ -10,8 +14,11 @@ import AvailabilityTable from './AvailabilityTable';
 import SpaceBreadcrumbs from './SpaceBreadcrumbs';
 
 import { SPACE_DESCRIPTION_VIEWER_CLASSNAME } from '@/components/pages/Spaces/space-description-rich-text';
+import { Button } from '@/components/ui/button';
 import type { MarketplaceSpaceDetail } from '@/lib/queries/space';
 import { sanitizeRichText } from '@/lib/rich-text';
+
+const DESCRIPTION_COLLAPSED_HEIGHT = 360; // px
 
 export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail }) {
   const locationParts = [space.city, space.region, space.countryCode].filter(Boolean);
@@ -29,6 +36,37 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
   const rawAbout = space.description?.trim();
   const aboutSource = rawAbout && rawAbout.length > 0 ? rawAbout : `<p>${overviewFallback}</p>`;
   const aboutHtml = sanitizeRichText(aboutSource);
+
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [isDescriptionOverflowing, setIsDescriptionOverflowing] = useState(false);
+  const descriptionRef = useRef<HTMLDivElement | null>(null);
+  const descriptionViewportId = `space-description-${space.id}`;
+
+  useEffect(() => {
+    const element = descriptionRef.current;
+    if (!element) {
+      return;
+    }
+
+    const updateOverflowState = () => {
+      const hasOverflow = element.scrollHeight > DESCRIPTION_COLLAPSED_HEIGHT;
+      setIsDescriptionOverflowing(hasOverflow);
+    };
+
+    updateOverflowState();
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const resizeObserver = new ResizeObserver(updateOverflowState);
+      resizeObserver.observe(element);
+
+      return () => resizeObserver.disconnect();
+    }
+
+    return undefined;
+  }, [aboutHtml]);
+
+  const shouldClampDescription = !isDescriptionExpanded;
+  const shouldShowGradient = shouldClampDescription && isDescriptionOverflowing;
 
   return (
     <main className="bg-background">
@@ -55,16 +93,43 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
 
             <section className="space-y-4 border-b pb-6">
               <h2 className="text-xl font-medium text-foreground">About { space.name }</h2>
-              <div
-                className={ `
-                  ${SPACE_DESCRIPTION_VIEWER_CLASSNAME}
-                  whitespace-pre-line
-                  [&_p]:my-3 [&_p:first-of-type]:mt-0 [&_p:last-of-type]:mb-0
-                  [&_ul]:my-3 [&_ol]:my-3 [&_li]:leading-relaxed
-                  [&_h1]:mt-5 [&_h2]:mt-4 [&_h3]:mt-3
-                ` }
-                dangerouslySetInnerHTML={ { __html: aboutHtml, } }
-              />
+              <div className="space-y-3">
+                <div
+                  className={ `
+                    relative
+                    ${shouldClampDescription ? 'max-h-[360px] overflow-hidden' : ''}
+                  ` }
+                >
+                  <div
+                    id={ descriptionViewportId }
+                    ref={ descriptionRef }
+                    className={ `
+                      ${SPACE_DESCRIPTION_VIEWER_CLASSNAME}
+                      whitespace-pre-line
+                      [&_p]:my-3 [&_p:first-of-type]:mt-0 [&_p:last-of-type]:mb-0
+                      [&_ul]:my-3 [&_ol]:my-3 [&_li]:leading-relaxed
+                      [&_h1]:mt-5 [&_h2]:mt-4 [&_h3]:mt-3
+                    ` }
+                    dangerouslySetInnerHTML={ { __html: aboutHtml, } }
+                  />
+                  { shouldShowGradient ? (
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background to-transparent" />
+                  ) : null }
+                </div>
+                { isDescriptionOverflowing ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="px-0 text-sm font-medium"
+                    onClick={ () => setIsDescriptionExpanded((prev) => !prev) }
+                    aria-expanded={ isDescriptionExpanded }
+                    aria-controls={ descriptionViewportId }
+                  >
+                    { isDescriptionExpanded ? 'Show less' : 'See full description' }
+                  </Button>
+                ) : null }
+              </div>
             </section>
           </div>
 
