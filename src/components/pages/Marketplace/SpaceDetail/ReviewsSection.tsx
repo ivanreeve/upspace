@@ -32,6 +32,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
+const reviewDateFormatter = new Intl.DateTimeFormat('en-PH', {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+  timeZone: 'Asia/Manila',
+});
+
 type ReviewsSectionProps = {
   spaceId: string;
 };
@@ -112,11 +119,7 @@ function ReviewTagsSelector({
 
 function ReviewCard({ review, }: { review: SpaceReview }) {
   const createdAt = new Date(review.created_at);
-  const formattedDate = createdAt.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  const formattedDate = reviewDateFormatter.format(createdAt);
 
   return (
     <article className="space-y-3 rounded-2xl border p-4 shadow-sm">
@@ -234,7 +237,10 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
   };
 
   const availableTags = reviewTags ?? [];
-  const reviews = data?.reviews ?? [];
+  const reviews = React.useMemo(
+    () => data?.reviews ?? [],
+    [data?.reviews]
+  );
   const reviewCount = reviews.length;
   const sortedReviews = React.useMemo(
     () =>
