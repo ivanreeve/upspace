@@ -78,7 +78,7 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
         <section className="space-y-4 border-b pb-6">
           <details className="group space-y-2 rounded-lg border p-4">
             <summary className="cursor-pointer text-base font-medium text-foreground">
-              Host Rules
+              Space Rules
             </summary>
             <p className="text-sm text-muted-foreground">
               Keep shared areas tidy, respect quiet hours after 9 PM, and coordinate meeting room use
