@@ -13,7 +13,8 @@ type SpaceDetailErrorProps = {
   reset: () => void;
 };
 
-export default function SpaceDetailError({ error, reset: _reset, }: SpaceDetailErrorProps) {
+export default function SpaceDetailError({
+ error, reset: _reset, }: SpaceDetailErrorProps) {
   useEffect(() => {
     console.error('Failed to render marketplace space detail page', error);
   }, [error]);
@@ -21,7 +22,7 @@ export default function SpaceDetailError({ error, reset: _reset, }: SpaceDetailE
   return (
     <>
       <main className="bg-background">
-        <div className="mx-auto flex max-w-[1100px] flex-col items-center space-y-5 px-4 py-16">
+        <div className="mx-auto flex max-w-[1100px] flex-col items-center space-y-5 px-4 pb-16">
           <MarketplaceErrorState />
           <div className="mt-[-54px] flex justify-center">
             <Button asChild variant="outline" aria-label="Go back to marketplace">
