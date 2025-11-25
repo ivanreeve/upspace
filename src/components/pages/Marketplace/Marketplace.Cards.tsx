@@ -177,7 +177,7 @@ export function SpaceCard({ space, }: { space: Space }) {
           </span>
           { (space.total_reviews ?? 0) > 0 && (
             <span className="text-[11px] text-muted-foreground">
-              ({ space.total_reviews } review{ space.total_reviews === 1 ? '' : 's' })
+              ({ space.total_reviews })
             </span>
           ) }
         </div>
