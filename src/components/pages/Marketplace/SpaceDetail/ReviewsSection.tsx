@@ -426,7 +426,7 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
             { canOpenReviewsModal && (
               <Dialog open={ isReviewsModalOpen } onOpenChange={ handleReviewsModalChange }>
                 <DialogTrigger asChild>
-                  <Button type="button" variant="link" size="sm" aria-label="See more reviews">
+                  <Button className="text-foreground" type="button" variant="link" size="sm" aria-label="See more reviews">
                     See more reviews
                   </Button>
                 </DialogTrigger>
