@@ -441,7 +441,7 @@ export function MarketplaceChrome({
               <SidebarMenuItem>
                 <SidebarMenuButton
                   tooltip="Search"
-                  className="justify-between group-data-[collapsible=icon]:justify-center"
+                  className="justify-start gap-2 group-data-[collapsible=icon]:justify-center"
                   type="button"
                   onClick={ handleSearch }
                 >
