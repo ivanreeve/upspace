@@ -179,6 +179,8 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
   const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isReviewsModalOpen, setIsReviewsModalOpen] = React.useState(false);
+  const [selectedRatingFilter, setSelectedRatingFilter] = React.useState<number | null>(null);
 
   React.useEffect(() => {
     if (!reviewTags) return;
@@ -229,6 +231,23 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
   };
 
   const availableTags = reviewTags ?? [];
+  const reviews = data?.reviews ?? [];
+  const reviewCount = reviews.length;
+  const filteredModalReviews =
+    selectedRatingFilter === null
+      ? reviews
+      : reviews.filter((review) => Math.round(review.rating_star) === selectedRatingFilter);
+  const hasFilteredReviews = filteredModalReviews.length > 0;
+  const canOpenReviewsModal = !isLoading && !isError && reviewCount >= 3;
+  const handleRatingFilterToggle = (rating: number) => {
+    setSelectedRatingFilter((current) => (current === rating ? null : rating));
+  };
+  const handleReviewsModalChange = (open: boolean) => {
+    setIsReviewsModalOpen(open);
+    if (!open) {
+      setSelectedRatingFilter(null);
+    }
+  };
 
   const summary = data?.summary ?? {
     average_rating: 0,
@@ -257,7 +276,7 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
     ],
   };
 
-  const hasReviews = (data?.reviews?.length ?? 0) > 0;
+  const hasReviews = reviewCount > 0;
 
   return (
     <section className="space-y-6 border-t pt-6">
@@ -394,7 +413,89 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-sm font-medium text-foreground">Guest reviews</h3>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-medium text-foreground">Guest reviews</h3>
+            { canOpenReviewsModal && (
+              <Dialog open={ isReviewsModalOpen } onOpenChange={ handleReviewsModalChange }>
+                <DialogTrigger asChild>
+                  <Button type="button" variant="ghost" size="sm">
+                    See more reviews
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-3xl">
+                  <DialogHeader>
+                    <DialogTitle>All reviews</DialogTitle>
+                    <DialogDescription>
+                      Browse every review for this space and filter by rating.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-foreground">Filter by rating</p>
+                      <div
+                        className="flex flex-wrap items-center gap-2"
+                        role="group"
+                        aria-label="Filter reviews by star rating"
+                      >
+                        { [5, 4, 3, 2, 1].map((star) => {
+                          const isActive = selectedRatingFilter === star;
+                          return (
+                            <button
+                              key={ star }
+                              type="button"
+                              onClick={ () => handleRatingFilterToggle(star) }
+                              className={ `
+                                rounded-full border px-3 py-1 text-xs
+                                ${
+                                  isActive
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-background text-muted-foreground'
+                                }
+                              ` }
+                              aria-pressed={ isActive }
+                            >
+                              <span className="flex items-center gap-1">
+                                { star }
+                                <FaStar className="size-3 text-yellow-400" aria-hidden="true" />
+                              </span>
+                            </button>
+                          );
+                        }) }
+                        <button
+                          type="button"
+                          onClick={ () => setSelectedRatingFilter(null) }
+                          className={ `
+                            rounded-full border px-3 py-1 text-xs
+                            ${
+                              selectedRatingFilter === null
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-background text-muted-foreground'
+                            }
+                          ` }
+                          aria-pressed={ selectedRatingFilter === null }
+                        >
+                          All reviews
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
+                      { hasFilteredReviews ? (
+                        filteredModalReviews.map((review) => (
+                          <ReviewCard key={ review.review_id } review={ review } />
+                        ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          No reviews with this rating yet.
+                        </p>
+                      ) }
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            ) }
+          </div>
 
           { isLoading && (
             <div className="space-y-3">
@@ -426,7 +527,7 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
 
           { !isLoading && !isError && hasReviews && (
             <div className="space-y-3">
-              { data?.reviews.map((review) => (
+              { reviews.map((review) => (
                 <ReviewCard key={ review.review_id } review={ review } />
               )) }
             </div>
