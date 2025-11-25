@@ -101,6 +101,7 @@ export default function SpacePhotos({
   });
 
   const lastGridRow = gridTiles[gridTiles.length - 1]?.row ?? 0;
+  const gridRowCount = lastGridRow + 1;
 
   const formatCategoryLabel = (category: string | null) => {
     if (!category) return 'Uncategorized';
@@ -239,7 +240,10 @@ export default function SpacePhotos({
                 ) : null }
               </figure>
 
-              <div className="grid grid-cols-2 gap-2.5">
+              <div
+                className="grid h-full grid-cols-2 gap-2.5"
+                style={ { gridTemplateRows: `repeat(${gridRowCount}, minmax(0, 1fr))`, } }
+              >
                 { gridTiles.map((tile) => {
                   const isImageTile = tile.type === 'image' && tile.image;
                   const endsAtRightEdge = tile.colStart + tile.colSpan === gridColumns;
@@ -247,14 +251,13 @@ export default function SpacePhotos({
                     tile.row === 0 && endsAtRightEdge ? 'rounded-tr-lg' : '',
                     tile.row === lastGridRow && endsAtRightEdge ? 'rounded-br-lg' : ''
                   ].filter(Boolean).join(' ');
-                  const aspectClass = tile.colSpan === 2 ? 'aspect-[2/1]' : 'aspect-square';
                   return (
                     <figure
                       key={ tile.key }
-                      className={ tile.colSpan === 2 ? 'col-span-2' : undefined }
+                      className={ `h-full ${tile.colSpan === 2 ? 'col-span-2' : ''}` }
                     >
                       <div
-                        className={ `group relative w-full cursor-pointer overflow-hidden border border-border/60 bg-muted ${aspectClass} ${tileRoundingClass}` }
+                        className={ `group relative h-full w-full cursor-pointer overflow-hidden border border-border/60 bg-muted ${tileRoundingClass}` }
                       >
                         { isImageTile ? (
                           <Image
