@@ -41,7 +41,8 @@ export async function generateMetadata({ params, }: Props): Promise<Metadata> {
 export default async function SpaceDetailPage({ params, }: Props) {
   const { space_id, } = await params;
   if (!isUuid(space_id)) notFound();
-  const sidebarCookie = cookies().get(SIDEBAR_STATE_COOKIE)?.value;
+  const cookieStore = await cookies();
+  const sidebarCookie = cookieStore.get(SIDEBAR_STATE_COOKIE)?.value;
   const initialSidebarOpen = parseSidebarState(sidebarCookie);
   const supabase = await createSupabaseServerClient();
   const { data: authData, } = await supabase.auth.getUser();
