@@ -205,7 +205,7 @@ icon: FaTelegramPlane,
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>Share this space</DialogTitle>
-                <DialogDescription>
+                <DialogDescription className="mb-4">
                   Send { name } to your favorite apps or copy the link below.
                 </DialogDescription>
               </DialogHeader>
