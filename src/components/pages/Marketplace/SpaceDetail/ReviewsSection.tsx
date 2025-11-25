@@ -5,11 +5,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FaStar } from 'react-icons/fa';
 import { toast } from 'sonner';
 
-import { COMMON_REVIEW_TAGS } from '@/data/reviews';
 import {
   createSpaceReview,
+  fetchCommonReviewTags,
   fetchSpaceReviews,
   type CreateSpaceReviewPayload,
+  type ReviewTagOption,
   type SpaceReview
 } from '@/lib/api/reviews';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -67,9 +68,11 @@ function StarRatingSelector({
 }
 
 function ReviewTagsSelector({
+  tags,
   selected,
   onChange,
 }: {
+  tags: ReviewTagOption[];
   selected: string[];
   onChange: (next: string[]) => void;
 }) {
@@ -83,7 +86,7 @@ function ReviewTagsSelector({
 
   return (
     <div className="flex flex-wrap gap-2" aria-label="Quick review tags">
-      { COMMON_REVIEW_TAGS.map((tag) => {
+      { tags.map((tag) => {
         const isActive = selected.includes(tag.value);
         return (
           <button
@@ -161,11 +164,28 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
     queryFn: () => fetchSpaceReviews(spaceId),
   });
 
+  const {
+    data: reviewTags,
+    isLoading: isLoadingReviewTags,
+    isError: isReviewTagsError,
+  } = useQuery({
+    queryKey: ['common-review-tags'],
+    queryFn: fetchCommonReviewTags,
+  });
+
   const [rating, setRating] = React.useState<number>(5);
   const [description, setDescription] = React.useState('');
   const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!reviewTags) return;
+
+    setSelectedTags((current) =>
+      current.filter((tag) => reviewTags.some((option) => option.value === tag))
+    );
+  }, [reviewTags]);
 
   const createReviewMutation = useMutation({
     mutationFn: (payload: CreateSpaceReviewPayload) => createSpaceReview(spaceId, payload),
@@ -206,6 +226,8 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
       comments: selectedTags,
     });
   };
+
+  const availableTags = reviewTags ?? [];
 
   const summary = data?.summary ?? {
     average_rating: 0,
@@ -291,7 +313,27 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
 
               <div className="space-y-2">
                 <Label>Quick tags (optional)</Label>
-                <ReviewTagsSelector selected={ selectedTags } onChange={ setSelectedTags } />
+                { isLoadingReviewTags ? (
+                  <div className="flex flex-wrap gap-2">
+                    { Array.from({ length: 6, }).map((_, index) => (
+                      <Skeleton key={ index } className="h-8 w-24 rounded-full" />
+                    )) }
+                  </div>
+                ) : isReviewTagsError ? (
+                  <p className="text-sm text-muted-foreground">
+                    Quick tags are unavailable right now.
+                  </p>
+                ) : availableTags.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No quick tags available.
+                  </p>
+                ) : (
+                  <ReviewTagsSelector
+                    tags={ availableTags }
+                    selected={ selectedTags }
+                    onChange={ setSelectedTags }
+                  />
+                ) }
               </div>
 
               { formError && (
