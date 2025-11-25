@@ -3,6 +3,7 @@
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FaStar } from 'react-icons/fa';
+import { RiEditBoxLine } from 'react-icons/ri';
 import { toast } from 'sonner';
 
 import {
@@ -279,6 +280,7 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
         <Dialog open={ isDialogOpen } onOpenChange={ setIsDialogOpen }>
           <DialogTrigger asChild>
             <Button type="button" variant="outline">
+              <RiEditBoxLine className="size-4" aria-hidden="true" />
               Write a review
             </Button>
           </DialogTrigger>
@@ -377,7 +379,7 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
                     </div>
                     <div className="relative h-2 flex-1 rounded-full bg-muted">
                       <div
-                        className="absolute inset-y-0 left-0 rounded-full bg-primary"
+                        className="absolute inset-y-0 left-0 rounded-full bg-secondary"
                         style={ { width: `${widthPercent}%`, } }
                       />
                     </div>
