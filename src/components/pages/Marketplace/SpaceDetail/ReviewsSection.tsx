@@ -41,7 +41,7 @@ function StarRatingSelector({
   onChange: (next: number) => void;
 }) {
   return (
-    <div className="flex items-center gap-1" aria-label="Rating" role="radiogroup">
+    <div className="flex items-center justify-center gap-1" aria-label="Rating" role="radiogroup">
       { [1, 2, 3, 4, 5].map((score) => {
         const isActive = score <= value;
         return (
@@ -49,7 +49,7 @@ function StarRatingSelector({
             key={ score }
             type="button"
             onClick={ () => onChange(score) }
-            className="p-1"
+            className="px-2 py-3"
             aria-label={ `${score} star${score > 1 ? 's' : ''}` }
             role="radio"
             aria-checked={ isActive }
@@ -173,7 +173,7 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
     queryFn: fetchCommonReviewTags,
   });
 
-  const [rating, setRating] = React.useState<number>(5);
+  const [rating, setRating] = React.useState<number>(1);
   const [description, setDescription] = React.useState('');
   const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -283,19 +283,19 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Write a review</DialogTitle>
-              <DialogDescription>
-                Share your experience to help others decide if this space is right for them.
-              </DialogDescription>
-            </DialogHeader>
-            <form className="space-y-4" onSubmit={ handleSubmit }>
-              <div className="space-y-2">
-                <Label htmlFor="rating-modal">Your rating</Label>
-                <StarRatingSelector value={ rating } onChange={ setRating } />
-              </div>
+          <DialogHeader>
+            <DialogTitle>Write a review</DialogTitle>
+            <DialogDescription>
+              Share your experience to help others decide if this space is right for them.
+            </DialogDescription>
+          </DialogHeader>
+          <form className="space-y-4" onSubmit={ handleSubmit }>
+            <div className="mt-4 flex flex-col items-center space-y-3">
+              <Label htmlFor="rating-modal">Your rating</Label>
+              <StarRatingSelector value={ rating } onChange={ setRating } />
+            </div>
 
-              <div className="space-y-2">
+            <div className="space-y-2">
                 <Label htmlFor="description-modal">Your experience</Label>
                 <Textarea
                   id="description-modal"
@@ -307,7 +307,7 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
               </div>
 
               <div className="space-y-2">
-                <Label>Quick tags (optional)</Label>
+                <Label className="mb-4 block">Quick tags (optional)</Label>
                 { isLoadingReviewTags ? (
                   <div className="flex flex-wrap gap-2">
                     { Array.from({ length: 6, }).map((_, index) => (
