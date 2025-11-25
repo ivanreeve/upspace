@@ -272,7 +272,7 @@ export default function SpacePhotos({
     if (totalImages === 2) {
       const secondary = galleryWithoutPrimary[0] ?? null;
       return (
-        <div className="grid gap-2.5 lg:grid-cols-2">
+        <div className="grid gap-2.5 md:grid-cols-2">
           { primaryFigure }
           { renderPhotoTile(
             secondary,
@@ -287,7 +287,7 @@ export default function SpacePhotos({
     if (totalImages === 3) {
       const [topTile, bottomTile] = galleryWithoutPrimary;
       return (
-        <div className="grid gap-2.5 lg:grid-cols-2">
+        <div className="grid gap-2.5 md:grid-cols-2">
           { primaryFigure }
           <div className="grid h-full min-h-[22rem] grid-rows-2 gap-2.5">
             { renderPhotoTile(
@@ -313,7 +313,7 @@ export default function SpacePhotos({
     const isFiveOrMore = totalImages >= 5;
 
     return (
-      <div className="grid gap-2.5 lg:grid-cols-2">
+      <div className="grid gap-2.5 md:grid-cols-2">
         { primaryFigure }
         <div className="grid h-full min-h-[24rem] grid-rows-[2fr_1fr_1fr] gap-2.5">
           { renderPhotoTile(
