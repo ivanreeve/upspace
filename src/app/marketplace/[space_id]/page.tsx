@@ -19,15 +19,20 @@ export async function generateMetadata({ params, }: Props): Promise<Metadata> {
   const { space_id, } = await params;
   if (!isUuid(space_id)) return { title: 'Space Not Found - UpSpace', };
 
-  const space = await prisma.space.findFirst({
-    where: {
-      id: space_id,
-      verification: { some: { status: { in: ['approved', 'in_review'], }, }, },
-    },
-    select: { name: true, },
-  });
+  try {
+    const space = await prisma.space.findFirst({
+      where: {
+        id: space_id,
+        verification: { some: { status: { in: ['approved', 'in_review'], }, }, },
+      },
+      select: { name: true, },
+    });
 
-  return { title: space ? `${space.name} - UpSpace` : 'Space Not Found - UpSpace', };
+    return { title: space ? `${space.name} - UpSpace` : 'Space Not Found - UpSpace', };
+  } catch (error) {
+    console.error('Failed to build metadata for marketplace space detail', error);
+    return { title: 'Space - UpSpace', };
+  }
 }
 
 export default async function SpaceDetailPage({ params, }: Props) {
