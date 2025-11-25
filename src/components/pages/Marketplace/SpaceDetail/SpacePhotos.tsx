@@ -241,8 +241,8 @@ export default function SpacePhotos({
               </figure>
 
               <div
-                className="grid h-full grid-cols-2 gap-2.5"
-                style={ { gridTemplateRows: `repeat(${gridRowCount}, minmax(0, 1fr))`, } }
+                className="grid grid-cols-2 gap-2.5"
+                style={ { gridTemplateRows: `repeat(${gridRowCount}, minmax(160px, 1fr))`, } }
               >
                 { gridTiles.map((tile) => {
                   const isImageTile = tile.type === 'image' && tile.image;
@@ -254,7 +254,7 @@ export default function SpacePhotos({
                   return (
                     <figure
                       key={ tile.key }
-                      className={ `h-full ${tile.colSpan === 2 ? 'col-span-2' : ''}` }
+                      className={ `h-full min-h-[160px] ${tile.colSpan === 2 ? 'col-span-2' : ''}` }
                     >
                       <div
                         className={ `group relative h-full w-full cursor-pointer overflow-hidden border border-border/60 bg-muted ${tileRoundingClass}` }
