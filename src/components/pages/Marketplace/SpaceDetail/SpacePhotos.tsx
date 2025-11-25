@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { SpaceImageDisplay } from '@/lib/queries/space';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type SpacePhotosProps = {
   spaceName: string;
@@ -33,6 +34,7 @@ export default function SpacePhotos({
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [carouselOpen, setCarouselOpen] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState<number | null>(null);
+  const isMobile = useIsMobile();
 
   const normalizedGallery = useMemo(
     () => galleryImages.filter((image) => Boolean(image.url)),
@@ -150,6 +152,39 @@ export default function SpacePhotos({
     });
   };
 
+  const renderPrimaryFigure = (
+    overlay?: React.ReactNode,
+    additionalFigureClass?: string
+  ) => (
+    <figure className={ `group relative w-full cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-muted h-96 sm:h-[28rem] lg:h-[30rem] xl:h-[32rem] ${additionalFigureClass ?? ''}` }>
+      { primaryImageUrl ? (
+        <Image
+          src={ primaryImageUrl }
+          alt={ `${spaceName} featured photo` }
+          fill
+          sizes="(min-width: 1280px) 55vw, (min-width: 1024px) 65vw, 100vw"
+          className="object-cover"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+          Missing public URL
+        </div>
+      ) }
+      <div className="pointer-events-none absolute inset-0 rounded-lg bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100" />
+      { overlay }
+      { primaryImage ? (
+        <button
+          type="button"
+          onClick={ () => openCarouselFromImage(primaryImage) }
+          aria-label="Open featured photo carousel"
+          className="absolute inset-0 z-10 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          <span className="sr-only">Open featured photo carousel</span>
+        </button>
+      ) : null }
+    </figure>
+  );
+
   const renderPhotoTile = (
     image: SpaceImageDisplay | null | undefined,
     alt: string,
@@ -205,36 +240,28 @@ export default function SpacePhotos({
     );
   };
 
-  const primaryFigure = (
-    <figure className="group relative w-full cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-muted h-96 sm:h-[28rem] lg:h-[30rem] xl:h-[32rem]">
-      { primaryImageUrl ? (
-        <Image
-          src={ primaryImageUrl }
-          alt={ `${spaceName} featured photo` }
-          fill
-          sizes="(min-width: 1280px) 55vw, (min-width: 1024px) 65vw, 100vw"
-          className="object-cover"
-        />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-          Missing public URL
-        </div>
-      ) }
-      <div className="pointer-events-none absolute inset-0 rounded-lg bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100" />
-      { primaryImage ? (
-        <button
-          type="button"
-          onClick={ () => openCarouselFromImage(primaryImage) }
-          aria-label="Open featured photo carousel"
-          className="absolute inset-0 z-10 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        >
-          <span className="sr-only">Open featured photo carousel</span>
-        </button>
-      ) : null }
-    </figure>
-  );
+  const primaryFigure = renderPrimaryFigure();
+  const remainingCount = Math.max(totalImages - 1, 0);
 
   const layout = (() => {
+    if (isMobile) {
+      if (totalImages >= 2) {
+        const overlay = (
+          <button
+            type="button"
+            onClick={ () => setGalleryOpen(true) }
+            aria-label={ `View ${remainingCount} more photo${remainingCount === 1 ? '' : 's'}` }
+            className="absolute bottom-3 right-3 z-10 rounded-full bg-black/70 px-3 py-1.5 text-sm font-semibold text-white shadow-sm backdrop-blur"
+          >
+            +{ remainingCount }
+          </button>
+        );
+        return renderPrimaryFigure(overlay, 'h-[320px]');
+      }
+
+      return primaryFigure;
+    }
+
     if (totalImages === 1) {
       return primaryFigure;
     }
