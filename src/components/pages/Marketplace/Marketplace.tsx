@@ -2,28 +2,19 @@
 
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
-  FiBell,
-  FiCommand,
-  FiHome,
   FiLoader,
   FiList,
-  FiLogOut,
   FiSearch,
-  FiSettings,
-  FiUser,
   FiX
 } from 'react-icons/fi';
-import { TbLayoutSidebarFilled } from 'react-icons/tb';
 import { CgOptions } from 'react-icons/cg';
 
 import { CardsGrid, SkeletonGrid } from './Marketplace.Cards';
 import { MarketplaceErrorState } from './Marketplace.ErrorState';
+import { MarketplaceChrome } from './MarketplaceChrome';
 
 import { listSpaces, suggestSpaces, type SpaceSuggestion } from '@/lib/api/spaces';
-import { useSession } from '@/components/auth/SessionProvider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import BackToTopButton from '@/components/ui/back-to-top';
 import { Badge } from '@/components/ui/badge';
@@ -47,7 +38,6 @@ import {
 } from '@/components/ui/dialog';
 import { Kbd } from '@/components/ui/kbd';
 import { Label } from '@/components/ui/label';
-import { LogoSymbolic } from '@/components/ui/logo-symbolic';
 import {
   Select,
   SelectContent,
@@ -57,13 +47,6 @@ import {
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -75,25 +58,10 @@ import {
   type PhilippineRegionOption
 } from '@/lib/philippines-addresses/client';
 import { dedupeAddressOptions } from '@/lib/addresses';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarRail,
-  useSidebar
-} from '@/components/ui/sidebar';
-import { ThemeSwitcher } from '@/components/ui/theme-switcher';
+import { useSidebar } from '@/components/ui/sidebar';
 import { AMENITY_CATEGORY_DISPLAY_MAP } from '@/lib/amenity/amenity_category_display_map';
 import { AMENITY_ICON_MAPPINGS } from '@/lib/amenity/amenity_icon_mappings';
 import { cn } from '@/lib/utils';
-import { useUserProfile } from '@/hooks/use-user-profile';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 type FiltersState = {
   q: string;
@@ -176,161 +144,6 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
   return debounced;
 }
 
-function SidebarToggleMenuItem() {
-  const {
-    state,
-    toggleSidebar,
-  } = useSidebar();
-  const isExpanded = state === 'expanded';
-  const Icon = isExpanded
-    ? TbLayoutSidebarFilled
-    : TbLayoutSidebarFilled;
-
-  return (
-    <SidebarMenuItem
-      className={ cn(
-        'flex items-center gap-2',
-        isExpanded ? 'justify-between pr-2 pl-1' : 'justify-center pr-1'
-      ) }
-    >
-      { isExpanded && (
-        <Link
-          href="/"
-          className="flex items-center gap-2 text-sm font-semibold text-foreground"
-        >
-          <LogoSymbolic className="size-5 text-primary dark:text-secondary" />
-          <span className="leading-tight">UpSpace</span>
-        </Link>
-      ) }
-      <SidebarMenuButton
-        tooltip={ isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }
-        type="button"
-        onClick={ toggleSidebar }
-        className="w-10 justify-center p-2"
-        aria-label={ isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }
-      >
-        <Icon className="size-4" aria-hidden="true" />
-        <span className="sr-only">{ isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }</span>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
-  );
-}
-
-function SidebarFooterContent({
-  avatarUrl,
-  avatarFallback,
-  avatarDisplayName,
-  resolvedHandleLabel,
-  userEmail,
-  onNavigate,
-  onLogout,
-}: {
-  avatarUrl: string | null
-  avatarFallback: string
-  avatarDisplayName: string
-  resolvedHandleLabel: string | undefined
-  userEmail: string | null
-  onNavigate: (href: string) => void
-  onLogout: () => Promise<void> | void
-}) {
-  const { state, } = useSidebar();
-  const isCollapsed = state === 'collapsed';
-  const secondaryLabel = resolvedHandleLabel ?? userEmail ?? 'Account';
-  const emailLabel = userEmail ?? 'Email unavailable';
-
-  return (
-    <div
-      className={ cn(
-        'p-2 flex flex-col',
-        isCollapsed ? 'items-center gap-3' : 'space-y-2'
-      ) }
-    >
-      <ThemeSwitcher
-        variant={ isCollapsed ? 'compact' : 'default' }
-        className={ isCollapsed ? undefined : 'w-full justify-between' }
-      />
-      <SidebarMenu>
-        <SidebarMenuItem>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <SidebarMenuButton
-                type="button"
-                tooltip={ isCollapsed ? 'Open account menu' : undefined }
-                className={ cn('w-full ml-[-5px] py-8', isCollapsed ? 'justify-center' : 'justify-start') }
-                aria-label="Open account menu"
-              >
-                <Avatar className={ cn('size-9', isCollapsed && 'size-8') }>
-                  { avatarUrl ? (
-                    <AvatarImage src={ avatarUrl } alt="User avatar" />
-                  ) : (
-                    <AvatarFallback>{ avatarFallback }</AvatarFallback>
-                  ) }
-                </Avatar>
-                { !isCollapsed && (
-                  <div className="flex min-w-0 flex-col text-left">
-                    <span className="text-sm font-semibold leading-tight">{ avatarDisplayName }</span>
-                    { secondaryLabel && (
-                      <span className="text-xs text-muted-foreground truncate">
-                        { secondaryLabel }
-                      </span>
-                    ) }
-                  </div>
-                ) }
-                <span className="sr-only">
-                  { `Open account menu for ${avatarDisplayName}${resolvedHandleLabel ? ` (${resolvedHandleLabel})` : ''}` }
-                </span>
-              </SidebarMenuButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              side="right"
-              align="end"
-              sideOffset={ 24 }
-              className="w-64 border border-border bg-card p-2 shadow-lg"
-            >
-              <div className="flex items-center gap-3 rounded-md px-2 py-3">
-                <Avatar className="size-11 border border-border">
-                  { avatarUrl ? (
-                    <AvatarImage src={ avatarUrl } alt="User avatar" />
-                  ) : (
-                    <AvatarFallback>{ avatarFallback }</AvatarFallback>
-                  ) }
-                </Avatar>
-                <div className="flex min-w-0 flex-col">
-                  <span className="text-sm font-semibold leading-tight">{ avatarDisplayName }</span>
-                  <span className="text-xs text-muted-foreground truncate">{ emailLabel }</span>
-                </div>
-              </div>
-              <DropdownMenuSeparator className="my-1" />
-              <DropdownMenuItem
-                onSelect={ () => onNavigate('/onboarding') }
-              >
-                <FiUser className="size-4" aria-hidden="true" />
-                <span>Account</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={ () => onNavigate('/settings') }>
-                <FiSettings className="size-4" aria-hidden="true" />
-                <span>Settings</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={ () => onNavigate('/notifications') }>
-                <FiBell className="size-4" aria-hidden="true" />
-                <span>Notifications</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="my-1" />
-              <DropdownMenuItem
-                className="text-destructive focus-visible:text-destructive"
-                onSelect={ () => { void onLogout(); } }
-              >
-                <FiLogOut className="size-4" aria-hidden="true" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </SidebarMenuItem>
-      </SidebarMenu>
-    </div>
-  );
-}
-
 export default function Marketplace() {
   const [filters, setFilters] = React.useState<FiltersState>(DEFAULT_FILTERS);
   const [pendingFilters, setPendingFilters] = React.useState<FiltersState>(DEFAULT_FILTERS);
@@ -357,19 +170,6 @@ export default function Marketplace() {
       return next;
     });
   }, []);
-  const isMobile = useIsMobile();
-  const { session, } = useSession();
-  const router = useRouter();
-  const { data: userProfile, } = useUserProfile();
-  const mobileInsetPadding = React.useMemo<React.CSSProperties | undefined>(
-    () => (isMobile
-      ? {
-          paddingTop: 'calc(4rem + var(--safe-area-top))',
-          paddingBottom: 'calc(2.75rem + var(--safe-area-bottom))',
-        }
-      : undefined),
-    [isMobile]
-  );
 
   React.useEffect(() => {
     setSearchValue(filters.q ?? '');
@@ -453,37 +253,6 @@ export default function Marketplace() {
     };
   }, [hasError]);
 
-  const avatarUrl = session?.user?.user_metadata?.avatar_url
-    ?? session?.user?.user_metadata?.picture
-    ?? null;
-  const profileHandleLabel = userProfile?.handle ?? undefined;
-  const preferredUsername = session?.user?.user_metadata?.preferred_username;
-  const preferredUsernameLabel =
-    preferredUsername && preferredUsername.includes('@') ? undefined : preferredUsername;
-  const resolvedHandleLabel = profileHandleLabel ?? preferredUsernameLabel;
-  const resolvedHandleValue = userProfile?.handle ?? preferredUsernameLabel ?? null;
-  const avatarFallback =
-    resolvedHandleValue?.slice(0, 2)?.toUpperCase()
-    ?? 'US';
-  const avatarDisplayName =
-    resolvedHandleLabel
-    ?? 'UpSpace User';
-  const userEmail = session?.user?.email ?? null;
-  const handleNavigation = React.useCallback((href: string) => {
-    router.push(href);
-  }, [router]);
-  const handleLogout = React.useCallback(async () => {
-    const supabase = getSupabaseBrowserClient();
-    const { error, } = await supabase.auth.signOut();
-
-    if (error) {
-      console.error('Supabase sign-out failed', error);
-      return;
-    }
-
-    router.refresh();
-  }, [router]);
-
   const content = (
     <section className="relative mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 lg:px-10">
       <div className="space-y-6">
@@ -519,91 +288,24 @@ export default function Marketplace() {
   );
 
   return (
-    <SidebarProvider className="bg-background min-h-screen">
-      <MarketplaceSearchDialog
-        open={ isSearchOpen }
-        onOpenChange={ handleSearchOpenChange }
-        searchValue={ searchValue }
-        onSearchChange={ setSearchValue }
-        onSearchSubmit={ handleSearchSubmit }
-        hasActiveSearch={ hasActiveSearch }
-        hasAnyFilters={ pendingHasAnyFilters }
-        filters={ pendingFilters }
-        onFiltersApply={ applyFilters }
-      />
-      { isMobile && (
-        <MobileTopNav
-          avatarUrl={ avatarUrl }
-          avatarFallback={ avatarFallback }
-          onSearchOpen={ openSearchModal }
-          displayName={ avatarDisplayName }
-          secondaryLabel={ resolvedHandleLabel ?? null }
-          emailLabel={ userEmail ?? 'Email unavailable' }
-          onNavigate={ handleNavigation }
-          onLogout={ handleLogout }
+    <MarketplaceChrome
+      onSearchOpen={ openSearchModal }
+      dialogSlot={ (
+        <MarketplaceSearchDialog
+          open={ isSearchOpen }
+          onOpenChange={ handleSearchOpenChange }
+          searchValue={ searchValue }
+          onSearchChange={ setSearchValue }
+          onSearchSubmit={ handleSearchSubmit }
+          hasActiveSearch={ hasActiveSearch }
+          hasAnyFilters={ pendingHasAnyFilters }
+          filters={ pendingFilters }
+          onFiltersApply={ applyFilters }
         />
       ) }
-      <div className="flex min-h-screen w-full">
-        <Sidebar collapsible="icon" className="hidden md:flex border-1 border-r-muted">
-          <SidebarHeader className="pt-4">
-            <SidebarMenu>
-              <SidebarToggleMenuItem />
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Home">
-                  <Link href="/">
-                    <FiHome className="size-4" strokeWidth={ 1.4 } />
-                    <span data-sidebar-label>Home</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  tooltip="Search"
-                  className="justify-between group-data-[collapsible=icon]:justify-center"
-                  type="button"
-                  onClick={ openSearchModal }
-                >
-                  <FiSearch className="size-4" strokeWidth={ 1.4 }/>
-                  <span data-sidebar-label>Search</span>
-                  <Kbd className="ml-auto hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden">
-                    <FiCommand className="size-3" aria-hidden="true" />
-                    <span> + K</span>
-                  </Kbd>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Notifications">
-                  <Link href="/notifications">
-                    <FiBell className="size-4" strokeWidth={ 1.4 } />
-                    <span data-sidebar-label>Notifications</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarHeader>
-          <SidebarContent className="flex-1" />
-          <SidebarFooter className="mt-auto border-t border-sidebar-border/60">
-            <SidebarFooterContent
-              avatarUrl={ avatarUrl }
-              avatarFallback={ avatarFallback }
-              avatarDisplayName={ avatarDisplayName }
-              resolvedHandleLabel={ resolvedHandleLabel }
-              userEmail={ userEmail }
-              onNavigate={ handleNavigation }
-              onLogout={ handleLogout }
-            />
-          </SidebarFooter>
-          <SidebarRail />
-        </Sidebar>
-
-        <SidebarInset
-          className="flex-1 bg-background w-full pb-10 pt-16 md:pt-0"
-          style={ mobileInsetPadding }
-        >
-          { content }
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
+    >
+      { content }
+    </MarketplaceChrome>
   );
 }
 
@@ -1467,121 +1169,5 @@ function FilterBadge({
       <span className="truncate">{ label }</span>
       <FiX className="size-3" aria-hidden="true" />
     </button>
-  );
-}
-
-function MobileTopNav({
-  avatarUrl,
-  avatarFallback,
-  onSearchOpen,
-  displayName,
-  secondaryLabel,
-  emailLabel,
-  onNavigate,
-  onLogout,
-}: {
-  avatarUrl: string | null
-  avatarFallback: string
-  onSearchOpen: () => void
-  displayName: string
-  secondaryLabel: string | null
-  emailLabel: string
-  onNavigate: (href: string) => void
-  onLogout: () => Promise<void> | void
-}) {
-  return (
-    <header
-      className="fixed inset-x-0 top-0 z-40 border-b bg-background/90 px-4 py-3 backdrop-blur-md md:hidden"
-      style={
-        {
-          paddingTop: 'calc(var(--safe-area-top) + 12px)',
-          paddingBottom: '12px',
-          paddingLeft: 'max(1rem, var(--safe-area-left))',
-          paddingRight: 'max(1rem, var(--safe-area-right))',
-        } as React.CSSProperties
-      }
-    >
-      <div className="mx-auto flex max-w-[1440px] items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <LogoSymbolic className="text-primary dark:text-secondary" />
-          <span className="text-base font-semibold text-foreground">UpSpace</span>
-        </Link>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/notifications"
-            aria-label="Notifications"
-            className="rounded-full p-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            <FiBell className="size-5" aria-hidden="true" />
-          </Link>
-          <button
-            type="button"
-            aria-label="Search"
-            onClick={ onSearchOpen }
-            className="rounded-full p-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            <FiSearch className="size-5" aria-hidden="true" />
-          </button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label="Open account menu"
-                className="rounded-full p-1 transition-colors focus-visible:outline-none focus-visible:bg-none"
-              >
-                <Avatar className="size-8 border border-border">
-                  { avatarUrl ? (
-                    <AvatarImage src={ avatarUrl } alt="User avatar" />
-                  ) : (
-                    <AvatarFallback>{ avatarFallback }</AvatarFallback>
-                  ) }
-                </Avatar>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              side="bottom"
-              sideOffset={ 28 }
-              className="z-[60] min-w-[240px] border border-border bg-card px-2 py-2 shadow-lg"
-            >
-              <div className="flex items-center gap-3 rounded-md px-2 py-3">
-                <Avatar className="size-10 border border-border">
-                  { avatarUrl ? (
-                    <AvatarImage src={ avatarUrl } alt="User avatar" />
-                  ) : (
-                    <AvatarFallback>{ avatarFallback }</AvatarFallback>
-                  ) }
-                </Avatar>
-                <div className="flex min-w-0 flex-col">
-                  <span className="text-sm font-semibold leading-tight">{ displayName }</span>
-                  <span className="text-xs text-muted-foreground truncate">{ secondaryLabel ?? emailLabel }</span>
-                </div>
-              </div>
-              <DropdownMenuSeparator className="my-1" />
-              <DropdownMenuItem onSelect={ () => onNavigate('/onboarding') }>
-                <FiUser className="size-4" aria-hidden="true" />
-                <span>Account</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={ () => onNavigate('/settings') }>
-                <FiSettings className="size-4" aria-hidden="true" />
-                <span>Settings</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={ () => onNavigate('/notifications') }>
-                <FiBell className="size-4" aria-hidden="true" />
-                <span>Notifications</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="my-1" />
-              <DropdownMenuItem
-                className="text-destructive focus-visible:text-destructive"
-                onSelect={ () => { void onLogout(); } }
-              >
-                <FiLogOut className="size-4" aria-hidden="true" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-    </header>
   );
 }

@@ -60,11 +60,11 @@ export default async function SpaceDetailPage({ params, }: Props) {
   if (!space) {
     return (
       <MarketplaceChrome>
-        <main className="bg-background">
+        <div className="bg-background">
           <div className="mx-auto max-w-[1100px] px-4 py-16">
             <MarketplaceErrorState />
           </div>
-        </main>
+        </div>
         <Footer />
       </MarketplaceChrome>
     );

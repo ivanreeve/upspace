@@ -2,7 +2,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export function SpaceDetailSkeleton() {
   return (
-    <main className="bg-background">
+    <div className="bg-background">
       <div className="mx-auto max-w-[1100px] space-y-8 px-4 py-10">
         <div className="space-y-3">
           <Skeleton className="h-4 w-32" />
@@ -91,6 +91,6 @@ export function SpaceDetailSkeleton() {
           <Skeleton className="h-52 w-full rounded-2xl" />
         </div>
       </div>
-    </main>
+    </div>
   );
 }

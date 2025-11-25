@@ -23,7 +23,7 @@ export default function SpaceDetailError({
 
   return (
     <MarketplaceChrome>
-      <main className="bg-background">
+      <div className="bg-background">
         <div className="mx-auto flex max-w-[1100px] flex-col items-center space-y-5 px-4 pb-16">
           <MarketplaceErrorState />
           <div className="mt-[-54px] flex justify-center">
@@ -35,7 +35,7 @@ export default function SpaceDetailError({
             </Button>
           </div>
         </div>
-      </main>
+      </div>
       <Footer />
     </MarketplaceChrome>
   );

@@ -408,7 +408,7 @@ export function MarketplaceChrome({
     }
 
     navData.onNavigate('/marketplace');
-  }, [navData, onSearchOpen]);
+  }, [navData.onNavigate, onSearchOpen]);
 
   return (
     <SidebarProvider className="bg-background min-h-screen">
@@ -447,10 +447,12 @@ export function MarketplaceChrome({
                 >
                   <FiSearch className="size-4" strokeWidth={ 1.4 }/>
                   <span data-sidebar-label>Search</span>
-                  <Kbd className="ml-auto hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden">
-                    <FiCommand className="size-3" aria-hidden="true" />
-                    <span> + K</span>
-                  </Kbd>
+                  { onSearchOpen ? (
+                    <Kbd className="ml-auto hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden">
+                      <FiCommand className="size-3" aria-hidden="true" />
+                      <span> + K</span>
+                    </Kbd>
+                  ) : null }
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>

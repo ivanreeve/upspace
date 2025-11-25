@@ -69,7 +69,7 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
   const shouldShowGradient = shouldClampDescription && isDescriptionOverflowing;
 
   return (
-    <main className="bg-background">
+    <div className="bg-background">
       <div className="mx-auto max-w-[1100px] px-4 py-10 space-y-4">
         <SpaceBreadcrumbs spaceName={ space.name } />
 
@@ -169,6 +169,6 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
 
         <WhereYoullBe city={ space.city } region={ space.region } country={ space.countryCode } />
       </div>
-    </main>
+    </div>
   );
 }
