@@ -256,7 +256,7 @@ function SidebarFooterContent({
               <SidebarMenuButton
                 type="button"
                 tooltip={ isCollapsed ? 'Open account menu' : undefined }
-                className={ cn('w-full ml-[-5px]', isCollapsed ? 'justify-center' : 'justify-start') }
+                className={ cn('w-full ml-[-5px] py-8', isCollapsed ? 'justify-center' : 'justify-start') }
                 aria-label="Open account menu"
               >
                 <Avatar className={ cn('size-9', isCollapsed && 'size-8') }>
