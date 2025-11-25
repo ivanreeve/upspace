@@ -233,10 +233,18 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
   const availableTags = reviewTags ?? [];
   const reviews = data?.reviews ?? [];
   const reviewCount = reviews.length;
+  const sortedReviews = React.useMemo(
+    () =>
+      [...reviews].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      ),
+    [reviews]
+  );
   const filteredModalReviews =
     selectedRatingFilter === null
-      ? reviews
-      : reviews.filter((review) => Math.round(review.rating_star) === selectedRatingFilter);
+      ? sortedReviews
+      : sortedReviews.filter((review) => Math.round(review.rating_star) === selectedRatingFilter);
+  const visibleReviews = sortedReviews.slice(0, 3);
   const hasFilteredReviews = filteredModalReviews.length > 0;
   const canOpenReviewsModal = !isError && (reviewCount >= 3 || (data?.summary?.total_reviews ?? 0) >= 3);
   const handleRatingFilterToggle = (rating: number) => {
@@ -418,7 +426,7 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
             { canOpenReviewsModal && (
               <Dialog open={ isReviewsModalOpen } onOpenChange={ handleReviewsModalChange }>
                 <DialogTrigger asChild>
-                  <Button type="button" variant="outline" size="sm" aria-label="See more reviews">
+                  <Button type="button" variant="link" size="sm" aria-label="See more reviews">
                     See more reviews
                   </Button>
                 </DialogTrigger>
@@ -527,9 +535,7 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
 
           { !isLoading && !isError && hasReviews && (
             <div className="space-y-3">
-              { reviews.map((review) => (
-                <ReviewCard key={ review.review_id } review={ review } />
-              )) }
+              { visibleReviews.map((review) => <ReviewCard key={ review.review_id } review={ review } />) }
             </div>
           ) }
         </div>
