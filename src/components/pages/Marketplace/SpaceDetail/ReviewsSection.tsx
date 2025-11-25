@@ -14,6 +14,7 @@ import {
   type ReviewTagOption,
   type SpaceReview
 } from '@/lib/api/reviews';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge, badgeVariants } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -157,6 +158,7 @@ function ReviewCard({ review, }: { review: SpaceReview }) {
 
 export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const {
     data,
     isLoading,
@@ -431,7 +433,15 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
                     See more reviews
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-3xl">
+                <DialogContent
+                  className={ cn(
+                    !isMobile && 'max-w-3xl',
+                    isMobile && 'flex h-full max-h-full flex-col'
+                  ) }
+                  position={ isMobile ? 'top' : 'center' }
+                  mobileFullScreen={ isMobile }
+                  fullWidth={ isMobile }
+                >
                   <DialogHeader>
                     <DialogTitle>All reviews</DialogTitle>
                     <DialogDescription>
@@ -439,7 +449,7 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
                     </DialogDescription>
                   </DialogHeader>
 
-                  <div className="space-y-4">
+                  <div className={ cn('space-y-4', isMobile && 'flex flex-1 flex-col overflow-hidden') }>
                     <div className="space-y-2">
                       <p className="text-sm font-medium text-foreground">Filter by rating</p>
                       <div
@@ -481,7 +491,12 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
                       </div>
                     </div>
 
-                    <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
+                    <div
+                      className={ cn(
+                        'space-y-3 overflow-y-auto pr-1',
+                        isMobile ? 'flex-1' : 'max-h-[60vh]'
+                      ) }
+                    >
                       { hasFilteredReviews ? (
                         filteredModalReviews.map((review) => (
                           <ReviewCard key={ review.review_id } review={ review } />

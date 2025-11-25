@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { getSpaceDetail } from '@/lib/queries/space';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import SpaceDetail from '@/components/pages/Marketplace/SpaceDetail/SpaceDetail';
+import { MarketplaceChrome } from '@/components/pages/Marketplace/MarketplaceChrome';
 import { Footer } from '@/components/ui/footer';
 import { MarketplaceErrorState } from '@/components/pages/Marketplace/Marketplace.ErrorState';
 
@@ -58,20 +59,20 @@ export default async function SpaceDetailPage({ params, }: Props) {
 
   if (!space) {
     return (
-      <>
+      <MarketplaceChrome>
         <main className="bg-background">
           <div className="mx-auto max-w-[1100px] px-4 py-16">
             <MarketplaceErrorState />
           </div>
         </main>
         <Footer />
-      </>
+      </MarketplaceChrome>
     );
   }
   return (
-    <>
+    <MarketplaceChrome>
       <SpaceDetail space={ space } />
       <Footer />
-    </>
+    </MarketplaceChrome>
   );
 }
