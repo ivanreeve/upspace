@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useMemo, useRef, useState } from 'react';
+import { FaImages } from 'react-icons/fa6';
 import { FiChevronLeft, FiChevronRight, FiX } from 'react-icons/fi';
 
 import {
@@ -247,14 +248,16 @@ export default function SpacePhotos({
     if (isMobile) {
       if (totalImages >= 2) {
         const overlay = (
-          <button
-            type="button"
-            onClick={ () => setGalleryOpen(true) }
-            aria-label={ `View ${remainingCount} more photo${remainingCount === 1 ? '' : 's'}` }
-            className="absolute bottom-3 right-3 z-10 rounded-full bg-black/70 px-3 py-1.5 text-sm font-semibold text-white shadow-sm backdrop-blur"
-          >
-            +{ remainingCount }
-          </button>
+          <div className="pointer-events-none absolute inset-0 flex items-end justify-end p-4">
+            <button
+              type="button"
+              onClick={ () => setGalleryOpen(true) }
+              aria-label={ `View ${remainingCount} more photo${remainingCount === 1 ? '' : 's'}` }
+              className="pointer-events-auto flex items-center gap-1 rounded-sm border border-white/10 bg-black/80 px-4 py-2 text-sm font-semibold text-white backdrop-blur-lg min-w-[72px] whitespace-nowrap"
+            >
+              +{ remainingCount } <FaImages className="size-4" />
+            </button>
+          </div>
         );
         return renderPrimaryFigure(overlay, 'h-[320px]');
       }
