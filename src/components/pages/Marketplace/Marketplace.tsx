@@ -284,7 +284,7 @@ function SidebarFooterContent({
             <DropdownMenuContent
               side="right"
               align="end"
-              sideOffset={ 8 }
+              sideOffset={ 24 }
               className="w-64 border border-border bg-card p-2 shadow-lg"
             >
               <div className="flex items-center gap-3 rounded-md px-2 py-3">
