@@ -1,3 +1,5 @@
+import { FiMessageSquare } from 'react-icons/fi';
+
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 
@@ -13,7 +15,7 @@ export default function HostInfo({
   const avatarAlt = resolvedName === 'Your host' ? 'Host avatar' : `${resolvedName}'s avatar`;
 
   return (
-    <section className="flex flex-col gap-4 rounded-md border px-6 py-5 shadow-sm md:flex-row md:items-center md:justify-between">
+    <section className="flex flex-wrap items-center justify-between gap-4 rounded-xs border px-6 py-5 shadow-sm md:flex-row md:items-center md:justify-between">
       <div className="flex items-center gap-4">
         <Avatar>
           { avatarUrl ? <AvatarImage src={ avatarUrl } alt={ avatarAlt } /> : null }
@@ -27,9 +29,11 @@ export default function HostInfo({
       <Button
         variant="default"
         type="button"
-        className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+        aria-label="Message host"
+        className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground shrink-0"
       >
-        Message Host
+        <FiMessageSquare className="size-4" aria-hidden="true" />
+        <span className="hidden sm:inline">Message Host</span>
       </Button>
     </section>
   );
