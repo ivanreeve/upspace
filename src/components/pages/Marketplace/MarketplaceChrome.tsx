@@ -113,7 +113,7 @@ function SidebarFooterContent({
 }: SidebarFooterContentProps) {
   const { state, } = useSidebar();
   const isCollapsed = state === 'collapsed';
-  const secondaryLabel = resolvedHandleLabel ?? userEmail ?? 'Account';
+  const secondaryLabel = userEmail ?? resolvedHandleLabel ?? 'Account';
   const emailLabel = userEmail ?? 'Email unavailable';
 
   return (
@@ -214,7 +214,6 @@ function MobileTopNav({
   avatarFallback,
   onSearchOpen,
   displayName,
-  secondaryLabel,
   emailLabel,
   onNavigate,
   onLogout,
@@ -223,7 +222,6 @@ function MobileTopNav({
   avatarFallback: string
   onSearchOpen: () => void
   displayName: string
-  secondaryLabel: string | null
   emailLabel: string
   onNavigate: (href: string) => void
   onLogout: () => Promise<void> | void
@@ -293,7 +291,7 @@ function MobileTopNav({
                 </Avatar>
                 <div className="flex min-w-0 flex-col">
                   <span className="text-sm font-semibold leading-tight">{ displayName }</span>
-                  <span className="text-xs text-muted-foreground truncate">{ secondaryLabel ?? emailLabel }</span>
+                  <span className="text-xs text-muted-foreground truncate">{ emailLabel }</span>
                 </div>
               </div>
               <DropdownMenuSeparator className="my-1" />
@@ -419,7 +417,6 @@ export function MarketplaceChrome({
           avatarFallback={ navData.avatarFallback }
           onSearchOpen={ handleSearch }
           displayName={ navData.avatarDisplayName }
-          secondaryLabel={ navData.resolvedHandleLabel ?? null }
           emailLabel={ navData.userEmail ?? 'Email unavailable' }
           onNavigate={ navData.onNavigate }
           onLogout={ navData.onLogout }
