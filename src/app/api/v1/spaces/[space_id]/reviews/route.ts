@@ -44,29 +44,43 @@ export async function GET(req: NextRequest, { params, }: Params) {
   const limit = limitParam ? Number.parseInt(limitParam, 10) : 50;
   const safeLimit = Number.isFinite(limit) && limit > 0 && limit <= 100 ? limit : 50;
 
-  const reviews = await prisma.review.findMany({
-    where: { space_id, },
-    orderBy: { created_at: 'desc', },
-    take: safeLimit,
-    select: {
-      id: true,
-      user_id: true,
-      rating_star: true,
-      description: true,
-      created_at: true,
-      common_review: { select: { comment: true, }, },
-      user: {
-        select: {
-          first_name: true,
-          last_name: true,
-          handle: true,
-          avatar: true,
+  const [reviewSummary, ratingBreakdown, reviews] = await prisma.$transaction([
+    prisma.review.aggregate({
+      where: { space_id, },
+      _count: true,
+      _avg: { rating_star: true, },
+    }),
+    prisma.review.groupBy({
+      where: { space_id, },
+      by: ['rating_star'],
+      _count: { _all: true, },
+    }),
+    prisma.review.findMany({
+      where: { space_id, },
+      orderBy: { created_at: 'desc', },
+      take: safeLimit,
+      select: {
+        id: true,
+        user_id: true,
+        rating_star: true,
+        description: true,
+        created_at: true,
+        common_review: { select: { comment: true, }, },
+        user: {
+          select: {
+            first_name: true,
+            last_name: true,
+            handle: true,
+            avatar: true,
+          },
         },
       },
-    },
-  });
+    })
+  ]);
 
-  if (!reviews.length) {
+  const totalReviews = reviewSummary._count ?? 0;
+
+  if (!totalReviews) {
     return NextResponse.json({
       data: {
         summary: {
@@ -100,24 +114,21 @@ export async function GET(req: NextRequest, { params, }: Params) {
     });
   }
 
-  const totalReviews = reviews.length;
-  const totalRating = reviews.reduce((sum, review) => sum + Number(review.rating_star), 0);
-  const averageRating = totalRating / totalReviews;
+  const averageRating = Number(reviewSummary._avg.rating_star ?? 0);
 
-  const ratingCounts: Record<number, number> = {
+  const ratingCounts = ratingBreakdown.reduce<Record<number, number>>((counts, entry) => {
+    const rating = Number(entry.rating_star);
+    if (rating >= 1 && rating <= 5) {
+      counts[rating] = entry._count._all;
+    }
+    return counts;
+  }, {
     1: 0,
     2: 0,
     3: 0,
     4: 0,
     5: 0,
-  };
-
-  for (const review of reviews) {
-    const rating = Number(review.rating_star);
-    if (ratingCounts[rating] !== undefined) {
-      ratingCounts[rating] += 1;
-    }
-  }
+  });
 
   const resolveReviewerName = (review: (typeof reviews)[number]) => {
     const firstName = review.user?.first_name?.trim();

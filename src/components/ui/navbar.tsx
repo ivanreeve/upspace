@@ -7,7 +7,13 @@ import { GrHomeRounded } from 'react-icons/gr';
 import { TbSparkles } from 'react-icons/tb';
 import { LuBookOpenText, LuUsers } from 'react-icons/lu';
 import { FaQuestion } from 'react-icons/fa6';
-import { FiSidebar, FiLogOut } from 'react-icons/fi';
+import {
+  FiSidebar,
+  FiLogOut,
+  FiUser,
+  FiSettings,
+  FiBell
+} from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
 
 import { ThemeSwitcher } from './theme-switcher';
@@ -17,6 +23,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from './dropdown-menu';
 
@@ -37,6 +44,7 @@ import {
 } from '@/components/ui/sheet';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useSession } from '@/components/auth/SessionProvider';
+import { useUserProfile } from '@/hooks/use-user-profile';
 
 export type NavItem = {
   href: string;
@@ -55,10 +63,20 @@ type AccountMenuProps = {
   avatarUrl: string | null;
   fallbackLabel: string;
   onLogout: () => void;
+  onNavigate: (href: string) => void;
+  displayName: string;
+  secondaryLabel: string | null;
+  emailLabel: string;
 };
 
 function AccountMenu({
- avatarUrl, fallbackLabel, onLogout, 
+ avatarUrl,
+ fallbackLabel,
+ onLogout,
+ onNavigate,
+ displayName,
+ secondaryLabel,
+ emailLabel,
 }: AccountMenuProps) {
   return (
     <DropdownMenu>
@@ -74,14 +92,46 @@ function AccountMenu({
           </Avatar>
         </button>
       </DropdownMenuTrigger>
-        <DropdownMenuContent className="min-w-[180px] px-1 py-1">
+        <DropdownMenuContent
+          align="end"
+          side="bottom"
+          sideOffset={ 12 }
+          className="z-[60] min-w-[240px] border border-border bg-card px-2 py-2 shadow-lg"
+        >
+          <div className="flex items-center gap-3 rounded-md px-2 py-3">
+            <Avatar className="size-10 border border-border">
+              { avatarUrl ? (
+                <AvatarImage src={ avatarUrl } alt="User avatar" />
+              ) : (
+                <AvatarFallback>{ fallbackLabel }</AvatarFallback>
+              ) }
+            </Avatar>
+            <div className="flex min-w-0 flex-col">
+              <span className="text-sm font-semibold leading-tight">{ displayName }</span>
+              <span className="text-xs text-muted-foreground truncate">{ secondaryLabel ?? emailLabel }</span>
+            </div>
+          </div>
+          <DropdownMenuSeparator className="my-1" />
+          <DropdownMenuItem onSelect={ () => onNavigate('/onboarding') }>
+            <FiUser className="size-4" aria-hidden="true" />
+            <span>Account</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={ () => onNavigate('/settings') }>
+            <FiSettings className="size-4" aria-hidden="true" />
+            <span>Settings</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={ () => onNavigate('/notifications') }>
+            <FiBell className="size-4" aria-hidden="true" />
+            <span>Notifications</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator className="my-1" />
           <DropdownMenuItem
             onSelect={ () => {
               onLogout();
             } }
-            className="rounded-sm text-sm font-medium text-destructive"
+            className="rounded-sm text-sm font-medium text-destructive focus-visible:text-destructive"
           >
-            <FiLogOut className="size-4" />
+            <FiLogOut className="size-4" aria-hidden="true" />
             Logout
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -100,6 +150,7 @@ export default function NavBar({
   const {
  session, isLoading: isSessionLoading, 
 } = useSession();
+  const { data: userProfile, } = useUserProfile();
   const isSessionResolved = !isSessionLoading;
   const router = useRouter();
   const isLogoOnly = variant === 'logo-only';
@@ -178,8 +229,18 @@ export default function NavBar({
   const avatarUrl = session?.user?.user_metadata?.avatar_url
     ?? session?.user?.user_metadata?.picture
     ?? null;
-
-  const fallbackLabel = 'US';
+  const preferredUsername = session?.user?.user_metadata?.preferred_username;
+  const preferredUsernameLabel =
+    preferredUsername && preferredUsername.includes('@') ? undefined : preferredUsername;
+  const resolvedHandleValue = userProfile?.handle ?? preferredUsernameLabel ?? null;
+  const avatarFallback =
+    resolvedHandleValue?.slice(0, 2)?.toUpperCase()
+    ?? 'US';
+  const displayName = resolvedHandleValue ?? 'UpSpace User';
+  const secondaryLabel = session?.user?.email ?? null;
+  const handleNavigate = React.useCallback((href: string) => {
+    router.push(href);
+  }, [router]);
 
   const handleLogout = React.useCallback(async () => {
     const supabase = getSupabaseBrowserClient();
@@ -243,8 +304,12 @@ export default function NavBar({
                       { session && (
                         <AccountMenu
                           avatarUrl={ avatarUrl }
-                          fallbackLabel={ fallbackLabel }
+                          fallbackLabel={ avatarFallback }
                           onLogout={ handleLogout }
+                          onNavigate={ handleNavigate }
+                          displayName={ displayName }
+                          secondaryLabel={ resolvedHandleValue }
+                          emailLabel={ secondaryLabel ?? 'Email unavailable' }
                         />
                       ) }
                     </div>
@@ -259,8 +324,12 @@ export default function NavBar({
             { session && (
               <AccountMenu
                 avatarUrl={ avatarUrl }
-                fallbackLabel={ fallbackLabel }
+                fallbackLabel={ avatarFallback }
                 onLogout={ handleLogout }
+                onNavigate={ handleNavigate }
+                displayName={ displayName }
+                secondaryLabel={ resolvedHandleValue }
+                emailLabel={ secondaryLabel ?? 'Email unavailable' }
               />
             ) }
             { resolvedMenuItems.length > 0 && (
