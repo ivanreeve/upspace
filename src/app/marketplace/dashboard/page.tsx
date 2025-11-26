@@ -1,6 +1,13 @@
 import { cookies } from 'next/headers';
 
 import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card';
 import { MarketplaceChrome } from '@/components/pages/Marketplace/MarketplaceChrome';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
 
@@ -21,8 +28,44 @@ export default async function MarketplaceDashboardPage() {
           <p className="text-xs uppercase tracking-[0.4em] text-muted-foreground">Admin dashboard</p>
           <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Portfolio health</h1>
           <p className="text-sm text-muted-foreground md:text-base">
-            Insights and automations for partner spaces are still in the oven, but we&apos;ll share them with you here soon.
+            This dashboard will help you monitor partner activity, prioritize approvals, and stay ahead of occupancy and task notifications.
           </p>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card className="border-dashed border-border/70 bg-muted/30">
+            <CardHeader>
+              <CardTitle className="text-base font-semibold">Occupancy pulse</CardTitle>
+              <CardDescription className="text-sm text-muted-foreground">
+                Live utilization, booking velocity, and availability trends will be visible here soon.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0 text-sm text-muted-foreground">
+              <Badge
+                variant="outline"
+                className="text-[10px] uppercase tracking-wide text-muted-foreground"
+              >
+                Coming soon
+              </Badge>
+              <p className="mt-3">We&apos;re wiring in the metrics that tell you which spaces are growing and when to scale support.</p>
+            </CardContent>
+          </Card>
+          <Card className="border-dashed border-border/70 bg-muted/30">
+            <CardHeader>
+              <CardTitle className="text-base font-semibold">Approvals & tasks</CardTitle>
+              <CardDescription className="text-sm text-muted-foreground">
+                Track verification queues, overdue actions, and critical alerts from a single glance.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0 text-sm text-muted-foreground">
+              <Badge
+                variant="outline"
+                className="text-[10px] uppercase tracking-wide text-muted-foreground"
+              >
+                Coming soon
+              </Badge>
+              <p className="mt-3">We&apos;re surfacing the alerts that matter to partners and admin teams.</p>
+            </CardContent>
+          </Card>
         </div>
         <div className="rounded-2xl border border-dashed border-border/70 bg-muted/30 px-6 py-12 text-center md:px-8 md:py-16">
           <Badge
