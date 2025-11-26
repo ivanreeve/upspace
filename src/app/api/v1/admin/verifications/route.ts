@@ -29,12 +29,26 @@ export async function GET(req: NextRequest) {
     const {
  status, limit, cursor, 
 } = parsed.data;
+    const now = new Date();
+    const where =
+      status === 'expired'
+        ? {
+          subject_type: 'space',
+          OR: [
+            { status: 'expired', },
+            {
+              status: 'approved',
+              valid_until: { lt: now, },
+            }
+          ],
+        }
+        : {
+          subject_type: 'space',
+          status,
+        };
 
     const verifications = await prisma.verification.findMany({
-      where: {
-        status,
-        subject_type: 'space',
-      },
+      where,
       take: limit + 1,
       skip: cursor ? 1 : 0,
       ...(cursor ? { cursor: { id: cursor, }, } : {}),

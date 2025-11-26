@@ -127,13 +127,6 @@ status: true,
       return NextResponse.json({ error: 'Verification not found.', }, { status: 404, });
     }
 
-    if (verification.status !== 'in_review') {
-      return NextResponse.json(
-        { error: 'Only verifications with status "in_review" can be updated.', },
-        { status: 409, }
-      );
-    }
-
     const updated = await prisma.verification.update({
       where: { id: verification_id, },
       data: {

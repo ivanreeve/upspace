@@ -339,42 +339,41 @@ export function VerificationDetailDialog({
             </div>
           </div>
 
-        <DialogFooter className="flex items-center gap-2">
-          <div className="flex-1">
-            <Button
-              variant="ghost"
-              onClick={ () => {
-                setIsReviewOpen(false);
-                resetDialogState();
-                onClose();
-              } }
-              disabled={ isProcessing }
-            >
-                Cancel
-            </Button>
-          </div>
-          { isPending ? (
-            <div className="flex items-center gap-2">
+        <DialogFooter className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
               <Button
-                variant="outline"
+                variant="ghost"
                 onClick={ () => {
                   setIsReviewOpen(false);
-                  setShowRejectionModal(true);
+                  resetDialogState();
+                  onClose();
                 } }
                 disabled={ isProcessing }
               >
-                <FiX className="size-4" aria-hidden="true" />
-                Reject
-              </Button>
-              <Button
-                onClick={ handleApproveClick }
-                disabled={ isProcessing }
-              >
-                <FiCheck className="size-4" aria-hidden="true" />
-                { approveMutation.isPending ? 'Approving...' : 'Approve' }
+                Cancel
               </Button>
             </div>
-          ) : (
+            <Button
+              variant="outline"
+              onClick={ () => {
+                setIsReviewOpen(false);
+                setShowRejectionModal(true);
+              } }
+              disabled={ isProcessing }
+            >
+              <FiX className="size-4" aria-hidden="true" />
+              Reject
+            </Button>
+            <Button
+              onClick={ handleApproveClick }
+              disabled={ isProcessing }
+            >
+              <FiCheck className="size-4" aria-hidden="true" />
+              { approveMutation.isPending ? 'Approving...' : 'Approve' }
+            </Button>
+          </div>
+          { !isPending && (
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               { processedSummary }
             </p>

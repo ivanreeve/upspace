@@ -61,6 +61,11 @@ const VERIFICATION_TABS = [
     label: 'Approved verifications',
     value: 'approved',
     description: 'Spaces that already have an approved verification.',
+  },
+  {
+    label: 'Renewal required',
+    value: 'expired',
+    description: 'Verifications whose approvals have expired and require renewal.',
   }
 ] as const;
 
