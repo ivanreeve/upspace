@@ -301,17 +301,17 @@ export function SpaceDetailsPanel({
         <Card className="border-border/70 bg-background/80">
           <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1">
-              <CardTitle className="text-2xl">Uploaded photos</CardTitle>
-              <CardDescription>Images stored for this listing.</CardDescription>
+              <CardTitle className="text-xl md:text-2xl">Uploaded photos</CardTitle>
+              <CardDescription className="text-xs md:text-sm">Images stored for this listing.</CardDescription>
             </div>
           </CardHeader>
           <CardContent>
             { space.images.length === 0 ? (
               <p className="text-sm text-muted-foreground">No photos uploaded yet.</p>
             ) : (
-              <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_260px] lg:items-stretch xl:grid-cols-[minmax(0,1fr)_320px]">
+              <div className="flex flex-col gap-3 md:gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_260px] lg:items-stretch xl:grid-cols-[minmax(0,1fr)_320px]">
                 { /* Main Featured Image Preview */ }
-                <figure className="relative h-56 flex-1 overflow-hidden rounded-md border border-border/60 bg-muted sm:h-64 lg:h-72 xl:h-[22rem]">
+                <figure className="relative h-48 flex-1 overflow-hidden rounded-md border border-border/60 bg-muted sm:h-56 md:h-64 lg:h-72 xl:h-[22rem]">
                   { featuredImageUrl ? (
                     <Image
                       src={ featuredImageUrl }
@@ -325,13 +325,13 @@ export function SpaceDetailsPanel({
                       Missing public URL
                     </div>
                   ) }
-                  <figcaption className="absolute bottom-0 left-0 right-0 flex items-center justify-between gap-2 border-t border-border/50 bg-gradient-to-t from-background/90 to-transparent px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground">
+                  <figcaption className="absolute bottom-0 left-0 right-0 flex items-center justify-between gap-2 border-t border-border/50 bg-gradient-to-t from-background/90 to-transparent px-3 py-2 text-[10px] uppercase tracking-wide text-muted-foreground md:px-4 md:py-3 md:text-xs">
                     <span>{ primaryImage?.category ?? 'Featured' }</span>
                   </figcaption>
                 </figure>
-                
+
                 { /* Small Grid Images */ }
-                <div className="grid grid-cols-2 grid-rows-2 gap-4 lg:h-full">
+                <div className="grid grid-cols-2 grid-rows-2 gap-3 md:gap-4 lg:h-full">
                   { Array.from({ length: 4, }).map((_, index) => {
                     const image = stackedImages[index];
                     const imageSrc = resolveImageSrc(image);
@@ -349,7 +349,7 @@ export function SpaceDetailsPanel({
                               className="object-cover"
                             />
                           ) : (
-                            <div className="flex h-full items-center justify-center text-[11px] text-muted-foreground">
+                            <div className="flex h-full items-center justify-center text-[10px] text-muted-foreground md:text-[11px]">
                               No image
                             </div>
                           ) }
@@ -358,7 +358,7 @@ export function SpaceDetailsPanel({
                               type="button"
                               onClick={ () => setGalleryOpen(true) }
                               aria-label="Open full image gallery"
-                              className="absolute inset-0 flex items-center justify-center rounded-md bg-background/55 text-sm font-medium text-foreground backdrop-blur-md transition hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                              className="absolute inset-0 flex items-center justify-center rounded-md bg-background/55 text-xs font-medium text-foreground backdrop-blur-md transition hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:text-sm"
                             >
                               See all photos
                             </button>
@@ -374,23 +374,24 @@ export function SpaceDetailsPanel({
         </Card>
 
         { /* Details and Areas Cards */ }
-        <div className="grid gap-6 lg:grid-cols-[3fr,2fr]">
-          <div className="space-y-6">
+        <div className="grid gap-4 md:gap-6 lg:grid-cols-[3fr,2fr]">
+          <div className="space-y-4 md:space-y-6">
             <Card className="border-border/70 bg-background/80">
-              <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between md:gap-4">
                 <div className="space-y-1">
-                  <CardTitle className="text-2xl">Description</CardTitle>
-                  <CardDescription>Rendered rich text from <code>prisma.space.description</code>.</CardDescription>
+                  <CardTitle className="text-xl md:text-2xl">Description</CardTitle>
+                  <CardDescription className="text-xs md:text-sm">Rendered rich text from <code>prisma.space.description</code>.</CardDescription>
                 </div>
                 { !isEditingDescription ? (
                   <Button
                     type="button"
                     variant="secondary"
+                    size="sm"
                     onClick={ handleStartDescriptionEdit }
-                    className="inline-flex items-center gap-2"
+                    className="inline-flex w-full items-center gap-2 sm:w-auto md:size-auto"
                   >
                     <FiEdit className="size-4" aria-hidden="true" />
-                    Edit description
+                    <span className="md:inline">Edit description</span>
                   </Button>
                 ) : null }
               </CardHeader>
@@ -441,13 +442,13 @@ export function SpaceDetailsPanel({
             </Card>
 
             <Card className="border-border/70 bg-background/80">
-              <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between md:gap-4">
                 <div className="space-y-1">
-                  <CardTitle className="text-2xl">{ space.name }</CardTitle>
-                  <CardDescription>Values currently stored for <code>prisma.space</code>.</CardDescription>
+                  <CardTitle className="text-xl md:text-2xl">{ space.name }</CardTitle>
+                  <CardDescription className="text-xs md:text-sm">Values currently stored for <code>prisma.space</code>.</CardDescription>
                 </div>
               </CardHeader>
-              <CardContent className="grid gap-6 sm:grid-cols-2">
+              <CardContent className="grid gap-3 sm:grid-cols-2 md:gap-6">
                 { renderField('Unit / suite', space.unit_number) }
                 { renderField('Address subunit', space.address_subunit) }
                 { renderField('Street', space.street) }
@@ -462,28 +463,28 @@ export function SpaceDetailsPanel({
           </div>
 
           <Card className="border-border/70 bg-background/80">
-            <CardHeader className="flex flex-col gap-4">
+            <CardHeader className="flex flex-col gap-3 md:gap-4">
               <div className="space-y-1">
-                <CardTitle className="text-2xl">Rentable areas</CardTitle>
-                <CardDescription>Every row maps to <code>prisma.area</code> + <code>price_rate</code>.</CardDescription>
+                <CardTitle className="text-xl md:text-2xl">Rentable areas</CardTitle>
+                <CardDescription className="text-xs md:text-sm">Every row maps to <code>prisma.area</code> + <code>price_rate</code>.</CardDescription>
               </div>
               <Button type="button" onClick={ handleAddArea } className="inline-flex w-full items-center gap-2 sm:w-auto">
                 <FiPlus className="size-4" aria-hidden="true" />
                 Add area
               </Button>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 md:space-y-4">
               { space.areas.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-border/60 p-4 text-sm text-muted-foreground">
-                  No areas yet. Use “Add area” to create one.
+                <div className="rounded-lg border border-dashed border-border/60 p-3 text-xs text-muted-foreground md:p-4 md:text-sm">
+                  No areas yet. Use &quot;Add area&quot; to create one.
                 </div>
               ) : (
                 space.areas.map((area) => (
-                  <div key={ area.id } className="rounded-md border border-border/60 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h4 className="text-base font-semibold">{ area.name }</h4>
-                        <p className="text-xs text-muted-foreground">
+                  <div key={ area.id } className="rounded-md border border-border/60 p-3 md:p-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-semibold md:text-base">{ area.name }</h4>
+                        <p className="text-[10px] text-muted-foreground md:text-xs">
                           Added { new Date(area.created_at).toLocaleDateString(undefined, {
                             month: 'short',
                             day: 'numeric',
@@ -500,7 +501,7 @@ export function SpaceDetailsPanel({
                           className="text-xs"
                         >
                           <FiEdit className="size-3" aria-hidden="true" />
-                          Edit
+                          <span className="hidden sm:inline">Edit</span>
                         </Button>
                         <Button
                           type="button"
@@ -510,24 +511,24 @@ export function SpaceDetailsPanel({
                           className="text-xs text-destructive hover:text-destructive"
                         >
                           <FiTrash2 className="size-3" aria-hidden="true" />
-                          Delete
+                          <span className="hidden sm:inline">Delete</span>
                         </Button>
                       </div>
                     </div>
-                    <dl className="mt-3 grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
+                    <dl className="mt-3 grid gap-3 text-xs text-muted-foreground sm:grid-cols-2 md:text-sm">
                       <div>
-                        <dt className="uppercase tracking-wide">Capacity range</dt>
-                        <dd className="text-foreground">{ area.min_capacity } to { area.max_capacity } seats</dd>
+                        <dt className="text-[10px] uppercase tracking-wide md:text-xs">Capacity range</dt>
+                        <dd className="text-sm text-foreground md:text-base">{ area.min_capacity } to { area.max_capacity } seats</dd>
                         <div className="mt-2">
-                          <Badge variant="secondary" className="flex items-center gap-1 text-xs">
+                          <Badge variant="secondary" className="flex w-fit items-center gap-1 text-[10px] md:text-xs">
                             <FiLayers className="size-3" aria-hidden="true" />
                             { area.min_capacity }-{ area.max_capacity } pax
                           </Badge>
                         </div>
                       </div>
                       <div>
-                        <dt className="uppercase tracking-wide">Base rate</dt>
-                        <dd className="text-foreground">
+                        <dt className="text-[10px] uppercase tracking-wide md:text-xs">Base rate</dt>
+                        <dd className="text-sm text-foreground md:text-base">
                           ${ area.rate_amount.toLocaleString(undefined, {
                             minimumFractionDigits: 0,
                             maximumFractionDigits: 2,
