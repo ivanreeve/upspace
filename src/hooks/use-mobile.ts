@@ -4,6 +4,7 @@ const MOBILE_BREAKPOINT = 768;
 const QUERY = `(max-width: ${MOBILE_BREAKPOINT - 1}px)`;
 
 export function useIsMobile() {
+  const [isHydrated, setIsHydrated] = React.useState(false);
   const getSnapshot = React.useCallback(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia(QUERY).matches;
@@ -33,5 +34,11 @@ export function useIsMobile() {
     return () => {};
   }, []);
 
-  return React.useSyncExternalStore(subscribe, getSnapshot, () => false);
+  const snapshot = React.useSyncExternalStore(subscribe, getSnapshot, () => false);
+
+  React.useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  return isHydrated ? snapshot : false;
 }

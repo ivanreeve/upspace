@@ -18,7 +18,6 @@ type RouteParams = {
 };
 
 const MIN_DESCRIPTION_CHARS = 20;
-const MAX_DESCRIPTION_CHARS = 500;
 
 type AvailabilitySlot = {
   dayIndex: number;
@@ -111,9 +110,9 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
     const sanitizedDescription = sanitizeRichText(parsed.data.description ?? '');
     const plainTextLength = richTextPlainTextLength(sanitizedDescription);
 
-    if (plainTextLength < MIN_DESCRIPTION_CHARS || plainTextLength > MAX_DESCRIPTION_CHARS) {
+    if (plainTextLength < MIN_DESCRIPTION_CHARS) {
       return NextResponse.json(
-        { error: `Description must be between ${MIN_DESCRIPTION_CHARS} and ${MAX_DESCRIPTION_CHARS} characters.`, },
+        { error: `Description must be at least ${MIN_DESCRIPTION_CHARS} characters.`, },
         { status: 422, }
       );
     }

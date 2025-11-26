@@ -20,6 +20,8 @@ export type Space = {
   created_at?: string;
   updated_at?: string;
   status?: 'Live' | 'Pending' | 'Draft';
+  average_rating?: number;
+  total_reviews?: number;
   min_rate_price?: number | null;
   max_rate_price?: number | null;
   rate_time_unit?: string | null;

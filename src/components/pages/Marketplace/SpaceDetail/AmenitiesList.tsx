@@ -112,7 +112,7 @@ export default function AmenitiesList({
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-2xl">
-            <DialogHeader className="space-y-1">
+            <DialogHeader className="space-y-1 mb-4">
               <DialogTitle>All amenities</DialogTitle>
               <DialogDescription>Grouped by category for this space.</DialogDescription>
             </DialogHeader>

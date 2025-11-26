@@ -2,24 +2,20 @@
 
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import Link from 'next/link';
 import {
-  FiBell,
-  FiCommand,
-  FiHome,
   FiLoader,
   FiList,
   FiSearch,
   FiX
 } from 'react-icons/fi';
-import { TbLayoutSidebarFilled } from 'react-icons/tb';
 import { CgOptions } from 'react-icons/cg';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { CardsGrid, SkeletonGrid } from './Marketplace.Cards';
 import { MarketplaceErrorState } from './Marketplace.ErrorState';
+import { MarketplaceChrome } from './MarketplaceChrome';
 
 import { listSpaces, suggestSpaces, type SpaceSuggestion } from '@/lib/api/spaces';
-import { useSession } from '@/components/auth/SessionProvider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import BackToTopButton from '@/components/ui/back-to-top';
 import { Badge } from '@/components/ui/badge';
@@ -43,7 +39,6 @@ import {
 } from '@/components/ui/dialog';
 import { Kbd } from '@/components/ui/kbd';
 import { Label } from '@/components/ui/label';
-import { LogoSymbolic } from '@/components/ui/logo-symbolic';
 import {
   Select,
   SelectContent,
@@ -64,24 +59,10 @@ import {
   type PhilippineRegionOption
 } from '@/lib/philippines-addresses/client';
 import { dedupeAddressOptions } from '@/lib/addresses';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarRail,
-  useSidebar
-} from '@/components/ui/sidebar';
-import { ThemeSwitcher } from '@/components/ui/theme-switcher';
+import { useSidebar } from '@/components/ui/sidebar';
 import { AMENITY_CATEGORY_DISPLAY_MAP } from '@/lib/amenity/amenity_category_display_map';
 import { AMENITY_ICON_MAPPINGS } from '@/lib/amenity/amenity_icon_mappings';
 import { cn } from '@/lib/utils';
-import { useUserProfile } from '@/hooks/use-user-profile';
 
 type FiltersState = {
   q: string;
@@ -164,113 +145,19 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
   return debounced;
 }
 
-function SidebarToggleMenuItem() {
-  const {
-    state,
-    toggleSidebar,
-  } = useSidebar();
-  const isExpanded = state === 'expanded';
-  const Icon = isExpanded
-    ? TbLayoutSidebarFilled
-    : TbLayoutSidebarFilled;
+type MarketplaceProps = {
+  initialSidebarOpen?: boolean
+};
 
-  return (
-    <SidebarMenuItem
-      className={ cn(
-        'flex items-center gap-2',
-        isExpanded ? 'justify-between pr-2 pl-1' : 'justify-center pr-1'
-      ) }
-    >
-      { isExpanded && (
-        <Link
-          href="/"
-          className="flex items-center gap-2 text-sm font-semibold text-foreground"
-        >
-          <LogoSymbolic className="size-5 text-primary dark:text-secondary" />
-          <span className="leading-tight">UpSpace</span>
-        </Link>
-      ) }
-      <SidebarMenuButton
-        tooltip={ isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }
-        type="button"
-        onClick={ toggleSidebar }
-        className="w-10 justify-center p-2"
-        aria-label={ isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }
-      >
-        <Icon className="size-4" aria-hidden="true" />
-        <span className="sr-only">{ isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }</span>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
-  );
-}
-
-function SidebarFooterContent({
-  avatarUrl,
-  avatarFallback,
-  avatarDisplayName,
-  resolvedHandleLabel,
-}: {
-  avatarUrl: string | null
-  avatarFallback: string
-  avatarDisplayName: string
-  resolvedHandleLabel: string | undefined
-}) {
-  const { state, } = useSidebar();
-  const isCollapsed = state === 'collapsed';
-
-  return (
-    <div
-      className={ cn(
-        'p-2 flex flex-col',
-        isCollapsed ? 'items-center gap-3' : 'space-y-2'
-      ) }
-    >
-      <ThemeSwitcher
-        variant={ isCollapsed ? 'compact' : 'default' }
-        className={ isCollapsed ? undefined : 'w-full justify-between' }
-      />
-      <SidebarMenu>
-        <SidebarMenuItem>
-          <SidebarMenuButton
-            asChild
-            tooltip={ isCollapsed ? undefined : 'Account' }
-            className={ cn('w-full ml-[-5px]', isCollapsed && 'justify-center') }
-          >
-            <Link href="/onboarding" className={ `flex items-center gap-3 py-8 ${isCollapsed ? 'ml-[-10px]' : ''}` }>
-            
-              <Avatar className={ cn('size-9', isCollapsed && 'size-8') }>
-                { avatarUrl ? (
-                  <AvatarImage src={ avatarUrl } alt="User avatar" />
-                ) : (
-                  <AvatarFallback>{ avatarFallback }</AvatarFallback>
-                ) }
-              </Avatar>
-              { !isCollapsed && (
-                <div className="flex min-w-0 flex-col text-left">
-                  <span className="text-sm font-semibold leading-tight">{ avatarDisplayName }</span>
-                  { resolvedHandleLabel && (
-                    <span className="text-xs text-muted-foreground truncate">
-                      { resolvedHandleLabel }
-                    </span>
-                  ) }
-                </div>
-              ) }
-              <span className="sr-only">
-                { `Open account for ${avatarDisplayName}${resolvedHandleLabel ? ` (${resolvedHandleLabel})` : ''}` }
-              </span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      </SidebarMenu>
-    </div>
-  );
-}
-
-export default function Marketplace() {
+export default function Marketplace({ initialSidebarOpen, }: MarketplaceProps) {
   const [filters, setFilters] = React.useState<FiltersState>(DEFAULT_FILTERS);
   const [pendingFilters, setPendingFilters] = React.useState<FiltersState>(DEFAULT_FILTERS);
   const [searchValue, setSearchValue] = React.useState('');
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+
   const applyFilters = React.useCallback((updates: Partial<FiltersState>) => {
     setPendingFilters((prev) => {
       const next: FiltersState = {
@@ -292,18 +179,6 @@ export default function Marketplace() {
       return next;
     });
   }, []);
-  const isMobile = useIsMobile();
-  const { session, } = useSession();
-  const { data: userProfile, } = useUserProfile();
-  const mobileInsetPadding = React.useMemo<React.CSSProperties | undefined>(
-    () => (isMobile
-      ? {
-          paddingTop: 'calc(4rem + var(--safe-area-top))',
-          paddingBottom: 'calc(2.75rem + var(--safe-area-bottom))',
-        }
-      : undefined),
-    [isMobile]
-  );
 
   React.useEffect(() => {
     setSearchValue(filters.q ?? '');
@@ -338,16 +213,16 @@ export default function Marketplace() {
   );
 
   React.useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey)) {
-        event.preventDefault();
-        openSearchModal();
-      }
-    };
+    if (searchParams.get('search') !== '1') return;
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [openSearchModal]);
+    openSearchModal();
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete('search');
+    const searchString = nextParams.toString();
+    const nextUrl = `${pathname}${searchString ? `?${searchString}` : ''}`;
+    router.replace(nextUrl, { scroll: false, });
+  }, [openSearchModal, pathname, router, searchParams]);
 
   const {
     data,
@@ -387,22 +262,6 @@ export default function Marketplace() {
     };
   }, [hasError]);
 
-  const avatarUrl = session?.user?.user_metadata?.avatar_url
-    ?? session?.user?.user_metadata?.picture
-    ?? null;
-  const profileHandleLabel = userProfile?.handle ? `@${userProfile.handle}` : undefined;
-  const preferredUsername = session?.user?.user_metadata?.preferred_username;
-  const preferredUsernameLabel =
-    preferredUsername && preferredUsername.includes('@') ? undefined : preferredUsername;
-  const resolvedHandleLabel = profileHandleLabel ?? preferredUsernameLabel;
-  const resolvedHandleValue = userProfile?.handle ?? preferredUsernameLabel ?? null;
-  const avatarFallback =
-    resolvedHandleValue?.slice(0, 2)?.toUpperCase()
-    ?? 'US';
-  const avatarDisplayName =
-    resolvedHandleLabel
-    ?? 'UpSpace User';
-
   const content = (
     <section className="relative mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 lg:px-10">
       <div className="space-y-6">
@@ -438,83 +297,25 @@ export default function Marketplace() {
   );
 
   return (
-    <SidebarProvider className="bg-background min-h-screen">
-      <MarketplaceSearchDialog
-        open={ isSearchOpen }
-        onOpenChange={ handleSearchOpenChange }
-        searchValue={ searchValue }
-        onSearchChange={ setSearchValue }
-        onSearchSubmit={ handleSearchSubmit }
-        hasActiveSearch={ hasActiveSearch }
-        hasAnyFilters={ pendingHasAnyFilters }
-        filters={ pendingFilters }
-        onFiltersApply={ applyFilters }
-      />
-      { isMobile && (
-        <MobileTopNav
-          avatarUrl={ avatarUrl }
-          avatarFallback={ avatarFallback }
-          onSearchOpen={ openSearchModal }
+    <MarketplaceChrome
+      onSearchOpen={ openSearchModal }
+      initialSidebarOpen={ initialSidebarOpen }
+      dialogSlot={ (
+        <MarketplaceSearchDialog
+          open={ isSearchOpen }
+          onOpenChange={ handleSearchOpenChange }
+          searchValue={ searchValue }
+          onSearchChange={ setSearchValue }
+          onSearchSubmit={ handleSearchSubmit }
+          hasActiveSearch={ hasActiveSearch }
+          hasAnyFilters={ pendingHasAnyFilters }
+          filters={ pendingFilters }
+          onFiltersApply={ applyFilters }
         />
       ) }
-      <div className="flex min-h-screen w-full">
-        <Sidebar collapsible="icon" className="hidden md:flex border-1 border-r-muted">
-          <SidebarHeader className="pt-4">
-            <SidebarMenu>
-              <SidebarToggleMenuItem />
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Home">
-                  <Link href="/">
-                    <FiHome className="size-4" strokeWidth={ 1.4 } />
-                    <span data-sidebar-label>Home</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  tooltip="Search"
-                  className="justify-between group-data-[collapsible=icon]:justify-center"
-                  type="button"
-                  onClick={ openSearchModal }
-                >
-                  <FiSearch className="size-4" strokeWidth={ 1.4 }/>
-                  <span data-sidebar-label>Search</span>
-                  <Kbd className="ml-auto hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden">
-                    <FiCommand className="size-3" aria-hidden="true" />
-                    <span> + K</span>
-                  </Kbd>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Notifications">
-                  <Link href="/notifications">
-                    <FiBell className="size-4" strokeWidth={ 1.4 } />
-                    <span data-sidebar-label>Notifications</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarHeader>
-          <SidebarContent className="flex-1" />
-          <SidebarFooter className="mt-auto border-t border-sidebar-border/60">
-            <SidebarFooterContent
-              avatarUrl={ avatarUrl }
-              avatarFallback={ avatarFallback }
-              avatarDisplayName={ avatarDisplayName }
-              resolvedHandleLabel={ resolvedHandleLabel }
-            />
-          </SidebarFooter>
-          <SidebarRail />
-        </Sidebar>
-
-        <SidebarInset
-          className="flex-1 bg-background w-full pb-10 pt-16 md:pt-0"
-          style={ mobileInsetPadding }
-        >
-          { content }
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
+    >
+      { content }
+    </MarketplaceChrome>
   );
 }
 
@@ -545,7 +346,7 @@ right: 0,
     <div
       aria-hidden="true"
       style={ overlayStyles }
-      className="pointer-events-none fixed bottom-0 z-30 h-[20vh] bg-gradient-to-t from-background via-background/50 to-background/0 transition-all duration-300"
+      className="pointer-events-none fixed bottom-0 z-30 h-[20vh] bg-gradient-to-t from-background via-background/50 to-background/0"
     />
   );
 }
@@ -579,6 +380,7 @@ function MarketplaceSearchDialog({
   const shouldFetchSuggestions = debouncedQuery.length >= 2;
   const [isFilterDialogOpen, setIsFilterDialogOpen] = React.useState(false);
   const searchDialogOpen = open && !isFilterDialogOpen;
+  const router = useRouter();
 
   React.useEffect(() => {
     if (!open) {
@@ -622,6 +424,11 @@ function MarketplaceSearchDialog({
       amenitiesNegate: next.length ? filters.amenitiesNegate : false,
     });
   }, [filters.amenities, filters.amenitiesMode, filters.amenitiesNegate, onFiltersApply]);
+  const handleSuggestionSelect = React.useCallback((suggestion: SpaceSuggestion) => {
+    onSearchChange(suggestion.name);
+    onSearchSubmit(suggestion.name);
+    router.push(`/marketplace/${suggestion.space_id}`);
+  }, [onSearchChange, onSearchSubmit, router]);
 
   return (
     <>
@@ -773,10 +580,7 @@ function MarketplaceSearchDialog({
               <CommandItem
                 key={ suggestion.space_id }
                 value={ `suggest ${suggestion.name}` }
-                onSelect={ () => {
-                  onSearchChange(suggestion.name);
-                  onSearchSubmit(suggestion.name);
-                } }
+                onSelect={ () => handleSuggestionSelect(suggestion) }
               >
                 <Avatar
                   className="size-9 border border-border shadow-sm"
@@ -1378,66 +1182,5 @@ function FilterBadge({
       <span className="truncate">{ label }</span>
       <FiX className="size-3" aria-hidden="true" />
     </button>
-  );
-}
-
-function MobileTopNav({
-  avatarUrl,
-  avatarFallback,
-  onSearchOpen,
-}: {
-  avatarUrl: string | null
-  avatarFallback: string
-  onSearchOpen: () => void
-}) {
-  return (
-    <header
-      className="fixed inset-x-0 top-0 z-40 border-b bg-background/90 px-4 py-3 backdrop-blur-md md:hidden"
-      style={
-        {
-          paddingTop: 'calc(var(--safe-area-top) + 12px)',
-          paddingBottom: '12px',
-          paddingLeft: 'max(1rem, var(--safe-area-left))',
-          paddingRight: 'max(1rem, var(--safe-area-right))',
-        } as React.CSSProperties
-      }
-    >
-      <div className="mx-auto flex max-w-[1440px] items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <LogoSymbolic className="text-primary dark:text-secondary" />
-          <span className="text-base font-semibold text-foreground">UpSpace</span>
-        </Link>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/notifications"
-            aria-label="Notifications"
-            className="rounded-full p-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            <FiBell className="size-5" aria-hidden="true" />
-          </Link>
-          <button
-            type="button"
-            aria-label="Search"
-            onClick={ onSearchOpen }
-            className="rounded-full p-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            <FiSearch className="size-5" aria-hidden="true" />
-          </button>
-          <Link
-            href="/onboarding"
-            aria-label="Account"
-            className="rounded-full p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            <Avatar className="size-8">
-              { avatarUrl ? (
-                <AvatarImage src={ avatarUrl } alt="User avatar" />
-              ) : (
-                <AvatarFallback>{ avatarFallback }</AvatarFallback>
-              ) }
-            </Avatar>
-          </Link>
-        </div>
-      </div>
-    </header>
   );
 }

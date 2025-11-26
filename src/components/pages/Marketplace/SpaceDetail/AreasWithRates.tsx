@@ -5,12 +5,13 @@ const peso = new Intl.NumberFormat('en-PH', {
   currency: 'PHP',
   maximumFractionDigits: 0,
 });
+const capacityFormatter = new Intl.NumberFormat('en-PH');
 
 const formatCapacity = (area: SpaceAreaWithRates) => {
   if (area.maxCapacity && area.maxCapacity !== area.minCapacity) {
-    return `${area.minCapacity.toLocaleString()} – ${area.maxCapacity.toLocaleString()} guests`;
+    return `${capacityFormatter.format(area.minCapacity)} – ${capacityFormatter.format(area.maxCapacity)} guests`;
   }
-  return `${area.minCapacity.toLocaleString()} guests`;
+  return `${capacityFormatter.format(area.minCapacity)} guests`;
 };
 
 export default function AreasWithRates({ areas, }: { areas: SpaceAreaWithRates[] }) {

@@ -23,13 +23,19 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePartnerSpacesQuery } from '@/hooks/api/usePartnerSpaces';
 
+const inventoryDateFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
 export function SpacesInventoryForm() {
   const {
     data: spaces,
     isLoading,
     isError,
     error,
-    refetch,
   } = usePartnerSpacesQuery();
 
   const tableRows = useMemo(() => (spaces ?? []).map((space) => ({
@@ -85,19 +91,7 @@ export function SpacesInventoryForm() {
     }
 
     if (isError) {
-      return (
-        <Card className="border-destructive/50 border bg-background/60">
-          <CardHeader>
-            <CardTitle>Unable to load spaces</CardTitle>
-            <CardDescription>{ error instanceof Error ? error.message : 'Please try again in a moment.' }</CardDescription>
-          </CardHeader>
-          <div className="px-6 pb-6">
-            <Button variant="outline" onClick={ () => refetch() }>
-              Retry
-            </Button>
-          </div>
-        </Card>
-      );
+      throw error instanceof Error ? error : new Error('Unable to load spaces.');
     }
 
     if (!spaces || spaces.length === 0) {
@@ -112,63 +106,101 @@ export function SpacesInventoryForm() {
     }
 
     return (
-      <div className="rounded-md border border-border/70 bg-background/80">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Space</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Areas</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            { tableRows.map((space) => (
-              <TableRow key={ space.id } className="cursor-pointer transition hover:bg-muted/40">
-                <TableCell className="font-medium">
-                  <div className="flex flex-col">
-                    <span>{ space.name }</span>
-                    <span className="text-xs text-muted-foreground">
-                      Added { new Date(space.created_at).toLocaleDateString(undefined, {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      }) }
-                    </span>
+      <>
+        { /* Desktop Table View */ }
+        <div className="hidden rounded-md border border-border/70 bg-background/80 md:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Space</TableHead>
+                <TableHead>Location</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Areas</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              { tableRows.map((space) => (
+                <TableRow key={ space.id } className="cursor-pointer transition hover:bg-muted/40">
+                  <TableCell className="font-medium">
+                    <div className="flex flex-col">
+                      <span>{ space.name }</span>
+                      <span className="text-xs text-muted-foreground">
+                        Added { inventoryDateFormatter.format(new Date(space.created_at)) }
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{ space.location }</TableCell>
+                  <TableCell>
+                    <Badge variant={ space.status === 'Live' ? 'secondary' : 'outline' }>{ space.status }</Badge>
+                  </TableCell>
+                  <TableCell>{ space.areas }</TableCell>
+                  <TableCell className="text-right">
+                    <Button asChild size="sm" variant="outline">
+                      <Link href={ `/spaces/${space.id}` }>Open</Link>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              )) }
+            </TableBody>
+          </Table>
+        </div>
+
+        { /* Mobile Card View */ }
+        <div className="space-y-3 md:hidden">
+          { tableRows.map((space) => (
+            <Card key={ space.id } className="border-border/70 bg-background/80">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-lg leading-tight">{ space.name }</CardTitle>
+                    <CardDescription className="mt-1 text-xs">
+                      { space.location }
+                    </CardDescription>
                   </div>
-                </TableCell>
-                <TableCell className="text-muted-foreground">{ space.location }</TableCell>
-                <TableCell>
-                  <Badge variant={ space.status === 'Live' ? 'secondary' : 'outline' }>{ space.status }</Badge>
-                </TableCell>
-                <TableCell>{ space.areas }</TableCell>
-                <TableCell className="text-right">
+                  <Badge variant={ space.status === 'Live' ? 'secondary' : 'outline' } className="shrink-0">
+                    { space.status }
+                  </Badge>
+                </div>
+              </CardHeader>
+              <div className="border-t border-border/50 px-6 py-3">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <span className="text-xs text-muted-foreground">Areas</span>
+                      <p className="font-medium">{ space.areas }</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground">Added</span>
+                      <p className="font-medium">
+                        { inventoryDateFormatter.format(new Date(space.created_at)) }
+                      </p>
+                    </div>
+                  </div>
                   <Button asChild size="sm" variant="outline">
                     <Link href={ `/spaces/${space.id}` }>Open</Link>
                   </Button>
-                </TableCell>
-              </TableRow>
-            )) }
-          </TableBody>
-        </Table>
-      </div>
+                </div>
+              </div>
+            </Card>
+          )) }
+        </div>
+      </>
     );
   };
 
   return (
-    <section id="inventory-form" className="space-y-8 py-12">
+    <section id="inventory-form" className="space-y-6 py-8 md:space-y-8 md:py-12">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="space-y-2">
-          <Badge variant="secondary" className="uppercase tracking-wide">Spaces inventory</Badge>
           <div className="space-y-1">
-            <h2 className="text-3xl font-semibold tracking-tight">Your spaces</h2>
-            <p className="text-base text-muted-foreground">
+            <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Your spaces</h2>
+            <p className="text-sm text-muted-foreground md:text-base">
               Review every listing in a single table. Use the plus button to open the dedicated space creation page.
             </p>
           </div>
         </div>
-        <Button asChild className="inline-flex items-center gap-2">
+        <Button asChild className="inline-flex w-full items-center gap-2 md:w-auto">
           <Link href="/spaces/create" className="inline-flex items-center gap-2">
             <FiPlus className="size-4" aria-hidden="true" />
             Add space
