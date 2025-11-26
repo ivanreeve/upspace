@@ -7,6 +7,7 @@ import {
   FiEye,
   FiFileText
 } from 'react-icons/fi';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { VerificationDetailDialog } from './AdminPage.VerificationDetailDialog';
 
@@ -38,7 +39,7 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { usePendingVerificationsQuery, type PendingVerification } from '@/hooks/api/useAdminVerifications';
+import { adminVerificationKeys, usePendingVerificationsQuery, type PendingVerification } from '@/hooks/api/useAdminVerifications';
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -79,6 +80,7 @@ export function AdminVerificationsTable() {
   const [activeTab, setActiveTab] = useState<VerificationStatus>('in_review');
   const cursor = pageCursors[pageIndex] ?? null;
 
+  const queryClient = useQueryClient();
   const {
     data: page,
     isLoading,
@@ -170,6 +172,7 @@ export function AdminVerificationsTable() {
     setPageIndex(0);
     setPageCursors([null]);
     setSelectedVerification(null);
+    queryClient.invalidateQueries({ queryKey: adminVerificationKeys.list(nextTab, pageSize, null), });
   };
 
   const tableBody = (() => {
