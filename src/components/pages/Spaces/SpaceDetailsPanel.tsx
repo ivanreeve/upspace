@@ -4,22 +4,25 @@ import Image from 'next/image';
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode
 } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import {
+  FiChevronLeft,
+  FiChevronRight,
   FiEdit,
   FiLayers,
   FiPlus,
-  FiTrash2
+  FiTrash2,
+  FiX
 } from 'react-icons/fi';
 import { FaImages } from 'react-icons/fa6';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 
-import { useIsMobile } from '@/hooks/use-mobile';
 
 import {
   AreaDialog,
@@ -30,6 +33,7 @@ import {
 } from './SpaceForms';
 import { SPACE_DESCRIPTION_VIEWER_CLASSNAME } from './space-description-rich-text';
 
+import { useIsMobile } from '@/hooks/use-mobile';
 import { AreaRecord, SpaceImageRecord } from '@/data/spaces';
 import {
   useCreateAreaMutation,
@@ -128,39 +132,124 @@ export function SpaceDetailsPanel({
   
   // Controls the full-screen gallery modal
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [carouselOpen, setCarouselOpen] = useState(false);
+  const [carouselIndex, setCarouselIndex] = useState<number | null>(null);
+  const categoryRefs = useRef<Record<string, HTMLElement | null>>({});
   const descriptionValue = descriptionForm.watch('description');
   const descriptionPlainTextLength = richTextPlainTextLength(sanitizeRichText(descriptionValue ?? ''));
   const descriptionError = descriptionForm.formState.errors.description?.message;
   const isDescriptionDirty = descriptionForm.formState.isDirty;
   const isDeletingArea = deleteAreaMutation.isPending;
 
-  const imagesByCategory = useMemo(() => {
+  const formatCategoryLabel = (category: string | null) => {
+    if (!category) return 'Uncategorized';
+    return category
+      .split(/[\s_-]+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  };
+
+  const slugifyCategory = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)+/g, '') || 'category';
+
+  const categoryGroups = useMemo(
+    () => {
+      const images = space?.images ?? [];
+      if (!images.length) return [];
+
+      const groups = new Map<string, SpaceImageRecord[]>();
+
+      images.forEach((image) => {
+        const categoryKey = image.category?.trim() || 'Uncategorized';
+        const existing = groups.get(categoryKey) ?? [];
+        existing.push(image);
+        groups.set(categoryKey, existing);
+      });
+
+      let index = 0;
+
+      return Array.from(groups.entries()).map(([category, imgs]) => {
+        const label = formatCategoryLabel(category);
+        const anchor = `photo-category-${slugifyCategory(category || 'Uncategorized')}-${index++}`;
+        return {
+          category,
+          label,
+          anchor,
+          images: imgs,
+        };
+      });
+    },
+    [space?.images]
+  );
+
+  const totalImages = space?.images?.length ?? 0;
+
+  const activeCarouselIndex = useMemo(
+    () => {
+      const images = space?.images ?? [];
+      if (images.length === 0) return null;
+      if (carouselIndex === null) return null;
+      return Math.min(Math.max(carouselIndex, 0), images.length - 1);
+    },
+    [carouselIndex, space?.images]
+  );
+
+  const activeCarouselImage = activeCarouselIndex === null
+    ? null
+    : (space?.images ?? [])[activeCarouselIndex];
+
+  const activeCarouselCategoryLabel = activeCarouselImage
+    ? formatCategoryLabel(activeCarouselImage.category ?? null)
+    : 'photo';
+
+  const openCarouselFromImage = (image?: SpaceImageRecord | null) => {
+    if (!image) return;
     const images = space?.images ?? [];
+    const index = images.findIndex(
+      (item) => item.id === image.id
+    );
+    if (index < 0) return;
+    setCarouselIndex(index);
+    setCarouselOpen(true);
+  };
 
-    if (images.length === 0) {
-      return [];
+  const isCarouselOpen = carouselOpen && activeCarouselIndex !== null && (space?.images?.length ?? 0) > 0;
+
+  const closeCarousel = () => {
+    setCarouselOpen(false);
+    setCarouselIndex(null);
+  };
+
+  const handleCarouselNavigate = (direction: 'prev' | 'next') => {
+    const images = space?.images ?? [];
+    setCarouselIndex((previous) => {
+      if (previous === null || images.length === 0) return previous;
+      const total = images.length;
+      const currentIndex = Math.min(Math.max(previous, 0), total - 1);
+      const offset = direction === 'next' ? 1 : -1;
+      const nextIndex = (currentIndex + offset + total) % total;
+      return nextIndex;
+    });
+  };
+
+  const handleCategoryClick = (anchor: string) => {
+    const target = categoryRefs.current[anchor];
+    if (target) {
+      target.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
     }
-
-    const primaryImageId =
-      images.find((image) => image.is_primary)?.id ?? images[0]?.id ?? null;
-    const groups: Record<string, SpaceImageRecord[]> = {};
-
-    for (const image of images) {
-      if (primaryImageId && image.id === primaryImageId) {
-        continue;
-      }
-      const category = image.category ?? 'Uncategorized';
-      if (!groups[category]) {
-        groups[category] = [];
-      }
-      groups[category].push(image);
-    }
-
-    return Object.entries(groups).sort(([, current], [, next]) => next.length - current.length);
-  }, [space?.images]);
+  };
 
   useEffect(() => {
     setGalleryOpen(false);
+    setCarouselOpen(false);
+    setCarouselIndex(null);
   }, [space?.id]);
 
   useEffect(() => {
@@ -733,74 +822,182 @@ export function SpaceDetailsPanel({
 
       { /* Full Gallery Dialog */ }
       <Dialog open={ galleryOpen } onOpenChange={ setGalleryOpen }>
-        <DialogContent className="flex h-[90vh] w-full max-w-[95vw] sm:max-w-[90vw] lg:max-w-6xl flex-col p-0">
+        <DialogContent className="flex h-screen w-screen max-w-[100vw] flex-col p-0 sm:max-w-[100vw]">
           <DialogHeader className="border-b border-border/50 px-6 py-4">
-            <DialogTitle>Image Gallery</DialogTitle>
+            <DialogTitle>Photo Tour</DialogTitle>
           </DialogHeader>
           <ScrollArea className="flex-1">
             <div className="space-y-8 px-6 py-6">
-              
-              { /* 1. Featured Image Section */ }
-              <section className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold uppercase tracking-wide text-foreground">Featured</h3>
-                </div>
-                <div className="relative aspect-video w-full overflow-hidden rounded-md border border-border/60 bg-muted">
-                  { featuredImageUrl ? (
-                    <Image
-                      src={ featuredImageUrl }
-                      alt="Featured space image"
-                      fill
-                      sizes="(min-width: 1024px) 80vw, 100vw"
-                      className="object-cover"
-                      priority
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-muted-foreground">
-                      No featured image
+              { categoryGroups.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No photos uploaded yet.</p>
+              ) : (
+                <>
+                  <section className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-foreground">
+                        Browse by category
+                      </h3>
+                      <span className="text-xs text-muted-foreground">
+                        { totalImages } photo{ totalImages === 1 ? '' : 's' }
+                      </span>
                     </div>
-                  ) }
-                </div>
-              </section>
-
-              { /* 2. Category Sections (Horizontal Scroll) */ }
-              { imagesByCategory.map(([category, images]) => (
-                <section key={ category } className="space-y-3">
-                  <div className="flex items-center gap-2 border-b border-border/30 pb-2">
-                    <h3 className="font-semibold text-foreground">{ category }</h3>
-                    <span className="text-xs text-muted-foreground">({ images.length })</span>
-                  </div>
-                  
-                  { /* Responsive Grid Container */ }
-                  <div className="grid grid-cols-1 gap-6 pb-3 pt-3 sm:grid-cols-2 lg:grid-cols-3">
-                    { images.map((img) => {
-                      const src = resolveImageSrc(img);
-                      return (
-                        <div 
-                          key={ img.id } 
-                          className="relative aspect-[3/2] min-h-[220px] overflow-hidden rounded-lg border border-border/60 bg-muted shadow-sm"
-                        >
-                          { src ? (
-                            <Image
-                              src={ src }
-                              alt={ img.category ?? 'Gallery image' }
-                              fill
-                              sizes="(min-width: 1280px) 360px, (min-width: 1024px) 300px, 100vw"
-                              className="object-cover transition-transform hover:scale-105"
-                            />
-                          ) : (
-                            <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                              No Image
+                    <div className="flex gap-3 overflow-x-auto pb-1">
+                      { categoryGroups.map((group) => {
+                        const preview = group.images[0];
+                        const previewSrc = resolveImageSrc(preview);
+                        return (
+                          <button
+                            key={ group.anchor }
+                            type="button"
+                            onClick={ () => handleCategoryClick(group.anchor) }
+                            aria-label={ `Jump to ${group.label} photos` }
+                            className="group relative inline-flex w-44 min-w-[176px] flex-col text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                          >
+                            <div className="relative h-28 w-full overflow-hidden bg-muted">
+                              { previewSrc ? (
+                                <Image
+                                  src={ previewSrc }
+                                  alt={ `${group.label} preview photo` }
+                                  fill
+                                  sizes="176px"
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                                  No preview
+                                </div>
+                              ) }
+                              <div className="pointer-events-none absolute inset-0 bg-black/40 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+                              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
                             </div>
-                          ) }
-                        </div>
-                      );
-                    }) }
-                  </div>
-                </section>
-              )) }
+                            <div className="flex items-center justify-between py-2">
+                              <span className="truncate text-sm font-medium text-foreground">
+                                { group.label }
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      }) }
+                    </div>
+                  </section>
+
+                  { categoryGroups.map((group) => (
+                    <section
+                      key={ group.anchor }
+                      ref={ (node) => {
+                        categoryRefs.current[group.anchor] = node;
+                      } }
+                      className="space-y-3 scroll-m-16"
+                      id={ group.anchor }
+                    >
+                      <div className="flex items-center gap-2 border-b border-border/30 pb-2">
+                        <h3 className="font-semibold text-foreground">{ group.label }</h3>
+                        <span className="text-xs text-muted-foreground">
+                          { group.images.length } photo{ group.images.length === 1 ? '' : 's' }
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 gap-6 pb-3 pt-3 sm:grid-cols-2 lg:grid-cols-3">
+                        { group.images.map((image, index) => {
+                          const src = resolveImageSrc(image);
+                          return (
+                            <button
+                              key={ `dialog-gallery-${group.anchor}-${image.id}` }
+                              type="button"
+                              onClick={ () => openCarouselFromImage(image) }
+                              aria-label={ `Open carousel for ${group.label} photo ${index + 1}` }
+                              className="group relative block w-full cursor-pointer overflow-hidden border border-border/60 bg-muted shadow-sm aspect-[3/2] min-h-[220px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                            >
+                              { src ? (
+                                <Image
+                                  src={ src }
+                                  alt={ `${space.name} ${group.label} photo ${index + 1}` }
+                                  fill
+                                  sizes="(min-width: 1280px) 360px, (min-width: 1024px) 300px, 100vw"
+                                  className="object-cover transition-transform cursor-pointer"
+                                />
+                              ) : (
+                                <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                                  No Image
+                                </div>
+                              ) }
+                              <div className="pointer-events-none absolute inset-0 bg-black/40 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+                            </button>
+                          );
+                        }) }
+                      </div>
+                    </section>
+                  )) }
+                </>
+              ) }
             </div>
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      { /* Carousel Dialog */ }
+      <Dialog open={ isCarouselOpen } onOpenChange={ (open) => (open ? setCarouselOpen(true) : closeCarousel()) }>
+        <DialogContent
+          showCloseButton={ false }
+          className="flex h-screen w-screen max-w-[100vw] flex-col gap-0 border-none bg-black p-0 text-white sm:max-w-[100vw] sm:rounded-none"
+        >
+          <DialogHeader className="flex flex-row items-center justify-between border-b border-white/10 px-4 py-3">
+            <DialogTitle className="text-sm font-semibold text-white">
+              { activeCarouselImage
+                ? `${formatCategoryLabel(activeCarouselImage.category ?? null)} photos`
+                : 'Photo carousel' }
+            </DialogTitle>
+            <div className="flex items-center gap-3 text-xs text-white/70">
+              { activeCarouselIndex !== null ? (
+                <span className="tabular-nums">
+                  { activeCarouselIndex + 1 } / { totalImages }
+                </span>
+              ) : null }
+              <button
+                type="button"
+                onClick={ closeCarousel }
+                aria-label="Close carousel"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+              >
+                <FiX className="size-5" aria-hidden="true" />
+              </button>
+            </div>
+          </DialogHeader>
+          <div className="relative flex flex-1 items-center justify-center overflow-hidden">
+            { activeCarouselImage ? (
+              <div className="relative h-full w-full max-h-[85vh] max-w-6xl">
+                <Image
+                  src={ resolveImageSrc(activeCarouselImage) ?? '' }
+                  alt={ `${space.name} ${activeCarouselCategoryLabel} ${(activeCarouselIndex ?? 0) + 1}` }
+                  fill
+                  sizes="100vw"
+                  className="object-contain"
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-white/70">No image selected.</p>
+            ) }
+
+            { totalImages > 1 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={ () => handleCarouselNavigate('prev') }
+                  aria-label="Previous photo"
+                  className="absolute left-4 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                >
+                  <FiChevronLeft className="size-6" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={ () => handleCarouselNavigate('next') }
+                  aria-label="Next photo"
+                  className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                >
+                  <FiChevronRight className="size-6" aria-hidden="true" />
+                </button>
+              </>
+            ) : null }
+          </div>
         </DialogContent>
       </Dialog>
     </>
