@@ -417,6 +417,8 @@ function useMarketplaceNavData() {
     router.refresh();
   }, [router]);
 
+  const resolvedRole = isGuest ? undefined : userProfile?.role;
+
   return React.useMemo(
     () => ({
       avatarUrl,
@@ -426,7 +428,7 @@ function useMarketplaceNavData() {
       userEmail,
       onNavigate: handleNavigation,
       onLogout: handleLogout,
-      role: userProfile?.role ?? undefined,
+      role: resolvedRole,
       isGuest,
     }),
     [
@@ -438,7 +440,7 @@ function useMarketplaceNavData() {
       isGuest,
       resolvedHandleLabel,
       userEmail,
-      userProfile?.role
+      resolvedRole
     ]
   );
 }
