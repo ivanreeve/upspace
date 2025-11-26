@@ -387,6 +387,182 @@ export function SpaceDetailsPanel({
   const primaryImage = space.images.find((image) => image.is_primary) ?? space.images[0] ?? null;
   const stackedImages = space.images.filter((image) => image.id !== primaryImage?.id);
   const featuredImageUrl = resolveImageSrc(primaryImage);
+  const remainingCount = Math.max(totalImages - 1, 0);
+
+  const renderPrimaryFigure = (
+    overlay?: React.ReactNode,
+    additionalFigureClass?: string
+  ) => (
+    <figure className={ `group relative w-full cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-muted h-96 sm:h-[28rem] lg:h-[30rem] xl:h-[32rem] ${additionalFigureClass ?? ''}` }>
+      { featuredImageUrl ? (
+        <Image
+          src={ featuredImageUrl }
+          alt={ `${space.name} featured photo` }
+          fill
+          sizes="(min-width: 1280px) 55vw, (min-width: 1024px) 65vw, 100vw"
+          className="object-cover"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+          Missing public URL
+        </div>
+      ) }
+      <div className="pointer-events-none absolute inset-0 rounded-lg bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100" />
+      { overlay }
+      { primaryImage ? (
+        <button
+          type="button"
+          onClick={ () => setGalleryOpen(true) }
+          aria-label="Open featured photo"
+          className="absolute inset-0 z-10 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          <span className="sr-only">Open featured photo</span>
+        </button>
+      ) : null }
+    </figure>
+  );
+
+  const renderPhotoTile = (
+    image: SpaceImageRecord | null | undefined,
+    alt: string,
+    tileClass?: string,
+    overlay?: React.ReactNode,
+    blurBackground = false
+  ) => {
+    const imageSrc = resolveImageSrc(image);
+    return (
+      <div
+        className={ `group relative h-full w-full overflow-hidden border border-border/60 bg-muted ${tileClass ?? ''}` }
+      >
+        { imageSrc ? (
+          <Image
+            src={ imageSrc }
+            alt={ alt }
+            fill
+            sizes="(min-width: 1280px) 360px, (min-width: 1024px) 300px, 100vw"
+            className={ `object-cover ${blurBackground ? 'scale-105 blur-[2px] brightness-50' : ''}` }
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+            No preview
+          </div>
+        ) }
+        <div className="pointer-events-none absolute inset-0 bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100" />
+        { overlay }
+        <button
+          type="button"
+          onClick={ () => setGalleryOpen(true) }
+          aria-label={ alt }
+          className="absolute inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          <span className="sr-only">{ alt }</span>
+        </button>
+      </div>
+    );
+  };
+
+  const renderSeeMoreTile = (previewImage: SpaceImageRecord | null | undefined) => {
+    return renderPhotoTile(
+      previewImage,
+      'Open full image gallery',
+      'rounded-br-lg',
+      (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50 text-white backdrop-blur-md">
+          <span className="text-base font-semibold">See all photos</span>
+          <span className="text-xs text-white/80">{ totalImages } photo{ totalImages === 1 ? '' : 's' }</span>
+        </div>
+      ),
+      true
+    );
+  };
+
+  const primaryFigure = renderPrimaryFigure();
+
+  const photoLayout = (() => {
+    if (isMobile) {
+      if (totalImages >= 2) {
+        const overlay = (
+          <div className="pointer-events-none absolute inset-0 flex items-end justify-end p-4">
+            <button
+              type="button"
+              onClick={ () => setGalleryOpen(true) }
+              aria-label={ `View ${remainingCount} more photo${remainingCount === 1 ? '' : 's'}` }
+              className="pointer-events-auto flex items-center gap-1 rounded-sm border border-white/10 bg-black/80 px-4 py-2 text-sm font-semibold text-white backdrop-blur-lg min-w-[72px] whitespace-nowrap"
+            >
+              +{ remainingCount } <FaImages className="size-4" />
+            </button>
+          </div>
+        );
+        return renderPrimaryFigure(overlay, 'h-[320px]');
+      }
+
+      return primaryFigure;
+    }
+
+    if (totalImages === 1) {
+      return primaryFigure;
+    }
+
+    if (totalImages === 2) {
+      const secondary = stackedImages[0] ?? null;
+      return (
+        <div className="grid gap-2.5 md:grid-cols-2">
+          { primaryFigure }
+          { renderPhotoTile(
+            secondary,
+            `${space.name} gallery photo 2`,
+            'rounded-lg min-h-[16rem]'
+          ) }
+        </div>
+      );
+    }
+
+    if (totalImages === 3) {
+      const [topTile, bottomTile] = stackedImages;
+      return (
+        <div className="grid gap-2.5 md:grid-cols-2">
+          { primaryFigure }
+          <div className="grid h-full min-h-[22rem] grid-rows-2 gap-2.5">
+            { renderPhotoTile(
+              topTile,
+              `${space.name} gallery photo 2`,
+              'rounded-tr-lg'
+            ) }
+            { renderPhotoTile(
+              bottomTile,
+              `${space.name} gallery photo 3`,
+              'rounded-br-lg'
+            ) }
+          </div>
+        </div>
+      );
+    }
+
+    const topLeftTile = stackedImages[0] ?? null;
+    const topRightTile = stackedImages[1] ?? null;
+    const previewTile = stackedImages[2] ?? topLeftTile ?? topRightTile ?? primaryImage;
+
+    return (
+      <div className="grid gap-2.5 md:grid-cols-2">
+        { primaryFigure }
+        <div className="grid h-full min-h-[24rem] grid-rows-[1fr_3fr] gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5">
+            { renderPhotoTile(
+              topLeftTile,
+              `${space.name} gallery photo 2`,
+              'rounded-tl-lg'
+            ) }
+            { renderPhotoTile(
+              topRightTile,
+              `${space.name} gallery photo 3`,
+              'rounded-tr-lg'
+            ) }
+          </div>
+          { renderSeeMoreTile(previewTile) }
+        </div>
+      </div>
+    );
+  })();
 
   return (
     <>
@@ -401,220 +577,8 @@ export function SpaceDetailsPanel({
           <CardContent>
             { space.images.length === 0 ? (
               <p className="text-sm text-muted-foreground">No photos uploaded yet.</p>
-            ) : space.images.length === 1 ? (
-              <figure className="group relative w-full cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-muted h-96 sm:h-[28rem] lg:h-[30rem] xl:h-[32rem]">
-                { featuredImageUrl ? (
-                  <Image
-                    src={ featuredImageUrl }
-                    alt={ `${space.name} featured photo` }
-                    fill
-                    sizes="(min-width: 1280px) 55vw, (min-width: 1024px) 65vw, 100vw"
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-                    Missing public URL
-                  </div>
-                ) }
-                <div className="pointer-events-none absolute inset-0 rounded-lg bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100" />
-                { primaryImage ? (
-                  <button
-                    type="button"
-                    onClick={ () => setGalleryOpen(true) }
-                    aria-label="Open featured photo"
-                    className="absolute inset-0 z-10 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                  >
-                    <span className="sr-only">Open featured photo</span>
-                  </button>
-                ) : null }
-              </figure>
-            ) : space.images.length === 2 ? (
-              <div className="grid gap-2.5 md:grid-cols-2">
-                <figure className="group relative w-full cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-muted h-96 sm:h-[28rem] lg:h-[30rem] xl:h-[32rem]">
-                  { featuredImageUrl ? (
-                    <Image
-                      src={ featuredImageUrl }
-                      alt={ `${space.name} featured photo` }
-                      fill
-                      sizes="(min-width: 1280px) 55vw, (min-width: 1024px) 65vw, 100vw"
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-                      Missing public URL
-                    </div>
-                  ) }
-                  <div className="pointer-events-none absolute inset-0 rounded-lg bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100" />
-                  { primaryImage ? (
-                    <button
-                      type="button"
-                      onClick={ () => setGalleryOpen(true) }
-                      aria-label="Open featured photo"
-                      className="absolute inset-0 z-10 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                    >
-                      <span className="sr-only">Open featured photo</span>
-                    </button>
-                  ) : null }
-                </figure>
-                <div className="group relative h-full w-full overflow-hidden rounded-lg border border-border/60 bg-muted min-h-[16rem]">
-                  { resolveImageSrc(stackedImages[0]) ? (
-                    <Image
-                      src={ resolveImageSrc(stackedImages[0])! }
-                      alt={ `${space.name} gallery photo 2` }
-                      fill
-                      sizes="(min-width: 1280px) 360px, (min-width: 1024px) 300px, 100vw"
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-                      No preview
-                    </div>
-                  ) }
-                  <div className="pointer-events-none absolute inset-0 bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100" />
-                  <button
-                    type="button"
-                    onClick={ () => setGalleryOpen(true) }
-                    aria-label={ `${space.name} gallery photo 2` }
-                    className="absolute inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                  >
-                    <span className="sr-only">{ `${space.name} gallery photo 2` }</span>
-                  </button>
-                </div>
-              </div>
-            ) : space.images.length === 3 ? (
-              <div className="grid gap-2.5 md:grid-cols-2">
-                <figure className="group relative w-full cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-muted h-96 sm:h-[28rem] lg:h-[30rem] xl:h-[32rem]">
-                  { featuredImageUrl ? (
-                    <Image
-                      src={ featuredImageUrl }
-                      alt={ `${space.name} featured photo` }
-                      fill
-                      sizes="(min-width: 1280px) 55vw, (min-width: 1024px) 65vw, 100vw"
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-                      Missing public URL
-                    </div>
-                  ) }
-                  <div className="pointer-events-none absolute inset-0 rounded-lg bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100" />
-                  { primaryImage ? (
-                    <button
-                      type="button"
-                      onClick={ () => setGalleryOpen(true) }
-                      aria-label="Open featured photo"
-                      className="absolute inset-0 z-10 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                    >
-                      <span className="sr-only">Open featured photo</span>
-                    </button>
-                  ) : null }
-                </figure>
-                <div className="grid h-full min-h-[22rem] grid-rows-2 gap-2.5">
-                  { [0, 1].map((index) => {
-                    const image = stackedImages[index];
-                    const imageSrc = resolveImageSrc(image);
-                    return (
-                      <div key={ index } className={ `group relative h-full w-full overflow-hidden border border-border/60 bg-muted ${index === 0 ? 'rounded-tr-lg' : 'rounded-br-lg'}` }>
-                        { imageSrc ? (
-                          <Image
-                            src={ imageSrc }
-                            alt={ `${space.name} gallery photo ${index + 2}` }
-                            fill
-                            sizes="(min-width: 1280px) 360px, (min-width: 1024px) 300px, 100vw"
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-                            No preview
-                          </div>
-                        ) }
-                        <div className="pointer-events-none absolute inset-0 bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100" />
-                        <button
-                          type="button"
-                          onClick={ () => setGalleryOpen(true) }
-                          aria-label={ `${space.name} gallery photo ${index + 2}` }
-                          className="absolute inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                        >
-                          <span className="sr-only">{ `${space.name} gallery photo ${index + 2}` }</span>
-                        </button>
-                      </div>
-                    );
-                  }) }
-                </div>
-              </div>
             ) : (
-              <div className="grid gap-2.5 md:grid-cols-2">
-                <figure className="group relative w-full cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-muted h-96 sm:h-[28rem] lg:h-[30rem] xl:h-[32rem]">
-                  { featuredImageUrl ? (
-                    <Image
-                      src={ featuredImageUrl }
-                      alt={ `${space.name} featured photo` }
-                      fill
-                      sizes="(min-width: 1280px) 55vw, (min-width: 1024px) 65vw, 100vw"
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-                      Missing public URL
-                    </div>
-                  ) }
-                  <div className="pointer-events-none absolute inset-0 rounded-lg bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100" />
-                  { primaryImage ? (
-                    <button
-                      type="button"
-                      onClick={ () => setGalleryOpen(true) }
-                      aria-label="Open featured photo"
-                      className="absolute inset-0 z-10 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                    >
-                      <span className="sr-only">Open featured photo</span>
-                    </button>
-                  ) : null }
-                </figure>
-                <div className="grid h-full min-h-[24rem] grid-rows-[2fr_1fr_1fr] gap-2.5">
-                  { [0, 1, 2].map((index) => {
-                    const image = stackedImages[index];
-                    const imageSrc = resolveImageSrc(image);
-                    const isSeeMoreSlot = index === 2 && space.images.length >= 5;
-                    return (
-                      <div
-                        key={ index }
-                        className={ `group relative h-full w-full overflow-hidden border border-border/60 bg-muted ${
-                          index === 0 ? 'rounded-tr-lg' : index === 2 ? 'rounded-br-lg' : ''
-                        }` }
-                      >
-                        { imageSrc ? (
-                          <Image
-                            src={ imageSrc }
-                            alt={ `${space.name} gallery photo ${index + 2}` }
-                            fill
-                            sizes="(min-width: 1280px) 360px, (min-width: 1024px) 300px, 100vw"
-                            className={ `object-cover ${isSeeMoreSlot ? 'scale-105 blur-[2px] brightness-50' : ''}` }
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-                            No preview
-                          </div>
-                        ) }
-                        <div className="pointer-events-none absolute inset-0 bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100" />
-                        { isSeeMoreSlot ? (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50 text-white backdrop-blur-md">
-                            <span className="text-base font-semibold">See all photos</span>
-                            <span className="text-xs text-white/80">{ space.images.length } photo{ space.images.length === 1 ? '' : 's' }</span>
-                          </div>
-                        ) : null }
-                        <button
-                          type="button"
-                          onClick={ () => setGalleryOpen(true) }
-                          aria-label={ isSeeMoreSlot ? 'Open full image gallery' : `${space.name} gallery photo ${index + 2}` }
-                          className="absolute inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                        >
-                          <span className="sr-only">{ isSeeMoreSlot ? 'Open full image gallery' : `${space.name} gallery photo ${index + 2}` }</span>
-                        </button>
-                      </div>
-                    );
-                  }) }
-                </div>
-              </div>
+              photoLayout
             ) }
           </CardContent>
         </Card>
