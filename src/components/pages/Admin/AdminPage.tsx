@@ -4,7 +4,7 @@ import { AdminVerificationsTable } from './AdminPage.VerificationsTable';
 
 export default function AdminPage() {
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-8 sm:px-6 lg:px-8">
+    <div className="w-full px-4 pb-8 sm:px-6 lg:px-8">
       <section className="space-y-6 py-8 md:space-y-8 md:py-12">
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
