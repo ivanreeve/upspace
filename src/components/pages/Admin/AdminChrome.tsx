@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FiCheckCircle, FiX } from 'react-icons/fi';
 
@@ -15,7 +14,6 @@ import {
   CommandList
 } from '@/components/ui/command';
 import { Kbd } from '@/components/ui/kbd';
-import { SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 
 type AdminChromeProps = {
   children: React.ReactNode
@@ -45,17 +43,6 @@ export function AdminChrome({
     router.push(path);
     setIsSearchOpen(false);
   }, [router]);
-
-  const verificationSidebarItem = (
-    <SidebarMenuItem>
-      <SidebarMenuButton asChild tooltip="Verification queue">
-        <Link href="/admin">
-          <FiCheckCircle className="size-4" strokeWidth={ 1.4 } />
-          <span data-sidebar-label>Verification Queue</span>
-        </Link>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
-  );
 
   return (
     <MarketplaceChrome
@@ -102,7 +89,6 @@ export function AdminChrome({
           </CommandList>
         </CommandDialog>
       ) }
-      sidebarHeaderExtras={ verificationSidebarItem }
     >
       { children }
     </MarketplaceChrome>

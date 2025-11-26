@@ -36,6 +36,7 @@ export async function GET() {
         middle_name: true,
         last_name: true,
         avatar: true,
+        role: true,
       },
     });
 
@@ -52,6 +53,7 @@ export async function GET() {
       middleName: dbUser.middle_name,
       lastName: dbUser.last_name,
       avatar: dbUser.avatar,
+      role: dbUser.role,
     });
   } catch (error) {
     console.error('Unexpected error in profile route', error);

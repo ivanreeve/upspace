@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   FiBell,
+  FiCheckCircle,
   FiCommand,
   FiHome,
   FiLogOut,
@@ -52,7 +53,6 @@ type MarketplaceChromeProps = {
   insetClassName?: string
   insetStyle?: React.CSSProperties
   initialSidebarOpen?: boolean
-  sidebarHeaderExtras?: React.ReactNode
 };
 
 type SidebarFooterContentProps = {
@@ -371,6 +371,7 @@ function useMarketplaceNavData() {
       userEmail,
       onNavigate: handleNavigation,
       onLogout: handleLogout,
+      role: userProfile?.role ?? undefined,
     }),
     [
       avatarDisplayName,
@@ -379,7 +380,8 @@ function useMarketplaceNavData() {
       handleLogout,
       handleNavigation,
       resolvedHandleLabel,
-      userEmail
+      userEmail,
+      userProfile?.role
     ]
   );
 }
@@ -391,11 +393,24 @@ export function MarketplaceChrome({
   insetClassName,
   insetStyle,
   initialSidebarOpen,
-  sidebarHeaderExtras,
 }: MarketplaceChromeProps) {
   const navData = useMarketplaceNavData();
   const cachedAvatarUrl = useCachedAvatar(navData.avatarUrl);
-  const { onNavigate, } = navData;
+  const {
+    onNavigate,
+    role,
+  } = navData;
+  const isAdmin = role === 'admin';
+  const verificationSidebarItem = isAdmin ? (
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild tooltip="Verification queue">
+        <Link href="/admin">
+          <FiCheckCircle className="size-4" strokeWidth={ 1.4 } />
+          <span data-sidebar-label>Verification Queue</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  ) : null;
   const isMobile = useIsMobile();
   const mobileInsetPadding = React.useMemo<React.CSSProperties | undefined>(
     () => (isMobile
@@ -475,15 +490,15 @@ export function MarketplaceChrome({
                   ) : null }
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Notifications">
-                  <Link href="/notifications">
-                    <FiBell className="size-4" strokeWidth={ 1.4 } />
-                    <span data-sidebar-label>Notifications</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              { sidebarHeaderExtras }
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Notifications">
+                <Link href="/notifications">
+                  <FiBell className="size-4" strokeWidth={ 1.4 } />
+                  <span data-sidebar-label>Notifications</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            { verificationSidebarItem }
             </SidebarMenu>
           </SidebarHeader>
           <SidebarContent className="flex-1" />
