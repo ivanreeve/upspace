@@ -127,11 +127,6 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
           <div className="space-y-4">
             <HostInfo hostName={ space.hostName ?? hostName } avatarUrl={ space.hostAvatarUrl } />
 
-            { /* Booking card for mobile - shows after HostInfo */ }
-            <div className="lg:hidden">
-              <BookingCard spaceName={ space.name } />
-            </div>
-
             <section ref={ descriptionSectionRef } className="space-y-4 border-b pb-6">
               <h2 className="text-xl font-medium text-foreground">About { space.name }</h2>
               <div className="relative">
@@ -201,6 +196,11 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
                 ) : null }
               </div>
             </section>
+
+            { /* Booking card for mobile - shows after description */ }
+            <div className="lg:hidden">
+              <BookingCard spaceName={ space.name } />
+            </div>
           </div>
 
           { /* Booking card for desktop - shows in sidebar */ }
