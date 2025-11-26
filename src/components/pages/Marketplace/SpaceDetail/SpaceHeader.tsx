@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { useSession } from '@/components/auth/SessionProvider';
 
 type SpaceHeaderProps = {
   name: string;
@@ -51,6 +52,9 @@ export default function SpaceHeader({
   spaceId,
   isBookmarked = false,
 }: SpaceHeaderProps) {
+  const { session, } = useSession();
+  const isGuest = !session;
+
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(isBookmarked);
   const [isCopying, setIsCopying] = useState(false);
@@ -260,28 +264,30 @@ icon: FaTelegramPlane,
               </div>
             </DialogContent>
           </Dialog>
-          <button
-            type="button"
-          onClick={ handleSave }
-          disabled={ isSaving }
-          aria-busy={ isSaving }
-          aria-pressed={ isSaved }
-          className={ cn(
-            'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed',
-            isSaved
-              ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100'
-              : 'border-border hover:bg-accent'
+          { !isGuest && (
+            <button
+              type="button"
+              onClick={ handleSave }
+              disabled={ isSaving }
+              aria-busy={ isSaving }
+              aria-pressed={ isSaved }
+              className={ cn(
+                'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed',
+                isSaved
+                  ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100'
+                  : 'border-border hover:bg-accent'
+              ) }
+            >
+              { isSaving ? (
+                <CgSpinner className="size-4 animate-spin" aria-hidden="true" />
+              ) : isSaved ? (
+                <FaHeart className="size-4 text-rose-600 fill-rose-600" aria-hidden="true" />
+              ) : (
+                <FaRegHeart className="size-4" aria-hidden="true" />
+              ) }
+              { isSaving ? (isSaved ? 'Removing…' : 'Saving…') : isSaved ? 'Saved' : 'Save' }
+            </button>
           ) }
-        >
-          { isSaving ? (
-            <CgSpinner className="size-4 animate-spin" aria-hidden="true" />
-          ) : isSaved ? (
-            <FaHeart className="size-4 text-rose-600 fill-rose-600" aria-hidden="true" />
-          ) : (
-            <FaRegHeart className="size-4" aria-hidden="true" />
-          ) }
-          { isSaving ? (isSaved ? 'Removing…' : 'Saving…') : isSaved ? 'Saved' : 'Save' }
-        </button>
         </div>
       </div>
     </header>

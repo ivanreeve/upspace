@@ -17,10 +17,18 @@ import SpaceBreadcrumbs from './SpaceBreadcrumbs';
 import { SPACE_DESCRIPTION_VIEWER_CLASSNAME } from '@/components/pages/Spaces/space-description-rich-text';
 import type { MarketplaceSpaceDetail } from '@/lib/queries/space';
 import { sanitizeRichText } from '@/lib/rich-text';
+import { useSession } from '@/components/auth/SessionProvider';
+import { cn } from '@/lib/utils';
 
 const DESCRIPTION_COLLAPSED_HEIGHT = 360; // px
+type SpaceDetailProps = {
+  space: MarketplaceSpaceDetail;
+};
 
-export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail }) {
+export default function SpaceDetail({ space, }: SpaceDetailProps) {
+  const { session, } = useSession();
+  const isGuest = !session;
+
   const locationParts = [space.city, space.region, space.countryCode].filter(Boolean);
   const location = locationParts.length > 0 ? locationParts.join(', ') : 'Global City, Taguig';
 
@@ -123,14 +131,23 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
           galleryImages={ space.galleryImages }
         />
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)] lg:items-start">
+        <div
+          className={ cn(
+            'grid gap-6 lg:items-start',
+            isGuest
+              ? 'lg:grid-cols-1'
+              : 'lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]'
+          ) }
+        >
           <div className="space-y-4">
             <HostInfo hostName={ space.hostName ?? hostName } avatarUrl={ space.hostAvatarUrl } />
 
             { /* Booking card for mobile - shown above description */ }
-            <div className="lg:hidden">
-              <BookingCard spaceName={ space.name } />
-            </div>
+            { !isGuest && (
+              <div className="lg:hidden">
+                <BookingCard spaceName={ space.name } />
+              </div>
+            ) }
 
             <section ref={ descriptionSectionRef } className="space-y-4 border-b pb-6">
               <h2 className="text-xl font-medium text-foreground">About { space.name }</h2>
@@ -204,9 +221,11 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
           </div>
 
           { /* Booking card for desktop - shows in sidebar */ }
-          <div className="hidden lg:block">
-            <BookingCard spaceName={ space.name } />
-          </div>
+          { !isGuest && (
+            <div className="hidden lg:block">
+              <BookingCard spaceName={ space.name } />
+            </div>
+          ) }
         </div>
 
         <AvailabilityTable items={ space.availability } />

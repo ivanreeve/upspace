@@ -17,6 +17,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Space } from '@/lib/api/spaces';
 import { cn } from '@/lib/utils';
+import { useSession } from '@/components/auth/SessionProvider';
 
 const peso = new Intl.NumberFormat('en-PH', {
   style: 'currency',
@@ -63,6 +64,8 @@ export function CardsGrid({ items, }: { items: Space[] }) {
 }
 
 export function SpaceCard({ space, }: { space: Space }) {
+  const { session, } = useSession();
+  const isGuest = !session;
   const [isSaved, setIsSaved] = useState(Boolean(space.isBookmarked));
   const [isSaving, setIsSaving] = useState(false);
 
@@ -126,29 +129,31 @@ export function SpaceCard({ space, }: { space: Space }) {
         ) : (
           <div className="h-full w-full rounded-sm bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/20" />
         ) }
-        <button
-          type="button"
-          onClick={ handleToggleSave }
-          disabled={ isSaving }
-          aria-busy={ isSaving }
-          aria-pressed={ isSaved }
-          aria-label={ isSaved ? 'Remove from saved spaces' : 'Save this space' }
-          className={ cn(
-            'absolute right-3 top-3 rounded-full cursor-pointer backdrop-blur-2xl p-2 shadow-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-70',
-            isSaved
-              ? 'bg-white text-rose-600 ring-offset-black/30'
-              : 'bg-black/30 text-white hover:bg-black/70'
-          ) }
-        >
-          { isSaving ? (
-            <CgSpinner className="size-5 animate-spin" aria-hidden="true" />
-          ) : isSaved ? (
-            <FaHeart aria-hidden="true" className="size-5 text-rose-600 fill-rose-600" />
-          ) : (
-            <FaRegHeart aria-hidden="true" className="size-5" />
-          ) }
-          <span className="sr-only">{ isSaved ? 'Remove from saved spaces' : 'Save this space' }</span>
-        </button>
+        { !isGuest && (
+          <button
+            type="button"
+            onClick={ handleToggleSave }
+            disabled={ isSaving }
+            aria-busy={ isSaving }
+            aria-pressed={ isSaved }
+            aria-label={ isSaved ? 'Remove from saved spaces' : 'Save this space' }
+            className={ cn(
+              'absolute right-3 top-3 rounded-full cursor-pointer backdrop-blur-2xl p-2 shadow-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-70',
+              isSaved
+                ? 'bg-white text-rose-600 ring-offset-black/30'
+                : 'bg-black/30 text-white hover:bg-black/70'
+            ) }
+          >
+            { isSaving ? (
+              <CgSpinner className="size-5 animate-spin" aria-hidden="true" />
+            ) : isSaved ? (
+              <FaHeart aria-hidden="true" className="size-5 text-rose-600 fill-rose-600" />
+            ) : (
+              <FaRegHeart aria-hidden="true" className="size-5" />
+            ) }
+            <span className="sr-only">{ isSaved ? 'Remove from saved spaces' : 'Save this space' }</span>
+          </button>
+        ) }
         <div className="pointer-events-none absolute inset-0 rounded-sm bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
       </div>
 
