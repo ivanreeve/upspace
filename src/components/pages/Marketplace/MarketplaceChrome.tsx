@@ -64,6 +64,7 @@ type SidebarFooterContentProps = {
   userEmail: string | null
   onNavigate: (href: string) => void
   onLogout: () => Promise<void> | void
+  isGuest: boolean
 };
 
 function SidebarToggleMenuItem() {
@@ -114,11 +115,16 @@ function SidebarFooterContent({
   userEmail,
   onNavigate,
   onLogout,
+  isGuest,
 }: SidebarFooterContentProps) {
   const { state, } = useSidebar();
   const isCollapsed = state === 'collapsed';
-  const secondaryLabel = userEmail ?? resolvedHandleLabel ?? 'Account';
-  const emailLabel = userEmail ?? 'Email unavailable';
+  const secondaryLabel = isGuest
+    ? 'Public browsing'
+    : userEmail ?? resolvedHandleLabel ?? 'Account';
+  const emailLabel = isGuest
+    ? 'Public browsing'
+    : userEmail ?? 'Email unavailable';
 
   return (
     <div
@@ -131,84 +137,107 @@ function SidebarFooterContent({
         variant={ isCollapsed ? 'compact' : 'default' }
         className={ isCollapsed ? undefined : 'w-full justify-between' }
       />
-      <SidebarMenu>
-        <SidebarMenuItem>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <SidebarMenuButton
-                type="button"
-                tooltip={ isCollapsed ? 'Open account menu' : undefined }
-                className={ cn('w-full ml-[-5px] py-8', isCollapsed ? 'justify-center' : 'justify-start') }
-                aria-label="Open account menu"
-              >
-                <Avatar className={ cn('size-9', isCollapsed && 'size-8') }>
-                  { avatarUrl ? (
-                    <AvatarImage src={ avatarUrl } alt="User avatar" />
-                  ) : (
-                    <AvatarFallback>{ avatarFallback }</AvatarFallback>
-                  ) }
-                </Avatar>
-                { !isCollapsed && (
-                  <div className="flex min-w-0 flex-col text-left">
-                    <span className="text-sm font-semibold leading-tight">{ avatarDisplayName }</span>
-                    { secondaryLabel && (
-                      <span className="text-xs text-muted-foreground truncate">
-                        { secondaryLabel }
-                      </span>
+      { isGuest ? (
+        <div
+          className={ cn(
+            'flex items-center gap-3 rounded-md px-2 py-3',
+            isCollapsed ? 'flex-col' : 'flex-row'
+          ) }
+        >
+          <Avatar className={ cn('size-9', isCollapsed && 'size-8') }>
+            { avatarUrl ? (
+              <AvatarImage src={ avatarUrl } alt="Guest avatar" />
+            ) : (
+              <AvatarFallback>{ avatarFallback }</AvatarFallback>
+            ) }
+          </Avatar>
+          { !isCollapsed && (
+            <div className="flex min-w-0 flex-col text-left">
+              <span className="text-sm font-semibold leading-tight">Guest</span>
+              <span className="text-xs text-muted-foreground truncate">{ secondaryLabel }</span>
+            </div>
+          ) }
+        </div>
+      ) : (
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton
+                  type="button"
+                  tooltip={ isCollapsed ? 'Open account menu' : undefined }
+                  className={ cn('w-full ml-[-5px] py-8', isCollapsed ? 'justify-center' : 'justify-start') }
+                  aria-label="Open account menu"
+                >
+                  <Avatar className={ cn('size-9', isCollapsed && 'size-8') }>
+                    { avatarUrl ? (
+                      <AvatarImage src={ avatarUrl } alt="User avatar" />
+                    ) : (
+                      <AvatarFallback>{ avatarFallback }</AvatarFallback>
                     ) }
-                  </div>
-                ) }
-                <span className="sr-only">
-                  { `Open account menu for ${avatarDisplayName}${resolvedHandleLabel ? ` (${resolvedHandleLabel})` : ''}` }
-                </span>
-              </SidebarMenuButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              side="right"
-              align="end"
-              sideOffset={ 24 }
-              className="w-64 border border-border bg-card p-2 shadow-lg"
-            >
-              <div className="flex items-center gap-3 rounded-md px-2 py-3">
-                <Avatar className="size-11 border border-border">
-                  { avatarUrl ? (
-                    <AvatarImage src={ avatarUrl } alt="User avatar" />
-                  ) : (
-                    <AvatarFallback>{ avatarFallback }</AvatarFallback>
+                  </Avatar>
+                  { !isCollapsed && (
+                    <div className="flex min-w-0 flex-col text-left">
+                      <span className="text-sm font-semibold leading-tight">{ avatarDisplayName }</span>
+                      { secondaryLabel && (
+                        <span className="text-xs text-muted-foreground truncate">
+                          { secondaryLabel }
+                        </span>
+                      ) }
+                    </div>
                   ) }
-                </Avatar>
-                <div className="flex min-w-0 flex-col">
-                  <span className="text-sm font-semibold leading-tight">{ avatarDisplayName }</span>
-                  <span className="text-xs text-muted-foreground truncate">{ emailLabel }</span>
+                  <span className="sr-only">
+                    { `Open account menu for ${avatarDisplayName}${resolvedHandleLabel ? ` (${resolvedHandleLabel})` : ''}` }
+                  </span>
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                side="right"
+                align="end"
+                sideOffset={ 24 }
+                className="w-64 border border-border bg-card p-2 shadow-lg"
+              >
+                <div className="flex items-center gap-3 rounded-md px-2 py-3">
+                  <Avatar className="size-11 border border-border">
+                    { avatarUrl ? (
+                      <AvatarImage src={ avatarUrl } alt="User avatar" />
+                    ) : (
+                      <AvatarFallback>{ avatarFallback }</AvatarFallback>
+                    ) }
+                  </Avatar>
+                  <div className="flex min-w-0 flex-col">
+                    <span className="text-sm font-semibold leading-tight">{ avatarDisplayName }</span>
+                    <span className="text-xs text-muted-foreground truncate">{ emailLabel }</span>
+                  </div>
                 </div>
-              </div>
-              <DropdownMenuSeparator className="my-1" />
-              <DropdownMenuItem
-                onSelect={ () => onNavigate('/onboarding') }
-              >
-                <FiUser className="size-4" aria-hidden="true" />
-                <span>Account</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={ () => onNavigate('/settings') }>
-                <FiSettings className="size-4" aria-hidden="true" />
-                <span>Settings</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={ () => onNavigate('/notifications') }>
-                <FiBell className="size-4" aria-hidden="true" />
-                <span>Notifications</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="my-1" />
-              <DropdownMenuItem
-                className="text-destructive focus-visible:text-destructive"
-                onSelect={ () => { void onLogout(); } }
-              >
-                <FiLogOut className="size-4" aria-hidden="true" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </SidebarMenuItem>
-      </SidebarMenu>
+                <DropdownMenuSeparator className="my-1" />
+                <DropdownMenuItem
+                  onSelect={ () => onNavigate('/onboarding') }
+                >
+                  <FiUser className="size-4" aria-hidden="true" />
+                  <span>Account</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={ () => onNavigate('/settings') }>
+                  <FiSettings className="size-4" aria-hidden="true" />
+                  <span>Settings</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={ () => onNavigate('/notifications') }>
+                  <FiBell className="size-4" aria-hidden="true" />
+                  <span>Notifications</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="my-1" />
+                <DropdownMenuItem
+                  className="text-destructive focus-visible:text-destructive"
+                  onSelect={ () => { void onLogout(); } }
+                >
+                  <FiLogOut className="size-4" aria-hidden="true" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      ) }
     </div>
   );
 }
@@ -221,6 +250,7 @@ function MobileTopNav({
   emailLabel,
   onNavigate,
   onLogout,
+  isGuest,
 }: {
   avatarUrl: string | null
   avatarFallback: string
@@ -229,6 +259,7 @@ function MobileTopNav({
   emailLabel: string
   onNavigate: (href: string) => void
   onLogout: () => Promise<void> | void
+  isGuest: boolean
 }) {
   return (
     <header
@@ -248,13 +279,15 @@ function MobileTopNav({
           <span className="text-base font-semibold text-foreground">UpSpace</span>
         </Link>
         <div className="flex items-center gap-2">
-          <Link
-            href="/notifications"
-            aria-label="Notifications"
-            className="rounded-full p-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            <FiBell className="size-5" aria-hidden="true" />
-          </Link>
+          { !isGuest && (
+            <Link
+              href="/notifications"
+              aria-label="Notifications"
+              className="rounded-full p-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <FiBell className="size-5" aria-hidden="true" />
+            </Link>
+          ) }
           <button
             type="button"
             aria-label="Search"
@@ -263,64 +296,79 @@ function MobileTopNav({
           >
             <FiSearch className="size-5" aria-hidden="true" />
           </button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label="Open account menu"
-                className="rounded-full p-1 transition-colors focus-visible:outline-none focus-visible:bg-none"
-              >
-                <Avatar className="size-8 border border-border">
-                  { avatarUrl ? (
-                    <AvatarImage src={ avatarUrl } alt="User avatar" />
-                  ) : (
-                    <AvatarFallback>{ avatarFallback }</AvatarFallback>
-                  ) }
-                </Avatar>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              side="bottom"
-              sideOffset={ 28 }
-              className="z-[60] min-w-[240px] border border-border bg-card px-2 py-2 shadow-lg"
+          { isGuest ? (
+            <div
+              aria-label="Guest avatar"
+              className="rounded-full border border-border p-1"
             >
-              <div className="flex items-center gap-3 rounded-md px-2 py-3">
-                <Avatar className="size-10 border border-border">
-                  { avatarUrl ? (
-                    <AvatarImage src={ avatarUrl } alt="User avatar" />
-                  ) : (
-                    <AvatarFallback>{ avatarFallback }</AvatarFallback>
-                  ) }
-                </Avatar>
-                <div className="flex min-w-0 flex-col">
-                  <span className="text-sm font-semibold leading-tight">{ displayName }</span>
-                  <span className="text-xs text-muted-foreground truncate">{ emailLabel }</span>
-                </div>
-              </div>
-              <DropdownMenuSeparator className="my-1" />
-              <DropdownMenuItem onSelect={ () => onNavigate('/onboarding') }>
-                <FiUser className="size-4" aria-hidden="true" />
-                <span>Account</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={ () => onNavigate('/settings') }>
-                <FiSettings className="size-4" aria-hidden="true" />
-                <span>Settings</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={ () => onNavigate('/notifications') }>
-                <FiBell className="size-4" aria-hidden="true" />
-                <span>Notifications</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="my-1" />
-              <DropdownMenuItem
-                className="text-destructive focus-visible:text-destructive"
-                onSelect={ () => { void onLogout(); } }
+              <Avatar className="size-8">
+                { avatarUrl ? (
+                  <AvatarImage src={ avatarUrl } alt="Guest avatar" />
+                ) : (
+                  <AvatarFallback>{ avatarFallback }</AvatarFallback>
+                ) }
+              </Avatar>
+            </div>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Open account menu"
+                  className="rounded-full p-1 transition-colors focus-visible:outline-none focus-visible:bg-none"
+                >
+                  <Avatar className="size-8 border border-border">
+                    { avatarUrl ? (
+                      <AvatarImage src={ avatarUrl } alt="User avatar" />
+                    ) : (
+                      <AvatarFallback>{ avatarFallback }</AvatarFallback>
+                    ) }
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                side="bottom"
+                sideOffset={ 28 }
+                className="z-[60] min-w-[240px] border border-border bg-card px-2 py-2 shadow-lg"
               >
-                <FiLogOut className="size-4" aria-hidden="true" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <div className="flex items-center gap-3 rounded-md px-2 py-3">
+                  <Avatar className="size-10 border border-border">
+                    { avatarUrl ? (
+                      <AvatarImage src={ avatarUrl } alt="User avatar" />
+                    ) : (
+                      <AvatarFallback>{ avatarFallback }</AvatarFallback>
+                    ) }
+                  </Avatar>
+                  <div className="flex min-w-0 flex-col">
+                    <span className="text-sm font-semibold leading-tight">{ displayName }</span>
+                    <span className="text-xs text-muted-foreground truncate">{ emailLabel }</span>
+                  </div>
+                </div>
+                <DropdownMenuSeparator className="my-1" />
+                <DropdownMenuItem onSelect={ () => onNavigate('/onboarding') }>
+                  <FiUser className="size-4" aria-hidden="true" />
+                  <span>Account</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={ () => onNavigate('/settings') }>
+                  <FiSettings className="size-4" aria-hidden="true" />
+                  <span>Settings</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={ () => onNavigate('/notifications') }>
+                  <FiBell className="size-4" aria-hidden="true" />
+                  <span>Notifications</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="my-1" />
+                <DropdownMenuItem
+                  className="text-destructive focus-visible:text-destructive"
+                  onSelect={ () => { void onLogout(); } }
+                >
+                  <FiLogOut className="size-4" aria-hidden="true" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) }
         </div>
       </div>
     </header>
@@ -340,13 +388,16 @@ function useMarketplaceNavData() {
   const preferredUsernameLabel =
     preferredUsername && preferredUsername.includes('@') ? undefined : preferredUsername;
   const resolvedHandleLabel = profileHandleLabel ?? preferredUsernameLabel;
-  const resolvedHandleValue = userProfile?.handle ?? preferredUsernameLabel ?? null;
-  const avatarFallback =
-    resolvedHandleValue?.slice(0, 2)?.toUpperCase()
-    ?? 'US';
-  const avatarDisplayName =
-    resolvedHandleLabel
-    ?? 'UpSpace User';
+  const isGuest = !session;
+  const resolvedHandleValue = isGuest
+    ? null
+    : userProfile?.handle ?? preferredUsernameLabel ?? null;
+  const avatarFallback = isGuest
+    ? 'GU'
+    : (resolvedHandleValue?.slice(0, 2)?.toUpperCase() ?? 'US');
+  const avatarDisplayName = isGuest
+    ? 'Guest'
+    : (resolvedHandleLabel ?? 'UpSpace User');
   const userEmail = session?.user?.email ?? null;
   const handleNavigation = React.useCallback((href: string) => {
     router.push(href);
@@ -373,6 +424,7 @@ function useMarketplaceNavData() {
       onNavigate: handleNavigation,
       onLogout: handleLogout,
       role: userProfile?.role ?? undefined,
+      isGuest,
     }),
     [
       avatarDisplayName,
@@ -380,6 +432,7 @@ function useMarketplaceNavData() {
       avatarUrl,
       handleLogout,
       handleNavigation,
+      isGuest,
       resolvedHandleLabel,
       userEmail,
       userProfile?.role
@@ -400,6 +453,7 @@ export function MarketplaceChrome({
   const {
     onNavigate,
     role,
+    isGuest,
   } = navData;
   const isAdmin = role === 'admin';
   const verificationSidebarItem = isAdmin ? (
@@ -469,6 +523,7 @@ export function MarketplaceChrome({
           emailLabel={ navData.userEmail ?? 'Email unavailable' }
           onNavigate={ navData.onNavigate }
           onLogout={ navData.onLogout }
+          isGuest={ navData.isGuest }
         />
       ) }
       <div className="flex min-h-screen w-full">
@@ -501,29 +556,32 @@ export function MarketplaceChrome({
                     ) : null }
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Notifications">
-                    <Link href="/notifications">
-                      <FiBell className="size-4" strokeWidth={ 1.4 } />
-                      <span data-sidebar-label>Notifications</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                { !isGuest && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Notifications">
+                      <Link href="/notifications">
+                        <FiBell className="size-4" strokeWidth={ 1.4 } />
+                        <span data-sidebar-label>Notifications</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ) }
                 { dashboardSidebarItem }
                 { verificationSidebarItem }
               </SidebarMenu>
           </SidebarHeader>
           <SidebarContent className="flex-1" />
           <SidebarFooter className="mt-auto border-t border-sidebar-border/60">
-            <SidebarFooterContent
-              avatarUrl={ cachedAvatarUrl }
-              avatarFallback={ navData.avatarFallback }
-              avatarDisplayName={ navData.avatarDisplayName }
-              resolvedHandleLabel={ navData.resolvedHandleLabel }
-              userEmail={ navData.userEmail }
-              onNavigate={ navData.onNavigate }
-              onLogout={ navData.onLogout }
-            />
+          <SidebarFooterContent
+            avatarUrl={ cachedAvatarUrl }
+            avatarFallback={ navData.avatarFallback }
+            avatarDisplayName={ navData.avatarDisplayName }
+            resolvedHandleLabel={ navData.resolvedHandleLabel }
+            userEmail={ navData.userEmail }
+            onNavigate={ navData.onNavigate }
+            onLogout={ navData.onLogout }
+            isGuest={ navData.isGuest }
+          />
           </SidebarFooter>
           <SidebarRail />
         </Sidebar>

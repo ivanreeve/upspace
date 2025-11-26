@@ -48,11 +48,15 @@ function CommandDialog({
   mobileFullScreen?: boolean,
   fullWidth?: boolean,
 }) {
+  const dialogId = React.useId();
+  const titleId = `${dialogId}-title`;
+  const descriptionId = `${dialogId}-description`;
+
   return (
     <Dialog { ...props }>
       <DialogHeader className="sr-only">
-        <DialogTitle>{ title }</DialogTitle>
-        <DialogDescription>{ description }</DialogDescription>
+        <DialogTitle id={ titleId }>{ title }</DialogTitle>
+        <DialogDescription id={ descriptionId }>{ description }</DialogDescription>
       </DialogHeader>
       <DialogContent
         className={ cn('overflow-hidden p-0', className) }
