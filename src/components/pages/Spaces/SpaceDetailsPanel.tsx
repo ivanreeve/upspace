@@ -15,8 +15,11 @@ import {
   FiPlus,
   FiTrash2
 } from 'react-icons/fi';
+import { FaImages } from 'react-icons/fa6';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
+
+import { useIsMobile } from '@/hooks/use-mobile';
 
 import {
   AreaDialog,
@@ -94,6 +97,7 @@ export function SpaceDetailsPanel({
   className,
 }: SpaceDetailsPanelProps) {
   const normalizedSpaceId = spaceId ?? '';
+  const isMobile = useIsMobile();
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '') ?? null;
   const getPublicImageUrl = (path?: string | null) => (supabaseUrl && path ? `${supabaseUrl}/storage/v1/object/public/${path}` : null);
   const resolveImageSrc = (image?: SpaceImageRecord | null) => {
@@ -309,7 +313,7 @@ export function SpaceDetailsPanel({
             { space.images.length === 0 ? (
               <p className="text-sm text-muted-foreground">No photos uploaded yet.</p>
             ) : space.images.length === 1 ? (
-              <figure className="group relative w-full cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-muted h-80 sm:h-96 lg:h-[28rem]">
+              <figure className="group relative w-full cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-muted h-96 sm:h-[28rem] lg:h-[30rem] xl:h-[32rem]">
                 { featuredImageUrl ? (
                   <Image
                     src={ featuredImageUrl }
@@ -337,7 +341,7 @@ export function SpaceDetailsPanel({
               </figure>
             ) : space.images.length === 2 ? (
               <div className="grid gap-2.5 md:grid-cols-2">
-                <figure className="group relative w-full cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-muted h-80 sm:h-96 lg:h-[28rem]">
+                <figure className="group relative w-full cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-muted h-96 sm:h-[28rem] lg:h-[30rem] xl:h-[32rem]">
                   { featuredImageUrl ? (
                     <Image
                       src={ featuredImageUrl }
@@ -390,7 +394,7 @@ export function SpaceDetailsPanel({
               </div>
             ) : space.images.length === 3 ? (
               <div className="grid gap-2.5 md:grid-cols-2">
-                <figure className="group relative w-full cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-muted h-80 sm:h-96 lg:h-[28rem]">
+                <figure className="group relative w-full cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-muted h-96 sm:h-[28rem] lg:h-[30rem] xl:h-[32rem]">
                   { featuredImageUrl ? (
                     <Image
                       src={ featuredImageUrl }
@@ -421,7 +425,7 @@ export function SpaceDetailsPanel({
                     const image = stackedImages[index];
                     const imageSrc = resolveImageSrc(image);
                     return (
-                      <div key={ index } className="group relative h-full w-full overflow-hidden rounded-tr-lg border border-border/60 bg-muted">
+                      <div key={ index } className={ `group relative h-full w-full overflow-hidden border border-border/60 bg-muted ${index === 0 ? 'rounded-tr-lg' : 'rounded-br-lg'}` }>
                         { imageSrc ? (
                           <Image
                             src={ imageSrc }
@@ -451,7 +455,7 @@ export function SpaceDetailsPanel({
               </div>
             ) : (
               <div className="grid gap-2.5 md:grid-cols-2">
-                <figure className="group relative w-full cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-muted h-80 sm:h-96 lg:h-[28rem]">
+                <figure className="group relative w-full cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-muted h-96 sm:h-[28rem] lg:h-[30rem] xl:h-[32rem]">
                   { featuredImageUrl ? (
                     <Image
                       src={ featuredImageUrl }
