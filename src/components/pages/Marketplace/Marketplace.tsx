@@ -9,6 +9,7 @@ import {
   FiX
 } from 'react-icons/fi';
 import { CgOptions } from 'react-icons/cg';
+import { useRouter } from 'next/navigation';
 
 import { CardsGrid, SkeletonGrid } from './Marketplace.Cards';
 import { MarketplaceErrorState } from './Marketplace.ErrorState';
@@ -375,6 +376,7 @@ function MarketplaceSearchDialog({
   const shouldFetchSuggestions = debouncedQuery.length >= 2;
   const [isFilterDialogOpen, setIsFilterDialogOpen] = React.useState(false);
   const searchDialogOpen = open && !isFilterDialogOpen;
+  const router = useRouter();
 
   React.useEffect(() => {
     if (!open) {
@@ -418,6 +420,11 @@ function MarketplaceSearchDialog({
       amenitiesNegate: next.length ? filters.amenitiesNegate : false,
     });
   }, [filters.amenities, filters.amenitiesMode, filters.amenitiesNegate, onFiltersApply]);
+  const handleSuggestionSelect = React.useCallback((suggestion: SpaceSuggestion) => {
+    onSearchChange(suggestion.name);
+    onSearchSubmit(suggestion.name);
+    router.push(`/marketplace/${suggestion.space_id}`);
+  }, [onSearchChange, onSearchSubmit, router]);
 
   return (
     <>
@@ -569,10 +576,7 @@ function MarketplaceSearchDialog({
               <CommandItem
                 key={ suggestion.space_id }
                 value={ `suggest ${suggestion.name}` }
-                onSelect={ () => {
-                  onSearchChange(suggestion.name);
-                  onSearchSubmit(suggestion.name);
-                } }
+                onSelect={ () => handleSuggestionSelect(suggestion) }
               >
                 <Avatar
                   className="size-9 border border-border shadow-sm"
