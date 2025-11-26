@@ -8,6 +8,7 @@ import {
   FiCommand,
   FiHome,
   FiLogOut,
+  FiMessageSquare,
   FiSearch,
   FiSettings,
   FiBarChart2,
@@ -404,6 +405,7 @@ export function MarketplaceChrome({
     role,
   } = navData;
   const isAdmin = role === 'admin';
+  const isCustomer = role === 'customer';
   const verificationSidebarItem = isAdmin ? (
     <SidebarMenuItem>
       <SidebarMenuButton asChild tooltip="Verification queue">
@@ -511,6 +513,16 @@ export function MarketplaceChrome({
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                { isCustomer && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Messages">
+                      <Link href="/messages">
+                        <FiMessageSquare className="size-4" strokeWidth={ 1.4 } />
+                        <span data-sidebar-label>Messages</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ) }
                 { sidebarExtras }
                 { dashboardSidebarItem }
                 { verificationSidebarItem }

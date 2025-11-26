@@ -63,40 +63,102 @@ export async function GET(req: NextRequest) {
   if (dbUser.role === 'customer') {
     const { space_id, } = parsed.data;
 
-    if (!space_id) {
-      return invalidSpaceResponse;
-    }
-
-    const space = await prisma.space.findUnique({
-      where: { id: space_id, },
-      select: {
-        id: true,
-        name: true,
-        city: true,
-        region: true,
-        user_id: true,
-      },
-    });
-
-    if (!space) {
-      return notFoundResponse;
-    }
-
-    const room = await prisma.chat_room.findFirst({
-      where: {
-        space_id,
-        customer_id: dbUser.user_id,
-      },
-      include: {
-        customer: {
-          select: {
-            user_id: true,
-            first_name: true,
-            last_name: true,
-            handle: true,
-            avatar: true,
+    if (space_id) {
+      const space = await prisma.space.findUnique({
+        where: { id: space_id, },
+        select: {
+          id: true,
+          name: true,
+          city: true,
+          region: true,
+          user_id: true,
+          user: {
+            select: {
+              user_id: true,
+              first_name: true,
+              last_name: true,
+              handle: true,
+              avatar: true,
+            },
           },
         },
+      });
+
+      if (!space) {
+        return notFoundResponse;
+      }
+
+      const room = await prisma.chat_room.findFirst({
+        where: {
+          space_id,
+          customer_id: dbUser.user_id,
+        },
+        include: {
+          customer: {
+            select: {
+              user_id: true,
+              first_name: true,
+              last_name: true,
+              handle: true,
+              avatar: true,
+            },
+          },
+          space: {
+            select: {
+              id: true,
+              name: true,
+              city: true,
+              region: true,
+              user_id: true,
+              user: {
+                select: {
+                  user_id: true,
+                  first_name: true,
+                  last_name: true,
+                  handle: true,
+                  avatar: true,
+                },
+              },
+            },
+          },
+          messages: { orderBy: { created_at: 'asc', }, },
+        },
+      });
+
+      if (!room) {
+        return NextResponse.json({ room: null, });
+      }
+
+      const customerName = formatDisplayName(room.customer);
+      const partnerName = formatDisplayName(room.space.user ?? null);
+      const messages = room.messages.map((message) =>
+        mapChatMessage(message, customerName, partnerName)
+      );
+
+      const response: ChatRoomDetail = {
+        id: room.id,
+        spaceId: room.space.id,
+        spaceName: room.space.name,
+        spaceCity: room.space.city ?? null,
+        spaceRegion: room.space.region ?? null,
+        customerId: room.customer.user_id.toString(),
+        customerName,
+        customerHandle: room.customer.handle,
+        customerAvatarUrl: resolveAvatarUrl(room.customer.avatar),
+        partnerId: (room.space.user?.user_id ?? room.space.user_id).toString(),
+        partnerName,
+        partnerAvatarUrl: resolveAvatarUrl(room.space.user?.avatar ?? null),
+        lastMessage: messages.at(-1) ?? null,
+        createdAt: room.created_at.toISOString(),
+        messages,
+      };
+
+      return NextResponse.json({ room: response, });
+    }
+
+    const rooms = await prisma.chat_room.findMany({
+      where: { customer_id: dbUser.user_id, },
+      include: {
         space: {
           select: {
             id: true,
@@ -115,39 +177,58 @@ export async function GET(req: NextRequest) {
             },
           },
         },
-        messages: { orderBy: { created_at: 'asc', }, },
+        messages: {
+          orderBy: { created_at: 'desc', },
+          take: 1,
+        },
       },
     });
 
-    if (!room) {
-      return NextResponse.json({ room: null, });
-    }
+    const customerName = formatDisplayName({
+      handle: dbUser.handle,
+      first_name: dbUser.first_name,
+      last_name: dbUser.last_name,
+      avatar: dbUser.avatar,
+    });
+    const customerAvatarUrl = resolveAvatarUrl(dbUser.avatar);
 
-    const customerName = formatDisplayName(room.customer);
-    const partnerName = formatDisplayName(room.space.user ?? null);
-    const messages = room.messages.map((message) =>
-      mapChatMessage(message, customerName, partnerName)
-    );
+    const summaries = rooms.map((room) => {
+      const partnerName = formatDisplayName(room.space.user ?? null);
+      const partnerAvatarUrl = resolveAvatarUrl(room.space.user?.avatar ?? null);
+      const lastMessage = room.messages[0]
+        ? mapChatMessage(room.messages[0], customerName, partnerName)
+        : null;
 
-    const response: ChatRoomDetail = {
-      id: room.id,
-      spaceId: room.space.id,
-      spaceName: room.space.name,
-      spaceCity: room.space.city ?? null,
-      spaceRegion: room.space.region ?? null,
-      customerId: room.customer.user_id.toString(),
-      customerName,
-      customerHandle: room.customer.handle,
-      customerAvatarUrl: resolveAvatarUrl(room.customer.avatar),
-      partnerId: (room.space.user?.user_id ?? room.space.user_id).toString(),
-      partnerName,
-      partnerAvatarUrl: resolveAvatarUrl(room.space.user?.avatar ?? null),
-      lastMessage: messages.at(-1) ?? null,
-      createdAt: room.created_at.toISOString(),
-      messages,
-    };
+      const summary: ChatRoomSummary = {
+        id: room.id,
+        spaceId: room.space.id,
+        spaceName: room.space.name,
+        spaceCity: room.space.city ?? null,
+        spaceRegion: room.space.region ?? null,
+        customerId: dbUser.user_id.toString(),
+        customerName,
+        customerHandle: dbUser.handle,
+        customerAvatarUrl,
+        partnerId: (room.space.user?.user_id ?? room.space.user_id).toString(),
+        partnerName,
+        partnerAvatarUrl,
+        lastMessage,
+        createdAt: room.created_at.toISOString(),
+      };
 
-    return NextResponse.json({ room: response, });
+      return summary;
+    });
+
+    const sorted = summaries.sort((a, b) => {
+      const aKey = a.lastMessage?.createdAt ?? a.createdAt;
+      const bKey = b.lastMessage?.createdAt ?? b.createdAt;
+      if (aKey === bKey) {
+        return 0;
+      }
+      return aKey > bKey ? -1 : 1;
+    });
+
+    return NextResponse.json({ rooms: sorted, });
   }
 
   if (dbUser.role === 'partner') {

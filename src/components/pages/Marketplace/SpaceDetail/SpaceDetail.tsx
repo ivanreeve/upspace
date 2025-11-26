@@ -1,12 +1,12 @@
 'use client';
 
 import {
-useCallback,
-useEffect,
-useRef,
-useState
+  useCallback,
+  useEffect,
+  useRef,
+  useState
 } from 'react';
-import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { FiChevronDown, FiChevronUp, FiMessageSquare } from 'react-icons/fi';
 
 import SpaceHeader from './SpaceHeader';
 import SpacePhotos from './SpacePhotos';
@@ -23,6 +23,7 @@ import { SpaceChatBubble } from './SpaceChatBubble';
 import { SPACE_DESCRIPTION_VIEWER_CLASSNAME } from '@/components/pages/Spaces/space-description-rich-text';
 import type { MarketplaceSpaceDetail } from '@/lib/queries/space';
 import { sanitizeRichText } from '@/lib/rich-text';
+import { Button } from '@/components/ui/button';
 
 const DESCRIPTION_COLLAPSED_HEIGHT = 360; // px
 
@@ -264,6 +265,17 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
       hostAvatarUrl={ space.hostAvatarUrl }
       onClose={ handleCloseChat }
     />
+    { !isChatOpen && (
+      <Button
+        type="button"
+        size="icon"
+        className="fixed bottom-6 right-6 z-40 h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg shadow-black/40 hover:bg-primary/90"
+        aria-label="Open messages with host"
+        onClick={ handleOpenChat }
+      >
+        <FiMessageSquare className="size-5" aria-hidden="true" />
+      </Button>
+    ) }
   </>
   );
 }

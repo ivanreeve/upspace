@@ -61,7 +61,7 @@ export function useCustomerChatRoom(spaceId: string | null) {
   });
 }
 
-export function usePartnerChatRooms() {
+function useChatRooms() {
   const authFetch = useAuthenticatedFetch();
 
   return useQuery<ChatRoomSummary[]>({
@@ -76,6 +76,14 @@ export function usePartnerChatRooms() {
       return (payload.rooms ?? []) as ChatRoomSummary[];
     },
   });
+}
+
+export function usePartnerChatRooms() {
+  return useChatRooms();
+}
+
+export function useCustomerChatRooms() {
+  return useChatRooms();
 }
 
 export function useChatMessages(roomId: string | null) {

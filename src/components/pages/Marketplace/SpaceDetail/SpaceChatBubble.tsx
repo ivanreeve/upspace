@@ -12,12 +12,6 @@ import { toast } from 'sonner';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { useSession } from '@/components/auth/SessionProvider';
@@ -165,14 +159,14 @@ senderName,
     }
 
     return (
-      <ScrollArea className="max-h-60 rounded-3xl border border-border/20 bg-slate-950/70 px-2 py-2">
-        <div className="space-y-3 px-2 py-1">
+      <ScrollArea className="max-h-64">
+        <div className="space-y-2 px-2 py-2">
           { messages.map((message) => {
             const isCustomerMessage = message.senderRole === 'customer';
-            const alignClass = isCustomerMessage ? 'justify-end' : 'justify-start';
+            const alignClass = isCustomerMessage ? 'items-end justify-end' : 'items-start justify-start';
             const bubbleClass = isCustomerMessage
-              ? 'bg-blue-500 text-white'
-              : 'bg-slate-900 text-white/90';
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted text-foreground';
 
             const timestamp = new Date(message.createdAt).toLocaleTimeString([], {
               hour: 'numeric',
@@ -181,14 +175,20 @@ senderName,
 
             return (
               <div key={ message.id } className={ `flex ${alignClass}` }>
-                <div
-                  className={ `max-w-[80%] space-y-1 rounded-2xl px-4 py-3 text-[13px] shadow-lg ${bubbleClass}` }
-                >
-                  <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-white/80">
-                    <span>{ message.senderName ?? (isCustomerMessage ? 'You' : 'Host') }</span>
-                    <span>{ timestamp }</span>
+                <div className="max-w-[80%] space-y-1">
+                  <div className={ `inline-block rounded-2xl px-4 py-2 text-sm shadow ${bubbleClass}` }>
+                    <p className="whitespace-pre-line text-sm font-medium">
+                      { message.content }
+                    </p>
                   </div>
-                  <p className="whitespace-pre-line font-medium">{ message.content }</p>
+                  <p
+                    className={ [
+                      'text-[10px] text-muted-foreground',
+                      isCustomerMessage ? 'text-right' : 'text-left'
+                    ].join(' ') }
+                  >
+                    { timestamp }
+                  </p>
                 </div>
               </div>
             );
@@ -204,75 +204,72 @@ senderName,
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex w-[360px] flex-col gap-2 lg:bottom-8 lg:right-8">
-      <Card className="w-full rounded-[28px] border border-border/60 bg-slate-950/95 shadow-2xl shadow-black/40">
-        <CardHeader className="flex items-center justify-between gap-3 rounded-t-[28px] bg-gradient-to-r from-primary to-secondary px-4 py-3 text-white">
-          <div className="flex items-center gap-3">
-            <Avatar className="size-9 border border-white/60">
-              { hostAvatarUrl ? (
-                <AvatarImage src={ hostAvatarUrl } alt={ `${hostName ?? 'Host'} avatar` } />
-              ) : (
-                <AvatarFallback>{ hostName?.slice(0, 2)?.toUpperCase() ?? 'US' }</AvatarFallback>
-              ) }
-            </Avatar>
-            <div>
-              <CardTitle className="text-base text-white">
-                { hostName ? hostName : 'Host' }
-              </CardTitle>
-              <p className="text-[11px] text-white/80">Active now · Messenger style</p>
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            type="button"
-            onClick={ onClose }
-            aria-label="Close conversation"
-          >
-            <FiX className="size-4 text-white" aria-hidden="true" />
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-3 px-0 pb-3 pt-2">
-          <div className="px-4">
-            { session ? (
-              isProfileLoading ? (
-                <p className="text-sm text-muted-foreground">Loading your profile…</p>
-              ) : (
-                renderConversation()
-              )
+    <div className="fixed bottom-6 right-6 z-50 w-[360px] rounded-xl border bg-background shadow-xl shadow-black/40 lg:bottom-8 lg:right-8">
+      <div className="flex items-center justify-between border-b px-3 py-2">
+        <div className="flex items-center gap-2">
+          <Avatar className="size-8 border border-border/60">
+            { hostAvatarUrl ? (
+              <AvatarImage src={ hostAvatarUrl } alt={ `${hostName ?? 'Host'} avatar` } />
             ) : (
-              <p className="text-sm text-muted-foreground">
-                Sign in to chat with the host and coordinate visits.
-              </p>
+              <AvatarFallback>{ hostName?.slice(0, 2)?.toUpperCase() ?? 'US' }</AvatarFallback>
             ) }
+          </Avatar>
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold text-foreground">
+              { hostName ? hostName : 'Host' }
+            </span>
+            <span className="text-[11px] text-muted-foreground">
+              Chat with your host
+            </span>
           </div>
-          { session && isCustomer ? (
-            <form className="space-y-3 px-4" onSubmit={ handleSend } noValidate>
-              <div className="flex items-center gap-2 rounded-3xl bg-slate-900/70 px-3 py-2 shadow-lg shadow-black/60">
-                <Textarea
-                  value={ draft }
-                  onChange={ (event) => setDraft(event.target.value) }
-                  placeholder="Write a message…"
-                  aria-label="Message to host"
-                  rows={ 1 }
-                  disabled={ sendMessage.isPending }
-                  className="bg-transparent px-2 py-1 text-sm text-white placeholder:text-white/60 [&[data-slot='textarea']]:min-h-[24px]"
-                />
-                <Button
-                  type="submit"
-                  disabled={ sendMessage.isPending || !draft.trim() }
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white p-0 text-primary transition hover:bg-neutral-100"
-                >
-                  <FiSend className="size-4" aria-hidden="true" />
-                </Button>
-              </div>
-            </form>
-          ) : null }
-        </CardContent>
-      </Card>
-      <div className="flex items-center gap-3 rounded-2xl bg-slate-900/80 px-4 py-2 text-xs text-white/80 shadow-lg shadow-black/50">
-        <div className="h-2 w-2 rounded-full bg-emerald-400" />
-        <p>Messages are private and delivered instantly.</p>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          type="button"
+          onClick={ onClose }
+          aria-label="Close conversation"
+        >
+          <FiX className="size-4" aria-hidden="true" />
+        </Button>
+      </div>
+      <div className="flex max-h-80 flex-col">
+        <div className="flex-1 px-3 py-2">
+          { session ? (
+            isProfileLoading ? (
+              <p className="text-sm text-muted-foreground">Loading your profile…</p>
+            ) : (
+              renderConversation()
+            )
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Sign in to chat with the host and coordinate visits.
+            </p>
+          ) }
+        </div>
+        { session && isCustomer ? (
+          <form className="border-t px-3 py-2" onSubmit={ handleSend } noValidate>
+            <div className="flex max-w-full items-end gap-2">
+              <Textarea
+                value={ draft }
+                onChange={ (event) => setDraft(event.target.value) }
+                placeholder="Type your message…"
+                aria-label="Message to host"
+                rows={ 2 }
+                disabled={ sendMessage.isPending }
+                className="min-h-[40px] max-h-24 flex-1 min-w-0 resize-none text-sm"
+              />
+              <Button
+                type="submit"
+                disabled={ sendMessage.isPending || !draft.trim() }
+                className="inline-flex shrink-0 items-center gap-2"
+              >
+                <FiSend className="size-4" aria-hidden="true" />
+                <span className="text-sm">{ sendMessage.isPending ? 'Sending…' : 'Send' }</span>
+              </Button>
+            </div>
+          </form>
+        ) : null }
       </div>
     </div>
   );
