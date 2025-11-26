@@ -73,7 +73,7 @@ export function SpacesChrome({
             } }
           />
           <CommandList>
-            <CommandGroup heading="Actions">
+            <CommandGroup heading="Actions" forceMount>
               <CommandItem
                 value="search marketplace"
                 onSelect={ () => handleSearchSubmit() }
