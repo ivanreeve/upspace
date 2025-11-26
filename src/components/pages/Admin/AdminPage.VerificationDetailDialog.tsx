@@ -64,6 +64,7 @@ export function VerificationDetailDialog({
   const [isIndefinite, setIsIndefinite] = useState(false);
   const [draftValidUntil, setDraftValidUntil] = useState('');
   const [showValidityModal, setShowValidityModal] = useState(false);
+  const [isTransitioningToValidity, setIsTransitioningToValidity] = useState(false);
   const partnerAvatarUrl = useCachedAvatar(verification?.space.partner.avatar_url ?? null);
   const partnerInitials = getInitials(
     verification?.space.partner.name ?? verification?.space.partner.handle ?? ''
@@ -79,6 +80,7 @@ export function VerificationDetailDialog({
     setIsIndefinite(false);
     setDraftValidUntil('');
     setShowValidityModal(false);
+    setIsTransitioningToValidity(false);
   };
 
   const handleApprove = async (overrideValidUntil?: string) => {
@@ -123,6 +125,8 @@ export function VerificationDetailDialog({
     const todayIso = formatDateForInput(new Date());
     setDraftValidUntil(validUntil || todayIso);
     setShowValidityModal(true);
+    setIsTransitioningToValidity(true);
+    onClose();
   };
 
   const toggleIndefiniteInModal = (next: boolean) => {
@@ -136,21 +140,23 @@ export function VerificationDetailDialog({
 
   const handleValidityConfirm = async () => {
     if (isIndefinite) {
-      setShowValidityModal(false);
-      await handleApprove();
-      return;
-    }
+    setShowValidityModal(false);
+    setIsTransitioningToValidity(false);
+    await handleApprove();
+    return;
+  }
     if (!draftValidUntil) {
       toast.error('Please select a validity end date before approving.');
       return;
     }
     setShowValidityModal(false);
+    setIsTransitioningToValidity(false);
     setValidUntil(draftValidUntil);
     await handleApprove(draftValidUntil);
   };
 
   const handleOpenChange = (isOpen: boolean) => {
-    if (!isOpen) {
+    if (!isOpen && !isTransitioningToValidity) {
       resetDialogState();
       onClose();
     }
@@ -265,12 +271,22 @@ export function VerificationDetailDialog({
           </div>
 
           <DialogFooter className="gap-2">
-            { !showRejectForm ? (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={ () => setShowRejectForm(true) }
-                  disabled={ isProcessing }
+          { !showRejectForm ? (
+            <>
+              <Button
+                variant="ghost"
+                onClick={ () => {
+                  resetDialogState();
+                  onClose();
+                } }
+                disabled={ isProcessing }
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="outline"
+                onClick={ () => setShowRejectForm(true) }
+                disabled={ isProcessing }
                 >
                   <FiX className="size-4" aria-hidden="true" />
                   Reject
@@ -314,6 +330,7 @@ export function VerificationDetailDialog({
           if (!isOpen) {
             setShowValidityModal(false);
             setDraftValidUntil('');
+            setIsTransitioningToValidity(false);
           }
         } }
       >
@@ -371,6 +388,7 @@ export function VerificationDetailDialog({
               onClick={ () => {
                 setShowValidityModal(false);
                 setDraftValidUntil('');
+                setIsTransitioningToValidity(false);
               } }
               disabled={ isProcessing }
             >
