@@ -1,10 +1,8 @@
 import { cookies } from 'next/headers';
-import { FiArrowLeft } from 'react-icons/fi';
-import Link from 'next/link';
 
 import { SpaceDetailsPanel } from '@/components/pages/Spaces/SpaceDetailsPanel';
 import { SpacesChrome } from '@/components/pages/Spaces/SpacesChrome';
-import { Button } from '@/components/ui/button';
+import { SpacesBreadcrumbs } from '@/components/pages/Spaces/SpacesBreadcrumbs';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
 
 type SpaceDetailRouteProps = {
@@ -28,12 +26,9 @@ export default async function SpaceDetailRoute({ params, }: SpaceDetailRouteProp
             <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Manage space</h1>
             <p className="text-sm text-muted-foreground md:text-base">Review the stored attributes below, edit them, or add new areas.</p>
           </div>
-          <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
-            <Link href="/spaces" className="inline-flex items-center gap-2">
-              <FiArrowLeft className="size-4" aria-hidden="true" />
-              Back to spaces
-            </Link>
-          </Button>
+          <div className="w-full sm:w-auto sm:justify-end sm:flex">
+            <SpacesBreadcrumbs currentPage="Manage space" className="justify-start sm:justify-end" />
+          </div>
         </div>
 
         <SpaceDetailsPanel spaceId={ spaceId } className="mt-6 md:mt-8" />

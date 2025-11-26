@@ -37,6 +37,7 @@ import { SpaceAddressFields, SpaceDetailsFields, createSpaceFormDefaults } from 
 import { SpaceAmenitiesStep } from '@/components/pages/Spaces/SpaceAmenitiesStep';
 import { SpaceAvailabilityStep } from '@/components/pages/Spaces/SpaceAvailabilityStep';
 import { SpaceVerificationRequirementsStep, VERIFICATION_REQUIREMENTS, type VerificationRequirementId } from '@/components/pages/Spaces/SpaceVerificationRequirementsStep';
+import { SpacesBreadcrumbs } from '@/components/pages/Spaces/SpacesBreadcrumbs';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { type AgreementChecklistItem } from '@/components/ui/AgreementChecklist';
@@ -1048,12 +1049,9 @@ export default function SpaceCreateRoute() {
               Provide the source-of-truth location details so your listing stays accurate across UpSpace.
             </p>
           </div>
-          <Button asChild size="sm" variant="outline">
-            <Link href="/spaces" className="inline-flex items-center gap-2">
-              <FiArrowLeft className="size-4" aria-hidden="true" />
-              Back to spaces
-            </Link>
-          </Button>
+          <div className="w-full sm:w-auto sm:justify-end sm:flex">
+            <SpacesBreadcrumbs currentPage="Add space" className="justify-start sm:justify-end" />
+          </div>
         </div>
 
         <Card className="mt-6 border-border/70 bg-background/80">

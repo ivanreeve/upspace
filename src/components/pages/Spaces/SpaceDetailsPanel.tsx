@@ -33,6 +33,7 @@ import {
 } from './SpaceForms';
 import { SPACE_DESCRIPTION_VIEWER_CLASSNAME } from './space-description-rich-text';
 
+import { SystemErrorIllustration } from '@/components/pages/Marketplace/Marketplace.ErrorState';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AreaRecord, SpaceImageRecord } from '@/data/spaces';
 import {
@@ -383,12 +384,21 @@ export function SpaceDetailsPanel({
   }
 
   if (isError) {
-    return renderStatusCard(
-      'Unable to load space',
-      error instanceof Error ? error.message : 'Please try again in a moment.',
-      <Button variant="outline" onClick={ () => refetch() }>
-        Retry
-      </Button>
+    return (
+      <Card className={ cn('border-none bg-transparent shadow-none', className) }>
+        <CardContent className="flex flex-col items-center gap-6 px-6 py-10 text-center">
+          <SystemErrorIllustration className="h-auto w-full max-w-[260px] md:max-w-[320px]" />
+          <div className="space-y-2">
+            <CardTitle className="text-xl text-muted-foreground md:text-2xl">Unable to load space</CardTitle>
+            <CardDescription className="text-sm">
+              { error instanceof Error ? error.message : 'Please try again in a moment.' }
+            </CardDescription>
+          </div>
+          <Button variant="outline" onClick={ () => refetch() }>
+            Retry
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 

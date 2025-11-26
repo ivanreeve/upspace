@@ -26,8 +26,8 @@ export default function SpacesError({
     <SpacesChrome>
       <div className="bg-background">
         <div className="mx-auto flex max-w-6xl flex-col items-center space-y-5 px-4 pb-16 pt-10 text-center">
-          <MarketplaceErrorState illustrationClassName="max-w-[320px]" />
-          <div className="mt-[-54px] flex flex-wrap justify-center gap-3">
+          <MarketplaceErrorState illustrationClassName="max-w-[140px] sm:max-w-[10px]" />
+          <div className="mt-[-32px] sm:mt-[-40px] flex flex-wrap justify-center gap-3">
             <Button onClick={ () => reset() } aria-label="Retry loading spaces">
               <FiRefreshCw className="size-4" aria-hidden="true" />
               Retry

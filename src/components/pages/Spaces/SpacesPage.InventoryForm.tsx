@@ -4,12 +4,10 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import { FiPlus } from 'react-icons/fi';
 
-import { SystemErrorIllustration } from '@/components/pages/Marketplace/Marketplace.ErrorState';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle
@@ -38,7 +36,6 @@ export function SpacesInventoryForm() {
     isLoading,
     isError,
     error,
-    refetch,
   } = usePartnerSpacesQuery();
 
   const tableRows = useMemo(() => (spaces ?? []).map((space) => ({
@@ -94,22 +91,7 @@ export function SpacesInventoryForm() {
     }
 
     if (isError) {
-      return (
-        <Card className="border-none bg-transparent">
-          <CardContent className="flex flex-col items-center gap-6 px-6 py-10 text-center">
-            <SystemErrorIllustration className="h-auto w-full max-w-[260px] md:max-w-[320px]" />
-            <div className="space-y-3">
-              <CardTitle className="text-xl text-muted-foreground md:text-2xl">Unable to load spaces</CardTitle>
-              <CardDescription className="text-sm">
-                { error instanceof Error ? error.message : 'Something went a little bleep-bloop. Please try again in a moment.' }
-              </CardDescription>
-            </div>
-            <Button variant="outline" onClick={ () => refetch() }>
-              Retry
-            </Button>
-          </CardContent>
-        </Card>
-      );
+      throw error instanceof Error ? error : new Error('Unable to load spaces.');
     }
 
     if (!spaces || spaces.length === 0) {
