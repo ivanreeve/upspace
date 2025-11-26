@@ -23,7 +23,7 @@ export default async function MarketplaceDashboardPage() {
 
   return (
     <MarketplaceChrome initialSidebarOpen={ initialSidebarOpen }>
-      <section className="mx-auto max-w-5xl space-y-6 py-10 px-4 md:py-12 md:px-0">
+      <section className="flex min-h-full w-full flex-col gap-6 py-10 px-4 md:py-12 md:px-8">
         <div className="space-y-1">
           <p className="text-xs uppercase tracking-[0.4em] text-muted-foreground">Admin dashboard</p>
           <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Portfolio health</h1>
