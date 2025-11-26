@@ -21,7 +21,7 @@ export default async function SpaceDetailRoute({ params, }: SpaceDetailRouteProp
 
   return (
     <SpacesChrome initialSidebarOpen={ initialSidebarOpen }>
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+      <div className="px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <div className="space-y-1">
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground md:text-sm">Space overview</p>
