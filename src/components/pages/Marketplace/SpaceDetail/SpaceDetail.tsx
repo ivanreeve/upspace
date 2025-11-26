@@ -35,7 +35,9 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
 
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [isDescriptionOverflowing, setIsDescriptionOverflowing] = useState(false);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const descriptionRef = useRef<HTMLDivElement | null>(null);
+  const descriptionSectionRef = useRef<HTMLDivElement | null>(null);
   const descriptionViewportId = `space-description-${space.id}`;
 
   useEffect(() => {
@@ -60,6 +62,45 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
 
     return undefined;
   }, [aboutHtml]);
+
+  // Track scroll position to show/hide scroll-to-bottom button
+  useEffect(() => {
+    if (!isDescriptionExpanded || !isDescriptionOverflowing) {
+      setShowScrollToBottom(false);
+      return undefined;
+    }
+
+    const handleScroll = () => {
+      const section = descriptionSectionRef.current;
+      if (!section) return;
+
+      const sectionRect = section.getBoundingClientRect();
+      const sectionBottom = sectionRect.bottom;
+      const viewportHeight = window.innerHeight;
+
+      // Show button if section bottom is below viewport (user hasn't scrolled to bottom yet)
+      const isNotAtBottom = sectionBottom > viewportHeight + 100;
+      setShowScrollToBottom(isNotAtBottom);
+    };
+
+    handleScroll(); // Check initial state
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isDescriptionExpanded, isDescriptionOverflowing]);
+
+  const scrollToBottomOfDescription = () => {
+    const section = descriptionSectionRef.current;
+    if (!section) return;
+
+    const sectionRect = section.getBoundingClientRect();
+    const absoluteTop = window.pageYOffset + sectionRect.top;
+    const sectionHeight = sectionRect.height;
+
+    window.scrollTo({
+      top: absoluteTop + sectionHeight - window.innerHeight + 100,
+      behavior: 'smooth',
+    });
+  };
 
   const shouldClampDescription = !isDescriptionExpanded;
   const shouldShowGradient = shouldClampDescription && isDescriptionOverflowing;
@@ -91,7 +132,7 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
               <BookingCard spaceName={ space.name } />
             </div>
 
-            <section className="space-y-4 border-b pb-6">
+            <section ref={ descriptionSectionRef } className="space-y-4 border-b pb-6">
               <h2 className="text-xl font-medium text-foreground">About { space.name }</h2>
               <div className="relative">
                 <div
@@ -141,6 +182,20 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
                     >
                       Show less
                       <FiChevronUp className="size-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                ) : null }
+
+                {/* Floating scroll-to-bottom button when expanded and not at bottom */ }
+                { showScrollToBottom ? (
+                  <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4">
+                    <button
+                      type="button"
+                      onClick={ scrollToBottomOfDescription }
+                      aria-label="Scroll to bottom of description"
+                      className="flex items-center justify-center rounded-full border border-border bg-background p-3 text-foreground shadow-lg transition-all hover:bg-accent hover:text-accent-foreground hover:scale-110"
+                    >
+                      <FiChevronDown className="size-5" aria-hidden="true" />
                     </button>
                   </div>
                 ) : null }
