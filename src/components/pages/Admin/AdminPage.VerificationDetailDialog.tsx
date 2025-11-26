@@ -27,6 +27,7 @@ import { useApproveVerificationMutation, useRejectVerificationMutation, type Pen
 import { useCachedAvatar } from '@/hooks/use-cached-avatar';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
+import { Switch } from '@/components/ui/switch';
 
 type Props = {
   verification: PendingVerification | null;
@@ -118,17 +119,27 @@ export function VerificationDetailDialog({
 
   const formatDateForInput = (date: Date) => format(date, 'yyyy-MM-dd');
 
-  const handleApproveClick = async () => {
-    if (isIndefinite) {
-      await handleApprove();
-      return;
-    }
+  const handleApproveClick = () => {
     const todayIso = formatDateForInput(new Date());
     setDraftValidUntil(validUntil || todayIso);
     setShowValidityModal(true);
   };
 
+  const toggleIndefiniteInModal = (next: boolean) => {
+    setIsIndefinite(next);
+    if (next) {
+      setDraftValidUntil('');
+    } else {
+      setDraftValidUntil(validUntil || formatDateForInput(new Date()));
+    }
+  };
+
   const handleValidityConfirm = async () => {
+    if (isIndefinite) {
+      setShowValidityModal(false);
+      await handleApprove();
+      return;
+    }
     if (!draftValidUntil) {
       toast.error('Please select a validity end date before approving.');
       return;
@@ -195,47 +206,7 @@ export function VerificationDetailDialog({
               </div>
             </div>
 
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="verification-valid-until">Validity end date</Label>
-                <p className="text-xs text-muted-foreground">Required</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="flex-1 min-w-0 rounded-md border border-border/70 bg-background/60 px-4 py-3">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <FiCalendar className="size-4 text-muted-foreground" aria-hidden="true" />
-                    <span>{ validityButtonLabel }</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    The approve confirmation modal lets you choose the expiry date unless marked indefinite.
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={ isIndefinite ? 'secondary' : 'outline' }
-                  onClick={ () => {
-                    setIsIndefinite((prev) => {
-                      const next = !prev;
-                      if (next) {
-                        setValidUntil('');
-                        setDraftValidUntil('');
-                        setShowValidityModal(false);
-                      }
-                      return next;
-                    });
-                  } }
-                  aria-pressed={ isIndefinite }
-                >
-                  { isIndefinite ? 'Use expiry date' : 'Mark as indefinite' }
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Set when this approval should expire, or mark it as indefinite to keep it forever.
-              </p>
-            </div>
-
-            { /* Documents + optional rejection form */ }
+          { /* Documents + optional rejection form */ }
             <div
               className={ cn(
                 'space-y-4',
@@ -353,7 +324,33 @@ export function VerificationDetailDialog({
               Pick when this approval should expire. Dates prior to today are blocked.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex items-center justify-center">
+          <div className="space-y-3 border-b border-border/60 pb-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="mt-4">
+                <p className="text-sm font-medium">Validity option</p>
+                <p className="text-xs text-muted-foreground">
+                  { isIndefinite
+                    ? 'Approvals flagged as indefinite will never expire.'
+                    : 'Select when this approval should end before confirming.' }
+                </p>
+              </div>
+              <div className="flex items-center gap-2 mt-4">
+                <span className="text-xs text-muted-foreground">Indefinite</span>
+                <Switch
+                  checked={ isIndefinite }
+                  onCheckedChange={ toggleIndefiniteInModal }
+                  aria-label="Mark approval as indefinite"
+                />
+              </div>
+            </div>
+          </div>
+          <div
+            className={ cn(
+              'flex items-center justify-center transition-opacity',
+              isIndefinite && 'pointer-events-none opacity-60'
+            ) }
+            aria-hidden={ isIndefinite ? 'true' : undefined }
+          >
             <Calendar
               mode="single"
               captionLayout="dropdown"
@@ -381,7 +378,7 @@ export function VerificationDetailDialog({
             </Button>
             <Button
               onClick={ handleValidityConfirm }
-              disabled={ isProcessing || !draftValidUntil }
+              disabled={ isProcessing || (!isIndefinite && !draftValidUntil) }
             >
               { isProcessing ? 'Approving...' : 'Confirm & approve' }
             </Button>
