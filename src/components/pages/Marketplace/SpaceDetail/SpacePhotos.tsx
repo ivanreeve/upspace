@@ -156,35 +156,39 @@ export default function SpacePhotos({
   const renderPrimaryFigure = (
     overlay?: React.ReactNode,
     additionalFigureClass?: string
-  ) => (
-    <figure className={ `group relative w-full cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-muted h-96 sm:h-[28rem] lg:h-[30rem] xl:h-[32rem] ${additionalFigureClass ?? ''}` }>
-      { primaryImageUrl ? (
-        <Image
-          src={ primaryImageUrl }
-          alt={ `${spaceName} featured photo` }
-          fill
-          sizes="(min-width: 1280px) 55vw, (min-width: 1024px) 65vw, 100vw"
-          className="object-cover"
-        />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-          Missing public URL
-        </div>
-      ) }
-      <div className="pointer-events-none absolute inset-0 rounded-lg bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100" />
-      { overlay }
-      { primaryImage ? (
-        <button
-          type="button"
-          onClick={ () => openCarouselFromImage(primaryImage) }
-          aria-label="Open featured photo carousel"
-          className="absolute inset-0 z-10 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        >
-          <span className="sr-only">Open featured photo carousel</span>
-        </button>
-      ) : null }
-    </figure>
-  );
+  ) => {
+    const figureRoundedClass = !isMobile && totalImages > 1 ? 'rounded-l-lg' : 'rounded-lg';
+
+    return (
+      <figure className={ `group relative w-full cursor-pointer overflow-hidden ${figureRoundedClass} border border-border/60 bg-muted h-96 sm:h-[28rem] lg:h-[30rem] xl:h-[32rem] ${additionalFigureClass ?? ''}` }>
+        { primaryImageUrl ? (
+          <Image
+            src={ primaryImageUrl }
+            alt={ `${spaceName} featured photo` }
+            fill
+            sizes="(min-width: 1280px) 55vw, (min-width: 1024px) 65vw, 100vw"
+            className="object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+            Missing public URL
+          </div>
+        ) }
+        <div className={ `pointer-events-none absolute inset-0 ${figureRoundedClass} bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100` } />
+        { overlay }
+        { primaryImage ? (
+          <button
+            type="button"
+            onClick={ () => openCarouselFromImage(primaryImage) }
+            aria-label="Open featured photo carousel"
+            className="absolute inset-0 z-10 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            <span className="sr-only">Open featured photo carousel</span>
+          </button>
+        ) : null }
+      </figure>
+    );
+  };
 
   const renderPhotoTile = (
     image: SpaceImageDisplay | null | undefined,
@@ -278,7 +282,7 @@ export default function SpacePhotos({
             secondary,
             `${spaceName} gallery photo 2`,
             () => openCarouselFromImage(secondary),
-            'rounded-lg min-h-[16rem]'
+            'rounded-r-lg min-h-[16rem]'
           ) }
         </div>
       );
@@ -307,34 +311,29 @@ export default function SpacePhotos({
       );
     }
 
-    const topTile = galleryWithoutPrimary[0] ?? null;
-    const middleTile = galleryWithoutPrimary[1] ?? null;
-    const bottomTile = galleryWithoutPrimary[2] ?? null;
-    const isFiveOrMore = totalImages >= 5;
+    const topLeftTile = galleryWithoutPrimary[0] ?? null;
+    const topRightTile = galleryWithoutPrimary[1] ?? null;
+    const previewTile = galleryWithoutPrimary[2] ?? topLeftTile ?? topRightTile ?? primaryImage;
 
     return (
       <div className="grid gap-2.5 md:grid-cols-2">
         { primaryFigure }
-        <div className="grid h-full min-h-[24rem] grid-rows-[2fr_1fr_1fr] gap-2.5">
-          { renderPhotoTile(
-            topTile,
-            `${spaceName} gallery photo 2`,
-            () => openCarouselFromImage(topTile),
-            'rounded-tr-lg'
-          ) }
-          { renderPhotoTile(
-            middleTile,
-            `${spaceName} gallery photo 3`,
-            () => openCarouselFromImage(middleTile)
-          ) }
-          { isFiveOrMore
-            ? renderSeeMoreTile(bottomTile ?? topTile ?? middleTile ?? primaryImage)
-            : renderPhotoTile(
-                bottomTile,
-                `${spaceName} gallery photo 4`,
-                () => openCarouselFromImage(bottomTile),
-                'rounded-br-lg'
-              ) }
+        <div className="grid h-full min-h-[24rem] grid-rows-[1fr_3fr] gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5">
+            { renderPhotoTile(
+              topLeftTile,
+              `${spaceName} gallery photo 2`,
+              () => openCarouselFromImage(topLeftTile),
+              'rounded-none'
+            ) }
+            { renderPhotoTile(
+              topRightTile,
+              `${spaceName} gallery photo 3`,
+              () => openCarouselFromImage(topRightTile),
+              'rounded-tr-lg'
+            ) }
+          </div>
+          { renderSeeMoreTile(previewTile) }
         </div>
       </div>
     );

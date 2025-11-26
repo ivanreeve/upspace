@@ -392,35 +392,39 @@ export function SpaceDetailsPanel({
   const renderPrimaryFigure = (
     overlay?: React.ReactNode,
     additionalFigureClass?: string
-  ) => (
-    <figure className={ `group relative w-full cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-muted h-96 sm:h-[28rem] lg:h-[30rem] xl:h-[32rem] ${additionalFigureClass ?? ''}` }>
-      { featuredImageUrl ? (
-        <Image
-          src={ featuredImageUrl }
-          alt={ `${space.name} featured photo` }
-          fill
-          sizes="(min-width: 1280px) 55vw, (min-width: 1024px) 65vw, 100vw"
-          className="object-cover"
-        />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-          Missing public URL
-        </div>
-      ) }
-      <div className="pointer-events-none absolute inset-0 rounded-lg bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100" />
-      { overlay }
-      { primaryImage ? (
-        <button
-          type="button"
-          onClick={ () => setGalleryOpen(true) }
-          aria-label="Open featured photo"
-          className="absolute inset-0 z-10 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        >
-          <span className="sr-only">Open featured photo</span>
-        </button>
-      ) : null }
-    </figure>
-  );
+  ) => {
+    const figureRoundedClass = !isMobile && totalImages > 1 ? 'rounded-l-lg' : 'rounded-lg';
+
+    return (
+      <figure className={ `group relative w-full cursor-pointer overflow-hidden ${figureRoundedClass} border border-border/60 bg-muted h-96 sm:h-[28rem] lg:h-[30rem] xl:h-[32rem] ${additionalFigureClass ?? ''}` }>
+        { featuredImageUrl ? (
+          <Image
+            src={ featuredImageUrl }
+            alt={ `${space.name} featured photo` }
+            fill
+            sizes="(min-width: 1280px) 55vw, (min-width: 1024px) 65vw, 100vw"
+            className="object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+            Missing public URL
+          </div>
+        ) }
+        <div className={ `pointer-events-none absolute inset-0 ${figureRoundedClass} bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100` } />
+        { overlay }
+        { primaryImage ? (
+          <button
+            type="button"
+            onClick={ () => setGalleryOpen(true) }
+            aria-label="Open featured photo"
+            className="absolute inset-0 z-10 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            <span className="sr-only">Open featured photo</span>
+          </button>
+        ) : null }
+      </figure>
+    );
+  };
 
   const renderPhotoTile = (
     image: SpaceImageRecord | null | undefined,
@@ -511,7 +515,7 @@ export function SpaceDetailsPanel({
           { renderPhotoTile(
             secondary,
             `${space.name} gallery photo 2`,
-            'rounded-lg min-h-[16rem]'
+            'rounded-r-lg min-h-[16rem]'
           ) }
         </div>
       );
@@ -550,7 +554,7 @@ export function SpaceDetailsPanel({
             { renderPhotoTile(
               topLeftTile,
               `${space.name} gallery photo 2`,
-              'rounded-tl-lg'
+              'rounded-none'
             ) }
             { renderPhotoTile(
               topRightTile,
