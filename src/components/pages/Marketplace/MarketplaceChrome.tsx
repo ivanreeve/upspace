@@ -431,7 +431,7 @@ export function MarketplaceChrome({
               <SidebarToggleMenuItem />
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Home">
-                  <Link href="/">
+                  <Link href="/marketplace">
                     <FiHome className="size-4" strokeWidth={ 1.4 } />
                     <span data-sidebar-label>Home</span>
                   </Link>
