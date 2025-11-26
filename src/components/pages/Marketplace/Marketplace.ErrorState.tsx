@@ -53,7 +53,9 @@ type SystemErrorIllustrationProps = {
   className?: string;
 };
 
-function SystemErrorIllustration({ className, }: SystemErrorIllustrationProps) {
+export type { SystemErrorIllustrationProps };
+
+export function SystemErrorIllustration({ className, }: SystemErrorIllustrationProps) {
   return (
     <div className={ cn('w-full', className) } aria-hidden="true">
       <svg
@@ -140,7 +142,7 @@ function SystemErrorIllustration({ className, }: SystemErrorIllustrationProps) {
   );
 }
 
-function SystemErrorIllustrationLight({ className, }: SystemErrorIllustrationProps) {
+export function SystemErrorIllustrationLight({ className, }: SystemErrorIllustrationProps) {
   return (
     <div className={ cn('w-full', className) } aria-hidden="true">
       <svg

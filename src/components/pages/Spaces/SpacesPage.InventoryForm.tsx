@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import { FiPlus } from 'react-icons/fi';
 
+import { SystemErrorIllustration } from '@/components/pages/Marketplace/Marketplace.ErrorState';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,7 +24,13 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePartnerSpacesQuery } from '@/hooks/api/usePartnerSpaces';
-import { cn } from '@/lib/utils';
+
+const inventoryDateFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
 
 export function SpacesInventoryForm() {
   const {
@@ -137,11 +144,7 @@ export function SpacesInventoryForm() {
                     <div className="flex flex-col">
                       <span>{ space.name }</span>
                       <span className="text-xs text-muted-foreground">
-                        Added { new Date(space.created_at).toLocaleDateString(undefined, {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        }) }
+                        Added { inventoryDateFormatter.format(new Date(space.created_at)) }
                       </span>
                     </div>
                   </TableCell>
@@ -188,11 +191,7 @@ export function SpacesInventoryForm() {
                     <div>
                       <span className="text-xs text-muted-foreground">Added</span>
                       <p className="font-medium">
-                        { new Date(space.created_at).toLocaleDateString(undefined, {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        }) }
+                        { inventoryDateFormatter.format(new Date(space.created_at)) }
                       </p>
                     </div>
                   </div>
@@ -212,7 +211,6 @@ export function SpacesInventoryForm() {
     <section id="inventory-form" className="space-y-6 py-8 md:space-y-8 md:py-12">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="space-y-2">
-          <Badge variant="secondary" className="text-[10px] uppercase tracking-wide md:text-xs">Spaces inventory</Badge>
           <div className="space-y-1">
             <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Your spaces</h2>
             <p className="text-sm text-muted-foreground md:text-base">
@@ -231,89 +229,5 @@ export function SpacesInventoryForm() {
       { renderContent() }
 
     </section>
-  );
-}
-
-type SystemErrorIllustrationProps = {
-  className?: string;
-};
-
-function SystemErrorIllustration({ className, }: SystemErrorIllustrationProps) {
-  return (
-    <div className={ cn('w-full', className) } aria-hidden="true">
-      <svg
-        viewBox="0 0 400 300"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        preserveAspectRatio="xMidYMid meet"
-        className="h-full w-full"
-      >
-        <circle cx="200" cy="150" r="120" fill="hsl(var(--muted))" />
-
-        <g className="error-robot-body">
-          <ellipse cx="200" cy="240" rx="40" ry="6" fill="#000" opacity="0.3" />
-
-          <rect x="150" y="140" width="100" height="80" rx="20" fill="hsl(var(--muted-foreground) / 0.3)" />
-          <rect x="150" y="140" width="100" height="76" rx="20" fill="hsl(var(--muted-foreground) / 0.3)" />
-
-          <rect x="170" y="160" width="60" height="40" rx="4" fill="hsl(var(--muted-foreground) / 0.8)" />
-          <path
-            d="M175 180 H190 L195 170 L205 190 L210 180 H225"
-            stroke="hsl(var(--primary))"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-
-          <rect x="190" y="130" width="20" height="10" fill="hsl(var(--muted-foreground) / 0.3)" />
-
-          <rect x="140" y="60" width="120" height="70" rx="16" fill="hsl(var(--muted-foreground) / 0.3)" />
-          <rect x="140" y="60" width="120" height="66" rx="16" fill="hsl(var(--muted-foreground) / 0.3)" />
-
-          <rect x="155" y="75" width="90" height="40" rx="4" fill="hsl(var(--muted-foreground) / 0.8)" />
-
-          <path
-            d="M170 85 L180 95 M180 85 L170 95"
-            stroke="hsl(var(--primary))"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
-          <path
-            d="M220 85 L230 95 M230 85 L220 95"
-            stroke="hsl(var(--primary))"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
-
-          <path d="M200 60 V 40" stroke="hsl(var(--muted-foreground) / 0.3)" strokeWidth="4" />
-          <circle cx="200" cy="35" r="5" fill="hsl(var(--primary))" />
-
-          <path
-            d="M150 160 C 130 160, 130 200, 140 210"
-            stroke="hsl(var(--muted-foreground) / 0.3)"
-            strokeWidth="12"
-            strokeLinecap="round"
-            fill="none"
-          />
-          <path
-            d="M250 160 C 270 160, 270 190, 260 200"
-            stroke="hsl(var(--muted-foreground) / 0.3)"
-            strokeWidth="12"
-            strokeLinecap="round"
-            fill="none"
-          />
-        </g>
-
-      </svg>
-
-      <style jsx>{ `
-        @keyframes error-float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-10px); }
-        }
-
-        .error-robot-body { animation: error-float 4s ease-in-out infinite; }
-      ` }</style>
-    </div>
   );
 }

@@ -19,7 +19,6 @@ export default async function SpacesRoute() {
   return (
     <SpacesChrome initialSidebarOpen={ initialSidebarOpen }>
       <SpacesPage />
-      <Footer />
     </SpacesChrome>
   );
 }

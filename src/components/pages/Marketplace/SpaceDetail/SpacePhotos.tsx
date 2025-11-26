@@ -157,31 +157,43 @@ export default function SpacePhotos({
     overlay?: React.ReactNode,
     additionalFigureClass?: string
   ) => {
-    const figureRoundedClass = !isMobile && totalImages > 1 ? 'rounded-l-lg' : 'rounded-lg';
+    const isMultiDesktop = !isMobile && totalImages > 1;
+    const figureRoundedClass = isMultiDesktop ? 'rounded-l-lg' : 'rounded-lg';
+    const figureRoundedStyle = isMultiDesktop
+      ? { borderRadius: 'var(--radius-lg) 0 0 var(--radius-lg)', }
+      : { borderRadius: 'var(--radius-lg)', };
 
     return (
-      <figure className={ `group relative w-full cursor-pointer overflow-hidden ${figureRoundedClass} border border-border/60 bg-muted h-96 sm:h-[28rem] lg:h-[30rem] xl:h-[32rem] ${additionalFigureClass ?? ''}` }>
+      <figure
+        className={ `group relative w-full cursor-pointer overflow-hidden ${figureRoundedClass} border border-border/60 bg-muted h-96 sm:h-[28rem] lg:h-[30rem] xl:h-[32rem] ${additionalFigureClass ?? ''}` }
+        style={ figureRoundedStyle }
+      >
         { primaryImageUrl ? (
           <Image
             src={ primaryImageUrl }
             alt={ `${spaceName} featured photo` }
             fill
             sizes="(min-width: 1280px) 55vw, (min-width: 1024px) 65vw, 100vw"
-            className="object-cover"
+            className={ `object-cover ${figureRoundedClass}` }
+            style={ figureRoundedStyle }
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
             Missing public URL
           </div>
         ) }
-        <div className={ `pointer-events-none absolute inset-0 ${figureRoundedClass} bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100` } />
+        <div
+          className={ `pointer-events-none absolute inset-0 ${figureRoundedClass} bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100` }
+          style={ figureRoundedStyle }
+        />
         { overlay }
         { primaryImage ? (
           <button
             type="button"
             onClick={ () => openCarouselFromImage(primaryImage) }
             aria-label="Open featured photo carousel"
-            className="absolute inset-0 z-10 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className={ `absolute inset-0 z-10 cursor-pointer ${figureRoundedClass} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background` }
+            style={ figureRoundedStyle }
           >
             <span className="sr-only">Open featured photo carousel</span>
           </button>

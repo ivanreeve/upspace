@@ -77,6 +77,18 @@ type SpaceDetailsSkeletonProps = {
 
 const DESCRIPTION_MIN_CHARACTERS = 20;
 
+const areaCreatedDateFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+const rateAmountFormatter = new Intl.NumberFormat('en-US', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
 const descriptionSchema = z.object({
   description: z
     .string()
@@ -393,31 +405,43 @@ export function SpaceDetailsPanel({
     overlay?: React.ReactNode,
     additionalFigureClass?: string
   ) => {
-    const figureRoundedClass = !isMobile && totalImages > 1 ? 'rounded-l-lg' : 'rounded-lg';
+    const isMultiDesktop = !isMobile && totalImages > 1;
+    const figureRoundedClass = isMultiDesktop ? 'rounded-l-lg' : 'rounded-lg';
+    const figureRoundedStyle = isMultiDesktop
+      ? { borderRadius: 'var(--radius-lg) 0 0 var(--radius-lg)', }
+      : { borderRadius: 'var(--radius-lg)', };
 
     return (
-      <figure className={ `group relative w-full cursor-pointer overflow-hidden ${figureRoundedClass} border border-border/60 bg-muted h-96 sm:h-[28rem] lg:h-[30rem] xl:h-[32rem] ${additionalFigureClass ?? ''}` }>
+      <figure
+        className={ `group relative w-full cursor-pointer overflow-hidden ${figureRoundedClass} border border-border/60 bg-muted h-96 sm:h-[28rem] lg:h-[30rem] xl:h-[32rem] ${additionalFigureClass ?? ''}` }
+        style={ figureRoundedStyle }
+      >
         { featuredImageUrl ? (
           <Image
             src={ featuredImageUrl }
             alt={ `${space.name} featured photo` }
             fill
             sizes="(min-width: 1280px) 55vw, (min-width: 1024px) 65vw, 100vw"
-            className="object-cover"
+            className={ `object-cover ${figureRoundedClass}` }
+            style={ figureRoundedStyle }
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
             Missing public URL
           </div>
         ) }
-        <div className={ `pointer-events-none absolute inset-0 ${figureRoundedClass} bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100` } />
+        <div
+          className={ `pointer-events-none absolute inset-0 ${figureRoundedClass} bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100` }
+          style={ figureRoundedStyle }
+        />
         { overlay }
         { primaryImage ? (
           <button
             type="button"
             onClick={ () => setGalleryOpen(true) }
             aria-label="Open featured photo"
-            className="absolute inset-0 z-10 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className={ `absolute inset-0 z-10 cursor-pointer ${figureRoundedClass} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background` }
+            style={ figureRoundedStyle }
           >
             <span className="sr-only">Open featured photo</span>
           </button>
@@ -602,7 +626,7 @@ export function SpaceDetailsPanel({
                     variant="secondary"
                     size="sm"
                     onClick={ handleStartDescriptionEdit }
-                    className="inline-flex w-full items-center gap-2 sm:w-auto md:size-auto"
+                    className="inline-flex w-full items-center gap-2 sm:w-auto md:size-auto py-2"
                   >
                     <FiEdit className="size-4" aria-hidden="true" />
                     <span className="md:inline">Edit description</span>
@@ -699,11 +723,7 @@ export function SpaceDetailsPanel({
                       <div className="flex-1 min-w-0">
                         <h4 className="text-sm font-semibold md:text-base">{ area.name }</h4>
                         <p className="text-[10px] text-muted-foreground md:text-xs">
-                          Added { new Date(area.created_at).toLocaleDateString(undefined, {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          }) }
+                          Added { areaCreatedDateFormatter.format(new Date(area.created_at)) }
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -743,10 +763,7 @@ export function SpaceDetailsPanel({
                       <div>
                         <dt className="text-[10px] uppercase tracking-wide md:text-xs">Base rate</dt>
                         <dd className="text-sm text-foreground md:text-base">
-                          ${ area.rate_amount.toLocaleString(undefined, {
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 2,
-                          }) } / { area.rate_time_unit }
+                          ${ rateAmountFormatter.format(area.rate_amount) } / { area.rate_time_unit }
                         </dd>
                       </div>
                     </dl>
