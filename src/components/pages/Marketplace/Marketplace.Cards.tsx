@@ -72,22 +72,13 @@ export function SpaceCard({ space, }: { space: Space }) {
 
   const priceLabel = useMemo(() => {
     const hasMin = typeof space.min_rate_price === 'number';
-    const hasMax = typeof space.max_rate_price === 'number';
-
-    if (hasMin && hasMax && space.max_rate_price !== space.min_rate_price) {
-      return `${peso.format(space.min_rate_price ?? 0)} – ${peso.format(space.max_rate_price ?? 0)}`;
-    }
 
     if (hasMin) {
-      return `${peso.format(space.min_rate_price ?? 0)}`;
-    }
-
-    if (hasMax) {
-      return `${peso.format(space.max_rate_price ?? 0)}`;
+      return `From ${peso.format(space.min_rate_price ?? 0)}`;
     }
 
     return 'Price TBA';
-  }, [space.max_rate_price, space.min_rate_price]);
+  }, [space.min_rate_price]);
 
   const handleToggleSave = useCallback(async () => {
     if (isSaving) {
