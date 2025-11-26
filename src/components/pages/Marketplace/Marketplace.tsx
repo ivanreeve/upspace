@@ -208,18 +208,6 @@ export default function Marketplace({ initialSidebarOpen, }: MarketplaceProps) {
     [pendingFilters, searchValue]
   );
 
-  React.useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey)) {
-        event.preventDefault();
-        openSearchModal();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [openSearchModal]);
-
   const {
     data,
     isLoading,

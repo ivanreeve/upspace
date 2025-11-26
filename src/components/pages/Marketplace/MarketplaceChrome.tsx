@@ -413,6 +413,22 @@ export function MarketplaceChrome({
     onNavigate('/marketplace');
   }, [onNavigate, onSearchOpen]);
 
+  React.useEffect(() => {
+    if (!onSearchOpen) return undefined;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (event.key.toLowerCase() !== 'k') return;
+      if (!event.metaKey && !event.ctrlKey) return;
+
+      event.preventDefault();
+      onSearchOpen();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onSearchOpen]);
+
   return (
     <SidebarProvider className="bg-background min-h-screen" initialOpen={ initialSidebarOpen }>
       { dialogSlot }
