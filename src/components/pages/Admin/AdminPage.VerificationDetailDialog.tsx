@@ -270,57 +270,49 @@ export function VerificationDetailDialog({
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
+        <DialogFooter className="flex items-center gap-2">
+          <div className="flex-1">
+            <Button
+              variant="ghost"
+              onClick={ () => {
+                resetDialogState();
+                onClose();
+              } }
+              disabled={ isProcessing }
+            >
+              Cancel
+            </Button>
+          </div>
           { !showRejectForm ? (
-            <>
-              <Button
-                variant="ghost"
-                onClick={ () => {
-                  resetDialogState();
-                  onClose();
-                } }
-                disabled={ isProcessing }
-              >
-                Cancel
-              </Button>
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 onClick={ () => setShowRejectForm(true) }
                 disabled={ isProcessing }
-                >
-                  <FiX className="size-4" aria-hidden="true" />
-                  Reject
-                </Button>
-                <Button
-                  onClick={ handleApproveClick }
-                  disabled={ isProcessing }
-                >
-                  <FiCheck className="size-4" aria-hidden="true" />
-                  { approveMutation.isPending ? 'Approving...' : 'Approve' }
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  variant="ghost"
-                  onClick={ () => {
-                    setShowRejectForm(false);
-                    setRejectionReason('');
-                  } }
-                  disabled={ isProcessing }
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={ handleReject }
-                  disabled={ !rejectionReason.trim() || isProcessing }
-                >
-                  { rejectMutation.isPending ? 'Rejecting...' : 'Confirm Rejection' }
-                </Button>
-              </>
-            ) }
-          </DialogFooter>
+              >
+                <FiX className="size-4" aria-hidden="true" />
+                Reject
+              </Button>
+              <Button
+                onClick={ handleApproveClick }
+                disabled={ isProcessing }
+              >
+                <FiCheck className="size-4" aria-hidden="true" />
+                { approveMutation.isPending ? 'Approving...' : 'Approve' }
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="destructive"
+                onClick={ handleReject }
+                disabled={ !rejectionReason.trim() || isProcessing }
+              >
+                { rejectMutation.isPending ? 'Rejecting...' : 'Confirm Rejection' }
+              </Button>
+            </div>
+          ) }
+        </DialogFooter>
         </DialogContent>
       </Dialog>
 
