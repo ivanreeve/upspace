@@ -13,7 +13,7 @@ import {
   FiBarChart2,
   FiUser
 } from 'react-icons/fi';
-import { GrDocumentText } from 'react-icons/gr';
+import { HiOutlineDocumentText } from 'react-icons/hi';
 import { TbLayoutSidebarFilled } from 'react-icons/tb';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -403,14 +403,14 @@ export function MarketplaceChrome({
   } = navData;
   const isAdmin = role === 'admin';
   const verificationSidebarItem = isAdmin ? (
-    <SidebarMenuItem>
-      <SidebarMenuButton asChild tooltip="Verification queue">
-        <Link href="/admin">
-          <GrDocumentText className="size-4" aria-hidden="true" strokeWidth={ 1 } />
-          <span data-sidebar-label>Verification Queue</span>
-        </Link>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild tooltip="Verification queue">
+          <Link href="/admin">
+            <HiOutlineDocumentText className="size-4" aria-hidden="true" strokeWidth={ 1 } />
+            <span data-sidebar-label>Verification Queue</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
   ) : null;
   const dashboardSidebarItem = isAdmin ? (
     <SidebarMenuItem>
