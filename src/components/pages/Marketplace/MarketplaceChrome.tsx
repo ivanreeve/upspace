@@ -438,7 +438,7 @@ export function MarketplaceChrome({
       return;
     }
 
-    onNavigate('/marketplace');
+    onNavigate('/marketplace?search=1');
   }, [onNavigate, onSearchOpen]);
 
   React.useEffect(() => {

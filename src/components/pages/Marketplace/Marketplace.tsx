@@ -9,7 +9,7 @@ import {
   FiX
 } from 'react-icons/fi';
 import { CgOptions } from 'react-icons/cg';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { CardsGrid, SkeletonGrid } from './Marketplace.Cards';
 import { MarketplaceErrorState } from './Marketplace.ErrorState';
@@ -154,6 +154,10 @@ export default function Marketplace({ initialSidebarOpen, }: MarketplaceProps) {
   const [pendingFilters, setPendingFilters] = React.useState<FiltersState>(DEFAULT_FILTERS);
   const [searchValue, setSearchValue] = React.useState('');
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+
   const applyFilters = React.useCallback((updates: Partial<FiltersState>) => {
     setPendingFilters((prev) => {
       const next: FiltersState = {
@@ -207,6 +211,18 @@ export default function Marketplace({ initialSidebarOpen, }: MarketplaceProps) {
     },
     [pendingFilters, searchValue]
   );
+
+  React.useEffect(() => {
+    if (searchParams.get('search') !== '1') return;
+
+    openSearchModal();
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete('search');
+    const searchString = nextParams.toString();
+    const nextUrl = `${pathname}${searchString ? `?${searchString}` : ''}`;
+    router.replace(nextUrl, { scroll: false, });
+  }, [openSearchModal, pathname, router, searchParams]);
 
   const {
     data,
