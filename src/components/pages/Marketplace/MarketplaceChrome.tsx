@@ -39,6 +39,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { useSession } from '@/components/auth/SessionProvider';
+import { useCachedAvatar } from '@/hooks/use-cached-avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -391,6 +392,8 @@ export function MarketplaceChrome({
   initialSidebarOpen,
 }: MarketplaceChromeProps) {
   const navData = useMarketplaceNavData();
+  const cachedAvatarUrl = useCachedAvatar(navData.avatarUrl);
+  const { onNavigate, } = navData;
   const isMobile = useIsMobile();
   const mobileInsetPadding = React.useMemo<React.CSSProperties | undefined>(
     () => (isMobile
@@ -407,15 +410,15 @@ export function MarketplaceChrome({
       return;
     }
 
-    navData.onNavigate('/marketplace');
-  }, [navData.onNavigate, onSearchOpen]);
+    onNavigate('/marketplace');
+  }, [onNavigate, onSearchOpen]);
 
   return (
     <SidebarProvider className="bg-background min-h-screen" initialOpen={ initialSidebarOpen }>
       { dialogSlot }
       { isMobile && (
         <MobileTopNav
-          avatarUrl={ navData.avatarUrl }
+          avatarUrl={ cachedAvatarUrl }
           avatarFallback={ navData.avatarFallback }
           onSearchOpen={ handleSearch }
           displayName={ navData.avatarDisplayName }
@@ -467,7 +470,7 @@ export function MarketplaceChrome({
           <SidebarContent className="flex-1" />
           <SidebarFooter className="mt-auto border-t border-sidebar-border/60">
             <SidebarFooterContent
-              avatarUrl={ navData.avatarUrl }
+              avatarUrl={ cachedAvatarUrl }
               avatarFallback={ navData.avatarFallback }
               avatarDisplayName={ navData.avatarDisplayName }
               resolvedHandleLabel={ navData.resolvedHandleLabel }

@@ -1,19 +1,26 @@
-'use client';
-
+import { cookies } from 'next/headers';
 import { FiArrowLeft } from 'react-icons/fi';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
 
 import { SpaceDetailsPanel } from '@/components/pages/Spaces/SpaceDetailsPanel';
 import { SpacesChrome } from '@/components/pages/Spaces/SpacesChrome';
 import { Button } from '@/components/ui/button';
+import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
 
-export default function SpaceDetailRoute() {
-  const params = useParams<{ spaceId: string }>();
+type SpaceDetailRouteProps = {
+  params: {
+    spaceId: string
+  }
+};
+
+export default async function SpaceDetailRoute({ params, }: SpaceDetailRouteProps) {
+  const cookieStore = await cookies();
+  const sidebarCookie = cookieStore.get(SIDEBAR_STATE_COOKIE)?.value;
+  const initialSidebarOpen = parseSidebarState(sidebarCookie);
   const spaceId = params?.spaceId ?? '';
 
   return (
-    <SpacesChrome>
+    <SpacesChrome initialSidebarOpen={ initialSidebarOpen }>
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <div className="space-y-1">

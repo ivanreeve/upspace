@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle
@@ -22,6 +23,7 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePartnerSpacesQuery } from '@/hooks/api/usePartnerSpaces';
+import { cn } from '@/lib/utils';
 
 export function SpacesInventoryForm() {
   const {
@@ -86,16 +88,19 @@ export function SpacesInventoryForm() {
 
     if (isError) {
       return (
-        <Card className="border-destructive/50 border bg-background/60">
-          <CardHeader>
-            <CardTitle>Unable to load spaces</CardTitle>
-            <CardDescription>{ error instanceof Error ? error.message : 'Please try again in a moment.' }</CardDescription>
-          </CardHeader>
-          <div className="px-6 pb-6">
+        <Card className="border-none bg-transparent">
+          <CardContent className="flex flex-col items-center gap-6 px-6 py-10 text-center">
+            <SystemErrorIllustration className="h-auto w-full max-w-[320px] md:max-w-[420px]" />
+            <div className="space-y-3">
+              <CardTitle className="text-xl text-muted-foreground md:text-2xl">Unable to load spaces</CardTitle>
+              <CardDescription className="text-sm">
+                { error instanceof Error ? error.message : 'Something went a little bleep-bloop. Please try again in a moment.' }
+              </CardDescription>
+            </div>
             <Button variant="outline" onClick={ () => refetch() }>
               Retry
             </Button>
-          </div>
+          </CardContent>
         </Card>
       );
     }
@@ -226,5 +231,89 @@ export function SpacesInventoryForm() {
       { renderContent() }
 
     </section>
+  );
+}
+
+type SystemErrorIllustrationProps = {
+  className?: string;
+};
+
+function SystemErrorIllustration({ className, }: SystemErrorIllustrationProps) {
+  return (
+    <div className={ cn('w-full', className) } aria-hidden="true">
+      <svg
+        viewBox="0 0 400 300"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        preserveAspectRatio="xMidYMid meet"
+        className="h-full w-full"
+      >
+        <circle cx="200" cy="150" r="120" fill="hsl(var(--muted))" />
+
+        <g className="error-robot-body">
+          <ellipse cx="200" cy="240" rx="40" ry="6" fill="#000" opacity="0.3" />
+
+          <rect x="150" y="140" width="100" height="80" rx="20" fill="hsl(var(--muted-foreground) / 0.3)" />
+          <rect x="150" y="140" width="100" height="76" rx="20" fill="hsl(var(--muted-foreground) / 0.3)" />
+
+          <rect x="170" y="160" width="60" height="40" rx="4" fill="hsl(var(--muted-foreground) / 0.8)" />
+          <path
+            d="M175 180 H190 L195 170 L205 190 L210 180 H225"
+            stroke="hsl(var(--primary))"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          <rect x="190" y="130" width="20" height="10" fill="hsl(var(--muted-foreground) / 0.3)" />
+
+          <rect x="140" y="60" width="120" height="70" rx="16" fill="hsl(var(--muted-foreground) / 0.3)" />
+          <rect x="140" y="60" width="120" height="66" rx="16" fill="hsl(var(--muted-foreground) / 0.3)" />
+
+          <rect x="155" y="75" width="90" height="40" rx="4" fill="hsl(var(--muted-foreground) / 0.8)" />
+
+          <path
+            d="M170 85 L180 95 M180 85 L170 95"
+            stroke="hsl(var(--primary))"
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+          <path
+            d="M220 85 L230 95 M230 85 L220 95"
+            stroke="hsl(var(--primary))"
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+
+          <path d="M200 60 V 40" stroke="hsl(var(--muted-foreground) / 0.3)" strokeWidth="4" />
+          <circle cx="200" cy="35" r="5" fill="hsl(var(--primary))" />
+
+          <path
+            d="M150 160 C 130 160, 130 200, 140 210"
+            stroke="hsl(var(--muted-foreground) / 0.3)"
+            strokeWidth="12"
+            strokeLinecap="round"
+            fill="none"
+          />
+          <path
+            d="M250 160 C 270 160, 270 190, 260 200"
+            stroke="hsl(var(--muted-foreground) / 0.3)"
+            strokeWidth="12"
+            strokeLinecap="round"
+            fill="none"
+          />
+        </g>
+
+      </svg>
+
+      <style jsx>{ `
+        @keyframes error-float {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+
+        .error-robot-body { animation: error-float 4s ease-in-out infinite; }
+      ` }</style>
+    </div>
   );
 }
