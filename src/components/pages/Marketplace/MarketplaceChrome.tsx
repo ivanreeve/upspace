@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   FiBell,
-  FiCheckCircle,
   FiCommand,
   FiHome,
   FiLogOut,
@@ -13,6 +12,7 @@ import {
   FiSettings,
   FiUser
 } from 'react-icons/fi';
+import { GrDocumentText } from 'react-icons/gr';
 import { TbLayoutSidebarFilled } from 'react-icons/tb';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -405,7 +405,7 @@ export function MarketplaceChrome({
     <SidebarMenuItem>
       <SidebarMenuButton asChild tooltip="Verification queue">
         <Link href="/admin">
-          <FiCheckCircle className="size-4" strokeWidth={ 1.4 } />
+          <GrDocumentText className="size-4" aria-hidden="true" />
           <span data-sidebar-label>Verification Queue</span>
         </Link>
       </SidebarMenuButton>
