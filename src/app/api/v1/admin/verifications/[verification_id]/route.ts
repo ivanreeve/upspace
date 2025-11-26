@@ -107,9 +107,13 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     }
 
     const {
- action, rejected_reason, 
-} = parsed.data;
+      action,
+      rejected_reason,
+      valid_until,
+    } = parsed.data;
     const now = new Date();
+    const validUntilDate =
+      action === 'approve' && valid_until ? new Date(valid_until) : null;
 
     const verification = await prisma.verification.findUnique({
       where: { id: verification_id, },
@@ -138,6 +142,7 @@ status: true,
         approved_at: action === 'approve' ? now : null,
         rejected_at: action === 'reject' ? now : null,
         rejected_reason: action === 'reject' ? rejected_reason : null,
+        valid_until: action === 'approve' ? validUntilDate : null,
         updated_at: now,
       },
     });

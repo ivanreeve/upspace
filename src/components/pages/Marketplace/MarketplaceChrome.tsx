@@ -10,6 +10,7 @@ import {
   FiLogOut,
   FiSearch,
   FiSettings,
+  FiBarChart2,
   FiUser
 } from 'react-icons/fi';
 import { GrDocumentText } from 'react-icons/gr';
@@ -405,8 +406,18 @@ export function MarketplaceChrome({
     <SidebarMenuItem>
       <SidebarMenuButton asChild tooltip="Verification queue">
         <Link href="/admin">
-          <GrDocumentText className="size-4" aria-hidden="true" />
+          <GrDocumentText className="size-4" aria-hidden="true" strokeWidth={ 1 } />
           <span data-sidebar-label>Verification Queue</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  ) : null;
+  const dashboardSidebarItem = isAdmin ? (
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild tooltip="Dashboard">
+        <Link href="/marketplace/dashboard">
+          <FiBarChart2 className="size-4" aria-hidden="true" strokeWidth={ 1.4 } />
+          <span data-sidebar-label>Dashboard</span>
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
@@ -463,43 +474,44 @@ export function MarketplaceChrome({
       <div className="flex min-h-screen w-full">
         <Sidebar collapsible="icon" className="hidden md:flex border-1 border-r-muted">
           <SidebarHeader className="pt-4">
-            <SidebarMenu>
-              <SidebarToggleMenuItem />
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Home">
-                  <Link href="/marketplace">
-                    <FiHome className="size-4" strokeWidth={ 1.4 } />
-                    <span data-sidebar-label>Home</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  tooltip="Search"
-                  className="justify-start gap-2 group-data-[collapsible=icon]:justify-center"
-                  type="button"
-                  onClick={ handleSearch }
-                >
-                  <FiSearch className="size-4" strokeWidth={ 1.4 }/>
-                  <span data-sidebar-label>Search</span>
-                  { onSearchOpen ? (
-                    <Kbd className="ml-auto hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden">
-                      <FiCommand className="size-3" aria-hidden="true" />
-                      <span> + K</span>
-                    </Kbd>
-                  ) : null }
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Notifications">
-                <Link href="/notifications">
-                  <FiBell className="size-4" strokeWidth={ 1.4 } />
-                  <span data-sidebar-label>Notifications</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            { verificationSidebarItem }
-            </SidebarMenu>
+              <SidebarMenu>
+                <SidebarToggleMenuItem />
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Home">
+                    <Link href="/marketplace">
+                      <FiHome className="size-4" strokeWidth={ 1.4 } />
+                      <span data-sidebar-label>Home</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    tooltip="Search"
+                    className="justify-start gap-2 group-data-[collapsible=icon]:justify-center"
+                    type="button"
+                    onClick={ handleSearch }
+                  >
+                    <FiSearch className="size-4" strokeWidth={ 1.4 }/>
+                    <span data-sidebar-label>Search</span>
+                    { onSearchOpen ? (
+                      <Kbd className="ml-auto hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden">
+                        <FiCommand className="size-3" aria-hidden="true" />
+                        <span> + K</span>
+                      </Kbd>
+                    ) : null }
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Notifications">
+                    <Link href="/notifications">
+                      <FiBell className="size-4" strokeWidth={ 1.4 } />
+                      <span data-sidebar-label>Notifications</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                { dashboardSidebarItem }
+                { verificationSidebarItem }
+              </SidebarMenu>
           </SidebarHeader>
           <SidebarContent className="flex-1" />
           <SidebarFooter className="mt-auto border-t border-sidebar-border/60">

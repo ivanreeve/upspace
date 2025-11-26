@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import {
-FiCheck,
-FiX,
-FiExternalLink,
-FiFileText
+  FiCalendar,
+  FiCheck,
+  FiExternalLink,
+  FiFileText,
+  FiX
 } from 'react-icons/fi';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 import {
@@ -20,7 +22,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useApproveVerificationMutation, useRejectVerificationMutation, type PendingVerification } from '@/hooks/api/useAdminVerifications';
+import { useCachedAvatar } from '@/hooks/use-cached-avatar';
+import { cn } from '@/lib/utils';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 type Props = {
   verification: PendingVerification | null;
@@ -38,20 +45,51 @@ const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   occupancy_permit: 'Occupancy Permit',
 };
 
+const getInitials = (value: string) =>
+  value
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((segment) => segment.charAt(0).toUpperCase())
+    .join('');
+
 export function VerificationDetailDialog({
- verification, open, onClose, 
+  verification,
+  open,
+  onClose,
 }: Props) {
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
+  const [validUntil, setValidUntil] = useState('');
+  const [isIndefinite, setIsIndefinite] = useState(false);
+  const partnerAvatarUrl = useCachedAvatar(verification?.space.partner.avatar_url ?? null);
+  const partnerInitials = getInitials(
+    verification?.space.partner.name ?? verification?.space.partner.handle ?? ''
+  );
 
   const approveMutation = useApproveVerificationMutation();
   const rejectMutation = useRejectVerificationMutation();
 
+  const resetDialogState = () => {
+    setShowRejectForm(false);
+    setRejectionReason('');
+    setValidUntil('');
+    setIsIndefinite(false);
+  };
+
   const handleApprove = async () => {
     if (!verification) return;
+    if (!isIndefinite && !validUntil) {
+      toast.error('Please choose a validity end date or mark the approval as indefinite before approving.');
+      return;
+    }
     try {
-      await approveMutation.mutateAsync(verification.id);
+      await approveMutation.mutateAsync({
+        verificationId: verification.id,
+        validUntil: isIndefinite ? null : validUntil,
+      });
       toast.success('Space approved successfully');
+      resetDialogState();
       onClose();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to approve verification');
@@ -76,8 +114,7 @@ export function VerificationDetailDialog({
 
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
-      setShowRejectForm(false);
-      setRejectionReason('');
+      resetDialogState();
       onClose();
     }
   };
@@ -85,10 +122,16 @@ export function VerificationDetailDialog({
   if (!verification) return null;
 
   const isProcessing = approveMutation.isPending || rejectMutation.isPending;
+  const formattedValidUntil =
+    validUntil && !Number.isNaN(Date.parse(validUntil))
+      ? format(new Date(validUntil), 'PPP')
+      : '';
+  const validityButtonLabel =
+    isIndefinite ? 'Indefinite' : formattedValidUntil || 'Select date';
 
   return (
     <Dialog open={ open } onOpenChange={ handleOpenChange }>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="w-full max-w-6xl transition-all duration-200">
         <DialogHeader>
           <DialogTitle>Review Verification</DialogTitle>
           <DialogDescription>
@@ -100,62 +143,142 @@ export function VerificationDetailDialog({
           { /* Partner Info */ }
           <div>
             <h4 className="mb-2 text-sm font-medium text-muted-foreground">Partner</h4>
-            <p className="text-sm">{ verification.space.partner.name }</p>
-            <p className="text-xs text-muted-foreground">@{ verification.space.partner.handle }</p>
+            <div className="flex items-center gap-3">
+              <Avatar className="size-10 border border-border/70">
+                { partnerAvatarUrl ? (
+                  <AvatarImage
+                    src={ partnerAvatarUrl }
+                    alt={ `${verification.space.partner.name} avatar` }
+                  />
+                ) : (
+                  <AvatarFallback className="font-semibold text-muted-foreground">
+                    { partnerInitials }
+                  </AvatarFallback>
+                ) }
+              </Avatar>
+              <div>
+                <p className="text-sm">{ verification.space.partner.name }</p>
+                <p className="text-xs text-muted-foreground">@{ verification.space.partner.handle }</p>
+              </div>
+            </div>
           </div>
 
-          { /* Documents */ }
-          <div>
-            <h4 className="mb-3 text-sm font-medium text-muted-foreground">
-              Verification Documents ({ verification.documents.length })
-            </h4>
-            <div className="space-y-2">
-              { verification.documents.map((doc) => (
-                <div
-                  key={ doc.id }
-                  className="flex items-center justify-between rounded-md border border-border/70 bg-background/60 px-4 py-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <FiFileText className="size-5 text-muted-foreground" aria-hidden="true" />
-                    <div>
-                      <p className="text-sm font-medium">
-                        { DOCUMENT_TYPE_LABELS[doc.document_type] ?? doc.document_type }
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        { doc.mime_type } - { (doc.file_size_bytes / 1024).toFixed(1) } KB
-                      </p>
-                    </div>
-                  </div>
-                  { doc.url && (
-                    <Button asChild size="sm" variant="ghost">
-                      <a href={ doc.url } target="_blank" rel="noopener noreferrer">
-                        <FiExternalLink className="size-4" aria-hidden="true" />
-                        View
-                      </a>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="verification-valid-until">Validity end date</Label>
+              <p className="text-xs text-muted-foreground">Required</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="flex-1 min-w-0">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      id="verification-valid-until"
+                      variant="outline"
+                      className="w-full justify-between"
+                    >
+                      <span>
+                        { validityButtonLabel }
+                      </span>
+                      <FiCalendar className="size-4" aria-hidden="true" />
                     </Button>
-                  ) }
-                </div>
-              )) }
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={ validUntil ? new Date(validUntil) : undefined }
+                      onSelect={ (date) => {
+                        if (date) {
+                          setIsIndefinite(false);
+                          setValidUntil(date.toISOString().split('T')[0]);
+                        }
+                      } }
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant={ isIndefinite ? 'secondary' : 'outline' }
+                onClick={ () => {
+                  setIsIndefinite((prev) => {
+                    const next = !prev;
+                    if (next) {
+                      setValidUntil('');
+                    }
+                    return next;
+                  });
+                } }
+                aria-pressed={ isIndefinite }
+              >
+                { isIndefinite ? 'Use expiry date' : 'Mark as indefinite' }
+              </Button>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Set when this approval should expire, or mark it as indefinite to keep it forever.
+            </p>
           </div>
 
-          { /* Rejection Form */ }
-          { showRejectForm && (
-            <div className="space-y-3">
-              <Label htmlFor="rejection-reason">Rejection Reason</Label>
-              <Textarea
-                id="rejection-reason"
-                placeholder="Provide a reason for rejection..."
-                value={ rejectionReason }
-                onChange={ (e) => setRejectionReason(e.target.value) }
-                rows={ 3 }
-                aria-label="Rejection reason"
-              />
+          { /* Documents + optional rejection form */ }
+          <div
+            className={ cn(
+              'space-y-4',
+              showRejectForm &&
+                'lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] lg:gap-6 lg:items-start lg:space-y-0'
+            ) }
+          >
+            <div className="space-y-2">
+              <h4 className="mb-3 text-sm font-medium text-muted-foreground">
+                Verification Documents ({ verification.documents.length })
+              </h4>
+              <div className="space-y-2">
+                { verification.documents.map((doc) => (
+                  <div
+                    key={ doc.id }
+                    className="flex items-center justify-between rounded-md border border-border/70 bg-background/60 px-4 py-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FiFileText className="size-5 text-muted-foreground" aria-hidden="true" />
+                      <div>
+                        <p className="text-sm font-medium">
+                          { DOCUMENT_TYPE_LABELS[doc.document_type] ?? doc.document_type }
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          { doc.mime_type } - { (doc.file_size_bytes / 1024).toFixed(1) } KB
+                        </p>
+                      </div>
+                    </div>
+                    { doc.url && (
+                      <Button asChild size="sm" variant="ghost">
+                        <a href={ doc.url } target="_blank" rel="noopener noreferrer">
+                          <FiExternalLink className="size-4" aria-hidden="true" />
+                          View
+                        </a>
+                      </Button>
+                    ) }
+                  </div>
+                )) }
+              </div>
             </div>
-          ) }
+
+            { showRejectForm && (
+              <div className="space-y-3 rounded-md border border-border/70 bg-background/60 p-4">
+                <Label htmlFor="rejection-reason">Rejection Reason</Label>
+                <Textarea
+                  id="rejection-reason"
+                  placeholder="Provide a reason for rejection..."
+                  value={ rejectionReason }
+                  onChange={ (e) => setRejectionReason(e.target.value) }
+                  rows={ 3 }
+                  aria-label="Rejection reason"
+                />
+              </div>
+            ) }
+          </div>
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="gap-2">
           { !showRejectForm ? (
             <>
               <Button
@@ -166,7 +289,10 @@ export function VerificationDetailDialog({
                 <FiX className="size-4" aria-hidden="true" />
                 Reject
               </Button>
-              <Button onClick={ handleApprove } disabled={ isProcessing }>
+              <Button
+                onClick={ handleApprove }
+                disabled={ isProcessing || (!isIndefinite && !validUntil) }
+              >
                 <FiCheck className="size-4" aria-hidden="true" />
                 { approveMutation.isPending ? 'Approving...' : 'Approve' }
               </Button>

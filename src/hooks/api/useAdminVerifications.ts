@@ -27,15 +27,27 @@ export type PendingVerification = {
     partner: {
       handle: string;
       name: string;
+      avatar_url: string | null;
     };
   };
   documents: VerificationDocument[];
 };
 
+export type PendingVerificationsPage = {
+  data: PendingVerification[];
+  nextCursor: string | null;
+};
+
 export const adminVerificationKeys = {
   all: ['admin-verifications'] as const,
-  list: (status?: string) => ['admin-verifications', 'list', status ?? 'in_review'] as const,
+  list: (status?: string, limit?: number, cursor?: string | null) =>
+    ['admin-verifications', 'list', status ?? 'in_review', limit ?? 20, cursor ?? null] as const,
   detail: (id: string) => ['admin-verifications', 'detail', id] as const,
+};
+
+type ApproveVerificationInput = {
+  verificationId: string;
+  validUntil: string | null;
 };
 
 const parseErrorMessage = async (response: Response) => {
@@ -53,18 +65,40 @@ const parseErrorMessage = async (response: Response) => {
   return 'Something went wrong. Please try again.';
 };
 
-export function usePendingVerificationsQuery(status: string = 'in_review') {
+export function usePendingVerificationsQuery({
+  status = 'in_review',
+  limit = 20,
+  cursor,
+}: {
+  status?: string;
+  limit?: number;
+  cursor?: string | null;
+} = {}) {
   const authFetch = useAuthenticatedFetch();
 
-  return useQuery<PendingVerification[]>({
-    queryKey: adminVerificationKeys.list(status),
+  return useQuery<PendingVerificationsPage>({
+    queryKey: adminVerificationKeys.list(status, limit, cursor),
     queryFn: async () => {
-      const response = await authFetch(`/api/v1/admin/verifications?status=${status}`);
+      const searchParams = new URLSearchParams({
+        status,
+        limit: String(limit),
+      });
+      if (cursor) {
+        searchParams.set('cursor', cursor);
+      }
+
+      const response = await authFetch(`/api/v1/admin/verifications?${searchParams.toString()}`);
       if (!response.ok) {
         throw new Error(await parseErrorMessage(response));
       }
-      const payload = (await response.json()) as { data: PendingVerification[] };
-      return payload.data;
+      const payload = (await response.json()) as {
+        data: PendingVerification[];
+        nextCursor: string | null;
+      };
+      return {
+        data: payload.data,
+        nextCursor: payload.nextCursor ?? null,
+      };
     },
   });
 }
@@ -97,11 +131,17 @@ export function useApproveVerificationMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (verificationId: string) => {
+    mutationFn: async ({
+      verificationId,
+      validUntil,
+    }: ApproveVerificationInput) => {
       const response = await authFetch(`/api/v1/admin/verifications/${verificationId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', },
-        body: JSON.stringify({ action: 'approve', }),
+        body: JSON.stringify({
+          action: 'approve',
+          valid_until: validUntil,
+        }),
       });
       if (!response.ok) {
         throw new Error(await parseErrorMessage(response));
@@ -120,15 +160,16 @@ export function useRejectVerificationMutation() {
 
   return useMutation({
     mutationFn: async ({
- verificationId, reason, 
-}: { verificationId: string; reason: string }) => {
+      verificationId,
+      reason,
+    }: { verificationId: string; reason: string }) => {
       const response = await authFetch(`/api/v1/admin/verifications/${verificationId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', },
         body: JSON.stringify({
- action: 'reject',
-rejected_reason: reason, 
-}),
+          action: 'reject',
+          rejected_reason: reason,
+        }),
       });
       if (!response.ok) {
         throw new Error(await parseErrorMessage(response));
