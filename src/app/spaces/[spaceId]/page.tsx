@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
 import { SpaceDetailsPanel } from '@/components/pages/Spaces/SpaceDetailsPanel';
-import { MarketplaceChrome } from '@/components/pages/Marketplace/MarketplaceChrome';
+import { SpacesChrome } from '@/components/pages/Spaces/SpacesChrome';
 import { Button } from '@/components/ui/button';
 
 export default function SpaceDetailRoute() {
@@ -13,7 +13,7 @@ export default function SpaceDetailRoute() {
   const spaceId = params?.spaceId ?? '';
 
   return (
-    <MarketplaceChrome>
+    <SpacesChrome>
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -31,6 +31,6 @@ export default function SpaceDetailRoute() {
 
         <SpaceDetailsPanel spaceId={ spaceId } className="mt-8" />
       </div>
-    </MarketplaceChrome>
+    </SpacesChrome>
   );
 }

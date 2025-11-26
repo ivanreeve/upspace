@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 import SpacesPage from '@/components/pages/Spaces/SpacesPage';
-import { MarketplaceChrome } from '@/components/pages/Marketplace/MarketplaceChrome';
+import { SpacesChrome } from '@/components/pages/Spaces/SpacesChrome';
 import { Footer } from '@/components/ui/footer';
 
 export const metadata: Metadata = {
@@ -11,9 +11,9 @@ export const metadata: Metadata = {
 
 export default function SpacesRoute() {
   return (
-    <MarketplaceChrome>
+    <SpacesChrome>
       <SpacesPage />
       <Footer />
-    </MarketplaceChrome>
+    </SpacesChrome>
   );
 }
