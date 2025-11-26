@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
 
 import SpaceHeader from './SpaceHeader';
 import SpacePhotos from './SpacePhotos';
@@ -14,7 +15,6 @@ import AvailabilityTable from './AvailabilityTable';
 import SpaceBreadcrumbs from './SpaceBreadcrumbs';
 
 import { SPACE_DESCRIPTION_VIEWER_CLASSNAME } from '@/components/pages/Spaces/space-description-rich-text';
-import { Button } from '@/components/ui/button';
 import type { MarketplaceSpaceDetail } from '@/lib/queries/space';
 import { sanitizeRichText } from '@/lib/rich-text';
 
@@ -88,7 +88,7 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
 
             <section className="space-y-4 border-b pb-6">
               <h2 className="text-xl font-medium text-foreground">About { space.name }</h2>
-              <div className="space-y-3">
+              <div className="relative">
                 <div
                   className={ `
                     relative
@@ -108,21 +108,36 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
                     dangerouslySetInnerHTML={ { __html: aboutHtml, } }
                   />
                   { shouldShowGradient ? (
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background to-transparent" />
+                    <div className="absolute inset-x-0 bottom-0 h-32">
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+                      <div className="absolute bottom-0 inset-x-0 flex justify-center">
+                        <button
+                          type="button"
+                          onClick={ () => setIsDescriptionExpanded(true) }
+                          aria-expanded={ false }
+                          aria-controls={ descriptionViewportId }
+                          className="flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+                        >
+                          Show more
+                          <FiChevronDown className="size-4" aria-hidden="true" />
+                        </button>
+                      </div>
+                    </div>
                   ) : null }
                 </div>
-                { isDescriptionOverflowing ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="px-0 text-sm font-medium"
-                    onClick={ () => setIsDescriptionExpanded((prev) => !prev) }
-                    aria-expanded={ isDescriptionExpanded }
-                    aria-controls={ descriptionViewportId }
-                  >
-                    { isDescriptionExpanded ? 'Show less' : 'See full description' }
-                  </Button>
+                { isDescriptionOverflowing && isDescriptionExpanded ? (
+                  <div className="flex justify-center mt-4">
+                    <button
+                      type="button"
+                      onClick={ () => setIsDescriptionExpanded(false) }
+                      aria-expanded={ true }
+                      aria-controls={ descriptionViewportId }
+                      className="flex items-center gap-2 rounded-lg border border-border bg-background px-6 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+                    >
+                      Show less
+                      <FiChevronUp className="size-4" aria-hidden="true" />
+                    </button>
+                  </div>
                 ) : null }
               </div>
             </section>

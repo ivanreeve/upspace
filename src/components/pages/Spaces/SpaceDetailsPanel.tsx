@@ -69,7 +69,6 @@ type SpaceDetailsSkeletonProps = {
 };
 
 const DESCRIPTION_MIN_CHARACTERS = 20;
-const DESCRIPTION_MAX_CHARACTERS = 500;
 
 const descriptionSchema = z.object({
   description: z
@@ -82,13 +81,6 @@ const descriptionSchema = z.object({
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: `Add at least ${DESCRIPTION_MIN_CHARACTERS} characters.`,
-        });
-      }
-
-      if (plainTextLength > DESCRIPTION_MAX_CHARACTERS) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Keep the description under ${DESCRIPTION_MAX_CHARACTERS} characters.`,
         });
       }
     })
@@ -414,7 +406,7 @@ export function SpaceDetailsPanel({
                     />
                     <div className="flex flex-col gap-1">
                       <p className="text-xs text-muted-foreground">
-                        { descriptionPlainTextLength } / { DESCRIPTION_MAX_CHARACTERS } characters
+                        { descriptionPlainTextLength } characters
                       </p>
                       { descriptionError ? (
                         <p className="text-sm text-destructive">{ descriptionError }</p>
