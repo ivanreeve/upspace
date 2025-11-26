@@ -8,16 +8,16 @@ import { Button } from '@/components/ui/button';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
 
 type SpaceDetailRouteProps = {
-  params: {
+  params: Promise<{
     spaceId: string
-  }
+  }>
 };
 
 export default async function SpaceDetailRoute({ params, }: SpaceDetailRouteProps) {
+  const { spaceId, } = await params;
   const cookieStore = await cookies();
   const sidebarCookie = cookieStore.get(SIDEBAR_STATE_COOKIE)?.value;
   const initialSidebarOpen = parseSidebarState(sidebarCookie);
-  const spaceId = params?.spaceId ?? '';
 
   return (
     <SpacesChrome initialSidebarOpen={ initialSidebarOpen }>
