@@ -7,17 +7,19 @@ type MarketplaceErrorStateProps = {
   onRetry?: () => void;
   isRetrying?: boolean;
   className?: string;
+  illustrationClassName?: string;
 };
 
 export function MarketplaceErrorState({
   onRetry,
   isRetrying = false,
   className,
+  illustrationClassName,
 }: MarketplaceErrorStateProps) {
   return (
     <Card className={ cn('w-full max-w-3xl border-none bg-transparent', className) }>
       <CardContent className="flex flex-col items-center gap-6 px-6 py-10 text-center">
-        <SystemErrorIllustration className="h-auto w-full max-w-[420px]" />
+        <SystemErrorIllustration className={ cn('h-auto w-full max-w-[420px]', illustrationClassName) } />
         <div className="space-y-2">
           <h2 className="text-2xl font-semibold text-muted-foreground">System error</h2>
           <p className="text-sm text-muted-foreground">
@@ -33,11 +35,12 @@ export function MarketplaceErrorStateLight({
   onRetry,
   isRetrying = false,
   className,
+  illustrationClassName,
 }: MarketplaceErrorStateProps) {
   return (
     <Card className={ cn('w-full max-w-3xl border-none bg-transparent', className) }>
       <CardContent className="flex flex-col items-center gap-6 px-6 py-10 text-center">
-        <SystemErrorIllustrationLight className="h-auto w-full max-w-[420px]" />
+        <SystemErrorIllustrationLight className={ cn('h-auto w-full max-w-[420px]', illustrationClassName) } />
         <div className="space-y-2">
           <h2 className="text-2xl font-semibold text-muted-foreground">System error</h2>
           <p className="text-sm text-muted-foreground">

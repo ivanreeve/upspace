@@ -97,7 +97,7 @@ export function SpacesInventoryForm() {
       return (
         <Card className="border-none bg-transparent">
           <CardContent className="flex flex-col items-center gap-6 px-6 py-10 text-center">
-            <SystemErrorIllustration className="h-auto w-full max-w-[320px] md:max-w-[420px]" />
+            <SystemErrorIllustration className="h-auto w-full max-w-[260px] md:max-w-[320px]" />
             <div className="space-y-3">
               <CardTitle className="text-xl text-muted-foreground md:text-2xl">Unable to load spaces</CardTitle>
               <CardDescription className="text-sm">
