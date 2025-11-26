@@ -105,7 +105,7 @@ export async function suggestSpaces(params: SuggestSpacesParams) {
     return { suggestions: [] as SpaceSuggestion[], };
   }
 
-  const includePending = params.include_pending ?? true;
+  const includePending = params.include_pending ?? false;
 
   const sp = new URLSearchParams();
   sp.set('q', trimmedQuery);

@@ -10,7 +10,7 @@ const SIMILARITY_THRESHOLD = 0.12;
 const querySchema = z.object({
   q: z.string().trim().min(2, 'Enter at least 2 characters.'),
   limit: z.coerce.number().int().min(1).max(15).default(8),
-  include_pending: z.coerce.boolean().optional().default(true),
+  include_pending: z.coerce.boolean().optional().default(false),
 });
 
 type SuggestionRow = {

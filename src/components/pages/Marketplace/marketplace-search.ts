@@ -72,7 +72,7 @@ export const buildQueryParams = (filters: FiltersState): ListSpacesParams => {
     amenities: hasAmenities ? amenities : undefined,
     amenities_mode: hasAmenities ? filters.amenitiesMode : undefined,
     amenities_negate: hasAmenities ? filters.amenitiesNegate : undefined,
-    include_pending: true,
+    include_pending: false,
   };
 };
 
