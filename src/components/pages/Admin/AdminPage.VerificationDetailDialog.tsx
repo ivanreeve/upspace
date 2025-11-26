@@ -19,6 +19,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -44,6 +45,37 @@ const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   business_address_proof: 'Business Address Proof',
   occupancy_permit: 'Occupancy Permit',
 };
+
+type StatusBadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline';
+
+const STATUS_METADATA: Record<string, { label: string; badge: StatusBadgeVariant }> = {
+  draft: {
+    label: 'Draft',
+    badge: 'secondary',
+  },
+  in_review: {
+    label: 'In review',
+    badge: 'secondary',
+  },
+  approved: {
+    label: 'Approved',
+    badge: 'default',
+  },
+  rejected: {
+    label: 'Rejected',
+    badge: 'destructive',
+  },
+  expired: {
+    label: 'Expired',
+    badge: 'destructive',
+  },
+};
+
+const getStatusMetadata = (status: string) =>
+  STATUS_METADATA[status] ?? {
+    label: status.replace(/_/g, ' '),
+    badge: 'outline' as StatusBadgeVariant,
+  };
 
 const getInitials = (value: string) =>
   value
@@ -178,6 +210,24 @@ export function VerificationDetailDialog({
 
   if (!verification) return null;
 
+  const statusMeta = getStatusMetadata(verification.status);
+  const statusLabel = statusMeta.label;
+  const statusBadgeVariant = statusMeta.badge;
+  const reviewedAtDate = verification.reviewed_at ? new Date(verification.reviewed_at) : null;
+  const reviewedAtLabel =
+    reviewedAtDate && !Number.isNaN(reviewedAtDate.getTime())
+      ? format(reviewedAtDate, 'PPP p')
+      : '';
+  const validUntilDate = verification.valid_until ? new Date(verification.valid_until) : null;
+  const validUntilLabel =
+    validUntilDate && !Number.isNaN(validUntilDate.getTime())
+      ? format(validUntilDate, 'PPP')
+      : '';
+  const isPending = verification.status === 'in_review';
+  const processedSummary = reviewedAtLabel
+    ? `Processed ${statusLabel.toLowerCase()} on ${reviewedAtLabel}`
+    : `Verification ${statusLabel.toLowerCase()}`;
+
   const isProcessing = approveMutation.isPending || rejectMutation.isPending;
   const formattedValidUntil =
     validUntil && !Number.isNaN(Date.parse(validUntil))
@@ -224,6 +274,30 @@ export function VerificationDetailDialog({
                   <p className="text-xs text-muted-foreground">@{ verification.space.partner.handle }</p>
                 </div>
               </div>
+            </div>
+
+            <div className="space-y-3 rounded-md border border-border/70 bg-background/60 px-4 py-3">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Verification status</p>
+                  <p className="text-sm font-semibold text-foreground">{ statusLabel }</p>
+                </div>
+                <Badge variant={ statusBadgeVariant }>
+                  { statusLabel }
+                </Badge>
+              </div>
+              <div className="space-y-1 text-xs text-muted-foreground">
+                { reviewedAtLabel && <p>Reviewed { reviewedAtLabel }</p> }
+                { validUntilLabel && <p>Valid until { validUntilLabel }</p> }
+              </div>
+              { verification.rejected_reason && (
+                <div className="mt-3 rounded-md border border-destructive/60 bg-destructive/10 p-3 text-sm text-destructive">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-destructive/80">
+                    Rejection reason
+                  </p>
+                  <p className="text-sm">{ verification.rejected_reason }</p>
+                </div>
+              ) }
             </div>
 
           { /* Documents + optional rejection form */ }
@@ -279,26 +353,32 @@ export function VerificationDetailDialog({
                 Cancel
             </Button>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={ () => {
-                setIsReviewOpen(false);
-                setShowRejectionModal(true);
-              } }
-              disabled={ isProcessing }
-            >
-              <FiX className="size-4" aria-hidden="true" />
-              Reject
-            </Button>
-            <Button
-              onClick={ handleApproveClick }
-              disabled={ isProcessing }
-            >
-              <FiCheck className="size-4" aria-hidden="true" />
-              { approveMutation.isPending ? 'Approving...' : 'Approve' }
-            </Button>
-          </div>
+          { isPending ? (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={ () => {
+                  setIsReviewOpen(false);
+                  setShowRejectionModal(true);
+                } }
+                disabled={ isProcessing }
+              >
+                <FiX className="size-4" aria-hidden="true" />
+                Reject
+              </Button>
+              <Button
+                onClick={ handleApproveClick }
+                disabled={ isProcessing }
+              >
+                <FiCheck className="size-4" aria-hidden="true" />
+                { approveMutation.isPending ? 'Approving...' : 'Approve' }
+              </Button>
+            </div>
+          ) : (
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              { processedSummary }
+            </p>
+          ) }
         </DialogFooter>
         </DialogContent>
       </Dialog>

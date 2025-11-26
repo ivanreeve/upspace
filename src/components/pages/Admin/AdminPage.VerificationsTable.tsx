@@ -37,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePendingVerificationsQuery, type PendingVerification } from '@/hooks/api/useAdminVerifications';
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', {
@@ -50,10 +51,27 @@ const dateFormatter = new Intl.DateTimeFormat('en-US', {
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 
+const VERIFICATION_TABS = [
+  {
+    label: 'Pending verifications',
+    value: 'in_review',
+    description: 'Spaces waiting for an admin to review the submitted documents.',
+  },
+  {
+    label: 'Approved verifications',
+    value: 'approved',
+    description: 'Spaces that already have an approved verification.',
+  }
+] as const;
+
+type VerificationTab = (typeof VERIFICATION_TABS)[number];
+type VerificationStatus = VerificationTab['value'];
+
 export function AdminVerificationsTable() {
   const [pageSize, setPageSize] = useState(20);
   const [pageIndex, setPageIndex] = useState(0);
   const [pageCursors, setPageCursors] = useState<(string | null)[]>([null]);
+  const [activeTab, setActiveTab] = useState<VerificationStatus>('in_review');
   const cursor = pageCursors[pageIndex] ?? null;
 
   const {
@@ -66,11 +84,14 @@ export function AdminVerificationsTable() {
   } = usePendingVerificationsQuery({
     limit: pageSize,
     cursor,
+    status: activeTab,
   });
   const verifications = page?.data;
   const nextCursor = page?.nextCursor ?? null;
 
   const [selectedVerification, setSelectedVerification] = useState<PendingVerification | null>(null);
+
+  const currentTabInfo = VERIFICATION_TABS.find((tab) => tab.value === activeTab);
 
   const tableRows = useMemo(() => (verifications ?? []).map((v) => ({
     id: v.id,
@@ -133,6 +154,17 @@ export function AdminVerificationsTable() {
     setPageSize(parsed);
     setPageIndex(0);
     setPageCursors([null]);
+  };
+
+  const handleTabChange = (value: string) => {
+    const nextTab = value as VerificationStatus;
+    if (nextTab === activeTab) {
+      return;
+    }
+    setActiveTab(nextTab);
+    setPageIndex(0);
+    setPageCursors([null]);
+    setSelectedVerification(null);
   };
 
   const tableBody = (() => {
@@ -199,8 +231,14 @@ export function AdminVerificationsTable() {
       return (
         <Card className="border-dashed border-border/70 bg-background/60">
           <CardHeader>
-            <CardTitle>No pending verifications</CardTitle>
-            <CardDescription>All verification requests have been processed.</CardDescription>
+            <CardTitle>
+              { activeTab === 'in_review' ? 'No pending verifications' : 'No verified spaces yet' }
+            </CardTitle>
+            <CardDescription>
+              { activeTab === 'in_review'
+                ? 'All verification requests have been processed.'
+                : 'Approved verifications will show up here once the queue is reviewed.' }
+            </CardDescription>
           </CardHeader>
         </Card>
       );
@@ -377,6 +415,24 @@ export function AdminVerificationsTable() {
 
   return (
     <>
+      <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-1 flex-col gap-2">
+          <Tabs value={ activeTab } onValueChange={ handleTabChange }>
+            <TabsList>
+              { VERIFICATION_TABS.map((tab) => (
+                <TabsTrigger key={ tab.value } value={ tab.value }>
+                  { tab.label }
+                </TabsTrigger>
+              )) }
+            </TabsList>
+          </Tabs>
+          { currentTabInfo && (
+            <p className="text-sm text-muted-foreground">
+              { currentTabInfo.description }
+            </p>
+          ) }
+        </div>
+      </div>
       { paginationFooter }
       { tableBody }
       <VerificationDetailDialog

@@ -38,6 +38,8 @@ function CommandDialog({
   position = 'center',
   mobileFullScreen = false,
   fullWidth = false,
+  titleId,
+  descriptionId,
   ...props
 }: React.ComponentProps<typeof Dialog> & {
   title?: string
@@ -47,16 +49,18 @@ function CommandDialog({
   position?: 'center' | 'top'
   mobileFullScreen?: boolean,
   fullWidth?: boolean,
+  titleId?: string,
+  descriptionId?: string,
 }) {
   const dialogId = React.useId();
-  const titleId = `${dialogId}-title`;
-  const descriptionId = `${dialogId}-description`;
+  const resolvedTitleId = titleId ?? `${dialogId}-title`;
+  const resolvedDescriptionId = descriptionId ?? `${dialogId}-description`;
 
   return (
     <Dialog { ...props }>
       <DialogHeader className="sr-only">
-        <DialogTitle id={ titleId }>{ title }</DialogTitle>
-        <DialogDescription id={ descriptionId }>{ description }</DialogDescription>
+        <DialogTitle id={ resolvedTitleId }>{ title }</DialogTitle>
+        <DialogDescription id={ resolvedDescriptionId }>{ description }</DialogDescription>
       </DialogHeader>
       <DialogContent
         className={ cn('overflow-hidden p-0', className) }

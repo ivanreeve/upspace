@@ -437,6 +437,8 @@ function MarketplaceSearchDialog({
         onOpenChange={ handleSearchDialogOpenChange }
         title="Search spaces"
         description="Search the UpSpace marketplace"
+        titleId="marketplace-search-dialog-title"
+        descriptionId="marketplace-search-dialog-description"
         position="top"
         mobileFullScreen={ isMobile }
         fullWidth

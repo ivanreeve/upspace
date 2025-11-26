@@ -18,7 +18,10 @@ export type PendingVerification = {
   status: string;
   submitted_at: string;
   reviewed_at: string | null;
+  approved_at: string | null;
   rejected_reason: string | null;
+  rejected_at: string | null;
+  valid_until: string | null;
   space: {
     id: string;
     name: string;

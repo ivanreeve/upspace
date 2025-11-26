@@ -138,11 +138,12 @@ function SidebarFooterContent({
         className={ isCollapsed ? undefined : 'w-full justify-between' }
       />
       { isGuest ? (
-        <div
-          className={ cn(
-            'flex items-center gap-3 rounded-md px-2 py-3',
-            isCollapsed ? 'flex-col' : 'flex-row'
-          ) }
+        <SidebarMenuButton
+          type="button"
+          tooltip={ isCollapsed ? 'Sign in' : undefined }
+          className={ cn('w-full ml-[-5px] py-8 gap-2', isCollapsed ? 'justify-center' : 'justify-start') }
+          aria-label="Sign in"
+          onClick={ () => onNavigate('/') }
         >
           <Avatar className={ cn('size-9', isCollapsed && 'size-8') }>
             { avatarUrl ? (
@@ -157,7 +158,7 @@ function SidebarFooterContent({
               <span className="text-xs text-muted-foreground truncate">{ secondaryLabel }</span>
             </div>
           ) }
-        </div>
+        </SidebarMenuButton>
       ) : (
         <SidebarMenu>
           <SidebarMenuItem>
@@ -297,9 +298,11 @@ function MobileTopNav({
             <FiSearch className="size-5" aria-hidden="true" />
           </button>
           { isGuest ? (
-            <div
-              aria-label="Guest avatar"
-              className="rounded-full border border-border p-1"
+            <button
+              type="button"
+              aria-label="Sign in"
+              onClick={ () => onNavigate('/') }
+              className="rounded-full border border-border p-1 transition-colors focus-visible:outline-none focus-visible:bg-none"
             >
               <Avatar className="size-8">
                 { avatarUrl ? (
@@ -308,7 +311,7 @@ function MobileTopNav({
                   <AvatarFallback>{ avatarFallback }</AvatarFallback>
                 ) }
               </Avatar>
-            </div>
+            </button>
           ) : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
