@@ -1016,34 +1016,33 @@ function SpaceDetailsSkeleton({ className, }: SpaceDetailsSkeletonProps) {
       <Card className="border-border/70 bg-background/80">
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">
-            <Skeleton className="h-4 w-20" />
-            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-6 w-40" />
             <Skeleton className="h-4 w-64" />
           </div>
-          <Skeleton className="h-10 w-32" />
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_260px] lg:items-stretch xl:grid-cols-[minmax(0,1fr)_320px]">
-            <Skeleton className="h-56 w-full rounded-md sm:h-64 lg:h-72 xl:h-[22rem]" />
-            <div className="grid grid-cols-2 grid-rows-2 gap-4 lg:h-full">
-              { Array.from({ length: 4, }).map((_, index) => (
-                <Skeleton key={ `gallery-skeleton-${index}` } className="h-32 w-full rounded-md sm:h-36 lg:h-full" />
-              )) }
+          <div className="grid gap-2.5 md:grid-cols-2">
+            <Skeleton className="h-96 w-full rounded-lg sm:h-[28rem] lg:h-[30rem]" />
+            <div className="grid h-full min-h-[22rem] grid-rows-[1fr_3fr] gap-2.5">
+              <div className="grid grid-cols-2 gap-2.5">
+                <Skeleton className="h-32 w-full rounded-none sm:h-36" />
+                <Skeleton className="h-32 w-full rounded-tr-lg sm:h-36" />
+              </div>
+              <Skeleton className="h-48 w-full rounded-br-lg sm:h-56 lg:h-[18rem]" />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-[3fr,2fr]">
-        <div className="space-y-6">
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-[3fr,2fr]">
+        <div className="space-y-4 md:space-y-6">
           <Card className="border-border/70 bg-background/80">
             <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-6 w-40" />
-                <Skeleton className="h-4 w-64" />
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-6 w-44" />
               </div>
-              <Skeleton className="h-9 w-36" />
+              <Skeleton className="h-9 w-32" />
             </CardHeader>
             <CardContent className="space-y-3">
               <Skeleton className="h-4 w-20" />
@@ -1055,12 +1054,11 @@ function SpaceDetailsSkeleton({ className, }: SpaceDetailsSkeletonProps) {
 
           <Card className="border-border/70 bg-background/80">
             <CardHeader className="space-y-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-6 w-48" />
-              <Skeleton className="h-4 w-64" />
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-6 w-52" />
             </CardHeader>
             <CardContent className="grid gap-6 sm:grid-cols-2">
-              { Array.from({ length: 6, }).map((_, index) => (
+              { Array.from({ length: 9, }).map((_, index) => (
                 <div key={ `field-skeleton-${index}` } className="space-y-2 rounded-md border border-border/50 bg-muted/20 p-3">
                   <Skeleton className="h-3 w-20" />
                   <Skeleton className="h-5 w-28" />
@@ -1073,9 +1071,8 @@ function SpaceDetailsSkeleton({ className, }: SpaceDetailsSkeletonProps) {
         <Card className="border-border/70 bg-background/80">
           <CardHeader className="flex flex-col gap-4">
             <div className="space-y-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-6 w-48" />
-              <Skeleton className="h-4 w-64" />
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-6 w-52" />
             </div>
             <Skeleton className="h-10 w-full sm:w-32" />
           </CardHeader>
