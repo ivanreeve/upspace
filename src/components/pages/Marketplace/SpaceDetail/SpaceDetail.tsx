@@ -86,7 +86,7 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
           <div className="space-y-4">
             <HostInfo hostName={ space.hostName ?? hostName } avatarUrl={ space.hostAvatarUrl } />
 
-            {/* Booking card for mobile - shows after HostInfo */}
+            { /* Booking card for mobile - shows after HostInfo */ }
             <div className="lg:hidden">
               <BookingCard spaceName={ space.name } />
             </div>
@@ -148,7 +148,7 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
             </section>
           </div>
 
-          {/* Booking card for desktop - shows in sidebar */}
+          { /* Booking card for desktop - shows in sidebar */ }
           <div className="hidden lg:block">
             <BookingCard spaceName={ space.name } />
           </div>
