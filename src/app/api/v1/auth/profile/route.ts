@@ -30,31 +30,33 @@ export async function GET() {
 
     const dbUser = await prisma.user.findFirst({
       where: { auth_user_id: authUser.id, },
-      select: {
-        handle: true,
-        first_name: true,
-        middle_name: true,
-        last_name: true,
-        avatar: true,
-        role: true,
-      },
-    });
+    select: {
+      user_id: true,
+      handle: true,
+      first_name: true,
+      middle_name: true,
+      last_name: true,
+      avatar: true,
+      role: true,
+    },
+  });
 
-    if (!dbUser) {
-      return NextResponse.json(
-        { message: 'Unable to locate user profile.', },
-        { status: 404, }
-      );
-    }
+  if (!dbUser) {
+    return NextResponse.json(
+      { message: 'Unable to locate user profile.', },
+      { status: 404, }
+    );
+  }
 
-    return NextResponse.json({
-      handle: dbUser.handle,
-      firstName: dbUser.first_name,
-      middleName: dbUser.middle_name,
-      lastName: dbUser.last_name,
-      avatar: dbUser.avatar,
-      role: dbUser.role,
-    });
+  return NextResponse.json({
+    userId: dbUser.user_id.toString(),
+    handle: dbUser.handle,
+    firstName: dbUser.first_name,
+    middleName: dbUser.middle_name,
+    lastName: dbUser.last_name,
+    avatar: dbUser.avatar,
+    role: dbUser.role,
+  });
   } catch (error) {
     console.error('Unexpected error in profile route', error);
     return NextResponse.json(

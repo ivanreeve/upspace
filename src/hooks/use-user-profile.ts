@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useSession } from '@/components/auth/SessionProvider';
 
 export type UserProfile = {
+  userId: string;
   handle: string;
   firstName: string | null;
   middleName: string | null;
