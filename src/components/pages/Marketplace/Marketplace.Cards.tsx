@@ -73,22 +73,21 @@ export function SpaceCard({ space, }: { space: Space }) {
   const priceLabel = useMemo(() => {
     const hasMin = typeof space.min_rate_price === 'number';
     const hasMax = typeof space.max_rate_price === 'number';
-    const unit = space.rate_time_unit ?? 'hour';
 
     if (hasMin && hasMax && space.max_rate_price !== space.min_rate_price) {
-      return `${peso.format(space.min_rate_price ?? 0)} – ${peso.format(space.max_rate_price ?? 0)} / ${unit}`;
+      return `${peso.format(space.min_rate_price ?? 0)} – ${peso.format(space.max_rate_price ?? 0)}`;
     }
 
     if (hasMin) {
-      return `${peso.format(space.min_rate_price ?? 0)} / ${unit}`;
+      return `${peso.format(space.min_rate_price ?? 0)}`;
     }
 
     if (hasMax) {
-      return `${peso.format(space.max_rate_price ?? 0)} / ${unit}`;
+      return `${peso.format(space.max_rate_price ?? 0)}`;
     }
 
-    return 'Pricing coming soon';
-  }, [space.max_rate_price, space.min_rate_price, space.rate_time_unit]);
+    return 'Price TBA';
+  }, [space.max_rate_price, space.min_rate_price]);
 
   const handleToggleSave = useCallback(async () => {
     if (isSaving) {
@@ -162,30 +161,31 @@ export function SpaceCard({ space, }: { space: Space }) {
         <div className="pointer-events-none absolute inset-0 rounded-sm bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
       </div>
 
-      <CardContent className="flex flex-1 flex-col gap-2 p-0">
-        <Link href={ `/marketplace/${space.space_id}` } className="group inline-flex flex-col">
-          <span className="text-base font-semibold leading-tight text-foreground">
+      <CardContent className="flex flex-1 flex-col gap-1 p-0">
+        <Link href={ `/marketplace/${space.space_id}` } className="group inline-flex flex-col gap-0.5">
+          <span className="text-base font-semibold leading-tight text-foreground line-clamp-1">
             { space.name }
           </span>
-          <span className="text-sm text-muted-foreground">{ priceLabel }</span>
-        </Link>
-        <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-          <FaStar
-            className={ `size-3 ${
-              (space.total_reviews ?? 0) > 0 ? 'text-yellow-400' : 'text-muted-foreground'
-            }` }
-            aria-hidden="true"
-          />
-          <span className="font-medium text-foreground">
-            { (space.total_reviews ?? 0) > 0
-              ? (space.average_rating ?? 0).toFixed(1)
-              : 'New' }
+          <span className="text-sm text-muted-foreground line-clamp-1">
+            { space.city || space.province ? `${space.city ? space.city : ''}${space.city && space.province ? ', ' : ''}${space.province ? space.province : ''}` : 'Location TBA' }
           </span>
-          { (space.total_reviews ?? 0) > 0 && (
-            <span className="text-[11px] text-muted-foreground">
-              ({ space.total_reviews })
+        </Link>
+        <div className="flex items-center gap-1.5 text-sm">
+          <span className="font-medium text-foreground">{ priceLabel }</span>
+          <span className="text-muted-foreground">•</span>
+          <div className="flex items-center gap-1">
+            <FaStar
+              className={ `size-3 ${
+                (space.total_reviews ?? 0) > 0 ? 'text-yellow-400' : 'text-muted-foreground'
+              }` }
+              aria-hidden="true"
+            />
+            <span className="font-medium text-foreground">
+              { (space.total_reviews ?? 0) > 0
+                ? (space.average_rating ?? 0).toFixed(1)
+                : 'New' }
             </span>
-          ) }
+          </div>
         </div>
       </CardContent>
     </Card>
