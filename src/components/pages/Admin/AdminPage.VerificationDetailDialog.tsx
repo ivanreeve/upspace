@@ -282,7 +282,10 @@ export function VerificationDetailDialog({
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
-              onClick={ () => setShowRejectionModal(true) }
+              onClick={ () => {
+                setIsReviewOpen(false);
+                setShowRejectionModal(true);
+              } }
               disabled={ isProcessing }
             >
               <FiX className="size-4" aria-hidden="true" />
@@ -300,15 +303,18 @@ export function VerificationDetailDialog({
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={ showRejectionModal }
-        onOpenChange={ (isOpen) => {
-          if (!isOpen) {
-            setShowRejectionModal(false);
-            setRejectionReason('');
-          }
-        } }
-      >
+        <Dialog
+          open={ showRejectionModal }
+          onOpenChange={ (isOpen) => {
+            setShowRejectionModal(isOpen);
+            if (!isOpen) {
+              setRejectionReason('');
+              setIsReviewOpen(true);
+            } else {
+              setIsReviewOpen(false);
+            }
+          } }
+        >
         <DialogContent className="w-full max-w-lg transition-all duration-200">
           <DialogHeader>
             <DialogTitle>Reject verification request</DialogTitle>
