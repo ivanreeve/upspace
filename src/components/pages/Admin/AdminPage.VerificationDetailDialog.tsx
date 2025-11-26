@@ -373,11 +373,6 @@ export function VerificationDetailDialog({
               { approveMutation.isPending ? 'Approving...' : 'Approve' }
             </Button>
           </div>
-          { !isPending && (
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              { processedSummary }
-            </p>
-          ) }
         </DialogFooter>
         </DialogContent>
       </Dialog>
