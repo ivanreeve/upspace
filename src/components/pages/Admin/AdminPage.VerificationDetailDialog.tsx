@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   FiCalendar,
   FiCheck,
@@ -65,6 +65,11 @@ export function VerificationDetailDialog({
   const [draftValidUntil, setDraftValidUntil] = useState('');
   const [showValidityModal, setShowValidityModal] = useState(false);
   const [isTransitioningToValidity, setIsTransitioningToValidity] = useState(false);
+  const transitioningRef = useRef(false);
+  const [isReviewOpen, setIsReviewOpen] = useState(open);
+  useEffect(() => {
+    setIsReviewOpen(open);
+  }, [open]);
   const partnerAvatarUrl = useCachedAvatar(verification?.space.partner.avatar_url ?? null);
   const partnerInitials = getInitials(
     verification?.space.partner.name ?? verification?.space.partner.handle ?? ''
@@ -81,6 +86,7 @@ export function VerificationDetailDialog({
     setDraftValidUntil('');
     setShowValidityModal(false);
     setIsTransitioningToValidity(false);
+    transitioningRef.current = false;
   };
 
   const handleApprove = async (overrideValidUntil?: string) => {
@@ -126,7 +132,8 @@ export function VerificationDetailDialog({
     setDraftValidUntil(validUntil || todayIso);
     setShowValidityModal(true);
     setIsTransitioningToValidity(true);
-    onClose();
+    transitioningRef.current = true;
+    setIsReviewOpen(false);
   };
 
   const toggleIndefiniteInModal = (next: boolean) => {
@@ -140,23 +147,30 @@ export function VerificationDetailDialog({
 
   const handleValidityConfirm = async () => {
     if (isIndefinite) {
-    setShowValidityModal(false);
-    setIsTransitioningToValidity(false);
-    await handleApprove();
-    return;
-  }
+      setShowValidityModal(false);
+      setIsTransitioningToValidity(false);
+      transitioningRef.current = false;
+      await handleApprove();
+      resetDialogState();
+      onClose();
+      return;
+    }
     if (!draftValidUntil) {
       toast.error('Please select a validity end date before approving.');
       return;
     }
     setShowValidityModal(false);
     setIsTransitioningToValidity(false);
+    transitioningRef.current = false;
     setValidUntil(draftValidUntil);
     await handleApprove(draftValidUntil);
+    resetDialogState();
+    onClose();
   };
 
   const handleOpenChange = (isOpen: boolean) => {
-    if (!isOpen && !isTransitioningToValidity) {
+    setIsReviewOpen(isOpen);
+    if (!isOpen && !isTransitioningToValidity && !transitioningRef.current) {
       resetDialogState();
       onClose();
     }
@@ -179,7 +193,7 @@ export function VerificationDetailDialog({
 
   return (
     <>
-      <Dialog open={ open } onOpenChange={ handleOpenChange }>
+      <Dialog open={ isReviewOpen } onOpenChange={ handleOpenChange }>
         <DialogContent className="w-full max-w-6xl transition-all duration-200">
           <DialogHeader>
             <DialogTitle>Review Verification</DialogTitle>
@@ -275,12 +289,13 @@ export function VerificationDetailDialog({
             <Button
               variant="ghost"
               onClick={ () => {
+                setIsReviewOpen(false);
                 resetDialogState();
                 onClose();
               } }
               disabled={ isProcessing }
             >
-              Cancel
+                Cancel
             </Button>
           </div>
           { !showRejectForm ? (
@@ -323,10 +338,12 @@ export function VerificationDetailDialog({
             setShowValidityModal(false);
             setDraftValidUntil('');
             setIsTransitioningToValidity(false);
+            transitioningRef.current = false;
+            setIsReviewOpen(true);
           }
         } }
       >
-        <DialogContent className="w-full max-w-md">
+        <DialogContent className="w-full max-w-6xl transition-all duration-200">
           <DialogHeader>
             <DialogTitle>Select validity end date</DialogTitle>
             <DialogDescription>
@@ -381,6 +398,8 @@ export function VerificationDetailDialog({
                 setShowValidityModal(false);
                 setDraftValidUntil('');
                 setIsTransitioningToValidity(false);
+                transitioningRef.current = false;
+                setIsReviewOpen(true);
               } }
               disabled={ isProcessing }
             >
