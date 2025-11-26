@@ -128,85 +128,85 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
             <HostInfo hostName={ space.hostName ?? hostName } avatarUrl={ space.hostAvatarUrl } />
 
             <section ref={ descriptionSectionRef } className="space-y-4 border-b pb-6">
-              <h2 className="text-xl font-medium text-foreground">About { space.name }</h2>
-              <div className="relative">
-                <div
-                  className={ `
-                    relative
-                    ${shouldClampDescription ? 'max-h-[360px] overflow-hidden' : ''}
-                  ` }
-                >
+                <h2 className="text-xl font-medium text-foreground">About { space.name }</h2>
+                <div className="relative">
                   <div
-                    id={ descriptionViewportId }
-                    ref={ descriptionRef }
                     className={ `
-                      ${SPACE_DESCRIPTION_VIEWER_CLASSNAME}
-                      whitespace-pre-line
-                      [&_p]:my-3 [&_p:first-of-type]:mt-0 [&_p:last-of-type]:mb-0
-                      [&_ul]:my-3 [&_ol]:my-3 [&_li]:leading-relaxed
-                      [&_h1]:mt-5 [&_h2]:mt-4 [&_h3]:mt-3
+                      relative
+                      ${shouldClampDescription ? 'max-h-[360px] overflow-hidden' : ''}
                     ` }
-                    dangerouslySetInnerHTML={ { __html: aboutHtml, } }
-                  />
-                  { shouldShowGradient ? (
-                    <div className="absolute inset-x-0 bottom-0 h-32">
-                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-                      <div className="absolute bottom-0 inset-x-0 flex justify-center">
-                        <button
-                          type="button"
-                          onClick={ () => setIsDescriptionExpanded(true) }
-                          aria-expanded={ false }
-                          aria-controls={ descriptionViewportId }
-                          className="flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-                        >
-                          Show more
-                          <FiChevronDown className="size-4" aria-hidden="true" />
-                        </button>
+                  >
+                    <div
+                      id={ descriptionViewportId }
+                      ref={ descriptionRef }
+                      className={ `
+                        ${SPACE_DESCRIPTION_VIEWER_CLASSNAME}
+                        whitespace-pre-line
+                        [&_p]:my-3 [&_p:first-of-type]:mt-0 [&_p:last-of-type]:mb-0
+                        [&_ul]:my-3 [&_ol]:my-3 [&_li]:leading-relaxed
+                        [&_h1]:mt-5 [&_h2]:mt-4 [&_h3]:mt-3
+                      ` }
+                      dangerouslySetInnerHTML={ { __html: aboutHtml, } }
+                    />
+                    { shouldShowGradient ? (
+                      <div className="absolute inset-x-0 bottom-0 h-32">
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+                        <div className="absolute bottom-0 inset-x-0 flex justify-center">
+                          <button
+                            type="button"
+                            onClick={ () => setIsDescriptionExpanded(true) }
+                            aria-expanded={ false }
+                            aria-controls={ descriptionViewportId }
+                            className="flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+                          >
+                            Show more
+                            <FiChevronDown className="size-4" aria-hidden="true" />
+                          </button>
+                        </div>
                       </div>
+                    ) : null }
+                  </div>
+                  { isDescriptionOverflowing && isDescriptionExpanded ? (
+                    <div className="flex justify-center mt-4">
+                      <button
+                        type="button"
+                        onClick={ () => setIsDescriptionExpanded(false) }
+                        aria-expanded={ true }
+                        aria-controls={ descriptionViewportId }
+                        className="flex items-center gap-2 rounded-lg border border-border bg-background px-6 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+                      >
+                        Show less
+                        <FiChevronUp className="size-4" aria-hidden="true" />
+                      </button>
+                    </div>
+                  ) : null }
+
+                  { /* Floating scroll-to-bottom button when expanded and not at bottom */ }
+                  { showScrollToBottom ? (
+                    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4">
+                      <button
+                        type="button"
+                        onClick={ scrollToBottomOfDescription }
+                        aria-label="Scroll to bottom of description"
+                        className="flex items-center justify-center rounded-full border border-border bg-background p-3 text-foreground shadow-lg transition-all hover:bg-accent hover:text-accent-foreground hover:scale-110"
+                      >
+                        <FiChevronDown className="size-5" aria-hidden="true" />
+                      </button>
                     </div>
                   ) : null }
                 </div>
-                { isDescriptionOverflowing && isDescriptionExpanded ? (
-                  <div className="flex justify-center mt-4">
-                    <button
-                      type="button"
-                      onClick={ () => setIsDescriptionExpanded(false) }
-                      aria-expanded={ true }
-                      aria-controls={ descriptionViewportId }
-                      className="flex items-center gap-2 rounded-lg border border-border bg-background px-6 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-                    >
-                      Show less
-                      <FiChevronUp className="size-4" aria-hidden="true" />
-                    </button>
-                  </div>
-                ) : null }
+              </section>
+            </div>
 
-                { /* Floating scroll-to-bottom button when expanded and not at bottom */ }
-                { showScrollToBottom ? (
-                  <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4">
-                    <button
-                      type="button"
-                      onClick={ scrollToBottomOfDescription }
-                      aria-label="Scroll to bottom of description"
-                      className="flex items-center justify-center rounded-full border border-border bg-background p-3 text-foreground shadow-lg transition-all hover:bg-accent hover:text-accent-foreground hover:scale-110"
-                    >
-                      <FiChevronDown className="size-5" aria-hidden="true" />
-                    </button>
-                  </div>
-                ) : null }
-              </div>
-            </section>
-
-            { /* Booking card for mobile - shows after description */ }
-            <div className="lg:hidden">
+            { /* Booking card for desktop - shows in sidebar */ }
+            <div className="hidden lg:block">
               <BookingCard spaceName={ space.name } />
             </div>
-          </div>
+        </div>
 
-          { /* Booking card for desktop - shows in sidebar */ }
-          <div className="hidden lg:block">
-            <BookingCard spaceName={ space.name } />
-          </div>
+        { /* Booking card for mobile - shows after description */ }
+        <div className="lg:hidden">
+          <BookingCard spaceName={ space.name } />
         </div>
 
         <AvailabilityTable items={ space.availability } />
