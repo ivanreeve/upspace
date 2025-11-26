@@ -186,7 +186,7 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
                   </div>
                 ) : null }
 
-                {/* Floating scroll-to-bottom button when expanded and not at bottom */ }
+                { /* Floating scroll-to-bottom button when expanded and not at bottom */ }
                 { showScrollToBottom ? (
                   <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4">
                     <button
