@@ -59,7 +59,7 @@ export function VerificationDetailDialog({
   onClose,
 }: Props) {
   const [rejectionReason, setRejectionReason] = useState('');
-  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [validUntil, setValidUntil] = useState('');
   const [isIndefinite, setIsIndefinite] = useState(false);
   const [draftValidUntil, setDraftValidUntil] = useState('');
@@ -79,7 +79,7 @@ export function VerificationDetailDialog({
   const rejectMutation = useRejectVerificationMutation();
 
   const resetDialogState = () => {
-    setShowRejectForm(false);
+    setShowRejectionModal(false);
     setRejectionReason('');
     setValidUntil('');
     setIsIndefinite(false);
@@ -118,7 +118,7 @@ export function VerificationDetailDialog({
       });
       toast.success('Space verification rejected');
       setRejectionReason('');
-      setShowRejectForm(false);
+      setShowRejectionModal(false);
       onClose();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to reject verification');
@@ -227,13 +227,7 @@ export function VerificationDetailDialog({
             </div>
 
           { /* Documents + optional rejection form */ }
-            <div
-              className={ cn(
-                'space-y-4',
-                showRejectForm &&
-                  'lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] lg:gap-6 lg:items-start lg:space-y-0'
-              ) }
-            >
+            <div className="space-y-4">
               <div className="space-y-2">
                 <h4 className="mb-3 text-sm font-medium text-muted-foreground">
                   Verification Documents ({ verification.documents.length })
@@ -268,19 +262,6 @@ export function VerificationDetailDialog({
                 </div>
               </div>
 
-              { showRejectForm && (
-                <div className="space-y-3 rounded-md border border-border/70 bg-background/60 p-4">
-                  <Label htmlFor="rejection-reason">Rejection Reason</Label>
-                  <Textarea
-                    id="rejection-reason"
-                    placeholder="Provide a reason for rejection..."
-                    value={ rejectionReason }
-                    onChange={ (e) => setRejectionReason(e.target.value) }
-                    rows={ 3 }
-                    aria-label="Rejection reason"
-                  />
-                </div>
-              ) }
             </div>
           </div>
 
@@ -298,36 +279,71 @@ export function VerificationDetailDialog({
                 Cancel
             </Button>
           </div>
-          { !showRejectForm ? (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={ () => setShowRejectForm(true) }
-                disabled={ isProcessing }
-              >
-                <FiX className="size-4" aria-hidden="true" />
-                Reject
-              </Button>
-              <Button
-                onClick={ handleApproveClick }
-                disabled={ isProcessing }
-              >
-                <FiCheck className="size-4" aria-hidden="true" />
-                { approveMutation.isPending ? 'Approving...' : 'Approve' }
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="destructive"
-                onClick={ handleReject }
-                disabled={ !rejectionReason.trim() || isProcessing }
-              >
-                { rejectMutation.isPending ? 'Rejecting...' : 'Confirm Rejection' }
-              </Button>
-            </div>
-          ) }
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={ () => setShowRejectionModal(true) }
+              disabled={ isProcessing }
+            >
+              <FiX className="size-4" aria-hidden="true" />
+              Reject
+            </Button>
+            <Button
+              onClick={ handleApproveClick }
+              disabled={ isProcessing }
+            >
+              <FiCheck className="size-4" aria-hidden="true" />
+              { approveMutation.isPending ? 'Approving...' : 'Approve' }
+            </Button>
+          </div>
         </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={ showRejectionModal }
+        onOpenChange={ (isOpen) => {
+          if (!isOpen) {
+            setShowRejectionModal(false);
+            setRejectionReason('');
+          }
+        } }
+      >
+        <DialogContent className="w-full max-w-lg transition-all duration-200">
+          <DialogHeader>
+            <DialogTitle>Reject verification request</DialogTitle>
+            <DialogDescription className="mb-4">
+              Provide a brief explanation so the partner knows why their request was declined.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label htmlFor="queue-rejection-reason">Rejection reason</Label>
+            <Textarea
+              id="queue-rejection-reason"
+              rows={ 4 }
+              placeholder="Explain why this verification request is being rejected..."
+              value={ rejectionReason }
+              onChange={ (event) => setRejectionReason(event.target.value) }
+              aria-label="Rejection reason"
+              className="mb-4"
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="ghost"
+              onClick={ () => setShowRejectionModal(false) }
+              disabled={ isProcessing }
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={ handleReject }
+              disabled={ isProcessing || !rejectionReason.trim() }
+            >
+              { rejectMutation.isPending ? 'Rejecting...' : 'Confirm rejection' }
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
