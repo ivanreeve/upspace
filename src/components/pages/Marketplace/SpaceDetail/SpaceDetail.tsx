@@ -82,9 +82,14 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
           galleryImages={ space.galleryImages }
         />
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)] lg:items-start">
           <div className="space-y-4">
             <HostInfo hostName={ space.hostName ?? hostName } avatarUrl={ space.hostAvatarUrl } />
+
+            {/* Booking card for mobile - shows after HostInfo */}
+            <div className="lg:hidden">
+              <BookingCard spaceName={ space.name } />
+            </div>
 
             <section className="space-y-4 border-b pb-6">
               <h2 className="text-xl font-medium text-foreground">About { space.name }</h2>
@@ -143,7 +148,10 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
             </section>
           </div>
 
-          <BookingCard spaceName={ space.name } />
+          {/* Booking card for desktop - shows in sidebar */}
+          <div className="hidden lg:block">
+            <BookingCard spaceName={ space.name } />
+          </div>
         </div>
 
         <AvailabilityTable items={ space.availability } />
