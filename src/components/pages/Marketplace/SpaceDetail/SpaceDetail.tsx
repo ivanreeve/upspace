@@ -1,6 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import {
+useCallback,
+useEffect,
+useRef,
+useState
+} from 'react';
 import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
 
 import SpaceHeader from './SpaceHeader';
@@ -13,6 +18,7 @@ import WhereYoullBe from './WhereYoullBe';
 import AreasWithRates from './AreasWithRates';
 import AvailabilityTable from './AvailabilityTable';
 import SpaceBreadcrumbs from './SpaceBreadcrumbs';
+import { SpaceChatBubble } from './SpaceChatBubble';
 
 import { SPACE_DESCRIPTION_VIEWER_CLASSNAME } from '@/components/pages/Spaces/space-description-rich-text';
 import type { MarketplaceSpaceDetail } from '@/lib/queries/space';
@@ -24,7 +30,10 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
   const locationParts = [space.city, space.region, space.countryCode].filter(Boolean);
   const location = locationParts.length > 0 ? locationParts.join(', ') : 'Global City, Taguig';
 
-  const hostName = 'Trisha M.';
+  const defaultHostName = 'Trisha M.';
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const handleOpenChat = useCallback(() => setIsChatOpen(true), []);
+  const handleCloseChat = useCallback(() => setIsChatOpen(false), []);
 
   const overviewFallback =
     'Located in the heart of the city, Downtown Space offers a modern and flexible coworking environment designed for entrepreneurs, freelancers, and small teams. With high-speed Wi-Fi, ergonomic workstations, private meeting rooms, and a cozy lounge area, it is the perfect place to stay productive and inspired.';
@@ -106,7 +115,8 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
   const shouldShowGradient = shouldClampDescription && isDescriptionOverflowing;
 
   return (
-    <div className="bg-background">
+    <>
+      <div className="bg-background">
       <div className="mx-auto max-w-[1100px] px-4 py-10 space-y-4">
         <SpaceBreadcrumbs spaceName={ space.name } />
 
@@ -125,7 +135,11 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)] lg:items-start">
           <div className="space-y-4">
-            <HostInfo hostName={ space.hostName ?? hostName } avatarUrl={ space.hostAvatarUrl } />
+            <HostInfo
+              hostName={ space.hostName ?? defaultHostName }
+              avatarUrl={ space.hostAvatarUrl }
+              onMessageHost={ handleOpenChat }
+            />
 
             { /* Booking card for mobile - shown above description */ }
             <div className="lg:hidden">
@@ -243,5 +257,13 @@ export default function SpaceDetail({ space, }: { space: MarketplaceSpaceDetail 
         <WhereYoullBe city={ space.city } region={ space.region } country={ space.countryCode } />
       </div>
     </div>
+    <SpaceChatBubble
+      isOpen={ isChatOpen }
+      spaceId={ space.id }
+      hostName={ space.hostName ?? defaultHostName }
+      hostAvatarUrl={ space.hostAvatarUrl }
+      onClose={ handleCloseChat }
+    />
+  </>
   );
 }

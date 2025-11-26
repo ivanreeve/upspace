@@ -54,6 +54,7 @@ type MarketplaceChromeProps = {
   insetClassName?: string
   insetStyle?: React.CSSProperties
   initialSidebarOpen?: boolean
+  sidebarExtras?: React.ReactNode
 };
 
 type SidebarFooterContentProps = {
@@ -394,6 +395,7 @@ export function MarketplaceChrome({
   insetClassName,
   insetStyle,
   initialSidebarOpen,
+  sidebarExtras,
 }: MarketplaceChromeProps) {
   const navData = useMarketplaceNavData();
   const cachedAvatarUrl = useCachedAvatar(navData.avatarUrl);
@@ -509,6 +511,7 @@ export function MarketplaceChrome({
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                { sidebarExtras }
                 { dashboardSidebarItem }
                 { verificationSidebarItem }
               </SidebarMenu>

@@ -1,11 +1,13 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FiSearch, FiX } from 'react-icons/fi';
+import { FiMessageSquare, FiSearch, FiX } from 'react-icons/fi';
 
 import { MarketplaceChrome } from '../Marketplace/MarketplaceChrome';
 
+import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import {
   CommandDialog,
   CommandGroup,
@@ -46,10 +48,22 @@ export function SpacesChrome({
     setIsSearchOpen(false);
   }, [router, searchValue]);
 
+  const messageSidebarItem = useMemo(() => (
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild tooltip="Messages">
+        <Link href="/spaces/messages">
+          <FiMessageSquare className="size-4" aria-hidden="true" />
+          <span data-sidebar-label>Messages</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  ), []);
+
   return (
     <MarketplaceChrome
       initialSidebarOpen={ initialSidebarOpen }
       onSearchOpen={ handleSearchOpen }
+      sidebarExtras={ messageSidebarItem }
       dialogSlot={ (
         <CommandDialog
           open={ isSearchOpen }
