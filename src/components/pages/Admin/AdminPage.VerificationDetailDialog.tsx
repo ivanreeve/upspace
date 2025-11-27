@@ -218,11 +218,14 @@ export function VerificationDetailDialog({
     reviewedAtDate && !Number.isNaN(reviewedAtDate.getTime())
       ? format(reviewedAtDate, 'PPP p')
       : '';
+  const today = new Date();
   const validUntilDate = verification.valid_until ? new Date(verification.valid_until) : null;
   const validUntilLabel =
     validUntilDate && !Number.isNaN(validUntilDate.getTime())
       ? format(validUntilDate, 'PPP')
       : '';
+  const isRenewal = verification.status === 'expired'
+    || (validUntilDate && validUntilDate < today);
   const isPending = verification.status === 'in_review';
   const processedSummary = reviewedAtLabel
     ? `Processed ${statusLabel.toLowerCase()} on ${reviewedAtLabel}`
@@ -233,7 +236,6 @@ export function VerificationDetailDialog({
     validUntil && !Number.isNaN(Date.parse(validUntil))
       ? format(new Date(validUntil), 'PPP')
       : '';
-  const today = new Date();
   const calendarYearRange = {
     fromYear: today.getFullYear(),
     toYear: today.getFullYear() + 10,
@@ -339,21 +341,21 @@ export function VerificationDetailDialog({
             </div>
           </div>
 
-        <DialogFooter className="flex flex-col gap-2">
+        <DialogFooter className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <Button
+              variant="ghost"
+              onClick={ () => {
+                setIsReviewOpen(false);
+                resetDialogState();
+                onClose();
+              } }
+              disabled={ isProcessing }
+            >
+              Cancel
+            </Button>
+          </div>
           <div className="flex items-center gap-2">
-            <div className="flex-1">
-              <Button
-                variant="ghost"
-                onClick={ () => {
-                  setIsReviewOpen(false);
-                  resetDialogState();
-                  onClose();
-                } }
-                disabled={ isProcessing }
-              >
-                Cancel
-              </Button>
-            </div>
             <Button
               variant="outline"
               onClick={ () => {
@@ -370,7 +372,9 @@ export function VerificationDetailDialog({
               disabled={ isProcessing }
             >
               <FiCheck className="size-4" aria-hidden="true" />
-              { approveMutation.isPending ? 'Approving...' : 'Approve' }
+              { approveMutation.isPending
+                ? isRenewal ? 'Renewing...' : 'Approving...'
+                : isRenewal ? 'Renew' : 'Approve' }
             </Button>
           </div>
         </DialogFooter>
@@ -505,7 +509,7 @@ export function VerificationDetailDialog({
               onClick={ handleValidityConfirm }
               disabled={ isProcessing || (!isIndefinite && !draftValidUntil) }
             >
-              { isProcessing ? 'Approving...' : 'Confirm & approve' }
+              { isProcessing ? 'Renewing...' : 'Renew' }
             </Button>
           </DialogFooter>
         </DialogContent>
