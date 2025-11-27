@@ -419,7 +419,8 @@ function useMarketplaceNavData() {
     router.refresh();
   }, [router]);
 
-  const resolvedRole = isGuest ? undefined : userProfile?.role;
+  const metadataRole = session?.user?.user_metadata?.role as 'customer' | 'partner' | 'admin' | undefined;
+  const resolvedRole = isGuest ? undefined : metadataRole ?? userProfile?.role;
 
   return React.useMemo(
     () => ({
