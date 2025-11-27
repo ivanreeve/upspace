@@ -1,6 +1,7 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useSession } from '@/components/auth/SessionProvider';
 
@@ -16,6 +17,25 @@ export type UserProfile = {
 
 export function useUserProfile() {
   const { session, } = useSession();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const queryKey = ['user-profile'];
+
+    if (!session) {
+      queryClient.removeQueries({
+        queryKey,
+        exact: true,
+      });
+
+      return;
+    }
+
+    queryClient.invalidateQueries({
+      queryKey,
+      exact: true,
+    });
+  }, [queryClient, session]);
 
   return useQuery<UserProfile>({
     queryKey: ['user-profile'],
