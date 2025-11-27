@@ -235,7 +235,10 @@ export default function Marketplace({ initialSidebarOpen, }: MarketplaceProps) {
     keepPreviousData: true,
   });
 
-  const spaces = React.useMemo(() => data?.data ?? [], [data]);
+  const spaces = React.useMemo(() => {
+    const allSpaces = data?.data ?? [];
+    return allSpaces.filter((space) => space.status === 'Live');
+  }, [data]);
   const hasError = Boolean(error);
   const hasActiveSearch = Boolean(filters.q.trim());
   const hasLocationFilters = Boolean(filters.region || filters.city || filters.barangay);
