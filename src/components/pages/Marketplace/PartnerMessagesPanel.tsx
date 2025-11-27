@@ -157,7 +157,7 @@ export function PartnerMessagesPanel() {
     }
 
     return (
-      <ScrollArea className="h-72 rounded-2xl border border-border/60 bg-background/80">
+      <ScrollArea className="flex-1 h-full min-h-0 rounded-2xl border border-border/60 bg-background/80">
         <div className="space-y-3 px-4 py-3">
           { messages.map((message) => {
             const isCustomerMessage = message.senderRole === 'customer';
@@ -205,7 +205,7 @@ export function PartnerMessagesPanel() {
     }
 
     return (
-      <ScrollArea className="h-[32rem] rounded-2xl border border-border/60 bg-background/60">
+      <ScrollArea className="h-full min-h-0 rounded-2xl border border-border/60 bg-background/60">
         <div className="space-y-2 p-3">
           { rooms.map((room) => {
             const isActive = room.id === activeRoom?.id;
@@ -253,7 +253,7 @@ export function PartnerMessagesPanel() {
   };
 
   return (
-    <section className="space-y-6 py-6">
+    <section className="space-y-6 py-6 min-h-screen">
       <header className="space-y-2">
         <div className="flex items-center gap-3">
           <h1 className="text-3xl font-semibold tracking-tight text-foreground">Messages</h1>
@@ -263,17 +263,17 @@ export function PartnerMessagesPanel() {
           Reply to customers for every listed space. Messages sync instantly via Supabase Realtime.
         </p>
       </header>
-      <div className="grid gap-6 lg:grid-cols-[320px,1fr]">
-        <Card className="h-full">
+      <div className="grid gap-6 lg:grid-cols-[320px,minmax(0,1fr)] min-h-[calc(100vh-7rem)]">
+        <Card className="flex h-full flex-col">
           <CardHeader>
             <CardTitle className="text-base">Conversations</CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
               Select a customer to view the message thread.
             </CardDescription>
           </CardHeader>
-          <CardContent>{ renderConversations() }</CardContent>
+          <CardContent className="flex-1 overflow-hidden">{ renderConversations() }</CardContent>
         </Card>
-        <Card className="h-full">
+        <Card className="flex h-full flex-col">
           <CardHeader>
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -285,8 +285,10 @@ export function PartnerMessagesPanel() {
               <Badge variant="outline">Live</Badge>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            { renderMessages() }
+          <CardContent className="flex flex-1 flex-col gap-4 overflow-hidden">
+            <div className="flex-1 min-h-0">
+              { renderMessages() }
+            </div>
             { activeRoom ? (
               <form className="space-y-3" onSubmit={ handleSend } noValidate>
                 <Textarea
