@@ -8,6 +8,7 @@ import {
   FiCommand,
   FiHome,
   FiLogOut,
+  FiMessageSquare,
   FiSearch,
   FiSettings,
   FiBarChart2,
@@ -54,6 +55,7 @@ type MarketplaceChromeProps = {
   insetClassName?: string
   insetStyle?: React.CSSProperties
   initialSidebarOpen?: boolean
+  sidebarExtras?: React.ReactNode
 };
 
 type SidebarFooterContentProps = {
@@ -452,6 +454,7 @@ export function MarketplaceChrome({
   insetClassName,
   insetStyle,
   initialSidebarOpen,
+  sidebarExtras,
 }: MarketplaceChromeProps) {
   const navData = useMarketplaceNavData();
   const cachedAvatarUrl = useCachedAvatar(navData.avatarUrl);
@@ -461,6 +464,7 @@ export function MarketplaceChrome({
     isGuest,
   } = navData;
   const isAdmin = role === 'admin';
+  const isCustomer = role === 'customer';
   const verificationSidebarItem = isAdmin ? (
       <SidebarMenuItem>
         <SidebarMenuButton asChild tooltip="Verification queue">
@@ -571,6 +575,17 @@ export function MarketplaceChrome({
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ) }
+                { isCustomer && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Messages">
+                      <Link href="/messages">
+                        <FiMessageSquare className="size-4" strokeWidth={ 1.4 } />
+                        <span data-sidebar-label>Messages</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ) }
+                { sidebarExtras }
                 { dashboardSidebarItem }
                 { verificationSidebarItem }
               </SidebarMenu>

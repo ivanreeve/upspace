@@ -1,7 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState
+} from 'react';
+import { FiChevronDown, FiChevronUp, FiMessageSquare } from 'react-icons/fi';
 
 import SpaceHeader from './SpaceHeader';
 import SpacePhotos from './SpacePhotos';
@@ -13,10 +18,12 @@ import WhereYoullBe from './WhereYoullBe';
 import AreasWithRates from './AreasWithRates';
 import AvailabilityTable from './AvailabilityTable';
 import SpaceBreadcrumbs from './SpaceBreadcrumbs';
+import { SpaceChatBubble } from './SpaceChatBubble';
 
 import { SPACE_DESCRIPTION_VIEWER_CLASSNAME } from '@/components/pages/Spaces/space-description-rich-text';
 import type { MarketplaceSpaceDetail } from '@/lib/queries/space';
 import { sanitizeRichText } from '@/lib/rich-text';
+import { Button } from '@/components/ui/button';
 import { useSession } from '@/components/auth/SessionProvider';
 import { cn } from '@/lib/utils';
 
@@ -32,7 +39,10 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
   const locationParts = [space.city, space.region, space.countryCode].filter(Boolean);
   const location = locationParts.length > 0 ? locationParts.join(', ') : 'Global City, Taguig';
 
-  const hostName = 'Trisha M.';
+  const defaultHostName = 'Trisha M.';
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const handleOpenChat = useCallback(() => setIsChatOpen(true), []);
+  const handleCloseChat = useCallback(() => setIsChatOpen(false), []);
 
   const overviewFallback =
     'Located in the heart of the city, Downtown Space offers a modern and flexible coworking environment designed for entrepreneurs, freelancers, and small teams. With high-speed Wi-Fi, ergonomic workstations, private meeting rooms, and a cozy lounge area, it is the perfect place to stay productive and inspired.';
@@ -114,7 +124,8 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
   const shouldShowGradient = shouldClampDescription && isDescriptionOverflowing;
 
   return (
-    <div className="bg-background">
+    <>
+      <div className="bg-background">
       <div className="mx-auto max-w-[1100px] px-4 py-10 space-y-4">
         <SpaceBreadcrumbs spaceName={ space.name } />
 
@@ -140,7 +151,11 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
           ) }
         >
           <div className="space-y-4">
-            <HostInfo hostName={ space.hostName ?? hostName } avatarUrl={ space.hostAvatarUrl } />
+            <HostInfo
+              hostName={ space.hostName ?? defaultHostName }
+              avatarUrl={ space.hostAvatarUrl }
+              onMessageHost={ handleOpenChat }
+            />
 
             { /* Booking card for mobile - shown above description */ }
             { !isGuest && (
@@ -262,5 +277,24 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
         <WhereYoullBe city={ space.city } region={ space.region } country={ space.countryCode } />
       </div>
     </div>
+    <SpaceChatBubble
+      isOpen={ isChatOpen }
+      spaceId={ space.id }
+      hostName={ space.hostName ?? defaultHostName }
+      hostAvatarUrl={ space.hostAvatarUrl }
+      onClose={ handleCloseChat }
+    />
+    { !isChatOpen && (
+      <Button
+        type="button"
+        size="icon"
+        className="fixed bottom-6 right-6 z-40 h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg shadow-black/40 hover:bg-primary/90"
+        aria-label="Open messages with host"
+        onClick={ handleOpenChat }
+      >
+        <FiMessageSquare className="size-5" aria-hidden="true" />
+      </Button>
+    ) }
+  </>
   );
 }

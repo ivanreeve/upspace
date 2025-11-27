@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button';
 export default function HostInfo({
   hostName,
   avatarUrl,
+  onMessageHost,
 }: {
   hostName?: string | null;
   avatarUrl?: string | null;
+  onMessageHost?: () => void;
 }) {
   const resolvedName = hostName?.trim() || 'Your host';
   const fallbackLabel = 'US';
@@ -29,6 +31,7 @@ export default function HostInfo({
       <Button
         variant="default"
         type="button"
+        onClick={ () => onMessageHost?.() }
         aria-label="Message host"
         className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground shrink-0"
       >
