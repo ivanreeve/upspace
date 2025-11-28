@@ -1,3 +1,4 @@
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export function SpaceDetailSkeleton() {
@@ -20,17 +21,35 @@ export function SpaceDetailSkeleton() {
         </header>
 
         <section className="space-y-3">
-          <Skeleton className="h-6 w-40" />
-          <div className="grid gap-2.5 md:grid-cols-2">
-            <Skeleton className="h-96 w-full rounded-lg sm:h-[28rem] lg:h-[30rem]" />
-            <div className="grid h-full min-h-[22rem] grid-rows-[1fr_3fr] gap-2.5">
-              <div className="grid grid-cols-2 gap-2.5">
-                <Skeleton className="h-32 w-full rounded-none sm:h-36" />
-                <Skeleton className="h-32 w-full rounded-tr-lg sm:h-36" />
+          <Card className="border-border/70 bg-background/80">
+            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-40" />
+                <Skeleton className="h-4 w-64" />
               </div>
-              <Skeleton className="h-48 w-full rounded-br-lg sm:h-56 lg:h-[18rem]" />
-            </div>
-          </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-2.5 md:grid-cols-2">
+                <div className="relative h-full overflow-hidden rounded-lg border border-border/60 bg-muted">
+                  <Skeleton className="h-96 w-full rounded-l-lg sm:h-[28rem] lg:h-[30rem]" />
+                </div>
+                <div className="grid h-full min-h-[24rem] grid-rows-[1fr_3fr] gap-2.5">
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="relative h-full overflow-hidden rounded-none border border-border/60 bg-muted">
+                      <Skeleton className="h-full w-full rounded-none" />
+                    </div>
+                    <div className="relative h-full overflow-hidden rounded-tr-lg border border-border/60 bg-muted">
+                      <Skeleton className="h-full w-full rounded-tr-lg" />
+                    </div>
+                  </div>
+                  <div className="relative h-full overflow-hidden rounded-br-lg border border-border/60 bg-muted">
+                    <Skeleton className="h-full w-full rounded-br-lg" />
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </section>
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)] lg:items-start">
