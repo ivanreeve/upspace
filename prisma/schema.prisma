@@ -93,18 +93,6 @@ model bookmark {
   user        user     @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
-model chat_room {
-  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  space_id    String         @db.Uuid
-  customer_id BigInt
-  created_at  DateTime       @default(now()) @db.Timestamptz(6)
-  messages    chat_message[]
-  customer    user           @relation(fields: [customer_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
-  space       space          @relation(fields: [space_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@unique([space_id, customer_id])
-}
-
 model chat_message {
   id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   room_id     String           @db.Uuid
@@ -112,11 +100,24 @@ model chat_message {
   sender_role chat_sender_role
   content     String
   created_at  DateTime         @default(now()) @db.Timestamptz(6)
-  room        chat_room        @relation(fields: [room_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  sender      user             @relation(fields: [sender_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  chat_room   chat_room        @relation(fields: [room_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user        user             @relation(fields: [sender_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([room_id, created_at])
 }
+
+model chat_room {
+  id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  space_id     String         @db.Uuid
+  customer_id  BigInt
+  created_at   DateTime       @default(now()) @db.Timestamptz(6)
+  chat_message chat_message[]
+  user         user           @relation(fields: [customer_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  space        space          @relation(fields: [space_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([space_id, customer_id])
+}
+
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model common_review {
   id         String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
