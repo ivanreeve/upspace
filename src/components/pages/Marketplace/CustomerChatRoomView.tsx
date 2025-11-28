@@ -8,6 +8,7 @@ import {
   useRef,
   useState
 } from 'react';
+import { useRouter } from 'next/navigation';
 import { FiArrowLeft, FiSend } from 'react-icons/fi';
 import { toast } from 'sonner';
 
@@ -17,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useCustomerChatRooms, useChatMessages, useSendChatMessage } from '@/hooks/api/useChat';
 import { useChatSubscription } from '@/hooks/use-chat-subscription';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/types/chat';
 
@@ -25,6 +27,7 @@ type CustomerChatRoomViewProps = {
 };
 
 export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
+  const router = useRouter();
   const {
     data: rooms,
     isLoading: roomsLoading,
@@ -117,6 +120,32 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
         })
       : '';
 
+  const isMobile = useIsMobile();
+  const [showThread, setShowThread] = useState(!isMobile);
+
+  useEffect(() => {
+    setShowThread(!isMobile);
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (isMobile && activeRoom) {
+      setShowThread(true);
+    }
+  }, [activeRoom, isMobile]);
+
+  const handleBackToList = useCallback(() => {
+    if (isMobile) {
+      setShowThread(false);
+      router.push('/messages');
+    }
+  }, [isMobile, router]);
+
+  const handleConversationClick = useCallback(() => {
+    if (isMobile) {
+      setShowThread(true);
+    }
+  }, [isMobile]);
+
   const normalizedQuery = searchValue.trim().toLowerCase();
 
   const filteredRooms = useMemo(() => {
@@ -157,7 +186,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
     }
 
     return (
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 h-full">
         <div className="space-y-1 py-1">
           { filteredRooms.map((room) => {
             const lastMessageSnippet = room.lastMessage?.content ?? 'No messages yet.';
@@ -185,6 +214,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                     ? 'bg-muted text-foreground'
                     : 'hover:bg-muted/70'
                 ) }
+                onClick={ handleConversationClick }
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/80 text-sm font-semibold text-primary-foreground">
                   { initials }
@@ -245,8 +275,8 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
     }
 
     return (
-      <ScrollArea className="flex-1">
-        <div className="space-y-2 px-4 py-3">
+      <ScrollArea className="flex-1 h-full overflow-y-auto">
+        <div className="space-y-3 px-5 py-4 text-sm text-muted-foreground/80">
           { messages.map((message) => {
             const isCustomerMessage = message.senderRole === 'customer';
             const alignClass = isCustomerMessage ? 'items-end justify-end' : 'items-start justify-start';
@@ -256,25 +286,25 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
             const timestamp = formatTimestamp(message.createdAt);
 
             return (
-              <div key={ message.id } className={ `flex ${alignClass}` }>
-                <div className="max-w-[80%] space-y-1">
-                  <div
-                    className={ cn('inline-block rounded-2xl px-4 py-2 text-base shadow', bubbleClass) }
-                  >
-                    <p className="whitespace-pre-line font-medium text-base text-current">
-                      { message.content }
-                    </p>
-                  </div>
-                  <p
-                    className={ cn(
-                      'text-xs text-muted-foreground',
-                      isCustomerMessage ? 'text-right' : 'text-left'
-                    ) }
-                  >
-                    { timestamp }
+            <div key={ message.id } className={ `flex ${alignClass}` }>
+              <div className="max-w-[80%] space-y-1">
+                <div
+                  className={ cn('inline-block rounded-2xl px-4 py-2 text-base shadow', bubbleClass) }
+                >
+                  <p className="whitespace-pre-line font-semibold text-base text-foreground">
+                    { message.content }
                   </p>
                 </div>
+                <p
+                  className={ cn(
+                    'text-xs text-muted-foreground/80 leading-tight',
+                    isCustomerMessage ? 'text-right' : 'text-left'
+                  ) }
+                >
+                  { timestamp }
+                </p>
               </div>
+            </div>
             );
           }) }
           <div ref={ scrollAnchorRef } />
@@ -283,76 +313,106 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
     );
   };
 
+  const showListPane = !isMobile || !showThread;
+  const showThreadPane = !isMobile || showThread;
+
   return (
-    <section className="flex h-[calc(100vh-6rem)] w-full rounded-xl border bg-background shadow-sm overflow-hidden">
+    <section className="flex min-h-[100svh] flex-1 w-full gap-3 overflow-hidden p-0 md:h-auto md:min-h-0 md:p-4">
       { /* Left sidebar: conversations */ }
-      <aside className="hidden h-full w-[380px] flex-col border-r bg-muted/5 px-3 py-4 md:flex">
-        <div className="mb-3 flex flex-col gap-2">
-          <span className="text-lg font-semibold text-foreground">Chats</span>
-          <Input
-            value={ searchValue }
-            onChange={ (event) => setSearchValue(event.target.value) }
-            placeholder="Search conversations"
-            aria-label="Search conversations"
-            className="h-9 text-sm"
-          />
-        </div>
-        <div className="flex min-h-0 flex-1 flex-col">
-          { renderList() }
-        </div>
+      <aside
+        className={ cn(
+          'h-full min-h-0 flex-col gap-3 max-h-[100dvh] overflow-hidden',
+          showListPane ? 'flex w-full rounded-2xl bg-card/80 p-3 shadow-sm md:border md:border-border/60' : 'hidden',
+          !isMobile && 'w-[420px]'
+        ) }
+      >
+        { showListPane && (
+          <>
+            <div className="space-y-1">
+              <span className="text-xl font-semibold tracking-tight text-foreground">
+                Chats
+              </span>
+              <Input
+                value={ searchValue }
+                onChange={ (event) => setSearchValue(event.target.value) }
+                placeholder="Search conversations"
+                aria-label="Search conversations"
+                className="h-10 rounded-lg border border-border/60 bg-background px-3 py-2 text-sm font-normal text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col">
+              { renderList() }
+            </div>
+          </>
+        ) }
       </aside>
 
       { /* Right pane: active thread */ }
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b px-3 py-3">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/messages"
-              className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground md:hidden"
-            >
-              <FiArrowLeft className="size-4" aria-hidden="true" />
-              Back
-            </Link>
-            <div className="flex flex-col">
-              <span className="text-xl font-semibold">
-                { activeRoom ? activeRoom.spaceName : 'Conversation' }
-              </span>
-              <span className="text-sm text-muted-foreground">
-                { activeRoom
-                  ? `${activeRoom.partnerName ?? 'Host'} · ${activeRoom.spaceCity ?? ''}${activeRoom.spaceCity && activeRoom.spaceRegion ? ', ' : ''}${activeRoom.spaceRegion ?? ''}`
-                  : 'Select a chat from your inbox.' }
-              </span>
-            </div>
-          </div>
-        </header>
-
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-1 flex-col">
-            { renderMessages() }
-          </div>
-          { activeRoom ? (
-            <form className="border-t px-3 py-3" onSubmit={ handleSend } noValidate>
-              <div className="flex max-w-full items-end gap-2">
-                <Textarea
-                  value={ draft }
-                  onChange={ (event) => setDraft(event.target.value) }
-                  placeholder="Type your message…"
-                  aria-label="Message the host"
-                  rows={ 2 }
-                  className="min-h-[44px] max-h-32 flex-1 min-w-0 resize-none text-sm"
-                  disabled={ sendMessage.isPending }
-                />
-                <Button
-                  type="submit"
-                  disabled={ sendMessage.isPending || !draft.trim() }
-                  className="inline-flex shrink-0 items-center gap-2"
-                >
-                  <FiSend className="size-4" aria-hidden="true" />
-                  <span>{ sendMessage.isPending ? 'Sending…' : 'Send' }</span>
-                </Button>
+      <div
+        className={ cn(
+          'flex min-w-0 flex-1 flex-col h-full',
+          showThreadPane
+            ? 'flex rounded-2xl md:border md:border-border/60'
+            : 'hidden'
+        ) }
+      >
+        <div className="flex min-h-0 flex-1 flex-col h-full rounded-2xl bg-card/80 shadow-sm overflow-hidden">
+          <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-card/80 px-3 py-3">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={ handleBackToList }
+                className={ cn(
+                  'inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground md:hidden',
+                  showThreadPane ? 'flex' : 'hidden'
+                ) }
+              >
+                <FiArrowLeft className="size-4" aria-hidden="true" />
+                Back
+              </button>
+              <div className="flex flex-col">
+                <span className="text-2xl font-semibold tracking-tight text-foreground">
+                  { activeRoom ? activeRoom.spaceName : 'Conversation' }
+                </span>
+                <span className="text-sm text-muted-foreground/90">
+                  { activeRoom
+                    ? `${activeRoom.partnerName ?? 'Host'} · ${activeRoom.spaceCity ?? ''}${activeRoom.spaceCity && activeRoom.spaceRegion ? ', ' : ''}${activeRoom.spaceRegion ?? ''}`
+                    : 'Select a chat from your inbox.' }
+                </span>
               </div>
-            </form>
-          ) : null }
+            </div>
+          </header>
+
+          <div className="flex min-h-0 flex-1 flex-col h-full overflow-hidden">
+            { renderMessages() }
+            { activeRoom ? (
+              <form
+                className="sticky bottom-0 z-10 border-t bg-card/80 px-3 py-3"
+                onSubmit={ handleSend }
+                noValidate
+              >
+                <div className="flex max-w-full items-end gap-3">
+                  <Textarea
+                    value={ draft }
+                    onChange={ (event) => setDraft(event.target.value) }
+                    placeholder="Type your message…"
+                    aria-label="Message the host"
+                    rows={ 1 }
+                    className="h-10 flex-1 min-w-0 resize-none text-sm leading-4"
+                    disabled={ sendMessage.isPending }
+                  />
+                  <Button
+                    type="submit"
+                    disabled={ sendMessage.isPending || !draft.trim() }
+                    className="inline-flex h-10 shrink-0 items-center gap-2 px-4"
+                  >
+                    <FiSend className="size-4" aria-hidden="true" />
+                    <span>{ sendMessage.isPending ? 'Sending…' : 'Send' }</span>
+                  </Button>
+                </div>
+              </form>
+            ) : null }
+          </div>
         </div>
       </div>
     </section>

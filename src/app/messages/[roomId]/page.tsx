@@ -22,8 +22,11 @@ export default async function CustomerChatRoomPage({ params, }: Props) {
   const initialSidebarOpen = parseSidebarState(sidebarCookie);
 
   return (
-    <MarketplaceChrome initialSidebarOpen={ initialSidebarOpen }>
-      <div className="w-full px-2 pb-4 pt-4 sm:px-4 lg:px-6">
+    <MarketplaceChrome
+      initialSidebarOpen={ initialSidebarOpen }
+      insetClassName="p-2"
+    >
+      <div className="flex flex-1 min-h-[100svh] w-full flex-col overflow-hidden p-0 sm:p-2">
         <CustomerChatRoomView roomId={ roomId } />
       </div>
     </MarketplaceChrome>

@@ -608,7 +608,7 @@ export function MarketplaceChrome({
         </Sidebar>
 
         <SidebarInset
-          className={ cn('flex-1 bg-background w-full pb-10 pt-16 md:pt-0', insetClassName) }
+          className={ cn('flex-1 bg-background w-full pb-0 pt-0 md:pt-0', insetClassName) }
           style={ mobileInsetPadding || insetStyle ? {
             ...mobileInsetPadding,
             ...insetStyle,

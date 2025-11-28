@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
   const room = await prisma.chat_room.findUnique({
     where: { id: parsed.data.room_id, },
     include: {
-      customer: {
+      user: {
         select: {
           user_id: true,
           first_name: true,
@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
           },
         },
       },
-      messages: { orderBy: { created_at: 'asc', }, },
+      chat_message: { orderBy: { created_at: 'asc', }, },
     },
   });
 
@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (dbUser.role === 'customer') {
-    if (room.customer.user_id !== dbUser.user_id) {
+    if (room.user.user_id !== dbUser.user_id) {
       return forbiddenResponse;
     }
   } else if (dbUser.role === 'partner') {
@@ -104,11 +104,11 @@ export async function GET(req: NextRequest) {
     return forbiddenResponse;
   }
 
-  const customerName = formatDisplayName(room.customer);
+  const customerName = formatDisplayName(room.user);
   const partnerName = formatDisplayName(room.space?.user ?? null);
 
-  const messages = room.messages.map((message) =>
-    mapChatMessage(message, customerName, partnerName)
+  const messages = room.chat_message.map((chat_message) =>
+    mapChatMessage(chat_message, customerName, partnerName)
   );
 
   return NextResponse.json({ messages, });
@@ -150,6 +150,60 @@ export async function POST(req: NextRequest) {
 
   if (dbUser.role === 'customer') {
     const spaceId = parsed.data.space_id;
+    const roomId = parsed.data.room_id;
+
+    const customerName = formatDisplayName({
+      handle: dbUser.handle,
+      first_name: dbUser.first_name,
+      last_name: dbUser.last_name,
+      avatar: dbUser.avatar,
+    });
+
+    if (roomId) {
+      const room = await prisma.chat_room.findUnique({
+        where: { id: roomId, },
+        include: {
+          space: {
+            select: {
+              id: true,
+              user_id: true,
+              user: {
+                select: {
+                  first_name: true,
+                  last_name: true,
+                  handle: true,
+                  avatar: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!room) {
+        return notFoundResponse;
+      }
+
+      if (room.customer_id !== dbUser.user_id) {
+        return forbiddenResponse;
+      }
+
+      const partnerName = formatDisplayName(room.space.user ?? null);
+
+      const message = await prisma.chat_message.create({
+        data: {
+          content: parsed.data.content,
+          room_id: room.id,
+          sender_id: dbUser.user_id,
+          sender_role: 'customer',
+        },
+      });
+
+      return NextResponse.json({
+        roomId: room.id,
+        message: mapChatMessage(message, customerName, partnerName),
+      }, { status: 201, });
+    }
 
     if (!spaceId) {
       return invalidPayloadResponse;
@@ -191,13 +245,6 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const customerName = formatDisplayName({
-      handle: dbUser.handle,
-      first_name: dbUser.first_name,
-      last_name: dbUser.last_name,
-      avatar: dbUser.avatar,
-    });
-
     const partnerName = formatDisplayName(space.user ?? null);
 
     const message = await prisma.chat_message.create({
@@ -225,7 +272,7 @@ export async function POST(req: NextRequest) {
     const room = await prisma.chat_room.findUnique({
       where: { id: roomId, },
       include: {
-        customer: {
+        user: {
           select: {
             user_id: true,
             first_name: true,
@@ -258,7 +305,7 @@ export async function POST(req: NextRequest) {
       return forbiddenResponse;
     }
 
-    const customerName = formatDisplayName(room.customer);
+    const customerName = formatDisplayName(room.user);
     const partnerName = formatDisplayName(room.space.user ?? null);
 
     const message = await prisma.chat_message.create({

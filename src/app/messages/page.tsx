@@ -32,7 +32,7 @@ export default async function CustomerMessagesPage() {
   const rooms = await prisma.chat_room.findMany({
     where: { customer_id: dbUser.user_id, },
     include: {
-      messages: {
+      chat_message: {
         orderBy: { created_at: 'desc', },
         take: 1,
       },
@@ -44,8 +44,8 @@ export default async function CustomerMessagesPage() {
   }
 
   const sorted = rooms.sort((a, b) => {
-    const aKey = a.messages[0]?.created_at ?? a.created_at;
-    const bKey = b.messages[0]?.created_at ?? b.created_at;
+    const aKey = a.chat_message[0]?.created_at ?? a.created_at;
+    const bKey = b.chat_message[0]?.created_at ?? b.created_at;
     if (aKey === bKey) {
       return 0;
     }

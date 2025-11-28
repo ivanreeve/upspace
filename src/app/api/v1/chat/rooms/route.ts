@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
           customer_id: dbUser.user_id,
         },
         include: {
-          customer: {
+          user: {
             select: {
               user_id: true,
               first_name: true,
@@ -121,7 +121,7 @@ export async function GET(req: NextRequest) {
               },
             },
           },
-          messages: { orderBy: { created_at: 'asc', }, },
+          chat_message: { orderBy: { created_at: 'asc', }, },
         },
       });
 
@@ -129,10 +129,10 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ room: null, });
       }
 
-      const customerName = formatDisplayName(room.customer);
+      const customerName = formatDisplayName(room.user);
       const partnerName = formatDisplayName(room.space.user ?? null);
-      const messages = room.messages.map((message) =>
-        mapChatMessage(message, customerName, partnerName)
+      const messages = room.chat_message.map((chat_message) =>
+        mapChatMessage(chat_message, customerName, partnerName)
       );
 
       const response: ChatRoomDetail = {
@@ -141,10 +141,10 @@ export async function GET(req: NextRequest) {
         spaceName: room.space.name,
         spaceCity: room.space.city ?? null,
         spaceRegion: room.space.region ?? null,
-        customerId: room.customer.user_id.toString(),
+        customerId: room.user.user_id.toString(),
         customerName,
-        customerHandle: room.customer.handle,
-        customerAvatarUrl: resolveAvatarUrl(room.customer.avatar),
+        customerHandle: room.user.handle,
+        customerAvatarUrl: resolveAvatarUrl(room.user.avatar),
         partnerId: (room.space.user?.user_id ?? room.space.user_id).toString(),
         partnerName,
         partnerAvatarUrl: resolveAvatarUrl(room.space.user?.avatar ?? null),
@@ -177,7 +177,7 @@ export async function GET(req: NextRequest) {
             },
           },
         },
-        messages: {
+        chat_message: {
           orderBy: { created_at: 'desc', },
           take: 1,
         },
@@ -195,8 +195,8 @@ export async function GET(req: NextRequest) {
     const summaries = rooms.map((room) => {
       const partnerName = formatDisplayName(room.space.user ?? null);
       const partnerAvatarUrl = resolveAvatarUrl(room.space.user?.avatar ?? null);
-      const lastMessage = room.messages[0]
-        ? mapChatMessage(room.messages[0], customerName, partnerName)
+      const lastMessage = room.chat_message[0]
+        ? mapChatMessage(room.chat_message[0], customerName, partnerName)
         : null;
 
       const summary: ChatRoomSummary = {
@@ -243,7 +243,7 @@ export async function GET(req: NextRequest) {
             region: true,
           },
         },
-        customer: {
+        user: {
           select: {
             user_id: true,
             first_name: true,
@@ -252,7 +252,7 @@ export async function GET(req: NextRequest) {
             avatar: true,
           },
         },
-        messages: {
+        chat_message: {
           orderBy: { created_at: 'desc', },
           take: 1,
         },
@@ -268,9 +268,9 @@ export async function GET(req: NextRequest) {
     const partnerAvatarUrl = resolveAvatarUrl(dbUser.avatar);
 
     const summaries = rooms.map((room) => {
-      const customerName = formatDisplayName(room.customer);
-      const lastMessage = room.messages[0]
-        ? mapChatMessage(room.messages[0], customerName, partnerName)
+      const customerName = formatDisplayName(room.user);
+      const lastMessage = room.chat_message[0]
+        ? mapChatMessage(room.chat_message[0], customerName, partnerName)
         : null;
 
       const summary: ChatRoomSummary = {
@@ -279,10 +279,10 @@ export async function GET(req: NextRequest) {
         spaceName: room.space.name,
         spaceCity: room.space.city ?? null,
         spaceRegion: room.space.region ?? null,
-        customerId: room.customer.user_id.toString(),
+        customerId: room.user.user_id.toString(),
         customerName,
-        customerHandle: room.customer.handle,
-        customerAvatarUrl: resolveAvatarUrl(room.customer.avatar),
+        customerHandle: room.user.handle,
+        customerAvatarUrl: resolveAvatarUrl(room.user.avatar),
         partnerId: dbUser.user_id.toString(),
         partnerName,
         partnerAvatarUrl,
