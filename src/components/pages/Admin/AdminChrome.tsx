@@ -55,6 +55,7 @@ export function AdminChrome({
           title="Admin actions"
           description="Navigate admin features"
           position="top"
+          fullWidth
         >
           <CommandInput
             value={ searchValue }

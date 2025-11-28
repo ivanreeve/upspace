@@ -71,6 +71,7 @@ export function SpacesChrome({
           title="Search spaces"
           description="Search the UpSpace marketplace"
           position="top"
+          fullWidth
         >
           <CommandInput
             value={ searchValue }
