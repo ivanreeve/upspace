@@ -30,7 +30,7 @@ export function SpaceDetailSkeleton() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-2.5 md:grid-cols-2">
-                <div className="relative h-full overflow-hidden rounded-lg border border-border/60 bg-muted">
+                <div className="relative h-full overflow-hidden border rounded-l-lg border-border/60 bg-muted">
                   <Skeleton className="h-96 w-full rounded-l-lg sm:h-[28rem] lg:h-[30rem]" />
                 </div>
                 <div className="grid h-full min-h-[24rem] grid-rows-[1fr_3fr] gap-2.5">
