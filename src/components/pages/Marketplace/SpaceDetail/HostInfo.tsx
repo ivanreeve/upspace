@@ -7,14 +7,17 @@ export default function HostInfo({
   hostName,
   avatarUrl,
   onMessageHost,
+  isMessagingDisabled,
 }: {
   hostName?: string | null;
   avatarUrl?: string | null;
   onMessageHost?: () => void;
+  isMessagingDisabled?: boolean;
 }) {
   const resolvedName = hostName?.trim() || 'Your host';
   const fallbackLabel = 'US';
   const avatarAlt = resolvedName === 'Your host' ? 'Host avatar' : `${resolvedName}'s avatar`;
+  const disabledReason = isMessagingDisabled ? 'Sign in to message the host' : undefined;
 
   return (
     <section className="flex flex-wrap items-center justify-between gap-4 rounded-xs border px-6 py-5 shadow-sm md:flex-row md:items-center md:justify-between">
@@ -32,6 +35,8 @@ export default function HostInfo({
         variant="default"
         type="button"
         onClick={ () => onMessageHost?.() }
+        disabled={ isMessagingDisabled }
+        title={ disabledReason }
         aria-label="Message host"
         className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground shrink-0"
       >

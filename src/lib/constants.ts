@@ -1,4 +1,4 @@
-export const PUBLIC_PATHS = new Set<string>(['/', '/signup', '/forgot-password']);
+export const PUBLIC_PATHS = new Set<string>(['/', '/signup', '/forgot-password','/components']);
 export const PUBLIC_PATH_PREFIXES = ['/marketplace'];
 export const IGNORED_PREFIXES = ['/api', '/_next', '/static', '/assets', '/img', '/fonts'];
 export const ONBOARDING_PATH = '/onboarding';

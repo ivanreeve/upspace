@@ -35,6 +35,7 @@ type SpaceDetailProps = {
 export default function SpaceDetail({ space, }: SpaceDetailProps) {
   const { session, } = useSession();
   const isGuest = !session;
+  const canMessageHost = !isGuest;
 
   const locationParts = [space.city, space.region, space.countryCode].filter(Boolean);
   const location = locationParts.length > 0 ? locationParts.join(', ') : 'Global City, Taguig';
@@ -151,11 +152,12 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
           ) }
         >
           <div className="space-y-4">
-            <HostInfo
-              hostName={ space.hostName ?? defaultHostName }
-              avatarUrl={ space.hostAvatarUrl }
-              onMessageHost={ handleOpenChat }
-            />
+        <HostInfo
+          hostName={ space.hostName ?? defaultHostName }
+          avatarUrl={ space.hostAvatarUrl }
+          onMessageHost={ canMessageHost ? handleOpenChat : undefined }
+          isMessagingDisabled={ !canMessageHost }
+        />
 
             { /* Booking card for mobile - shown above description */ }
             { !isGuest && (
@@ -277,14 +279,16 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
         <WhereYoullBe city={ space.city } region={ space.region } country={ space.countryCode } />
       </div>
     </div>
-    <SpaceChatBubble
-      isOpen={ isChatOpen }
-      spaceId={ space.id }
-      hostName={ space.hostName ?? defaultHostName }
-      hostAvatarUrl={ space.hostAvatarUrl }
-      onClose={ handleCloseChat }
-    />
-    { !isChatOpen && (
+    { canMessageHost && (
+      <SpaceChatBubble
+        isOpen={ isChatOpen }
+        spaceId={ space.id }
+        hostName={ space.hostName ?? defaultHostName }
+        hostAvatarUrl={ space.hostAvatarUrl }
+        onClose={ handleCloseChat }
+      />
+    ) }
+    { canMessageHost && !isChatOpen && (
       <Button
         type="button"
         size="icon"
