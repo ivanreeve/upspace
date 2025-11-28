@@ -17,7 +17,7 @@ export default async function SpacesMessagesPage() {
 
   return (
     <SpacesChrome initialSidebarOpen={ initialSidebarOpen }>
-      <div className="mx-auto max-w-6xl px-4 pb-8 pt-6 sm:px-6 lg:px-8">
+      <div className="px-4 pb-8 pt-6 sm:px-6 lg:px-8">
         <PartnerMessagesList />
       </div>
     </SpacesChrome>
