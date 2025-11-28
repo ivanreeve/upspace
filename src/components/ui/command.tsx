@@ -5,6 +5,7 @@ import { Command as CommandPrimitive } from 'cmdk';
 import { SearchIcon } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Dialog,
   DialogContent,
@@ -186,6 +187,22 @@ function CommandShortcut({
   );
 }
 
+function ResponsiveCommandDialog({
+  mobileFullScreen,
+  fullWidth,
+  ...props
+}: React.ComponentProps<typeof CommandDialog>) {
+  const isMobile = useIsMobile();
+
+  return (
+    <CommandDialog
+      mobileFullScreen={ mobileFullScreen ?? isMobile }
+      fullWidth={ fullWidth ?? isMobile }
+      { ...props }
+    />
+  );
+}
+
 export {
   Command,
   CommandDialog,
@@ -195,5 +212,6 @@ export {
   CommandGroup,
   CommandItem,
   CommandShortcut,
-  CommandSeparator
+  CommandSeparator,
+  ResponsiveCommandDialog
 };

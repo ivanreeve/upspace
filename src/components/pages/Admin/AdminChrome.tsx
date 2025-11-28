@@ -7,7 +7,7 @@ import { FiCheckCircle, FiX } from 'react-icons/fi';
 import { MarketplaceChrome } from '../Marketplace/MarketplaceChrome';
 
 import {
-  CommandDialog,
+  ResponsiveCommandDialog as CommandDialog,
   CommandGroup,
   CommandInput,
   CommandItem,
@@ -55,8 +55,6 @@ export function AdminChrome({
           title="Admin actions"
           description="Navigate admin features"
           position="top"
-          mobileFullScreen
-          fullWidth
         >
           <CommandInput
             value={ searchValue }

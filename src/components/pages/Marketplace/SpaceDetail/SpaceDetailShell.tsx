@@ -7,7 +7,7 @@ import { FiSearch, FiX } from 'react-icons/fi';
 import { MarketplaceChrome } from '../MarketplaceChrome';
 
 import {
-  CommandDialog,
+  ResponsiveCommandDialog as CommandDialog,
   CommandGroup,
   CommandInput,
   CommandItem,
@@ -57,8 +57,6 @@ export function SpaceDetailShell({
           title="Search spaces"
           description="Search the UpSpace marketplace"
           position="top"
-          mobileFullScreen
-          fullWidth
         >
           <CommandInput
             value={ searchValue }

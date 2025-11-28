@@ -9,7 +9,7 @@ import { MarketplaceChrome } from '../Marketplace/MarketplaceChrome';
 
 import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import {
-  CommandDialog,
+  ResponsiveCommandDialog as CommandDialog,
   CommandGroup,
   CommandInput,
   CommandItem,
@@ -71,8 +71,6 @@ export function SpacesChrome({
           title="Search spaces"
           description="Search the UpSpace marketplace"
           position="top"
-          mobileFullScreen
-          fullWidth
         >
           <CommandInput
             value={ searchValue }
