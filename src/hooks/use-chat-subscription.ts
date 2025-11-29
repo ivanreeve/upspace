@@ -73,6 +73,28 @@ export function useChatRoomsSubscription(roomIds: string[]) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    const channel = supabase
+      .channel(`chat-room:insert:${Math.random().toString(36).slice(2, 10)}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_room',
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: chatKeys.rooms, });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
+  useEffect(() => {
     if (!roomIds.length) {
       return undefined;
     }

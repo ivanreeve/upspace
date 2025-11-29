@@ -170,16 +170,16 @@ export function PartnerMessagesPanel() {
 
             return (
               <div key={ message.id } className={ `flex ${alignClass}` }>
-                <div className={ `max-w-[80%] space-y-1 rounded-2xl px-4 py-3 text-sm shadow` }>
+                <div className="max-w-[85vw] sm:max-w-[520px] space-y-1 rounded-2xl px-4 py-3 text-sm shadow">
                   <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                     <span>{ message.senderName ?? (isCustomerMessage ? 'Customer' : 'You') }</span>
                     <span>{ timestamp }</span>
                   </div>
-                  <p className={ `whitespace-pre-line ${bubbleClass} px-0 py-0 font-medium` }>
-                    { message.content }
-                  </p>
-                </div>
+                  <p className={ `whitespace-pre-line break-all ${bubbleClass} px-0 py-0 font-medium` }>
+                  { message.content }
+                </p>
               </div>
+            </div>
             );
           }) }
           <div ref={ scrollAnchorRef } />

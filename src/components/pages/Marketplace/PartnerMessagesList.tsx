@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { usePartnerChatRooms } from '@/hooks/api/useChat';
+import { useChatRoomsSubscription } from '@/hooks/use-chat-subscription';
 import { cn } from '@/lib/utils';
 
 export function PartnerMessagesList() {
@@ -21,6 +22,8 @@ export function PartnerMessagesList() {
     isLoading: roomsLoading,
     error: roomsError,
   } = usePartnerChatRooms();
+
+  useChatRoomsSubscription(rooms?.map((room) => room.id) ?? []);
 
   const renderConversations = () => {
     if (roomsLoading) {
