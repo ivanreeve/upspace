@@ -317,7 +317,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
   const showThreadPane = !isMobile || showThread;
 
   return (
-    <section className="flex min-h-[100svh] flex-1 w-full gap-3 overflow-hidden p-0 md:h-auto md:min-h-0 md:p-4">
+    <section className="flex min-h-[100svh] flex-1 w-full gap-3 overflow-hidden p-0 md:h-auto md:min-h-0 md:max-h-screen md:overflow-hidden md:p-4">
       { /* Left sidebar: conversations */ }
       <aside
         className={ cn(
@@ -350,7 +350,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
       { /* Right pane: active thread */ }
       <div
         className={ cn(
-          'flex min-w-0 flex-1 flex-col h-full',
+          'flex min-w-0 min-h-0 flex-1 flex-col h-full',
           showThreadPane
             ? 'flex rounded-2xl md:border md:border-border/60'
             : 'hidden'

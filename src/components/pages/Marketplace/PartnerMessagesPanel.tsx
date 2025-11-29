@@ -263,17 +263,17 @@ export function PartnerMessagesPanel() {
           Reply to customers for every listed space. Messages sync instantly via Supabase Realtime.
         </p>
       </header>
-      <div className="grid gap-6 lg:grid-cols-[320px,minmax(0,1fr)] min-h-[calc(100vh-7rem)]">
-        <Card className="flex h-full flex-col">
+      <div className="grid gap-6 lg:grid-cols-[320px,minmax(0,1fr)] min-h-[calc(100vh-7rem)] lg:max-h-[calc(100vh-7rem)] lg:overflow-hidden">
+        <Card className="flex h-full min-h-0 flex-col">
           <CardHeader>
             <CardTitle className="text-base">Conversations</CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
               Select a customer to view the message thread.
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 overflow-hidden">{ renderConversations() }</CardContent>
+          <CardContent className="flex-1 min-h-0 overflow-hidden">{ renderConversations() }</CardContent>
         </Card>
-        <Card className="flex h-full flex-col">
+        <Card className="flex h-full min-h-0 flex-col">
           <CardHeader>
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -285,7 +285,7 @@ export function PartnerMessagesPanel() {
               <Badge variant="outline">Live</Badge>
             </div>
           </CardHeader>
-          <CardContent className="flex flex-1 flex-col gap-4 overflow-hidden">
+          <CardContent className="flex flex-1 min-h-0 flex-col gap-4 overflow-hidden">
             <div className="flex-1 min-h-0">
               { renderMessages() }
             </div>
