@@ -22,8 +22,11 @@ export default async function PartnerChatRoomPage({ params, }: Props) {
   const initialSidebarOpen = parseSidebarState(sidebarCookie);
 
   return (
-    <SpacesChrome initialSidebarOpen={ initialSidebarOpen }>
-      <div className="mx-auto max-w-6xl px-4 pb-8 pt-6 sm:px-6 lg:px-8">
+    <SpacesChrome
+      initialSidebarOpen={ initialSidebarOpen }
+      insetClassName="p-2"
+    >
+      <div className="flex flex-1 min-h-[100svh] w-full flex-col overflow-hidden p-0 sm:p-2">
         <PartnerChatRoomView roomId={ roomId } />
       </div>
     </SpacesChrome>

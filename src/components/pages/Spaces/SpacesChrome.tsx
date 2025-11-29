@@ -1,6 +1,11 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useMemo,
+  useState,
+  type CSSProperties
+} from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FiMessageSquare, FiSearch, FiX } from 'react-icons/fi';
@@ -20,11 +25,15 @@ import { Kbd } from '@/components/ui/kbd';
 type SpacesChromeProps = {
   children: React.ReactNode
   initialSidebarOpen?: boolean
+  insetClassName?: string
+  insetStyle?: CSSProperties
 };
 
 export function SpacesChrome({
   children,
   initialSidebarOpen,
+  insetClassName,
+  insetStyle,
 }: SpacesChromeProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
@@ -64,6 +73,8 @@ export function SpacesChrome({
       initialSidebarOpen={ initialSidebarOpen }
       onSearchOpen={ handleSearchOpen }
       sidebarExtras={ messageSidebarItem }
+      insetClassName={ insetClassName }
+      insetStyle={ insetStyle }
       dialogSlot={ (
         <CommandDialog
           open={ isSearchOpen }

@@ -1,13 +1,17 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
-import type { ChatMessage } from '@/types/chat';
+import { chatKeys } from '@/hooks/api/useChat';
+import type { ChatMessage, ChatRoomSummary } from '@/types/chat';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 type SubscriptionCallback = (message: ChatMessage) => void;
 
 export function useChatSubscription(roomId: string | null, onMessage: SubscriptionCallback) {
+  const queryClient = useQueryClient();
+
   useEffect(() => {
     if (!roomId) {
       return undefined;
@@ -36,6 +40,25 @@ export function useChatSubscription(roomId: string | null, onMessage: Subscripti
             createdAt: newMessage.created_at ?? new Date().toISOString(),
           };
           onMessage(payload);
+          queryClient.setQueryData<ChatMessage[]>(chatKeys.messages(roomId), (previous = []) => {
+            if (previous.some((entry) => entry.id === payload.id)) {
+              return previous;
+            }
+            return [...previous, payload];
+          });
+          queryClient.setQueryData<ChatRoomSummary[]>(chatKeys.rooms, (previous) => {
+            if (!previous) {
+              return previous;
+            }
+            return previous.map((room) =>
+              room.id === roomId
+                ? {
+                    ...room,
+                    lastMessage: payload,
+                  }
+                : room
+            );
+          });
         }
       )
       .subscribe();
@@ -43,5 +66,5 @@ export function useChatSubscription(roomId: string | null, onMessage: Subscripti
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [roomId, onMessage]);
+  }, [roomId, onMessage, queryClient]);
 }

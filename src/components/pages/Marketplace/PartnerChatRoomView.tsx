@@ -173,7 +173,7 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
     }
 
     return (
-      <ScrollArea className="flex-1 h-full overflow-y-auto">
+      <ScrollArea className="flex-1 h-full">
         <div className="space-y-1 py-1">
           { filteredRooms.map((room) => {
             const lastMessageSnippet = room.lastMessage?.content ?? 'No messages yet.';
@@ -192,18 +192,18 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
                 .join('') || 'CU';
 
             return (
-      <Link
-        key={ room.id }
-        href={ `/spaces/messages/${room.id}` }
-        aria-current={ isActive ? 'true' : undefined }
-        className={ cn(
-          'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition',
-          isActive
-            ? 'bg-muted text-foreground'
-            : 'hover:bg-muted/70'
-        ) }
-        onClick={ handleConversationClick }
-      >
+              <Link
+                key={ room.id }
+                href={ `/spaces/messages/${room.id}` }
+                aria-current={ isActive ? 'true' : undefined }
+                className={ cn(
+                  'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition',
+                  isActive
+                    ? 'bg-muted text-foreground'
+                    : 'hover:bg-muted/70'
+                ) }
+                onClick={ handleConversationClick }
+              >
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/80 text-sm font-semibold text-primary-foreground">
                   { initials }
                 </div>
@@ -263,8 +263,8 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
     }
 
     return (
-      <ScrollArea className="flex-1">
-        <div className="space-y-2 px-4 py-3">
+      <ScrollArea className="flex-1 h-full overflow-y-auto">
+        <div className="space-y-3 px-5 py-4 text-sm text-muted-foreground/80">
           { messages.map((message) => {
             const isPartnerMessage = message.senderRole === 'partner';
             const alignClass = isPartnerMessage ? 'items-end justify-end' : 'items-start justify-start';
@@ -279,13 +279,13 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
                   <div
                     className={ cn('inline-block rounded-2xl px-4 py-2 text-base shadow', bubbleClass) }
                   >
-                    <p className="whitespace-pre-line font-medium text-base text-current">
+                    <p className="whitespace-pre-line font-semibold text-base text-foreground">
                       { message.content }
                     </p>
                   </div>
                   <p
                     className={ cn(
-                      'text-xs text-muted-foreground',
+                      'text-xs text-muted-foreground/80 leading-tight',
                       isPartnerMessage ? 'text-right' : 'text-left'
                     ) }
                   >
@@ -318,16 +318,16 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
   const showThreadPane = !isMobile || showThread;
 
   return (
-    <section className="flex min-h-[100svh] w-full flex-1 rounded-none overflow-hidden p-0 md:h-auto md:min-h-0 md:rounded-xl md:border md:bg-background md:p-4">
+    <section className="flex min-h-[100svh] flex-1 w-full gap-3 overflow-hidden p-0 md:h-auto md:min-h-0 md:p-4">
       { /* Left sidebar: conversations */ }
       <aside
         className={ cn(
-          'h-full min-h-0 flex-col gap-3',
+          'h-full min-h-0 flex-col gap-3 max-h-[100dvh] overflow-hidden',
           showListPane ? 'flex w-full rounded-2xl bg-card/80 p-3 shadow-sm md:border md:border-border/60' : 'hidden',
           !isMobile && 'w-[420px]'
         ) }
       >
-        { showListPane ? (
+        { showListPane && (
           <>
             <div className="space-y-1">
               <span className="text-xl font-semibold tracking-tight text-foreground">
@@ -345,14 +345,16 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
               { renderList() }
             </div>
           </>
-        ) : null }
+        ) }
       </aside>
 
       { /* Right pane: active thread */ }
       <div
         className={ cn(
-          'flex min-w-0 flex-1 flex-col h-full overflow-hidden',
-          showThreadPane ? 'flex rounded-2xl md:border md:border-border/60' : 'hidden'
+          'flex min-w-0 flex-1 flex-col h-full',
+          showThreadPane
+            ? 'flex rounded-2xl md:border md:border-border/60'
+            : 'hidden'
         ) }
       >
         <div className="flex min-h-0 flex-1 flex-col h-full rounded-2xl bg-card/80 shadow-sm overflow-hidden">
@@ -390,7 +392,7 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
                 onSubmit={ handleSend }
                 noValidate
               >
-                <div className="flex items-end gap-3">
+                <div className="flex max-w-full items-end gap-3">
                   <Textarea
                     value={ draft }
                     onChange={ (event) => setDraft(event.target.value) }
