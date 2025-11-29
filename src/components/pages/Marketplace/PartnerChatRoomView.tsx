@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
+  KeyboardEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -47,6 +48,8 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
   const sendMessage = useSendChatMessage();
   const [draft, setDraft] = useState('');
   const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
+  const draftRef = useRef<HTMLTextAreaElement | null>(null);
+  const maxDraftHeight = 96; // px, matches Tailwind max-h-24
   const isMobile = useIsMobile();
   const [showThread, setShowThread] = useState(!isMobile);
   const [stayOnList, setStayOnList] = useState(false);
@@ -95,6 +98,30 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
     scrollAnchorRef.current?.scrollIntoView({ behavior: 'smooth', });
   }, [messages.length]);
 
+  const resizeDraft = useCallback(() => {
+    const element = draftRef.current;
+    if (!element) {
+      return;
+    }
+    element.style.height = 'auto';
+    const nextHeight = Math.min(element.scrollHeight, maxDraftHeight);
+    element.style.height = `${nextHeight}px`;
+  }, [maxDraftHeight]);
+
+  useEffect(() => {
+    const element = draftRef.current;
+    if (!element) {
+      return;
+    }
+
+    if (!draft) {
+      element.style.height = '';
+      return;
+    }
+
+    resizeDraft();
+  }, [draft, resizeDraft]);
+
   useEffect(() => {
     setShowThread(!isMobile);
     if (!isMobile) {
@@ -130,6 +157,12 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
     }
   };
 
+  const handleDraftKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+    }
+  };
+
   const formatTimestamp = (value?: string) =>
     value
       ? new Date(value).toLocaleString([], {
@@ -140,14 +173,28 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
 
   const normalizedQuery = searchValue.trim().toLowerCase();
 
-  const filteredRooms = useMemo(() => {
+  const sortedRooms = useMemo(() => {
     if (!rooms) {
       return [];
     }
-    if (!normalizedQuery) {
-      return rooms;
+    return [...rooms].sort((a, b) => {
+      const aKey = a.lastMessage?.createdAt ?? a.createdAt;
+      const bKey = b.lastMessage?.createdAt ?? b.createdAt;
+      if (aKey === bKey) {
+        return 0;
+      }
+      return aKey > bKey ? -1 : 1;
+    });
+  }, [rooms]);
+
+  const filteredRooms = useMemo(() => {
+    if (!sortedRooms.length) {
+      return [];
     }
-    return rooms.filter((room) => {
+    if (!normalizedQuery) {
+      return sortedRooms;
+    }
+    return sortedRooms.filter((room) => {
       const haystack = [
         room.customerName ?? '',
         room.customerHandle ?? '',
@@ -159,7 +206,7 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
         .toLowerCase();
       return haystack.includes(normalizedQuery);
     });
-  }, [normalizedQuery, rooms]);
+  }, [normalizedQuery, sortedRooms]);
 
   const renderList = () => {
     if (roomsLoading) {
@@ -179,12 +226,13 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
     }
 
     return (
-      <ScrollArea className="flex-1 h-full">
+      <ScrollArea className="flex-1 h-full min-h-0">
         <div className="space-y-1 py-1">
           { filteredRooms.map((room) => {
             const lastMessageSnippet = room.lastMessage?.content ?? 'No messages yet.';
             const lastMessageTime = formatTimestamp(room.lastMessage?.createdAt);
             const isActive = room.id === activeRoom?.id;
+            const hasNewMessage = room.lastMessage?.senderRole === 'customer';
             const location =
               room.spaceCity || room.spaceRegion
                 ? [room.spaceCity, room.spaceRegion].filter(Boolean).join(', ')
@@ -230,7 +278,12 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
                   <p className="truncate text-xs text-muted-foreground">
                     { location ?? room.spaceName }
                   </p>
-                  <p className="truncate text-xs text-muted-foreground/90">
+                  <p
+                    className={ cn(
+                      'truncate text-xs text-muted-foreground',
+                      hasNewMessage && !isActive && 'font-semibold text-foreground'
+                    ) }
+                  >
                     { lastMessageSnippet }
                   </p>
                 </div>
@@ -272,8 +325,8 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
     }
 
     return (
-      <ScrollArea className="h-[65vh] min-h-[55vh] sm:flex-1 sm:h-full sm:min-h-0 overflow-y-auto">
-        <div className="space-y-3 px-5 py-4 text-sm text-muted-foreground/80">
+      <ScrollArea className="flex-1 h-full min-h-0 overflow-y-auto">
+        <div className="space-y-3 px-5 py-4 text-sm text-muted-foreground">
           { messages.map((message) => {
             const isPartnerMessage = message.senderRole === 'partner';
             const alignClass = isPartnerMessage ? 'items-end justify-end' : 'items-start justify-start';
@@ -288,13 +341,18 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
                   <div
                     className={ cn('inline-block rounded-2xl px-4 py-2 text-base shadow', bubbleClass) }
                   >
-                    <p className="whitespace-pre-line break-all font-semibold text-base text-foreground">
+                    <p
+                      className={ cn(
+                        'whitespace-pre-line break-all font-semibold text-base',
+                        isPartnerMessage && 'text-white'
+                      ) }
+                    >
                       { message.content }
                     </p>
                   </div>
                   <p
                     className={ cn(
-                      'text-xs text-muted-foreground/80 leading-tight',
+                      'text-xs text-muted-foreground leading-tight',
                       isPartnerMessage ? 'text-right' : 'text-left'
                     ) }
                   >
@@ -326,9 +384,19 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
 
   const showListPane = !isMobile || !showThread;
   const showThreadPane = !isMobile || showThread;
+  const headerName = activeRoom
+    ? (activeRoom.customerName ?? activeRoom.customerHandle ?? 'Customer')
+    : 'Conversation';
+  const headerAvatarInitials =
+    (activeRoom?.customerName ?? activeRoom?.customerHandle ?? 'Customer')
+      .split(' ')
+      .filter((part) => part.length > 0)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join('') || 'CU';
 
   return (
-    <section className="flex min-h-[100svh] flex-1 w-full gap-3 overflow-hidden p-0 md:h-auto md:min-h-0 md:max-h-screen md:overflow-hidden md:p-4">
+    <section className="flex h-full min-h-0 flex-1 w-full gap-3 overflow-hidden p-0 md:p-3">
       { /* Left sidebar: conversations */ }
       <aside
         className={ cn(
@@ -340,7 +408,7 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
         { showListPane && (
           <>
             <div className="space-y-1">
-              <span className="text-xl font-semibold tracking-tight text-foreground">
+              <span className="text-xl font-semibold tracking-tight text-foreground pb-1">
                 Chats
               </span>
               <Input
@@ -374,22 +442,33 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
                 type="button"
                 onClick={ handleBackToList }
                 className={ cn(
-                  'inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground md:hidden',
+                  'inline-flex items-center text-xs text-muted-foreground hover:text-foreground md:hidden',
                   showThreadPane ? 'flex' : 'hidden'
                 ) }
               >
                 <FiArrowLeft className="size-4" aria-hidden="true" />
-                Back
+                <span className="sr-only">Back</span>
               </button>
-              <div className="flex flex-col">
-                <span className="text-2xl font-semibold tracking-tight text-foreground">
-                  { activeRoom ? (activeRoom.customerName ?? activeRoom.customerHandle ?? 'Conversation') : 'Conversation' }
-                </span>
-                <span className="text-sm text-muted-foreground/90">
-                  { activeRoom
-                    ? `${activeRoom.spaceName}${activeRoom.spaceCity || activeRoom.spaceRegion ? ` · ${activeRoom.spaceCity ?? ''}${activeRoom.spaceCity && activeRoom.spaceRegion ? ', ' : ''}${activeRoom.spaceRegion ?? ''}` : ''}`
-                    : 'Select a chat from your inbox.' }
-                </span>
+              <div className="flex items-center gap-3">
+                <Avatar className="h-9 w-9 border border-border/60">
+                  { activeRoom?.customerAvatarUrl ? (
+                    <AvatarImage
+                      src={ activeRoom.customerAvatarUrl }
+                      alt={ headerName }
+                    />
+                  ) : null }
+                  <AvatarFallback>{ headerAvatarInitials }</AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col">
+                  <span className="text-2xl font-semibold tracking-tight text-foreground">
+                    { headerName }
+                  </span>
+                  { !activeRoom ? (
+                    <span className="text-sm text-muted-foreground/90">
+                      Select a chat from your inbox.
+                    </span>
+                  ) : null }
+                </div>
               </div>
             </div>
           </header>
@@ -404,13 +483,15 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
               >
                 <div className="flex max-w-full items-end gap-3">
                   <Textarea
+                    ref={ draftRef }
                     value={ draft }
                     onChange={ (event) => setDraft(event.target.value) }
                     placeholder="Reply to the customer…"
                     aria-label="Reply to conversation"
                     rows={ 1 }
-                    className="h-10 flex-1 min-w-0 resize-none text-sm leading-4"
+                    className="min-h-[40px] max-h-24 flex-1 min-w-0 resize-none overflow-y-auto text-sm leading-4"
                     disabled={ sendMessage.isPending }
+                    onKeyDown={ handleDraftKeyDown }
                   />
                   <Button
                     type="submit"
@@ -418,7 +499,7 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
                     className="inline-flex h-10 shrink-0 items-center gap-2 px-4"
                   >
                     <FiSend className="size-4" aria-hidden="true" />
-                    <span>{ sendMessage.isPending ? 'Sending…' : 'Send reply' }</span>
+                    <span>{ sendMessage.isPending ? 'Sending…' : 'Send' }</span>
                   </Button>
                 </div>
               </form>

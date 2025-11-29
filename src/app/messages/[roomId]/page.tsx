@@ -25,8 +25,15 @@ export default async function CustomerChatRoomPage({ params, }: Props) {
     <MarketplaceChrome
       initialSidebarOpen={ initialSidebarOpen }
       insetClassName="p-2"
+      insetStyle={ {
+        height: '100svh',
+        overflow: 'hidden',
+        marginTop: 0,
+        marginBottom: 0,
+        paddingBottom: 'calc(0.75rem + var(--safe-area-bottom))',
+      } }
     >
-      <div className="flex flex-1 min-h-[100svh] w-full flex-col overflow-hidden p-0 sm:p-2">
+      <div className="flex h-full w-full flex-col overflow-hidden p-0 sm:p-2">
         <CustomerChatRoomView roomId={ roomId } />
       </div>
     </MarketplaceChrome>

@@ -2,6 +2,7 @@
 
 import {
   FormEvent,
+  KeyboardEvent,
   useCallback,
   useEffect,
   useRef,
@@ -18,6 +19,7 @@ import { useSession } from '@/components/auth/SessionProvider';
 import { useCustomerChatRoom, useChatMessages, useSendChatMessage } from '@/hooks/api/useChat';
 import { useChatSubscription } from '@/hooks/use-chat-subscription';
 import { useUserProfile } from '@/hooks/use-user-profile';
+import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/types/chat';
 
 type SpaceChatBubbleProps = {
@@ -55,6 +57,8 @@ export function SpaceChatBubble({
  data: messageRows, isPending: messagesLoading, 
 } = useChatMessages(currentRoomId);
   const sendMessage = useSendChatMessage();
+  const draftRef = useRef<HTMLTextAreaElement | null>(null);
+  const maxDraftHeight = 96; // px, matches Tailwind max-h-24
 
   const normalizeMessage = useCallback(
     (message: ChatMessage) => {
@@ -105,6 +109,30 @@ senderName,
     scrollRef.current?.scrollIntoView({ behavior: 'smooth', });
   }, [messages.length]);
 
+  const resizeDraft = useCallback(() => {
+    const element = draftRef.current;
+    if (!element) {
+      return;
+    }
+    element.style.height = 'auto';
+    const nextHeight = Math.min(element.scrollHeight, maxDraftHeight);
+    element.style.height = `${nextHeight}px`;
+  }, [maxDraftHeight]);
+
+  useEffect(() => {
+    const element = draftRef.current;
+    if (!element) {
+      return;
+    }
+
+    if (!draft) {
+      element.style.height = '';
+      return;
+    }
+
+    resizeDraft();
+  }, [draft, resizeDraft]);
+
   const handleSend = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!isCustomer) {
@@ -126,6 +154,12 @@ senderName,
       setDraft('');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to send message.');
+    }
+  };
+
+  const handleDraftKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
     }
   };
 
@@ -159,7 +193,7 @@ senderName,
     }
 
     return (
-      <ScrollArea className="max-h-64">
+      <ScrollArea className="h-full">
         <div className="space-y-2 px-2 py-2">
           { messages.map((message) => {
             const isCustomerMessage = message.senderRole === 'customer';
@@ -177,7 +211,12 @@ senderName,
               <div key={ message.id } className={ `flex ${alignClass}` }>
                 <div className="max-w-full sm:max-w-[520px] space-y-1">
                   <div className={ `inline-block rounded-2xl px-4 py-2 text-sm shadow ${bubbleClass}` }>
-                    <p className="whitespace-pre-line break-all text-sm font-medium">
+                    <p
+                      className={ cn(
+                        'whitespace-pre-line break-all text-sm font-medium',
+                        isCustomerMessage && 'text-white'
+                      ) }
+                    >
                       { message.content }
                     </p>
                   </div>
@@ -233,8 +272,8 @@ senderName,
           <FiX className="size-4" aria-hidden="true" />
         </Button>
       </div>
-      <div className="flex max-h-80 flex-col">
-        <div className="flex-1 px-3 py-2">
+      <div className="flex h-96 min-h-0 flex-col overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col px-3 py-2">
           { session ? (
             isProfileLoading ? (
               <p className="text-sm text-muted-foreground">Loading your profile…</p>
@@ -251,18 +290,20 @@ senderName,
           <form className="border-t px-3 py-2" onSubmit={ handleSend } noValidate>
             <div className="flex max-w-full items-end gap-2">
               <Textarea
+                ref={ draftRef }
                 value={ draft }
                 onChange={ (event) => setDraft(event.target.value) }
                 placeholder="Type your message…"
                 aria-label="Message to host"
-                rows={ 2 }
+                rows={ 1 }
                 disabled={ sendMessage.isPending }
-                className="min-h-[40px] max-h-24 flex-1 min-w-0 resize-none text-sm"
+                className="min-h-[40px] max-h-24 flex-1 min-w-0 resize-none overflow-y-auto text-sm leading-4"
+                onKeyDown={ handleDraftKeyDown }
               />
               <Button
                 type="submit"
                 disabled={ sendMessage.isPending || !draft.trim() }
-                className="inline-flex shrink-0 items-center gap-2"
+                className="inline-flex h-10 shrink-0 items-center gap-2"
               >
                 <FiSend className="size-4" aria-hidden="true" />
                 <span className="text-sm">{ sendMessage.isPending ? 'Sending…' : 'Send' }</span>
