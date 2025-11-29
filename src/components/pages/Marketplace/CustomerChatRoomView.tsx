@@ -17,7 +17,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useCustomerChatRooms, useChatMessages, useSendChatMessage } from '@/hooks/api/useChat';
-import { useChatSubscription } from '@/hooks/use-chat-subscription';
+import { useChatRoomsSubscription, useChatSubscription } from '@/hooks/use-chat-subscription';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/types/chat';
@@ -68,8 +68,8 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
 
   useEffect(() => {
     if (messageRows) {
-      setMessages(messageRows.map(normalizeMessage));
-    }
+    setMessages(messageRows.map(normalizeMessage));
+  }
   }, [messageRows, normalizeMessage]);
 
   const appendMessage = useCallback(
@@ -85,6 +85,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
   );
 
   useChatSubscription(activeRoom?.id ?? null, appendMessage);
+  useChatRoomsSubscription(rooms?.map((room) => room.id) ?? []);
 
   useEffect(() => {
     scrollAnchorRef.current?.scrollIntoView({ behavior: 'smooth', });

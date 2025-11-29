@@ -23,7 +23,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { useChatMessages, usePartnerChatRooms, useSendChatMessage } from '@/hooks/api/useChat';
-import { useChatSubscription } from '@/hooks/use-chat-subscription';
+import { useChatRoomsSubscription, useChatSubscription } from '@/hooks/use-chat-subscription';
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/types/chat';
 
@@ -104,6 +104,7 @@ export function PartnerMessagesPanel() {
   );
 
   useChatSubscription(currentRoomId, appendMessage);
+  useChatRoomsSubscription(rooms?.map((room) => room.id) ?? []);
 
   const handleSend = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

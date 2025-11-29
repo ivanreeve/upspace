@@ -75,8 +75,7 @@ function useChatRooms() {
       const payload = await response.json();
       return (payload.rooms ?? []) as ChatRoomSummary[];
     },
-    refetchInterval: 5000,
-    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -108,8 +107,7 @@ export function useChatMessages(roomId: string | null) {
       const payload = await response.json();
       return (payload.messages ?? []) as ChatMessage[];
     },
-    refetchInterval: roomId ? 2000 : false,
-    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: false,
   });
 }
 

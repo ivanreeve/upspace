@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { usePartnerChatRooms, useChatMessages, useSendChatMessage } from '@/hooks/api/useChat';
-import { useChatSubscription } from '@/hooks/use-chat-subscription';
+import { useChatRoomsSubscription, useChatSubscription } from '@/hooks/use-chat-subscription';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -87,6 +87,7 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
   );
 
   useChatSubscription(activeRoom?.id ?? null, appendMessage);
+  useChatRoomsSubscription(rooms?.map((room) => room.id) ?? []);
 
   useEffect(() => {
     scrollAnchorRef.current?.scrollIntoView({ behavior: 'smooth', });
