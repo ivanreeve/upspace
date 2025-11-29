@@ -175,7 +175,7 @@ senderName,
 
             return (
               <div key={ message.id } className={ `flex ${alignClass}` }>
-                <div className="max-w-[85vw] sm:max-w-[520px] space-y-1">
+                <div className="max-w-full sm:max-w-[520px] space-y-1">
                   <div className={ `inline-block rounded-2xl px-4 py-2 text-sm shadow ${bubbleClass}` }>
                     <p className="whitespace-pre-line break-all text-sm font-medium">
                       { message.content }

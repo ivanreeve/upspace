@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { usePartnerChatRooms, useChatMessages, useSendChatMessage } from '@/hooks/api/useChat';
 import { useChatRoomsSubscription, useChatSubscription } from '@/hooks/use-chat-subscription';
@@ -48,6 +49,7 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
   const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
   const isMobile = useIsMobile();
   const [showThread, setShowThread] = useState(!isMobile);
+  const [stayOnList, setStayOnList] = useState(false);
 
   useEffect(() => {
     setMessages([]);
@@ -95,13 +97,16 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
 
   useEffect(() => {
     setShowThread(!isMobile);
+    if (!isMobile) {
+      setStayOnList(false);
+    }
   }, [isMobile]);
 
   useEffect(() => {
-    if (isMobile && activeRoom) {
+    if (isMobile && activeRoom && !stayOnList) {
       setShowThread(true);
     }
-  }, [activeRoom, isMobile]);
+  }, [activeRoom, isMobile, stayOnList]);
 
   const handleSend = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -205,9 +210,12 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
                 ) }
                 onClick={ handleConversationClick }
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/80 text-sm font-semibold text-primary-foreground">
-                  { initials }
-                </div>
+                <Avatar className="h-10 w-10 border border-border/60">
+                  { room.customerAvatarUrl ? (
+                    <AvatarImage src={ room.customerAvatarUrl } alt={ room.customerName ?? room.customerHandle ?? 'Customer avatar' } />
+                  ) : null }
+                  <AvatarFallback>{ initials }</AvatarFallback>
+                </Avatar>
                 <div className="flex min-w-0 flex-1 flex-col">
                   <div className="flex items-center justify-between gap-2">
                     <p className="truncate text-sm font-semibold text-foreground">
@@ -264,7 +272,7 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
     }
 
     return (
-      <ScrollArea className="flex-1 h-full overflow-y-auto">
+      <ScrollArea className="h-[65vh] min-h-[55vh] sm:flex-1 sm:h-full sm:min-h-0 overflow-y-auto">
         <div className="space-y-3 px-5 py-4 text-sm text-muted-foreground/80">
           { messages.map((message) => {
             const isPartnerMessage = message.senderRole === 'partner';
@@ -276,7 +284,7 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
 
             return (
               <div key={ message.id } className={ `flex ${alignClass}` }>
-                <div className="max-w-[85vw] sm:max-w-[520px] space-y-1">
+                <div className="max-w-full sm:max-w-[520px] space-y-1">
                   <div
                     className={ cn('inline-block rounded-2xl px-4 py-2 text-base shadow', bubbleClass) }
                   >
@@ -305,13 +313,14 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
   const handleBackToList = useCallback(() => {
     if (isMobile) {
       setShowThread(false);
-      router.push('/spaces/messages');
+      setStayOnList(true);
     }
   }, [isMobile, router]);
 
   const handleConversationClick = useCallback(() => {
     if (isMobile) {
       setShowThread(true);
+      setStayOnList(false);
     }
   }, [isMobile]);
 

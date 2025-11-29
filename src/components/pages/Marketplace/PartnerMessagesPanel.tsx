@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Card,
   CardContent,
@@ -158,7 +159,7 @@ export function PartnerMessagesPanel() {
     }
 
     return (
-      <ScrollArea className="flex-1 h-full min-h-0 rounded-2xl border border-border/60 bg-background/80">
+      <ScrollArea className="h-[60vh] min-h-[50vh] sm:flex-1 sm:h-full sm:min-h-0 rounded-2xl border border-border/60 bg-background/80">
         <div className="space-y-3 px-4 py-3">
           { messages.map((message) => {
             const isCustomerMessage = message.senderRole === 'customer';
@@ -170,7 +171,7 @@ export function PartnerMessagesPanel() {
 
             return (
               <div key={ message.id } className={ `flex ${alignClass}` }>
-                <div className="max-w-[85vw] sm:max-w-[520px] space-y-1 rounded-2xl px-4 py-3 text-sm shadow">
+                <div className="max-w-full sm:max-w-[520px] space-y-1 rounded-2xl px-4 py-3 text-sm shadow">
                   <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                     <span>{ message.senderName ?? (isCustomerMessage ? 'Customer' : 'You') }</span>
                     <span>{ timestamp }</span>
@@ -206,12 +207,19 @@ export function PartnerMessagesPanel() {
     }
 
     return (
-      <ScrollArea className="h-full min-h-0 rounded-2xl border border-border/60 bg-background/60">
+      <ScrollArea className="h-[40vh] min-h-[32vh] sm:h-full sm:min-h-0 rounded-2xl border border-border/60 bg-background/60">
         <div className="space-y-2 p-3">
           { rooms.map((room) => {
             const isActive = room.id === activeRoom?.id;
             const lastMessageSnippet = room.lastMessage?.content ?? 'No messages yet.';
             const lastMessageTime = formatTimestamp(room.lastMessage?.createdAt);
+            const initials =
+              (room.customerName ?? room.customerHandle ?? 'Customer')
+                .split(' ')
+                .filter((part) => part.length > 0)
+                .slice(0, 2)
+                .map((part) => part[0]?.toUpperCase())
+                .join('') || 'CU';
 
             return (
               <button
@@ -227,16 +235,24 @@ export function PartnerMessagesPanel() {
                 ) }
               >
                 <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">
-                      { room.customerName ?? room.customerHandle ?? 'Customer' }
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      { room.spaceName }
-                      { room.spaceCity || room.spaceRegion
-                        ? ` · ${room.spaceCity ?? ''}${room.spaceCity && room.spaceRegion ? ', ' : ''}${room.spaceRegion ?? ''}`
-                        : '' }
-                    </p>
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10 border border-border/60">
+                      { room.customerAvatarUrl ? (
+                        <AvatarImage src={ room.customerAvatarUrl } alt={ room.customerName ?? room.customerHandle ?? 'Customer avatar' } />
+                      ) : null }
+                      <AvatarFallback>{ initials }</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        { room.customerName ?? room.customerHandle ?? 'Customer' }
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        { room.spaceName }
+                        { room.spaceCity || room.spaceRegion
+                          ? ` · ${room.spaceCity ?? ''}${room.spaceCity && room.spaceRegion ? ', ' : ''}${room.spaceRegion ?? ''}`
+                          : '' }
+                      </p>
+                    </div>
                   </div>
                   { lastMessageTime ? (
                     <span className="text-[11px] text-muted-foreground">{ lastMessageTime }</span>
@@ -264,8 +280,8 @@ export function PartnerMessagesPanel() {
           Reply to customers for every listed space. Messages sync instantly via Supabase Realtime.
         </p>
       </header>
-      <div className="grid gap-6 lg:grid-cols-[320px,minmax(0,1fr)] min-h-[calc(100vh-7rem)] lg:max-h-[calc(100vh-7rem)] lg:overflow-hidden">
-        <Card className="flex h-full min-h-0 flex-col">
+      <div className="grid gap-6 lg:grid-cols-[320px,minmax(0,1fr)] grid-rows-[auto,1fr] h-auto lg:h-[calc(100vh-7rem)] lg:overflow-hidden">
+        <Card className="flex min-h-0 flex-col lg:h-full">
           <CardHeader>
             <CardTitle className="text-base">Conversations</CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
@@ -274,7 +290,7 @@ export function PartnerMessagesPanel() {
           </CardHeader>
           <CardContent className="flex-1 min-h-0 overflow-hidden">{ renderConversations() }</CardContent>
         </Card>
-        <Card className="flex h-full min-h-0 flex-col">
+        <Card className="flex min-h-0 flex-col lg:h-full">
           <CardHeader>
             <div className="flex items-center justify-between gap-3">
               <div>
