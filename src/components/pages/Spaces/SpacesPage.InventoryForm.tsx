@@ -195,7 +195,7 @@ export function SpacesInventoryForm() {
         <div className="space-y-2">
           <div className="space-y-1">
             <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Your spaces</h2>
-            <p className="text-sm text-muted-foreground md:text-base">
+            <p className="text-sm text-muted-foreground md:text-base font-sf text-sm">
               Review every listing in a single table. Use the plus button to open the dedicated space creation page.
             </p>
           </div>
