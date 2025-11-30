@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { FaMicrophone } from 'react-icons/fa';
+import { FaMicrophone, FaPlay, FaStop } from 'react-icons/fa';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -13,6 +13,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type VoiceSearchDialogProps = {
   open: boolean;
@@ -25,6 +26,7 @@ export function VoiceSearchDialog({
   onOpenChange,
   onSubmit,
 }: VoiceSearchDialogProps) {
+  const isMobile = useIsMobile();
   const {
     isSupported,
     status,
@@ -119,34 +121,54 @@ export function VoiceSearchDialog({
 
   return (
     <Dialog open={ open } onOpenChange={ onOpenChange }>
-      <DialogContent className="w-full max-w-lg space-y-5 px-10 py-10">
-        <DialogHeader className="px-0 text-center">
-          <DialogTitle>Voice search</DialogTitle>
-          <DialogDescription>Hold the mic, speak, and we’ll type it out.</DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col items-center gap-4 px-4">
-          <div
-            className="flex h-[108px] w-[108px] items-center justify-center rounded-full bg-secondary/20 transition-all duration-300 mt-6 mb-6"
-            style={ circleStyle }
-          >
-            <div className="flex h-[90px] w-[90px] items-center justify-center rounded-full bg-secondary">
-              <FaMicrophone className="size-5 text-background" aria-hidden="true" />
+      <DialogContent
+        className="px-6 py-8 sm:px-10 sm:py-10"
+        position="top"
+        mobileFullScreen={ isMobile }
+        fullWidth
+      >
+        <div className="flex h-full flex-col gap-6">
+          <DialogHeader className="px-0 text-center">
+            <DialogTitle>Voice search</DialogTitle>
+            <DialogDescription>Hold the mic, speak, and we’ll type it out.</DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4">
+            <div
+              className="flex h-[108px] w-[108px] items-center justify-center rounded-full bg-secondary/20 transition-all duration-300 mt-6 mb-6"
+              style={ circleStyle }
+            >
+              <div className="flex h-[90px] w-[90px] items-center justify-center rounded-full bg-secondary">
+                <FaMicrophone className="size-5 text-background" aria-hidden="true" />
+              </div>
+            </div>
+            <div className="min-h-[3rem] text-center text-sm text-muted-foreground">
+              { transcript ? (
+                <p className="whitespace-pre-wrap text-foreground">{ transcript }</p>
+              ) : (
+                <p>Speak now and your words will appear here…</p>
+              ) }
             </div>
           </div>
-          <div className="min-h-[3rem] text-center text-sm text-muted-foreground">
-            { transcript ? (
-              <p className="whitespace-pre-wrap text-foreground">{ transcript }</p>
-            ) : (
-              <p>Speak now and your words will appear here…</p>
-            ) }
-          </div>
+
           <div className="flex w-full items-center justify-center gap-2">
             <Button
               variant={ isListening ? 'destructive' : 'secondary' }
               onClick={ handleToggleListening }
               disabled={ status === 'unsupported' }
+              className="w-full sm:w-auto"
             >
-              { isListening ? 'Stop listening' : 'Restart listening' }
+              { isListening ? (
+                <>
+                  <FaStop className="mr-2 size-4" aria-hidden="true" />
+                  Stop listening
+                </>
+              ) : (
+                <>
+                  <FaPlay className="mr-2 size-4" aria-hidden="true" />
+                  Listen
+                </>
+              ) }
             </Button>
           </div>
         </div>
