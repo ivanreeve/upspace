@@ -1605,292 +1605,300 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-4">
-        <FormField
-          control={ form.control }
-          name="country_code"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel className="flex items-center gap-2">
-                <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
-                <span>Country</span>
-              </FormLabel>
-              <FormControl>
-                <Select
-                  value={ field.value ?? '' }
-                  onValueChange={ (value) => {
-                    const normalized = (value ?? '').toUpperCase();
-                    field.onChange(normalized);
-                    form.setValue('region', '', FORM_SET_OPTIONS);
-                    form.setValue('city', '', FORM_SET_OPTIONS);
-                    form.setValue('barangay', '', FORM_SET_OPTIONS);
-                    form.setValue('postal_code', '', FORM_SET_OPTIONS);
-                  } }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Philippines" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    { SUPPORTED_COUNTRIES.map((country) => (
-                      <SelectItem key={ country.code } value={ country.code }>
-                        { country.name }
-                      </SelectItem>
-                    )) }
-                  </SelectContent>
-                </Select>
-              </FormControl>
-            </FormItem>
-          ) }
-        />
-        <FormField
-          control={ form.control }
-          name="region"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel>Region / State</FormLabel>
-              <FormControl>
-                <Select
-                  value={ field.value ?? '' }
-                  onValueChange={ (value) => {
-                    field.onChange(value);
-                    form.setValue('city', '', FORM_SET_OPTIONS);
-                    form.setValue('barangay', '', FORM_SET_OPTIONS);
-                    form.setValue('postal_code', '', FORM_SET_OPTIONS);
-                  } }
-                  disabled={ regionDisabled }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder={ isRegionsLoading ? 'Loading regions...' : 'Select region / state' } />
-                  </SelectTrigger>
-                  <SelectContent>
-                    { isRegionsError && (
-                      <SelectItem value="regions-error" disabled>
-                        Unable to load regions
-                      </SelectItem>
-                    ) }
-                    { regionOptions.map((region) => (
-                      <SelectItem key={ region.code } value={ region.name }>
-                        { region.name }
-                      </SelectItem>
-                    )) }
-                  </SelectContent>
-                </Select>
-              </FormControl>
-            </FormItem>
-          ) }
-        />
-        <FormField
-          control={ form.control }
-          name="city"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel className="data-[error=true]:text-foreground">City</FormLabel>
-              <FormControl>
-                <Select
-                  value={ field.value ?? '' }
-                  onValueChange={ (value) => {
-                    field.onChange(value);
-                    form.setValue('barangay', '', FORM_SET_OPTIONS);
-                    form.setValue('postal_code', '', FORM_SET_OPTIONS);
-                  } }
-                  disabled={ cityDisabled }
-                >
-                  <SelectTrigger className="w-full aria-invalid:border-input aria-invalid:ring-transparent aria-invalid:ring-0">
-                    <SelectValue placeholder={ isCitiesLoading ? 'Loading cities...' : 'Select city' } />
-                  </SelectTrigger>
-                  <SelectContent>
-                    { isCitiesError && (
-                      <SelectItem value="cities-error" disabled>
-                        Unable to load cities
-                      </SelectItem>
-                    ) }
-                    { dedupedCityOptions.map((city) => (
-                      <SelectItem key={ `${city.code}-${city.name}` } value={ city.name }>
-                        { city.name }
-                      </SelectItem>
-                    )) }
-                  </SelectContent>
-                </Select>
-              </FormControl>
-            </FormItem>
-          ) }
-        />
-        <FormField
-          control={ form.control }
-          name="barangay"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel>Barangay</FormLabel>
-              <FormControl>
-                <Select
-                  value={ field.value ?? '' }
-                  onValueChange={ (value) => field.onChange(value) }
-                  disabled={ barangayDisabled }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue
-                      placeholder={
-                        !selectedCity
-                          ? 'Select a city first'
-                          : isBarangaysLoading
-                            ? 'Loading barangays...'
-                            : dedupedBarangayOptions.length === 0
-                              ? 'No barangays available'
-                              : 'Select barangay'
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    { isBarangaysError && (
-                      <SelectItem value="barangays-error" disabled>
-                        Unable to load barangays
-                      </SelectItem>
-                    ) }
-                    { dedupedBarangayOptions.map((barangay) => (
-                      <SelectItem key={ `${barangay.code}-${barangay.name}` } value={ barangay.name }>
-                        { barangay.name }
-                      </SelectItem>
-                    )) }
-                  </SelectContent>
-                </Select>
-              </FormControl>
-            </FormItem>
-          ) }
-        />
-      </div>
-      <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
-        <FormField
-          control={ form.control }
-          name="street"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel>Street</FormLabel>
-              <FormControl>
-                <Input placeholder="Rizal Ave" { ...field } />
-              </FormControl>
-            </FormItem>
-          ) }
-        />
-        <FormField
-          control={ form.control }
-          name="address_subunit"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel>Address subunit <span className="italic text-muted-foreground">(Optional)</span></FormLabel>
-              <FormControl>
-                <Input placeholder="2F" { ...field } />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          ) }
-        />
-        <FormField
-          control={ form.control }
-          name="unit_number"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel>Unit / Suite <span className="italic text-muted-foreground">(Optional)</span></FormLabel>
-              <FormControl>
-                <Input placeholder="Unit Number" { ...field } />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          ) }
-        />
-        <FormField
-          control={ form.control }
-          name="postal_code"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel className="data-[error=true]:text-foreground">Postal code</FormLabel>
-              <FormControl>
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="\d{4}"
-                  maxLength={ 4 }
-                  placeholder="1000"
-                  { ...field }
-                  readOnly
-                  disabled
-                  className="aria-invalid:border-input aria-invalid:ring-transparent aria-invalid:ring-0"
-                  aria-live="polite"
-                />
-              </FormControl>
-            </FormItem>
-          ) }
-        />
-      </div>
-      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
-        <FormField
-          control={ form.control }
-          name="lat"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel>
-                <div className="flex items-center gap-2">
+      <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField
+            control={ form.control }
+            name="country_code"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel className="flex items-center gap-2">
                   <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
-                  <span>Latitude</span>
-                </div>
-              </FormLabel>
-              <FormControl>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Input
-                      type="number"
-                      step="0.000001"
-                      placeholder="37.791212"
-                      { ...field }
-                      readOnly
-                      value={ field.value ?? '' }
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Latitude and longitude are determined by the address or by pinning the map.
-                  </TooltipContent>
-                </Tooltip>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          ) }
-        />
-        <FormField
-          control={ form.control }
-          name="long"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel>
-                <div className="flex items-center gap-2">
-                  <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
-                  <span>Longitude</span>
-                </div>
-              </FormLabel>
-              <FormControl>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Input
-                      type="number"
-                      step="0.000001"
-                      placeholder="-122.392756"
-                      { ...field }
-                      readOnly
-                      value={ field.value ?? '' }
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Latitude and longitude are determined by the address or by pinning the map.
-                  </TooltipContent>
-                </Tooltip>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          ) }
-        />
-        <div className="flex flex-col items-end gap-2 md:col-span-1">
-          <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={ () => setPinDialogOpen(true) }>
-            <FiMapPin className="mr-2 size-4" aria-hidden="true" />
-            Pin exact location
-          </Button>
+                  <span>Country</span>
+                </FormLabel>
+                <FormControl>
+                  <Select
+                    value={ field.value ?? '' }
+                    onValueChange={ (value) => {
+                      const normalized = (value ?? '').toUpperCase();
+                      field.onChange(normalized);
+                      form.setValue('region', '', FORM_SET_OPTIONS);
+                      form.setValue('city', '', FORM_SET_OPTIONS);
+                      form.setValue('barangay', '', FORM_SET_OPTIONS);
+                      form.setValue('postal_code', '', FORM_SET_OPTIONS);
+                    } }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Philippines" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      { SUPPORTED_COUNTRIES.map((country) => (
+                        <SelectItem key={ country.code } value={ country.code }>
+                          { country.name }
+                        </SelectItem>
+                      )) }
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+              </FormItem>
+            ) }
+          />
+          <FormField
+            control={ form.control }
+            name="region"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel>Region / State</FormLabel>
+                <FormControl>
+                  <Select
+                    value={ field.value ?? '' }
+                    onValueChange={ (value) => {
+                      field.onChange(value);
+                      form.setValue('city', '', FORM_SET_OPTIONS);
+                      form.setValue('barangay', '', FORM_SET_OPTIONS);
+                      form.setValue('postal_code', '', FORM_SET_OPTIONS);
+                    } }
+                    disabled={ regionDisabled }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={ isRegionsLoading ? 'Loading regions...' : 'Select region / state' } />
+                    </SelectTrigger>
+                    <SelectContent>
+                      { isRegionsError && (
+                        <SelectItem value="regions-error" disabled>
+                          Unable to load regions
+                        </SelectItem>
+                      ) }
+                      { regionOptions.map((region) => (
+                        <SelectItem key={ region.code } value={ region.name }>
+                          { region.name }
+                        </SelectItem>
+                      )) }
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+              </FormItem>
+            ) }
+          />
+        </div>
+        <div className="grid gap-4">
+          <FormField
+            control={ form.control }
+            name="city"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel className="data-[error=true]:text-foreground">City</FormLabel>
+                <FormControl>
+                  <Select
+                    value={ field.value ?? '' }
+                    onValueChange={ (value) => {
+                      field.onChange(value);
+                      form.setValue('barangay', '', FORM_SET_OPTIONS);
+                      form.setValue('postal_code', '', FORM_SET_OPTIONS);
+                    } }
+                    disabled={ cityDisabled }
+                  >
+                    <SelectTrigger className="w-full aria-invalid:border-input aria-invalid:ring-transparent aria-invalid:ring-0">
+                      <SelectValue placeholder={ isCitiesLoading ? 'Loading cities...' : 'Select city' } />
+                    </SelectTrigger>
+                    <SelectContent>
+                      { isCitiesError && (
+                        <SelectItem value="cities-error" disabled>
+                          Unable to load cities
+                        </SelectItem>
+                      ) }
+                      { dedupedCityOptions.map((city) => (
+                        <SelectItem key={ `${city.code}-${city.name}` } value={ city.name }>
+                          { city.name }
+                        </SelectItem>
+                      )) }
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+              </FormItem>
+            ) }
+          />
+        </div>
+        <div className="grid gap-4">
+          <FormField
+            control={ form.control }
+            name="barangay"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel>Barangay</FormLabel>
+                <FormControl>
+                  <Select
+                    value={ field.value ?? '' }
+                    onValueChange={ (value) => field.onChange(value) }
+                    disabled={ barangayDisabled }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue
+                        placeholder={
+                          !selectedCity
+                            ? 'Select a city first'
+                            : isBarangaysLoading
+                              ? 'Loading barangays...'
+                              : dedupedBarangayOptions.length === 0
+                                ? 'No barangays available'
+                                : 'Select barangay'
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      { isBarangaysError && (
+                        <SelectItem value="barangays-error" disabled>
+                          Unable to load barangays
+                        </SelectItem>
+                      ) }
+                      { dedupedBarangayOptions.map((barangay) => (
+                        <SelectItem key={ `${barangay.code}-${barangay.name}` } value={ barangay.name }>
+                          { barangay.name }
+                        </SelectItem>
+                      )) }
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+              </FormItem>
+            ) }
+          />
+        </div>
+        <div className="grid gap-4 md:grid-cols-[minmax(0,4fr)_minmax(0,1fr)]">
+          <FormField
+            control={ form.control }
+            name="street"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel>Street</FormLabel>
+                <FormControl>
+                  <Input placeholder="Rizal Ave" { ...field } />
+                </FormControl>
+              </FormItem>
+            ) }
+          />
+          <FormField
+            control={ form.control }
+            name="postal_code"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel className="data-[error=true]:text-foreground">Postal code</FormLabel>
+                <FormControl>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="\d{4}"
+                    maxLength={ 4 }
+                    placeholder="1000"
+                    { ...field }
+                    readOnly
+                    disabled
+                    className="aria-invalid:border-input aria-invalid:ring-transparent aria-invalid:ring-0"
+                    aria-live="polite"
+                  />
+                </FormControl>
+              </FormItem>
+            ) }
+          />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField
+            control={ form.control }
+            name="address_subunit"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel>Address subunit <span className="italic text-muted-foreground">(Optional)</span></FormLabel>
+                <FormControl>
+                  <Input placeholder="2F" { ...field } />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            ) }
+          />
+          <FormField
+            control={ form.control }
+            name="unit_number"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel>Unit / Suite <span className="italic text-muted-foreground">(Optional)</span></FormLabel>
+                <FormControl>
+                  <Input placeholder="Unit Number" { ...field } />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            ) }
+          />
+        </div>
+        <div className="grid gap-4 grid-cols-[repeat(2,minmax(0,1fr))_auto] items-end">
+          <FormField
+            control={ form.control }
+            name="lat"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel>
+                  <div className="flex items-center gap-2">
+                    <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
+                    <span>Latitude</span>
+                  </div>
+                </FormLabel>
+                <FormControl>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Input
+                        type="number"
+                        step="0.000001"
+                        placeholder="37.791212"
+                        { ...field }
+                        readOnly
+                        value={ field.value ?? '' }
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Latitude and longitude are determined by the address or by pinning the map.
+                    </TooltipContent>
+                  </Tooltip>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            ) }
+          />
+          <FormField
+            control={ form.control }
+            name="long"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel>
+                  <div className="flex items-center gap-2">
+                    <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
+                    <span>Longitude</span>
+                  </div>
+                </FormLabel>
+                <FormControl>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Input
+                        type="number"
+                        step="0.000001"
+                        placeholder="-122.392756"
+                        { ...field }
+                        readOnly
+                        value={ field.value ?? '' }
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Latitude and longitude are determined by the address or by pinning the map.
+                    </TooltipContent>
+                  </Tooltip>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            ) }
+          />
+          <div className="flex flex-col items-end gap-2 md:col-span-1">
+            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={ () => setPinDialogOpen(true) }>
+              <FiMapPin className="mr-2 size-4" aria-hidden="true" />
+              Pin exact location
+            </Button>
+          </div>
         </div>
       </div>
       <PinLocationDialog
