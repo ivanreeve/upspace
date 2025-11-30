@@ -356,7 +356,7 @@ export default function SpacePhotos({
       <Card className="border-0 bg-background/80">
         <CardHeader className="flex flex-col gap-4 px-0 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
-            <CardTitle className="text-2xl">Uploaded photos</CardTitle>
+            <CardTitle className="text-2xl text-black dark:text-foreground">Uploaded photos</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="px-0">
