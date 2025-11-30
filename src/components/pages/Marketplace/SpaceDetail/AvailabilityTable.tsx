@@ -15,7 +15,7 @@ const dayIndex = mondayFirstDays.reduce<Record<string, number>>((acc, day, idx) 
   return acc;
 }, {});
 
-export default function AvailabilityTable({ items }: { items: SpaceAvailabilityDisplay[] }) {
+export default function AvailabilityTable({ items, }: { items: SpaceAvailabilityDisplay[] }) {
   const rows = [...items].sort(
     (a, b) =>
       (dayIndex[a.dayLabel] ?? Number.POSITIVE_INFINITY) -
@@ -43,20 +43,20 @@ export default function AvailabilityTable({ items }: { items: SpaceAvailabilityD
             </tr>
           </thead>
           <tbody>
-            {rows.map((slot, idx) => (
+            { rows.map((slot, idx) => (
               <tr
-                key={slot.id}
-                className={`border-t border-gray-200 dark:border-border ${
+                key={ slot.id }
+                className={ `border-t border-gray-200 dark:border-border ${
                   idx % 2 === 0 
                     ? 'bg-[#F7F1DE] dark:bg-card'
                     : 'bg-[#fdffef] dark:bg-muted/30'
-                }`}
+                }` }
               >
-                <td className="px-4 py-3 font-medium text-gray-900 dark:text-foreground">{slot.dayLabel}</td>
-                <td className="px-4 py-3 text-gray-700 dark:text-muted-foreground">{slot.opensAt}</td>
-                <td className="px-4 py-3 text-gray-700 dark:text-muted-foreground">{slot.closesAt}</td>
+                <td className="px-4 py-3 font-medium text-gray-900 dark:text-foreground">{ slot.dayLabel }</td>
+                <td className="px-4 py-3 text-gray-700 dark:text-muted-foreground">{ slot.opensAt }</td>
+                <td className="px-4 py-3 text-gray-700 dark:text-muted-foreground">{ slot.closesAt }</td>
               </tr>
-            ))}
+            )) }
           </tbody>
         </table>
       </div>

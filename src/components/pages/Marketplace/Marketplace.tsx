@@ -502,16 +502,16 @@ function MarketplaceSearchDialog({
           <CommandGroup heading="Actions">
             <CommandItem
               value="apply filters"
-              onSelect={() => setIsFilterDialogOpen(true)}
+              onSelect={ () => setIsFilterDialogOpen(true) }
               className="hover:text-white data-[selected=true]:text-white"
             >
               <CgOptions className="size-4" aria-hidden="true" />
               <span>Apply filters</span>
-              {hasAnyFilters && (
+              { hasAnyFilters && (
                 <Badge variant="secondary" className="ml-auto">
                   Active
                 </Badge>
-              )}
+              ) }
             </CommandItem>
             <CommandItem
               value={ trimmedValue ? `search ${trimmedValue}` : 'search marketplace' }
@@ -1180,21 +1180,21 @@ function FilterBadge({
   return (
     <button
       type="button"
-      onClick={(event) => {
+      onClick={ (event) => {
         event.preventDefault();
         event.stopPropagation();
         onClear();
-      }}
-      className={cn(
+      } }
+      className={ cn(
         'flex max-w-full items-center gap-2 rounded-full px-3 py-1 text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
         variant === 'destructive'
           ? 'border border-destructive/50 bg-destructive/10 text-gray-500 hover:bg-destructive/20'
           : 'bg-secondary text-white hover:bg-secondary/80',
         className
-      )}
-      aria-label={`Clear ${label}`}
+      ) }
+      aria-label={ `Clear ${label}` }
     >
-      <span className="truncate">{label}</span>
+      <span className="truncate">{ label }</span>
       <FiX className="size-3" aria-hidden="true" />
     </button>
   );

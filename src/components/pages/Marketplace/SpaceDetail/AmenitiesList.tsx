@@ -94,15 +94,15 @@ export default function AmenitiesList({
         ) : null }
 
         <ul className="grid gap-3.5 text-sm">
-          {visibleAmenities.map((amenity) => {
+          { visibleAmenities.map((amenity) => {
             const Icon = amenity.Icon;
             return (
-              <li key={amenity.id} className="flex items-center gap-3.5">
+              <li key={ amenity.id } className="flex items-center gap-3.5">
                 <Icon className="size-4 text-foreground" aria-hidden="true" />
-                <span className="text-foreground">{amenity.name}</span>
+                <span className="text-foreground">{ amenity.name }</span>
               </li>
             );
-          })}
+          }) }
         </ul>
 
         <Dialog>

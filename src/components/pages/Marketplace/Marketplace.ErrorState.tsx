@@ -1,8 +1,9 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
-import { useEffect, useState } from 'react';
 
 type MarketplaceErrorStateProps = {
   onRetry?: () => void;
@@ -43,11 +44,11 @@ export function MarketplaceErrorState({
   return (
     <Card className={ cn('w-full max-w-3xl border-none bg-transparent mx-auto flex items-center justify-center', className) }>
       <CardContent className="flex flex-col items-center justify-center gap-6 px-6 py-10 text-center">
-        {isDark ? (
+        { isDark ? (
           <SystemErrorIllustration className={ cn('h-auto w-full max-w-[420px]', illustrationClassName) } />
         ) : (
           <SystemErrorIllustrationLight className={ cn('h-auto w-full max-w-[420px]', illustrationClassName) } />
-        )}
+        ) }
         <div className="space-y-2">
           <h2 className="text-2xl font-semibold text-muted-foreground">System error</h2>
           <p className="text-sm text-muted-foreground">
