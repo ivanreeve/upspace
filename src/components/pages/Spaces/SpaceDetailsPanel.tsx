@@ -49,6 +49,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle
 } from '@/components/ui/card';
@@ -630,13 +631,13 @@ export function SpaceDetailsPanel({
                   <CardTitle className="text-xl md:text-2xl">Description</CardTitle>
                 </div>
                 { !isEditingDescription ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={ handleStartDescriptionEdit }
-                    className="inline-flex w-full items-center gap-2 sm:w-auto md:size-auto py-2"
-                  >
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={ handleStartDescriptionEdit }
+                  className="inline-flex w-full items-center gap-2 sm:w-auto md:size-auto py-2"
+                >
                     <FiEdit className="size-4" aria-hidden="true" />
                     <span className="md:inline">Edit description</span>
                   </Button>
@@ -715,11 +716,10 @@ export function SpaceDetailsPanel({
             <CardHeader className="flex flex-col gap-3 md:gap-4">
               <div className="space-y-1">
                 <CardTitle className="text-xl md:text-2xl">Areas</CardTitle>
+                <CardDescription className="text-sm text-muted-foreground">
+                  Add a new area to capture pricing, capacity, and amenities for this listing.
+                </CardDescription>
               </div>
-              <Button type="button" onClick={ handleAddArea } className="inline-flex w-full items-center gap-2 sm:w-auto">
-                <FiPlus className="size-4" aria-hidden="true" />
-                Add area
-              </Button>
             </CardHeader>
             <CardContent className="space-y-3 md:space-y-4">
               { space.areas.length === 0 ? (
@@ -777,10 +777,23 @@ export function SpaceDetailsPanel({
                         </dd>
                       </div>
                     </dl>
-                  </div>
-                ))
-              ) }
-            </CardContent>
+                </div>
+              ))
+            ) }
+          </CardContent>
+          <CardFooter className="flex flex-col gap-2">
+            <div className="w-full">
+              <Button
+                type="button"
+                variant="outline"
+                className="inline-flex w-full items-center justify-center gap-2"
+                onClick={ handleAddArea }
+              >
+                <FiPlus className="size-4" aria-hidden="true" />
+                Add area
+              </Button>
+            </div>
+          </CardFooter>
           </Card>
         </div>
       </div>
