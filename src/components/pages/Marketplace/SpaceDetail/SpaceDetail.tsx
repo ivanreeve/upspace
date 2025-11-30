@@ -196,7 +196,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                           onClick={ () => setIsDescriptionExpanded(true) }
                           aria-expanded={ false }
                           aria-controls={ descriptionViewportId }
-                          className="flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+                          className="flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent hover:text-white hover:[&_svg]:text-white"
                         >
                           Show more
                           <FiChevronDown className="size-4" aria-hidden="true" />
@@ -212,7 +212,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                       onClick={ () => setIsDescriptionExpanded(false) }
                       aria-expanded={ true }
                       aria-controls={ descriptionViewportId }
-                      className="flex items-center gap-2 rounded-lg border border-border bg-background px-6 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+                      className="flex items-center gap-2 rounded-lg border border-border bg-background px-6 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent hover:text-white hover:[&_svg]:text-white"
                     >
                       Show less
                       <FiChevronUp className="size-4" aria-hidden="true" />
@@ -247,26 +247,30 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
 
         <AvailabilityTable items={ space.availability } />
 
-        <section className="border-b pb-6">
+        <section className="className= border-b pb-6">
           <div className="grid gap-4 lg:grid-cols-2">
-            <details className="group space-y-2 rounded-lg border p-4">
-              <summary className="cursor-pointer text-base font-medium text-foreground">
-                Space Rules
-              </summary>
-              <p className="text-sm text-muted-foreground">
-                Keep shared areas tidy, respect quiet hours after 9 PM, and coordinate meeting room
-                use with the host. Smoking is not permitted inside the premises.
-              </p>
-            </details>
-            <details className="group space-y-2 rounded-lg border p-4">
-              <summary className="cursor-pointer text-base font-medium text-foreground">
-                Cancellation Policy
-              </summary>
-              <p className="text-sm text-muted-foreground">
-                Free cancellation up to 7 days before your reservation. Cancellations within 7 days
-                are eligible for a 50 percent refund.
-              </p>
-            </details>
+            <div>
+              <details className="group space-y-2 rounded-lg border border-[#D8D2C2] dark:border-border p-4">
+                <summary className="cursor-pointer text-base font-medium text-foreground">
+                  Space Rules
+                </summary>
+                <p className="text-sm text-muted-foreground">
+                  Keep shared areas tidy, respect quiet hours after 9 PM, and coordinate meeting room
+                  use with the host. Smoking is not permitted inside the premises.
+                </p>
+              </details>
+            </div>
+            <div>
+              <details className="group space-y-2 rounded-lg border border-[#D8D2C2] dark:border-border p-4">
+                <summary className="cursor-pointer text-base font-medium text-foreground">
+                  Cancellation Policy
+                </summary>
+                <p className="text-sm text-muted-foreground">
+                  Free cancellation up to 7 days before your reservation. Cancellations within 7 days
+                  are eligible for a 50 percent refund.
+                </p>
+              </details>
+            </div>
           </div>
         </section>
 
