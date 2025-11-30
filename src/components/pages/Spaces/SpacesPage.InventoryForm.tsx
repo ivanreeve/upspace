@@ -279,7 +279,7 @@ export function SpacesInventoryForm() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">{ row.location }</TableCell>
                   <TableCell>
-                    <Badge variant={ row.status === 'Live' ? 'secondary' : 'outline' }>{ row.status }</Badge>
+                    <Badge variant={ row.status === 'Live' ? 'success' : 'outline' }>{ row.status }</Badge>
                   </TableCell>
                   <TableCell>{ row.areas }</TableCell>
                   <TableCell className="text-right">
@@ -321,7 +321,7 @@ export function SpacesInventoryForm() {
                         { row.location }
                       </CardDescription>
                     </div>
-                    <Badge variant={ row.status === 'Live' ? 'secondary' : 'outline' } className="shrink-0">
+                    <Badge variant={ row.status === 'Live' ? 'success' : 'outline' } className="shrink-0">
                       { row.status }
                     </Badge>
                   </div>
