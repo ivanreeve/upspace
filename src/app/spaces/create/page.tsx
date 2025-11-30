@@ -1041,16 +1041,13 @@ export default function SpaceCreateRoute() {
   return (
     <>
       <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-wide text-muted-foreground">Space setup</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-2">
+            <SpacesBreadcrumbs currentPage="Add space" className="justify-start" />
             <h1 className="text-3xl font-semibold tracking-tight">Add a coworking space</h1>
             <p className="text-base text-muted-foreground">
               Provide the source-of-truth location details so your listing stays accurate across UpSpace.
             </p>
-          </div>
-          <div className="w-full sm:w-auto sm:justify-end sm:flex">
-            <SpacesBreadcrumbs currentPage="Add space" className="justify-start sm:justify-end" />
           </div>
         </div>
 
