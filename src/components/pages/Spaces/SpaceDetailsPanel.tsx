@@ -679,7 +679,10 @@ export function SpaceDetailsPanel({
                   </form>
                 ) : space.description ? (
                   <div
-                    className={ SPACE_DESCRIPTION_VIEWER_CLASSNAME }
+                    className={ cn(
+                      SPACE_DESCRIPTION_VIEWER_CLASSNAME,
+                      '[&_p]:my-3 [&_p:first-of-type]:mt-0 [&_p:last-of-type]:mb-0'
+                    ) }
                     dangerouslySetInnerHTML={ { __html: sanitizeRichText(space.description), } }
                   />
                 ) : (
