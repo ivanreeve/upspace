@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { FiPlus } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiPlus } from 'react-icons/fi';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +22,14 @@ import {
   TableRow
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 import { usePartnerSpacesQuery } from '@/hooks/api/usePartnerSpaces';
 
 const inventoryDateFormatter = new Intl.DateTimeFormat('en-US', {
@@ -31,7 +39,11 @@ const inventoryDateFormatter = new Intl.DateTimeFormat('en-US', {
   timeZone: 'UTC',
 });
 
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50] as const;
+
 export function SpacesInventoryForm() {
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [pageIndex, setPageIndex] = useState(0);
   const {
     data: spaces,
     isLoading,
@@ -65,6 +77,40 @@ export function SpacesInventoryForm() {
       fallbackInitials,
     };
   }), [spaces, resolveImageSrc]);
+
+  useEffect(() => {
+    setPageIndex((prev) => {
+      const lastPageIndex = Math.max(Math.ceil(tableRows.length / pageSize) - 1, 0);
+      return Math.min(prev, lastPageIndex);
+    });
+  }, [tableRows.length, pageSize]);
+
+  const totalPages = Math.max(Math.ceil(tableRows.length / pageSize), 1);
+  const paginatedRows = useMemo(() => {
+    const start = pageIndex * pageSize;
+    return tableRows.slice(start, start + pageSize);
+  }, [tableRows, pageIndex, pageSize]);
+  const pageRowCount = paginatedRows.length;
+
+  const handlePrevPage = useCallback(() => {
+    setPageIndex((prev) => Math.max(prev - 1, 0));
+  }, []);
+
+  const handleNextPage = useCallback(() => {
+    setPageIndex((prev) => {
+      const lastPageIndex = Math.max(totalPages - 1, 0);
+      return Math.min(prev + 1, lastPageIndex);
+    });
+  }, [totalPages]);
+
+  const handlePageSizeChange = useCallback((value: string) => {
+    const parsed = Number(value);
+    if (Number.isNaN(parsed) || parsed === pageSize) {
+      return;
+    }
+    setPageSize(parsed);
+    setPageIndex(0);
+  }, [pageSize]);
 
   const renderContent = () => {
     if (isLoading) {
@@ -129,7 +175,62 @@ export function SpacesInventoryForm() {
     }
 
     return (
-      <>
+      <div className="space-y-4">
+        <div className="flex flex-col gap-2 rounded-md border border-border/70 bg-background/80 px-4 py-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-wrap items-center gap-2 font-medium text-foreground">
+            <span>Page { pageIndex + 1 } of { totalPages }</span>
+            <span className="hidden md:inline text-muted-foreground">•</span>
+            <span className="text-muted-foreground">
+              Showing { pageRowCount } of { tableRows.length } (max { pageSize } per page)
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={ handlePrevPage }
+                disabled={ pageIndex === 0 }
+              >
+                <FiChevronLeft className="size-4" aria-hidden="true" />
+                Previous
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={ handleNextPage }
+                disabled={ pageIndex >= totalPages - 1 || pageRowCount === 0 }
+              >
+                Next
+                <FiChevronRight className="size-4" aria-hidden="true" />
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label
+                htmlFor="spaces-per-page"
+                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              >
+                Per page
+              </Label>
+              <Select value={ String(pageSize) } onValueChange={ handlePageSizeChange }>
+                <SelectTrigger
+                  id="spaces-per-page"
+                  className="w-24"
+                  aria-label="Spaces per page"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  { PAGE_SIZE_OPTIONS.map((option) => (
+                    <SelectItem key={ option } value={ String(option) }>
+                      { option }
+                    </SelectItem>
+                  )) }
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
         { /* Desktop Table View */ }
         <div className="hidden rounded-md border border-border/70 bg-background/80 md:block">
           <Table>
@@ -144,7 +245,7 @@ export function SpacesInventoryForm() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              { tableRows.map((row) => (
+              { paginatedRows.map((row) => (
                 <TableRow key={ row.id } className="cursor-pointer transition hover:bg-muted/40">
                   <TableCell className="w-[96px]">
                     <Avatar
@@ -189,7 +290,7 @@ export function SpacesInventoryForm() {
 
         { /* Mobile Card View */ }
         <div className="space-y-3 md:hidden">
-          { tableRows.map((row) => (
+          { paginatedRows.map((row) => (
             <Card key={ row.id } className="border-border/70 bg-background/80">
               <CardHeader className="pb-3">
                 <div className="flex items-start gap-3">
@@ -243,31 +344,33 @@ export function SpacesInventoryForm() {
             </Card>
           )) }
         </div>
-      </>
+      </div>
     );
   };
 
   return (
     <section id="inventory-form" className="space-y-6 py-8 md:space-y-8 md:py-12">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="space-y-2">
-          <div className="space-y-1">
-            <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Your spaces</h2>
-            <p className="text-sm text-muted-foreground md:text-base font-sf text-sm">
-              Review every listing in a single table. Use the plus button to open the dedicated space creation page.
-            </p>
-          </div>
-        </div>
-        <Button asChild className="inline-flex w-full items-center gap-2 md:w-auto">
+      <div className="space-y-1">
+        <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Your spaces</h2>
+        <p className="text-sm text-muted-foreground md:text-base font-sf text-sm">
+          Review every listing in a single table. Use the plus button to open the dedicated space creation page.
+        </p>
+      </div>
+
+      { renderContent() }
+
+      <div className="w-full">
+        <Button
+          asChild
+          variant="outline"
+          className="inline-flex w-full items-center justify-center gap-2"
+        >
           <Link href="/spaces/create" className="inline-flex items-center gap-2">
             <FiPlus className="size-4" aria-hidden="true" />
             Add space
           </Link>
         </Button>
       </div>
-
-      { renderContent() }
-
     </section>
   );
 }
