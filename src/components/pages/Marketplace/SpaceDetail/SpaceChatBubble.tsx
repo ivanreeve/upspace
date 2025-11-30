@@ -211,7 +211,7 @@ senderName,
             { hostAvatarUrl ? (
               <AvatarImage src={ hostAvatarUrl } alt={ `${hostName ?? 'Host'} avatar` } />
             ) : (
-              <AvatarFallback>{ hostName?.slice(0, 2)?.toUpperCase() ?? 'US' }</AvatarFallback>
+              <AvatarFallback className="text-white">{ hostName?.slice(0, 2)?.toUpperCase() ?? 'US' }</AvatarFallback>
             ) }
           </Avatar>
           <div className="flex flex-col">
@@ -229,6 +229,7 @@ senderName,
           type="button"
           onClick={ onClose }
           aria-label="Close conversation"
+          className="hover:text-white"
         >
           <FiX className="size-4" aria-hidden="true" />
         </Button>
