@@ -27,6 +27,7 @@ export function useSpeechRecognition(
   const [errorMessage, setErrorMessage] = React.useState<string>();
   const [transcript, setTranscript] = React.useState('');
   const recognitionRef = React.useRef<SpeechRecognition | null>(null);
+  const shouldResumeRef = React.useRef(false);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') {
@@ -69,10 +70,24 @@ export function useSpeechRecognition(
     };
 
     recognition.onend = () => {
-      setStatus((prev) => (prev === 'listening' ? 'idle' : prev));
+      if (!shouldResumeRef.current) {
+        setStatus((prev) => (prev === 'listening' ? 'idle' : prev));
+        return;
+      }
+
+      try {
+        recognition.start();
+        setStatus('listening');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unable to restart voice search';
+        setErrorMessage(message);
+        setStatus('error');
+        shouldResumeRef.current = false;
+      }
     };
 
     return () => {
+      shouldResumeRef.current = false;
       recognition.stop();
       recognitionRef.current = null;
     };
@@ -84,6 +99,7 @@ export function useSpeechRecognition(
 
     setErrorMessage(undefined);
     setTranscript('');
+    shouldResumeRef.current = true;
 
     try {
       recognition.start();
@@ -96,6 +112,7 @@ export function useSpeechRecognition(
   }, [isSupported]);
 
   const stopListening = React.useCallback(() => {
+    shouldResumeRef.current = false;
     recognitionRef.current?.stop();
     setStatus((prev) => (prev === 'listening' ? 'idle' : prev));
   }, []);
