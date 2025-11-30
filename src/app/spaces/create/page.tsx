@@ -1122,6 +1122,12 @@ export default function SpaceCreateRoute() {
             className="mt-6 grid w-full max-w-full min-w-0 grid-cols-1 gap-6 lg:grid-cols-[240px_1fr]"
             onSubmit={ form.handleSubmit(handleSubmit) }
           >
+            <nav
+              className="lg:hidden flex w-full min-w-0 flex-nowrap items-stretch justify-between gap-0 px-1 py-1"
+              aria-label="Space setup steps"
+            >
+              { STEP_SIDEBAR_ITEMS.map((item) => renderStepButton(item, 'horizontal')) }
+            </nav>
             <aside className="hidden space-y-5 bg-background/80 p-5 lg:block lg:sticky lg:top-4 lg:self-start">
               <div>
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Step navigation</p>
@@ -1136,12 +1142,6 @@ export default function SpaceCreateRoute() {
             </aside>
             <Card className="w-full max-w-full border-border/70 bg-background/80">
               <CardContent className="w-full max-w-full min-w-0 space-y-6">
-                <nav
-                  className="lg:hidden flex w-full min-w-0 flex-nowrap items-stretch justify-between gap-0 px-1 py-1"
-                  aria-label="Space setup steps"
-                >
-                  { STEP_SIDEBAR_ITEMS.map((item) => renderStepButton(item, 'horizontal')) }
-                </nav>
                 <div className="space-y-4 min-w-0">
                   { currentStep === 1 ? (
                     <SpaceDetailsFields form={ form } />
