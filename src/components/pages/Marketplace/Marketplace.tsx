@@ -503,6 +503,7 @@ function MarketplaceSearchDialog({
             <CommandItem
               value="apply filters"
               onSelect={ () => setIsFilterDialogOpen(true) }
+              className="hover:text-white data-[selected=true]:text-white"
             >
               <CgOptions className="size-4" aria-hidden="true" />
               <span>Apply filters</span>
@@ -515,6 +516,7 @@ function MarketplaceSearchDialog({
             <CommandItem
               value={ trimmedValue ? `search ${trimmedValue}` : 'search marketplace' }
               onSelect={ () => onSearchSubmit() }
+                className="group hover:text-white data-[selected=true]:text-white"
             >
               <FiSearch className="size-4" aria-hidden="true" />
               <span>Search marketplace</span>
@@ -524,13 +526,14 @@ function MarketplaceSearchDialog({
                 </span>
               ) }
               <CommandShortcut className="flex items-center gap-1">
-                <Kbd>Enter</Kbd>
+                <Kbd >Enter</Kbd>
               </CommandShortcut>
             </CommandItem>
             { hasActiveSearch && (
               <CommandItem
                 value="clear search"
                 onSelect={ () => onSearchSubmit('') }
+                className="group hover:text-white data-[selected=true]:text-white"
               >
                 <FiX className="size-4" aria-hidden="true" />
                 <span>Clear search</span>
@@ -547,7 +550,9 @@ function MarketplaceSearchDialog({
                   amenitiesMode: 'any',
                   amenitiesNegate: false,
                 }) }
+                className="group hover:text-white data-[selected=true]:text-white"
               >
+                
                 <FiX className="size-4" aria-hidden="true" />
                 <span>Clear filters</span>
               </CommandItem>
@@ -585,7 +590,8 @@ function MarketplaceSearchDialog({
               <CommandItem
                 key={ suggestion.space_id }
                 value={ `suggest ${suggestion.name}` }
-                onSelect={ () => handleSuggestionSelect(suggestion) }
+                onSelect={ () => handleSuggestionSelect(suggestion) } 
+                className="hover:text-white hover:[&_span.text-muted-foreground]:text-white/60 data-[selected=true]:text-white data-[selected=true]:[&_span.text-muted-foreground]:text-white/60"
               >
                 <Avatar
                   className="size-9 border border-border shadow-sm"
@@ -1147,6 +1153,7 @@ function LocationFilterDialog({
             type="button"
             variant="outline"
             onClick={ () => onOpenChange(false) }
+            className="hover:text-white"
           >
             Cancel
           </Button>
@@ -1163,10 +1170,12 @@ function FilterBadge({
   label,
   onClear,
   variant = 'default',
+  className,
 }: {
   label: string
   onClear: () => void
   variant?: 'default' | 'destructive'
+  className?: string
 }) {
   return (
     <button
@@ -1179,8 +1188,9 @@ function FilterBadge({
       className={ cn(
         'flex max-w-full items-center gap-2 rounded-full px-3 py-1 text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
         variant === 'destructive'
-          ? 'border border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/20'
-          : 'bg-secondary text-foreground hover:bg-secondary/80'
+          ? 'border border-destructive/50 bg-destructive/10 text-gray-500 hover:bg-destructive/20'
+          : 'bg-secondary text-white hover:bg-secondary/80',
+        className
       ) }
       aria-label={ `Clear ${label}` }
     >
