@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { FiPlus } from 'react-icons/fi';
 
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,14 +39,32 @@ export function SpacesInventoryForm() {
     error,
   } = usePartnerSpacesQuery();
 
-  const tableRows = useMemo(() => (spaces ?? []).map((space) => ({
-    id: space.id,
-    name: space.name,
-    location: `${space.city}, ${space.region}`,
-    status: space.status,
-    areas: space.areas.length,
-    created_at: space.created_at,
-  })), [spaces]);
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '') ?? null;
+  const resolveImageSrc = useCallback((path?: string | null, publicUrl?: string | null) => {
+    if (publicUrl) return publicUrl;
+    if (supabaseUrl && path) {
+      return `${supabaseUrl}/storage/v1/object/public/${path}`;
+    }
+    return null;
+  }, [supabaseUrl]);
+
+  const tableRows = useMemo(() => (spaces ?? []).map((space) => {
+    const images = space.images ?? [];
+    const featuredImage = images.find((image) => image.is_primary) ?? images[0] ?? null;
+    const imageSrc = featuredImage ? resolveImageSrc(featuredImage.path, featuredImage.public_url) : null;
+    const fallbackInitials = (space.name.trim().slice(0, 2).toUpperCase() || 'SP');
+
+    return {
+      id: space.id,
+      name: space.name,
+      location: `${space.city}, ${space.region}`,
+      status: space.status,
+      areas: space.areas.length,
+      created_at: space.created_at,
+      imageSrc,
+      fallbackInitials,
+    };
+  }), [spaces, resolveImageSrc]);
 
   const renderContent = () => {
     if (isLoading) {
@@ -54,6 +73,7 @@ export function SpacesInventoryForm() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[96px]">Preview</TableHead>
                 <TableHead>Space</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>Status</TableHead>
@@ -64,6 +84,9 @@ export function SpacesInventoryForm() {
             <TableBody>
               { Array.from({ length: 4, }).map((_, index) => (
                 <TableRow key={ `space-skeleton-${index}` }>
+                  <TableCell className="w-[96px]">
+                    <Skeleton className="h-16 w-16 rounded-none" />
+                  </TableCell>
                   <TableCell>
                     <div className="space-y-2">
                       <Skeleton className="h-4 w-36" />
@@ -112,6 +135,7 @@ export function SpacesInventoryForm() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[96px]">Preview</TableHead>
                 <TableHead>Space</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>Status</TableHead>
@@ -120,24 +144,41 @@ export function SpacesInventoryForm() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              { tableRows.map((space) => (
-                <TableRow key={ space.id } className="cursor-pointer transition hover:bg-muted/40">
+              { tableRows.map((row) => (
+                <TableRow key={ row.id } className="cursor-pointer transition hover:bg-muted/40">
+                  <TableCell className="w-[96px]">
+                    <Avatar
+                      className="h-16 w-16 min-h-16 min-w-16 rounded-none border border-border/70 shadow-sm"
+                    >
+                      { row.imageSrc ? (
+                        <AvatarImage
+                          src={ row.imageSrc }
+                          alt={ `Featured image for ${row.name}` }
+                          className="h-full w-full rounded-none object-cover"
+                        />
+                      ) : (
+                        <AvatarFallback className="rounded-none">
+                          { row.fallbackInitials }
+                        </AvatarFallback>
+                      ) }
+                    </Avatar>
+                  </TableCell>
                   <TableCell className="font-medium">
                     <div className="flex flex-col">
-                      <span>{ space.name }</span>
+                      <span>{ row.name }</span>
                       <span className="text-xs text-muted-foreground">
-                        Added { inventoryDateFormatter.format(new Date(space.created_at)) }
+                        Added { inventoryDateFormatter.format(new Date(row.created_at)) }
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{ space.location }</TableCell>
+                  <TableCell className="text-muted-foreground">{ row.location }</TableCell>
                   <TableCell>
-                    <Badge variant={ space.status === 'Live' ? 'secondary' : 'outline' }>{ space.status }</Badge>
+                    <Badge variant={ row.status === 'Live' ? 'secondary' : 'outline' }>{ row.status }</Badge>
                   </TableCell>
-                  <TableCell>{ space.areas }</TableCell>
+                  <TableCell>{ row.areas }</TableCell>
                   <TableCell className="text-right">
                     <Button asChild size="sm" variant="outline">
-                      <Link href={ `/spaces/${space.id}` }>Open</Link>
+                      <Link href={ `/spaces/${row.id}` }>Open</Link>
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -148,19 +189,36 @@ export function SpacesInventoryForm() {
 
         { /* Mobile Card View */ }
         <div className="space-y-3 md:hidden">
-          { tableRows.map((space) => (
-            <Card key={ space.id } className="border-border/70 bg-background/80">
+          { tableRows.map((row) => (
+            <Card key={ row.id } className="border-border/70 bg-background/80">
               <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="text-lg leading-tight">{ space.name }</CardTitle>
-                    <CardDescription className="mt-1 text-xs">
-                      { space.location }
-                    </CardDescription>
+                <div className="flex items-start gap-3">
+                  <Avatar
+                    className="h-16 w-16 min-h-16 min-w-16 rounded-none border border-border/70 shadow-sm"
+                  >
+                    { row.imageSrc ? (
+                      <AvatarImage
+                        src={ row.imageSrc }
+                        alt={ `Featured image for ${row.name}` }
+                        className="h-full w-full rounded-none object-cover"
+                      />
+                    ) : (
+                      <AvatarFallback className="rounded-none">
+                        { row.fallbackInitials }
+                      </AvatarFallback>
+                    ) }
+                  </Avatar>
+                  <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <CardTitle className="text-lg leading-tight">{ row.name }</CardTitle>
+                      <CardDescription className="mt-1 text-xs">
+                        { row.location }
+                      </CardDescription>
+                    </div>
+                    <Badge variant={ row.status === 'Live' ? 'secondary' : 'outline' } className="shrink-0">
+                      { row.status }
+                    </Badge>
                   </div>
-                  <Badge variant={ space.status === 'Live' ? 'secondary' : 'outline' } className="shrink-0">
-                    { space.status }
-                  </Badge>
                 </div>
               </CardHeader>
               <div className="border-t border-border/50 px-6 py-3">
@@ -168,17 +226,17 @@ export function SpacesInventoryForm() {
                   <div className="flex items-center gap-4">
                     <div>
                       <span className="text-xs text-muted-foreground">Areas</span>
-                      <p className="font-medium">{ space.areas }</p>
+                      <p className="font-medium">{ row.areas }</p>
                     </div>
                     <div>
                       <span className="text-xs text-muted-foreground">Added</span>
                       <p className="font-medium">
-                        { inventoryDateFormatter.format(new Date(space.created_at)) }
+                        { inventoryDateFormatter.format(new Date(row.created_at)) }
                       </p>
                     </div>
                   </div>
                   <Button asChild size="sm" variant="outline">
-                    <Link href={ `/spaces/${space.id}` }>Open</Link>
+                    <Link href={ `/spaces/${row.id}` }>Open</Link>
                   </Button>
                 </div>
               </div>
