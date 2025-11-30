@@ -14,6 +14,8 @@ import {
   CommandList
 } from '@/components/ui/command';
 import { Kbd } from '@/components/ui/kbd';
+import { VoiceSearchButton } from '@/components/ui/voice-search-button';
+import { VoiceSearchDialog } from '@/components/ui/voice-search-dialog';
 
 type AdminChromeProps = {
   children: React.ReactNode
@@ -26,6 +28,7 @@ export function AdminChrome({
 }: AdminChromeProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
+  const [isVoiceSearchOpen, setIsVoiceSearchOpen] = useState(false);
   const router = useRouter();
 
   const handleSearchOpen = useCallback(() => {
@@ -44,24 +47,38 @@ export function AdminChrome({
     setIsSearchOpen(false);
   }, [router]);
 
+  const handleVoiceSearchSubmit = useCallback((value: string) => {
+    setSearchValue(value);
+    setIsVoiceSearchOpen(false);
+  }, []);
+
+  const handleVoiceButtonClick = useCallback(() => {
+    handleDialogOpenChange(false);
+    setIsVoiceSearchOpen(true);
+  }, [handleDialogOpenChange]);
+
   return (
     <MarketplaceChrome
       initialSidebarOpen={ initialSidebarOpen }
       onSearchOpen={ handleSearchOpen }
       dialogSlot={ (
-        <CommandDialog
-          open={ isSearchOpen }
-          onOpenChange={ handleDialogOpenChange }
-          title="Admin actions"
-          description="Navigate admin features"
-          position="top"
-          fullWidth
+        <>
+          <CommandDialog
+            open={ isSearchOpen }
+            onOpenChange={ handleDialogOpenChange }
+            title="Admin actions"
+            description="Navigate admin features"
+            position="top"
+            fullWidth
         >
           <CommandInput
             value={ searchValue }
             onValueChange={ setSearchValue }
             placeholder="Search admin..."
             aria-label="Search admin"
+            endAdornment={ (
+              <VoiceSearchButton onClick={ handleVoiceButtonClick } />
+            ) }
           />
           <CommandList>
             <CommandGroup heading="Quick Actions" forceMount>
@@ -86,7 +103,13 @@ export function AdminChrome({
               ) }
             </CommandGroup>
           </CommandList>
-        </CommandDialog>
+          </CommandDialog>
+          <VoiceSearchDialog
+            open={ isVoiceSearchOpen }
+            onOpenChange={ setIsVoiceSearchOpen }
+            onSubmit={ handleVoiceSearchSubmit }
+          />
+        </>
       ) }
     >
       { children }

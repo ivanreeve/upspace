@@ -50,6 +50,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { VoiceSearchButton } from '@/components/ui/voice-search-button';
+import { VoiceSearchDialog } from '@/components/ui/voice-search-dialog';
 import {
   fetchPhilippineBarangaysByCity,
   fetchPhilippineCitiesByRegion,
@@ -383,7 +385,13 @@ function MarketplaceSearchDialog({
   const shouldFetchSuggestions = debouncedQuery.length >= 2;
   const [isFilterDialogOpen, setIsFilterDialogOpen] = React.useState(false);
   const searchDialogOpen = open && !isFilterDialogOpen;
+  const [isVoiceSearchOpen, setIsVoiceSearchOpen] = React.useState(false);
   const router = useRouter();
+  const handleVoiceSearchSubmit = React.useCallback((value: string) => {
+    onSearchChange(value);
+    onSearchSubmit(value);
+    setIsVoiceSearchOpen(false);
+  }, [onSearchChange, onSearchSubmit]);
 
   React.useEffect(() => {
     if (!open) {
@@ -398,6 +406,11 @@ function MarketplaceSearchDialog({
 
     onOpenChange(next);
   }, [isFilterDialogOpen, onOpenChange]);
+
+  const handleVoiceButtonClick = React.useCallback(() => {
+    handleSearchDialogOpenChange(false);
+    setIsVoiceSearchOpen(true);
+  }, [handleSearchDialogOpenChange]);
 
   const {
     data: suggestionData,
@@ -457,6 +470,14 @@ function MarketplaceSearchDialog({
               onSearchSubmit();
             }
           } }
+          endAdornment={ (
+            <VoiceSearchButton onClick={ handleVoiceButtonClick } />
+          ) }
+        />
+        <VoiceSearchDialog
+          open={ isVoiceSearchOpen }
+          onOpenChange={ setIsVoiceSearchOpen }
+          onSubmit={ handleVoiceSearchSubmit }
         />
         <CommandList className={ isMobile ? 'flex-1 max-h-full' : undefined }>
           { hasAnyFilters && (
@@ -623,6 +644,11 @@ function MarketplaceSearchDialog({
           </CommandGroup>
         </CommandList>
       </CommandDialog>
+      <VoiceSearchDialog
+        open={ isVoiceSearchOpen }
+        onOpenChange={ setIsVoiceSearchOpen }
+        onSubmit={ handleVoiceSearchSubmit }
+      />
       <LocationFilterDialog
         open={ isFilterDialogOpen }
         onOpenChange={ setIsFilterDialogOpen }

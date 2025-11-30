@@ -78,10 +78,15 @@ function CommandDialog({
   );
 }
 
+type CommandInputProps = React.ComponentProps<typeof CommandPrimitive.Input> & {
+  endAdornment?: React.ReactNode;
+};
+
 function CommandInput({
   className,
+  endAdornment,
   ...props
-}: React.ComponentProps<typeof CommandPrimitive.Input>) {
+}: CommandInputProps) {
   return (
     <div
       data-slot="command-input-wrapper"
@@ -91,11 +96,12 @@ function CommandInput({
       <CommandPrimitive.Input
         data-slot="command-input"
         className={ cn(
-          'placeholder:text-muted-foreground flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
+          'placeholder:text-muted-foreground flex h-10 flex-1 min-w-0 rounded-md bg-transparent py-3 text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
           className
         ) }
         { ...props }
       />
+      { endAdornment && endAdornment }
     </div>
   );
 }

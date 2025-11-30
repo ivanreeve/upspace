@@ -14,6 +14,8 @@ import {
   CommandList
 } from '@/components/ui/command';
 import { Kbd } from '@/components/ui/kbd';
+import { VoiceSearchButton } from '@/components/ui/voice-search-button';
+import { VoiceSearchDialog } from '@/components/ui/voice-search-dialog';
 
 type SpacesChromeProps = {
   children: React.ReactNode
@@ -31,6 +33,7 @@ export function SpacesChrome({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const router = useRouter();
+  const [isVoiceSearchOpen, setIsVoiceSearchOpen] = useState(false);
 
   const handleSearchOpen = useCallback(() => {
     setIsSearchOpen(true);
@@ -43,12 +46,23 @@ export function SpacesChrome({
     }
   }, []);
 
-  const handleSearchSubmit = useCallback(() => {
-    const normalized = searchValue.trim();
+  const handleSearchSubmit = useCallback((value?: string) => {
+    const normalized = (value ?? searchValue).trim();
     const target = normalized ? `/marketplace?q=${encodeURIComponent(normalized)}` : '/marketplace';
     router.push(target);
     setIsSearchOpen(false);
   }, [router, searchValue]);
+
+  const handleVoiceSearchSubmit = useCallback((value: string) => {
+    setSearchValue(value);
+    handleSearchSubmit(value);
+    setIsVoiceSearchOpen(false);
+  }, [handleSearchSubmit]);
+
+  const handleVoiceButtonClick = useCallback(() => {
+    handleDialogOpenChange(false);
+    setIsVoiceSearchOpen(true);
+  }, [handleDialogOpenChange]);
 
   return (
     <MarketplaceChrome
@@ -58,7 +72,8 @@ export function SpacesChrome({
       insetClassName={ insetClassName }
       insetStyle={ insetStyle }
       dialogSlot={ (
-        <CommandDialog
+        <>
+          <CommandDialog
           open={ isSearchOpen }
           onOpenChange={ handleDialogOpenChange }
           title="Search spaces"
@@ -77,6 +92,9 @@ export function SpacesChrome({
                 handleSearchSubmit();
               }
             } }
+            endAdornment={ (
+              <VoiceSearchButton onClick={ handleVoiceButtonClick } />
+            ) }
           />
           <CommandList>
             <CommandGroup heading="Actions" forceMount>
@@ -106,7 +124,13 @@ export function SpacesChrome({
               ) }
             </CommandGroup>
           </CommandList>
-        </CommandDialog>
+          </CommandDialog>
+          <VoiceSearchDialog
+            open={ isVoiceSearchOpen }
+            onOpenChange={ setIsVoiceSearchOpen }
+            onSubmit={ handleVoiceSearchSubmit }
+          />
+        </>
       ) }
     >
       { children }
