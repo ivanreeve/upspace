@@ -19,9 +19,7 @@ type CommandDialogContextValue = {
   mobileFullScreen: boolean;
 };
 
-const CommandDialogContext = React.createContext<CommandDialogContextValue>({
-  mobileFullScreen: false,
-});
+const CommandDialogContext = React.createContext<CommandDialogContextValue>({ mobileFullScreen: false, });
 
 function Command({
   className,
