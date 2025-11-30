@@ -14,9 +14,8 @@ import {
   FiSettings,
   FiUser
 } from 'react-icons/fi';
-import { MdFormatListBulleted } from 'react-icons/md';
 import { HiOutlineDocumentText } from 'react-icons/hi';
-import { MdOutlineSpaceDashboard, MdWorkOutline } from 'react-icons/md';
+import { MdFormatListBulleted, MdOutlineSpaceDashboard, MdWorkOutline } from 'react-icons/md';
 import { TbLayoutSidebarFilled } from 'react-icons/tb';
 import { LuSparkles, LuTicket } from 'react-icons/lu';
 
@@ -44,6 +43,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useSession } from '@/components/auth/SessionProvider';
 import { useCachedAvatar } from '@/hooks/use-cached-avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -248,6 +248,28 @@ function SidebarFooterContent({
   );
 }
 
+function SidebarLoadingSkeleton() {
+  return (
+    <>
+      { Array.from({ length: 5, }).map((_, index) => (
+        <SidebarMenuItem
+          key={ `sidebar-skeleton-${index}` }
+          className="pointer-events-none"
+        >
+          <SidebarMenuButton
+            type="button"
+            className="w-full justify-start gap-2 opacity-50"
+            disabled
+            aria-hidden="true"
+          >
+            <Skeleton className="h-7 flex-1 rounded-sm" />
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      )) }
+    </>
+  );
+}
+
 type SidebarRole = 'guest' | 'customer' | 'partner' | 'admin';
 
 type SidebarLinkItemProps = {
@@ -413,8 +435,14 @@ function MobileTopNav({
 }
 
 function useMarketplaceNavData() {
-  const { session, } = useSession();
-  const { data: userProfile, } = useUserProfile();
+  const {
+    session,
+    isLoading: isSessionLoading,
+  } = useSession();
+  const {
+    data: userProfile,
+    isLoading: isProfileLoading,
+  } = useUserProfile();
   const router = useRouter();
 
   const avatarUrl = session?.user?.user_metadata?.avatar_url
@@ -453,6 +481,9 @@ function useMarketplaceNavData() {
 
   const metadataRole = session?.user?.user_metadata?.role as 'customer' | 'partner' | 'admin' | undefined;
   const resolvedRole = isGuest ? undefined : metadataRole ?? userProfile?.role;
+  const shouldShowSidebarLoading = isSessionLoading || (
+    !isGuest && !metadataRole && isProfileLoading
+  );
 
   return React.useMemo(
     () => ({
@@ -465,6 +496,7 @@ function useMarketplaceNavData() {
       onLogout: handleLogout,
       role: resolvedRole,
       isGuest,
+      isSidebarLoading: shouldShowSidebarLoading,
     }),
     [
       avatarDisplayName,
@@ -474,8 +506,9 @@ function useMarketplaceNavData() {
       handleNavigation,
       isGuest,
       resolvedHandleLabel,
-      userEmail,
-      resolvedRole
+      resolvedRole,
+      shouldShowSidebarLoading,
+      userEmail
     ]
   );
 }
@@ -495,6 +528,7 @@ export function MarketplaceChrome({
     onNavigate,
     role,
     isGuest,
+    isSidebarLoading,
   } = navData;
   const effectiveRole = React.useMemo<SidebarRole>(() => {
     if (isGuest) {
@@ -572,106 +606,112 @@ export function MarketplaceChrome({
           <SidebarHeader className="pt-4">
               <SidebarMenu>
                 <SidebarToggleMenuItem />
-                <SidebarLinkItem
-                  href="/marketplace"
-                  label="Home"
-                  icon={ FiHome }
-                  tooltip="Home"
-                  iconProps={ { strokeWidth: 1.4, } }
-                />
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    tooltip="Search"
-                    className="justify-start gap-2 group-data-[collapsible=icon]:justify-center"
-                    type="button"
-                    onClick={ handleSearch }
-                  >
-                    <FiSearch className="size-4" strokeWidth={ 1.4 } />
-                    <span data-sidebar-label>Search</span>
-                    { onSearchOpen ? (
-                      <Kbd className="ml-auto hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden">
-                        <FiCommand className="size-3" aria-hidden="true" />
-                        <span> + K</span>
-                      </Kbd>
-                    ) : null }
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                { isCustomerRole && (
-                  <SidebarLinkItem
-                    href="/ai-search"
-                    label="AI Search"
-                    icon={ LuSparkles }
-                    tooltip="AI Search"
-                  />
-                ) }
-                { shouldShowNotifications && (
-                  <SidebarLinkItem
-                    href="/notifications"
-                    label="Notifications"
-                    icon={ FiBell }
-                    tooltip="Notifications"
-                    iconProps={ { strokeWidth: 1.4, } }
-                  />
-                ) }
-                { shouldShowNotifications && (
-                  <SidebarLinkItem
-                    href={ resolvedMessageHref }
-                    label="Messages"
-                    icon={ FiMessageSquare }
-                    tooltip="Messages"
-                    iconProps={ { strokeWidth: 1.4, } }
-                  />
-                ) }
-                { isPartnerRole && (
-                  <SidebarLinkItem
-                    href="/spaces"
-                    label="Spaces"
-                    icon={ MdWorkOutline }
-                    tooltip="Spaces"
-                  />
-                ) }
-                { isPartnerRole && (
-                  <SidebarLinkItem
-                    href="/spaces/dashboard"
-                    label="Dashboard"
-                    icon={ MdOutlineSpaceDashboard }
-                    tooltip="Dashboard"
-                  />
-                ) }
-                { isPartnerRole && (
-                  <SidebarLinkItem
-                    href="/spaces/bookings"
-                    label="Bookings"
-                    icon={ LuTicket }
-                    tooltip="Bookings"
-                  />
-                ) }
-                { isAdminRole && (
-                  <SidebarLinkItem
-                    href="/marketplace/dashboard"
-                    label="Dashboard"
-                    icon={ FiBarChart2 }
-                    tooltip="Dashboard"
-                    iconProps={ { strokeWidth: 1.4, } }
-                  />
-                ) }
-                { isAdminRole && (
-                  <SidebarLinkItem
-                    href="/admin"
-                    label="Verification Queue"
-                    icon={ HiOutlineDocumentText }
-                    tooltip="Verification queue"
-                    iconProps={ { strokeWidth: 1, } }
-                  />
-                ) }
-                { isAdminRole && (
-                  <SidebarLinkItem
-                    href="/observability"
-                    label="Observability"
-                    icon={ MdFormatListBulleted }
-                    tooltip="Observability"
-                    iconProps={ { className: 'size-2' } }
-                  />
+                { isSidebarLoading ? (
+                  <SidebarLoadingSkeleton />
+                ) : (
+                  <>
+                    <SidebarLinkItem
+                      href="/marketplace"
+                      label="Home"
+                      icon={ FiHome }
+                      tooltip="Home"
+                      iconProps={ { strokeWidth: 1.4, } }
+                    />
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        tooltip="Search"
+                        className="justify-start gap-2 group-data-[collapsible=icon]:justify-center"
+                        type="button"
+                        onClick={ handleSearch }
+                      >
+                        <FiSearch className="size-4" strokeWidth={ 1.4 } />
+                        <span data-sidebar-label>Search</span>
+                        { onSearchOpen ? (
+                          <Kbd className="ml-auto hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden">
+                            <FiCommand className="size-3" aria-hidden="true" />
+                            <span> + K</span>
+                          </Kbd>
+                        ) : null }
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    { isCustomerRole && (
+                      <SidebarLinkItem
+                        href="/ai-search"
+                        label="AI Search"
+                        icon={ LuSparkles }
+                        tooltip="AI Search"
+                      />
+                    ) }
+                    { shouldShowNotifications && (
+                      <SidebarLinkItem
+                        href="/notifications"
+                        label="Notifications"
+                        icon={ FiBell }
+                        tooltip="Notifications"
+                        iconProps={ { strokeWidth: 1.4, } }
+                      />
+                    ) }
+                    { shouldShowNotifications && (
+                      <SidebarLinkItem
+                        href={ resolvedMessageHref }
+                        label="Messages"
+                        icon={ FiMessageSquare }
+                        tooltip="Messages"
+                        iconProps={ { strokeWidth: 1.4, } }
+                      />
+                    ) }
+                    { isPartnerRole && (
+                      <SidebarLinkItem
+                        href="/spaces"
+                        label="Spaces"
+                        icon={ MdWorkOutline }
+                        tooltip="Spaces"
+                      />
+                    ) }
+                    { isPartnerRole && (
+                      <SidebarLinkItem
+                        href="/spaces/dashboard"
+                        label="Dashboard"
+                        icon={ MdOutlineSpaceDashboard }
+                        tooltip="Dashboard"
+                      />
+                    ) }
+                    { isPartnerRole && (
+                      <SidebarLinkItem
+                        href="/spaces/bookings"
+                        label="Bookings"
+                        icon={ LuTicket }
+                        tooltip="Bookings"
+                      />
+                    ) }
+                    { isAdminRole && (
+                      <SidebarLinkItem
+                        href="/marketplace/dashboard"
+                        label="Dashboard"
+                        icon={ FiBarChart2 }
+                        tooltip="Dashboard"
+                        iconProps={ { strokeWidth: 1.4, } }
+                      />
+                    ) }
+                    { isAdminRole && (
+                      <SidebarLinkItem
+                        href="/admin"
+                        label="Verification Queue"
+                        icon={ HiOutlineDocumentText }
+                        tooltip="Verification queue"
+                        iconProps={ { strokeWidth: 1, } }
+                      />
+                    ) }
+                    { isAdminRole && (
+                    <SidebarLinkItem
+                      href="/observability"
+                      label="Observability"
+                      icon={ MdFormatListBulleted }
+                      tooltip="Observability"
+                      iconProps={ { className: 'size-2', } }
+                    />
+                    ) }
+                  </>
                 ) }
               </SidebarMenu>
           </SidebarHeader>
