@@ -1,9 +1,4 @@
-<<<<<<< HEAD
 import type { RefObject } from 'react';
-=======
-'use client';
-
->>>>>>> fbd5a85 (✨ feat(chat): Improve messages view with space context)
 import { FiMessageSquare } from 'react-icons/fi';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -23,7 +18,6 @@ export default function HostInfo({
   spaceName,
   onMessageHost,
   isMessagingDisabled,
-<<<<<<< HEAD
   messageButtonRef,
 }: {
   hostName?: string | null;
@@ -33,10 +27,6 @@ export default function HostInfo({
   messageButtonRef?: RefObject<HTMLButtonElement>;
 }) {
   const resolvedName = hostName?.trim() || 'Your host';
-=======
-}: HostInfoProps) {
-  const resolvedName = spaceName?.trim() || hostName?.trim() || 'Your host';
->>>>>>> fbd5a85 (✨ feat(chat): Improve messages view with space context)
   const fallbackLabel = 'US';
   const avatarAlt = resolvedName === 'Your host' ? 'Host avatar' : `${resolvedName}'s avatar`;
   const disabledReason = isMessagingDisabled ? 'Sign in to message the host' : undefined;
