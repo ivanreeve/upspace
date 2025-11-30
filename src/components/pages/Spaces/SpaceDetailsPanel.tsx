@@ -714,8 +714,7 @@ export function SpaceDetailsPanel({
           <Card className="border-border/70 bg-background/80">
             <CardHeader className="flex flex-col gap-3 md:gap-4">
               <div className="space-y-1">
-                <CardTitle className="text-xl md:text-2xl">Rentable areas</CardTitle>
-                <CardDescription className="text-xs md:text-sm">Every row maps to <code>prisma.area</code> + <code>price_rate</code>.</CardDescription>
+                <CardTitle className="text-xl md:text-2xl">Areas</CardTitle>
               </div>
               <Button type="button" onClick={ handleAddArea } className="inline-flex w-full items-center gap-2 sm:w-auto">
                 <FiPlus className="size-4" aria-hidden="true" />
