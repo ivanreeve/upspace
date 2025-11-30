@@ -628,7 +628,6 @@ export function SpaceDetailsPanel({
               <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between md:gap-4">
                 <div className="space-y-1">
                   <CardTitle className="text-xl md:text-2xl">Description</CardTitle>
-                  <CardDescription className="text-xs md:text-sm">Rendered rich text from <code>prisma.space.description</code>.</CardDescription>
                 </div>
                 { !isEditingDescription ? (
                   <Button
