@@ -28,7 +28,6 @@ export function VoiceSearchDialog({
   const {
     isSupported,
     status,
-    errorMessage,
     transcript,
     startListening,
     stopListening,
@@ -143,11 +142,6 @@ export function VoiceSearchDialog({
               <p>Speak now and your words will appear here…</p>
             ) }
           </div>
-          { errorMessage && (
-            <p className="text-xs text-destructive" role="status" aria-live="polite">
-              { errorMessage }
-            </p>
-          ) }
           <div className="flex w-full items-center justify-center gap-2">
             <Button
               variant={ isListening ? 'destructive' : 'secondary' }
