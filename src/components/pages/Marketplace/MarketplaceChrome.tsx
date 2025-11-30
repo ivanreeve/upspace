@@ -151,7 +151,7 @@ function SidebarFooterContent({
             { avatarUrl ? (
               <AvatarImage src={ avatarUrl } alt="Guest avatar" />
             ) : (
-              <AvatarFallback>{ avatarFallback }</AvatarFallback>
+              <AvatarFallback className="text-white">{ avatarFallback }</AvatarFallback>
             ) }
           </Avatar>
           { !isCollapsed && (
@@ -198,7 +198,7 @@ function SidebarFooterContent({
                 side="right"
                 align="end"
                 sideOffset={ 24 }
-                className="w-64 border border-border bg-card p-2 shadow-lg"
+                className="w-64 border border-border bg-[#faf8f3] dark:bg-card p-2 shadow-lg"
               >
                 <div className="flex items-center gap-3 rounded-md px-2 py-3">
                   <Avatar className="size-11 border border-border">
@@ -215,22 +215,24 @@ function SidebarFooterContent({
                 </div>
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
-                  onSelect={ () => onNavigate('/onboarding') }
+                  onSelect={ () => onNavigate('/onboarding') } className="hover:!text-white hover:[&_svg]:!text-white"
                 >
                   <FiUser className="size-4" aria-hidden="true" />
                   <span>Account</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={ () => onNavigate('/settings') }>
+                <DropdownMenuItem onSelect={ () => onNavigate('/settings') } className="hover:!text-white hover:[&_svg]:!text-white"
+                >
                   <FiSettings className="size-4" aria-hidden="true" />
                   <span>Settings</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={ () => onNavigate('/notifications') }>
+                <DropdownMenuItem onSelect={ () => onNavigate('/notifications') } className="hover:!text-white hover:[&_svg]:!text-white"
+                >
                   <FiBell className="size-4" aria-hidden="true" />
                   <span>Notifications</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
-                  className="text-destructive focus-visible:text-destructive"
+                  className="text-destructive focus-visible:text-destructive hover:!text-white hover:[&_svg]:!text-white"
                   onSelect={ () => { void onLogout(); } }
                 >
                   <FiLogOut className="size-4" aria-hidden="true" />
@@ -559,7 +561,7 @@ export function MarketplaceChrome({
                     <FiSearch className="size-4" strokeWidth={ 1.4 }/>
                     <span data-sidebar-label>Search</span>
                     { onSearchOpen ? (
-                      <Kbd className="ml-auto hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden">
+                      <Kbd className="ml-auto hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden hover:!text-gray-500 dark:hover:!text-sidebar-foreground/70">
                         <FiCommand className="size-3" aria-hidden="true" />
                         <span> + K</span>
                       </Kbd>
