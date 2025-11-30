@@ -1364,7 +1364,7 @@ export default function SpaceCreateRoute() {
                     </div>
                   </div>
                 ) }
-                <div className="flex flex-col gap-2 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center justify-between gap-2 pt-4">
                   <Button
                     type="button"
                     variant="outline"
