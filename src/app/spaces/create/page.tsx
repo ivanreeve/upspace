@@ -176,7 +176,7 @@ const buildStorageObjectPath = (prefix: string, ownerId: string, fileName: strin
 const SPACE_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg'] as const;
 const SPACE_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
 const VERIFICATION_DOC_MIME_TYPES = ['image/png', 'image/jpeg', 'application/pdf'] as const;
-const VERIFICATION_DOC_MAX_BYTES = 10 * 1024 * 1024;
+const VERIFICATION_DOC_MAX_BYTES = 50 * 1024 * 1024;
 
 type UploadedSpaceImagePayload = {
   path: string;

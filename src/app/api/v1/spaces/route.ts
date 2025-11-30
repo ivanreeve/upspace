@@ -114,7 +114,7 @@ const verificationDocumentSchema = z.object({
   requirement_id: z.enum(VERIFICATION_REQUIREMENT_IDS),
   slot_id: z.string().trim().min(1).max(100).optional(),
   mime_type: z.string().trim().min(1).max(255),
-  file_size_bytes: z.number().int().positive().max(10 * 1024 * 1024),
+  file_size_bytes: z.number().int().positive().max(50 * 1024 * 1024),
 });
 
 const spaceCreateSchema = z.object({
