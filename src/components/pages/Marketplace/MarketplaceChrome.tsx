@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
+  FiBarChart2,
   FiBell,
   FiCommand,
   FiHome,
@@ -11,11 +12,13 @@ import {
   FiMessageSquare,
   FiSearch,
   FiSettings,
-  FiBarChart2,
   FiUser
 } from 'react-icons/fi';
+import { MdFormatListBulleted } from 'react-icons/md';
 import { HiOutlineDocumentText } from 'react-icons/hi';
+import { MdOutlineSpaceDashboard, MdWorkOutline } from 'react-icons/md';
 import { TbLayoutSidebarFilled } from 'react-icons/tb';
+import { LuSparkles, LuTicket } from 'react-icons/lu';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Kbd } from '@/components/ui/kbd';
@@ -55,7 +58,7 @@ type MarketplaceChromeProps = {
   insetClassName?: string
   insetStyle?: React.CSSProperties
   initialSidebarOpen?: boolean
-  sidebarExtras?: React.ReactNode
+  messageHref?: string
 };
 
 type SidebarFooterContentProps = {
@@ -242,6 +245,35 @@ function SidebarFooterContent({
         </SidebarMenu>
       ) }
     </div>
+  );
+}
+
+type SidebarRole = 'guest' | 'customer' | 'partner' | 'admin';
+
+type SidebarLinkItemProps = {
+  href: string
+  label: string
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
+  tooltip?: string
+  iconProps?: React.SVGProps<SVGSVGElement>
+};
+
+function SidebarLinkItem({
+  href,
+  label,
+  icon: Icon,
+  tooltip,
+  iconProps,
+}: SidebarLinkItemProps) {
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild tooltip={ tooltip }>
+        <Link href={ href }>
+          <Icon className="size-4" aria-hidden="true" { ...iconProps } />
+          <span data-sidebar-label>{ label }</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
   );
 }
 
@@ -455,7 +487,7 @@ export function MarketplaceChrome({
   insetClassName,
   insetStyle,
   initialSidebarOpen,
-  sidebarExtras,
+  messageHref = '/messages',
 }: MarketplaceChromeProps) {
   const navData = useMarketplaceNavData();
   const cachedAvatarUrl = useCachedAvatar(navData.avatarUrl);
@@ -464,28 +496,27 @@ export function MarketplaceChrome({
     role,
     isGuest,
   } = navData;
-  const isAdmin = role === 'admin';
-  const isCustomer = role === 'customer';
-  const verificationSidebarItem = isAdmin ? (
-      <SidebarMenuItem>
-        <SidebarMenuButton asChild tooltip="Verification queue">
-          <Link href="/admin">
-            <HiOutlineDocumentText className="size-4" aria-hidden="true" strokeWidth={ 1 } />
-            <span data-sidebar-label>Verification Queue</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-  ) : null;
-  const dashboardSidebarItem = isAdmin ? (
-    <SidebarMenuItem>
-      <SidebarMenuButton asChild tooltip="Dashboard">
-        <Link href="/marketplace/dashboard">
-          <FiBarChart2 className="size-4" aria-hidden="true" strokeWidth={ 1.4 } />
-          <span data-sidebar-label>Dashboard</span>
-        </Link>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
-  ) : null;
+  const effectiveRole = React.useMemo<SidebarRole>(() => {
+    if (isGuest) {
+      return 'guest';
+    }
+
+    if (role === 'partner') {
+      return 'partner';
+    }
+
+    if (role === 'admin') {
+      return 'admin';
+    }
+
+    return 'customer';
+  }, [isGuest, role]);
+
+  const isCustomerRole = effectiveRole === 'customer';
+  const isPartnerRole = effectiveRole === 'partner';
+  const isAdminRole = effectiveRole === 'admin';
+  const shouldShowNotifications = isCustomerRole || isPartnerRole;
+  const resolvedMessageHref = messageHref ?? '/messages';
   const isMobile = useIsMobile();
   const mobileInsetPadding = React.useMemo<React.CSSProperties | undefined>(
     () => (isMobile
@@ -541,14 +572,13 @@ export function MarketplaceChrome({
           <SidebarHeader className="pt-4">
               <SidebarMenu>
                 <SidebarToggleMenuItem />
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Home">
-                    <Link href="/marketplace">
-                      <FiHome className="size-4" strokeWidth={ 1.4 } />
-                      <span data-sidebar-label>Home</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                <SidebarLinkItem
+                  href="/marketplace"
+                  label="Home"
+                  icon={ FiHome }
+                  tooltip="Home"
+                  iconProps={ { strokeWidth: 1.4, } }
+                />
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     tooltip="Search"
@@ -556,7 +586,7 @@ export function MarketplaceChrome({
                     type="button"
                     onClick={ handleSearch }
                   >
-                    <FiSearch className="size-4" strokeWidth={ 1.4 }/>
+                    <FiSearch className="size-4" strokeWidth={ 1.4 } />
                     <span data-sidebar-label>Search</span>
                     { onSearchOpen ? (
                       <Kbd className="ml-auto hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden">
@@ -566,29 +596,83 @@ export function MarketplaceChrome({
                     ) : null }
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                { !isGuest && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Notifications">
-                      <Link href="/notifications">
-                        <FiBell className="size-4" strokeWidth={ 1.4 } />
-                        <span data-sidebar-label>Notifications</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                { isCustomerRole && (
+                  <SidebarLinkItem
+                    href="/ai-search"
+                    label="AI Search"
+                    icon={ LuSparkles }
+                    tooltip="AI Search"
+                  />
                 ) }
-                { isCustomer && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Messages">
-                      <Link href="/messages">
-                        <FiMessageSquare className="size-4" strokeWidth={ 1.4 } />
-                        <span data-sidebar-label>Messages</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                { shouldShowNotifications && (
+                  <SidebarLinkItem
+                    href="/notifications"
+                    label="Notifications"
+                    icon={ FiBell }
+                    tooltip="Notifications"
+                    iconProps={ { strokeWidth: 1.4, } }
+                  />
                 ) }
-                { sidebarExtras }
-                { dashboardSidebarItem }
-                { verificationSidebarItem }
+                { shouldShowNotifications && (
+                  <SidebarLinkItem
+                    href={ resolvedMessageHref }
+                    label="Messages"
+                    icon={ FiMessageSquare }
+                    tooltip="Messages"
+                    iconProps={ { strokeWidth: 1.4, } }
+                  />
+                ) }
+                { isPartnerRole && (
+                  <SidebarLinkItem
+                    href="/spaces"
+                    label="Spaces"
+                    icon={ MdWorkOutline }
+                    tooltip="Spaces"
+                  />
+                ) }
+                { isPartnerRole && (
+                  <SidebarLinkItem
+                    href="/spaces/dashboard"
+                    label="Dashboard"
+                    icon={ MdOutlineSpaceDashboard }
+                    tooltip="Dashboard"
+                  />
+                ) }
+                { isPartnerRole && (
+                  <SidebarLinkItem
+                    href="/spaces/bookings"
+                    label="Bookings"
+                    icon={ LuTicket }
+                    tooltip="Bookings"
+                  />
+                ) }
+                { isAdminRole && (
+                  <SidebarLinkItem
+                    href="/marketplace/dashboard"
+                    label="Dashboard"
+                    icon={ FiBarChart2 }
+                    tooltip="Dashboard"
+                    iconProps={ { strokeWidth: 1.4, } }
+                  />
+                ) }
+                { isAdminRole && (
+                  <SidebarLinkItem
+                    href="/admin"
+                    label="Verification Queue"
+                    icon={ HiOutlineDocumentText }
+                    tooltip="Verification queue"
+                    iconProps={ { strokeWidth: 1, } }
+                  />
+                ) }
+                { isAdminRole && (
+                  <SidebarLinkItem
+                    href="/observability"
+                    label="Observability"
+                    icon={ MdFormatListBulleted }
+                    tooltip="Observability"
+                    iconProps={ { className: 'size-2' } }
+                  />
+                ) }
               </SidebarMenu>
           </SidebarHeader>
           <SidebarContent className="flex-1" />

@@ -1,18 +1,11 @@
 'use client';
 
-import {
-  useCallback,
-  useMemo,
-  useState,
-  type CSSProperties
-} from 'react';
-import Link from 'next/link';
+import { useCallback, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiMessageSquare, FiSearch, FiX } from 'react-icons/fi';
+import { FiSearch, FiX } from 'react-icons/fi';
 
 import { MarketplaceChrome } from '../Marketplace/MarketplaceChrome';
 
-import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import {
   ResponsiveCommandDialog as CommandDialog,
   CommandGroup,
@@ -57,22 +50,11 @@ export function SpacesChrome({
     setIsSearchOpen(false);
   }, [router, searchValue]);
 
-  const messageSidebarItem = useMemo(() => (
-    <SidebarMenuItem>
-      <SidebarMenuButton asChild tooltip="Messages">
-        <Link href="/spaces/messages">
-          <FiMessageSquare className="size-4" aria-hidden="true" />
-          <span data-sidebar-label>Messages</span>
-        </Link>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
-  ), []);
-
   return (
     <MarketplaceChrome
       initialSidebarOpen={ initialSidebarOpen }
       onSearchOpen={ handleSearchOpen }
-      sidebarExtras={ messageSidebarItem }
+      messageHref="/spaces/messages"
       insetClassName={ insetClassName }
       insetStyle={ insetStyle }
       dialogSlot={ (
