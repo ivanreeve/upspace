@@ -502,6 +502,65 @@ export default function SpaceCreateRoute() {
     [router, serializedSearchParams]
   );
 
+  const renderStepButton = (item: StepSidebarItem, variant: 'vertical' | 'horizontal') => {
+    const isCurrent = item.step === currentStep;
+    const isAccessible = stepAccessibility[item.step];
+    const isComplete = stepCompletionStatus[item.step];
+    const Icon = item.icon;
+
+    const baseClasses = variant === 'vertical'
+      ? 'flex w-full items-center justify-between gap-3 px-3 py-3 text-left text-sm'
+      : 'flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-2 py-2 text-center text-[10px] leading-tight sm:text-[11px]';
+
+    return (
+      <button
+        key={ `${variant}-${item.step}` }
+        type="button"
+        className={ cn(
+          'rounded-lg border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+          baseClasses,
+          isCurrent ? 'border-primary bg-primary/10' : 'border-border/60 bg-background/80',
+          !isAccessible && 'cursor-not-allowed opacity-60'
+        ) }
+        disabled={ !isAccessible }
+        aria-label={ variant === 'horizontal' ? item.label : undefined }
+        aria-current={ isCurrent ? 'step' : undefined }
+        onClick={ () => {
+          if (!isAccessible || isCurrent) {
+            return;
+          }
+          navigateToStep(item.step);
+        } }
+      >
+        <span className="sr-only">Step { item.step }</span>
+        { variant === 'vertical' ? (
+          <>
+            <div className="flex items-center gap-2">
+              <Icon className="size-4" aria-hidden="true" />
+              <span className="text-sm font-semibold text-foreground">{ item.label }</span>
+            </div>
+            { isComplete && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
+                <FiCheck className="size-3" aria-hidden="true" />
+                Complete
+              </span>
+            ) }
+          </>
+        ) : (
+          <>
+            <div className="relative flex items-center justify-center">
+              <Icon className="size-4" aria-hidden="true" />
+              { isComplete && (
+                <FiCheck className="size-3 text-muted-foreground absolute -right-2 -top-2" aria-hidden="true" />
+              ) }
+            </div>
+            <span className="sr-only">{ item.label }</span>
+          </>
+        ) }
+      </button>
+    );
+  };
+
   const goToPhotoStep = async () => {
     const canProceed = await form.trigger(['name', 'description']);
 
@@ -1051,75 +1110,49 @@ export default function SpaceCreateRoute() {
           </div>
         </div>
 
-        <Card className="mt-6 border-border/70 bg-background/80">
-          <CardContent>
+        <Card className="mt-6 border-border/70 bg-background/80 w-full max-w-full">
+          <CardContent className="w-full max-w-full min-w-0">
             <Form { ...form }>
               <form
-                className="grid gap-6 lg:grid-cols-[240px_1fr]"
+                className="grid w-full max-w-full min-w-0 grid-cols-1 gap-6 lg:grid-cols-[240px_1fr]"
                 onSubmit={ form.handleSubmit(handleSubmit) }
               >
-                <aside className="space-y-5 bg-background/80 p-5 lg:sticky lg:top-4 lg:self-start">
+                <aside className="hidden space-y-5 bg-background/80 p-5 lg:block lg:sticky lg:top-4 lg:self-start">
                   <div>
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">Step navigation</p>
                     <p className="text-sm font-semibold text-foreground">Follow the flow</p>
                   </div>
                   <nav className="space-y-2" aria-label="Space setup steps">
-                    { STEP_SIDEBAR_ITEMS.map((item) => {
-                      const isCurrent = item.step === currentStep;
-                      const isAccessible = stepAccessibility[item.step];
-                      const isComplete = stepCompletionStatus[item.step];
-                      const Icon = item.icon;
-                      return (
-                        <button
-                          key={ item.step }
-                          type="button"
-                          className={ cn(
-                            'flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-                            isCurrent ? 'border-primary bg-primary/10' : 'border-border/60 bg-background/80',
-                            !isAccessible && 'cursor-not-allowed opacity-60'
-                          ) }
-                          disabled={ !isAccessible }
-                          aria-current={ isCurrent ? 'step' : undefined }
-                          onClick={ () => {
-                            if (!isAccessible || isCurrent) {
-                              return;
-                            }
-                            navigateToStep(item.step);
-                          } }
-                        >
-                          <span className="sr-only">Step { item.step }</span>
-                          <div className="flex items-center gap-2">
-                            <Icon className="size-4" aria-hidden="true" />
-                            <span className="text-sm font-semibold text-foreground">{ item.label }</span>
-                          </div>
-                          { isComplete && (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
-                              <FiCheck className="size-3" aria-hidden="true" />
-                              Complete
-                            </span>
-                          ) }
-                        </button>
-                      );
-                    }) }
+                    { STEP_SIDEBAR_ITEMS.map((item) => renderStepButton(item, 'vertical')) }
                   </nav>
                   <p className="text-xs text-muted-foreground">
                     Locked steps unlock when the previous section is completed.
                   </p>
                 </aside>
-                <div className="space-y-6">
-                  <div className="space-y-4">
+                <div className="space-y-6 min-w-0">
+                  <div className="lg:hidden">
+                    <div className="rounded-lg border border-border/60 bg-background/80 px-2 py-2">
+                      <nav
+                        className="flex w-full min-w-0 flex-nowrap items-stretch justify-between gap-1 pb-1"
+                        aria-label="Space setup steps"
+                      >
+                        { STEP_SIDEBAR_ITEMS.map((item) => renderStepButton(item, 'horizontal')) }
+                      </nav>
+                    </div>
+                  </div>
+                  <div className="space-y-4 min-w-0">
                     { currentStep === 1 ? (
                       <SpaceDetailsFields form={ form } />
-                  ) : currentStep === 2 ? (
-                    <div className="space-y-6">
-                      <div className="rounded-md border border-border/70 bg-background/50 p-4">
-                        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <p className="text-sm font-semibold text-foreground">Featured image</p>
-                            <p className="text-sm text-muted-foreground">
-                              Highlight the hero shot visitors see first on your listing.
-                            </p>
-                          </div>
+                    ) : currentStep === 2 ? (
+                      <div className="space-y-6">
+                        <div className="rounded-md border border-border/70 bg-background/50 p-4">
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                              <p className="text-sm font-semibold text-foreground">Featured image</p>
+                              <p className="text-sm text-muted-foreground">
+                                Highlight the hero shot visitors see first on your listing.
+                              </p>
+                            </div>
                           <span className="text-xs uppercase tracking-wide text-muted-foreground">Required</span>
                         </div>
                         <div className="mt-4">
@@ -1288,16 +1321,16 @@ export default function SpaceCreateRoute() {
                     <SpaceAmenitiesStep form={ form } />
                   ) : currentStep === 4 ? (
                     <SpaceAddressFields form={ form } />
-                  ) : currentStep === 5 ? (
-                    <SpaceAvailabilityStep form={ form } />
-                  ) : (
-                    <SpaceVerificationRequirementsStep
-                      uploads={ verificationRequirements }
-                      onUpload={ handleRequirementUpload }
-                      onRemove={ handleRequirementRemove }
-                    />
-                  ) }
-                </div>
+                    ) : currentStep === 5 ? (
+                      <SpaceAvailabilityStep form={ form } />
+                    ) : (
+                      <SpaceVerificationRequirementsStep
+                        uploads={ verificationRequirements }
+                        onUpload={ handleRequirementUpload }
+                        onRemove={ handleRequirementRemove }
+                      />
+                    ) }
+                  </div>
                 { currentStep === 6 && (
                   <div className="mt-4 rounded-lg border border-border/70 bg-background/80 p-4">
                     <div className="flex items-center justify-between">

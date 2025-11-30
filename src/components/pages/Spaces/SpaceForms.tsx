@@ -568,9 +568,13 @@ export function DescriptionEditor<TFieldValues extends { description: string }>(
   const ActiveAlignmentIcon = activeAlignmentOption.icon;
 
   return (
-    <div className="rounded-md border border-border/70">
+    <div className="w-full max-w-full min-w-0 overflow-hidden rounded-md border border-border/70">
       <div className="border-b border-border/70 bg-muted px-3 py-2">
-        <div className="flex flex-wrap items-center gap-2" role="toolbar" aria-label="Description formatting tools">
+        <div
+          className="flex flex-wrap items-center gap-2 min-w-0"
+          role="toolbar"
+          aria-label="Description formatting tools"
+        >
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -843,7 +847,7 @@ export function DescriptionEditor<TFieldValues extends { description: string }>(
           </Tooltip>
         </div>
       </div>
-      <div className="bg-background px-3 py-3">
+      <div className="bg-background px-3 py-3 w-full max-w-full min-w-0 overflow-hidden">
         <EditorContent
           editor={ editor }
           className="h-[500px] w-full overflow-auto border-none focus-visible:outline-none"
@@ -864,7 +868,7 @@ export function SpaceDetailsFields({ form, }: SpaceFormFieldsProps) {
         control={ form.control }
         name="name"
         render={ ({ field, }) => (
-          <FormItem>
+          <FormItem className="w-full min-w-0">
             <FormLabel>Space name</FormLabel>
             <FormControl>
               <Input placeholder="Study Corner" { ...field } />
@@ -877,7 +881,7 @@ export function SpaceDetailsFields({ form, }: SpaceFormFieldsProps) {
         control={ form.control }
         name="description"
         render={ ({ field, }) => (
-          <FormItem>
+          <FormItem className="w-full min-w-0">
             <FormLabel>Description <span className="text-muted-foreground italic">(min. 20 characters)</span></FormLabel>
             <FormControl>
               <DescriptionEditor field={ field } />
