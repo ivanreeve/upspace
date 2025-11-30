@@ -2015,9 +2015,8 @@ export function AreaDialog({
   return (
     <Dialog open={ open } onOpenChange={ onOpenChange }>
       <DialogContent>
-        <DialogHeader>
+        <DialogHeader className="mb-6">
           <DialogTitle>{ mode === 'edit' ? 'Edit area' : 'Add area' }</DialogTitle>
-          <DialogDescription>Maps to <code>prisma.area</code> and <code>price_rate</code>.</DialogDescription>
         </DialogHeader>
         <Form { ...form }>
           <form className="space-y-4" onSubmit={ form.handleSubmit(onSubmit) }>
