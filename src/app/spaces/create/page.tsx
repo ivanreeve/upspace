@@ -1117,45 +1117,44 @@ export default function SpaceCreateRoute() {
           </div>
         </div>
 
-        <Card className="mt-6 border-border/70 bg-background/80 w-full max-w-full">
-          <CardContent className="w-full max-w-full min-w-0">
-            <Form { ...form }>
-              <form
-                className="grid w-full max-w-full min-w-0 grid-cols-1 gap-6 lg:grid-cols-[240px_1fr]"
-                onSubmit={ form.handleSubmit(handleSubmit) }
-              >
-                <aside className="hidden space-y-5 bg-background/80 p-5 lg:block lg:sticky lg:top-4 lg:self-start">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Step navigation</p>
-                    <p className="text-sm font-semibold text-foreground">Follow the flow</p>
-                  </div>
-                  <nav className="space-y-2" aria-label="Space setup steps">
-                    { STEP_SIDEBAR_ITEMS.map((item) => renderStepButton(item, 'vertical')) }
-                  </nav>
-                  <p className="text-xs text-muted-foreground">
-                    Locked steps unlock when the previous section is completed.
-                  </p>
-                </aside>
-                <div className="space-y-6 min-w-0">
-                  <nav
-                    className="lg:hidden flex w-full min-w-0 flex-nowrap items-stretch justify-between gap-0 px-1 py-1"
-                    aria-label="Space setup steps"
-                  >
-                    { STEP_SIDEBAR_ITEMS.map((item) => renderStepButton(item, 'horizontal')) }
-                  </nav>
-                  <div className="space-y-4 min-w-0">
-                    { currentStep === 1 ? (
-                      <SpaceDetailsFields form={ form } />
-                    ) : currentStep === 2 ? (
-                      <div className="space-y-6">
-                        <div className="rounded-md border border-border/70 bg-background/50 p-4">
-                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                              <p className="text-sm font-semibold text-foreground">Featured image</p>
-                              <p className="text-sm text-muted-foreground">
-                                Highlight the hero shot visitors see first on your listing.
-                              </p>
-                            </div>
+        <Form { ...form }>
+          <form
+            className="mt-6 grid w-full max-w-full min-w-0 grid-cols-1 gap-6 lg:grid-cols-[240px_1fr]"
+            onSubmit={ form.handleSubmit(handleSubmit) }
+          >
+            <aside className="hidden space-y-5 bg-background/80 p-5 lg:block lg:sticky lg:top-4 lg:self-start">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Step navigation</p>
+                <p className="text-sm font-semibold text-foreground">Follow the flow</p>
+              </div>
+              <nav className="space-y-2" aria-label="Space setup steps">
+                { STEP_SIDEBAR_ITEMS.map((item) => renderStepButton(item, 'vertical')) }
+              </nav>
+              <p className="text-xs text-muted-foreground">
+                Locked steps unlock when the previous section is completed.
+              </p>
+            </aside>
+            <Card className="w-full max-w-full border-border/70 bg-background/80">
+              <CardContent className="w-full max-w-full min-w-0 space-y-6">
+                <nav
+                  className="lg:hidden flex w-full min-w-0 flex-nowrap items-stretch justify-between gap-0 px-1 py-1"
+                  aria-label="Space setup steps"
+                >
+                  { STEP_SIDEBAR_ITEMS.map((item) => renderStepButton(item, 'horizontal')) }
+                </nav>
+                <div className="space-y-4 min-w-0">
+                  { currentStep === 1 ? (
+                    <SpaceDetailsFields form={ form } />
+                  ) : currentStep === 2 ? (
+                    <div className="space-y-6">
+                      <div className="rounded-md border border-border/70 bg-background/50 p-4">
+                        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">Featured image</p>
+                            <p className="text-sm text-muted-foreground">
+                              Highlight the hero shot visitors see first on your listing.
+                            </p>
+                          </div>
                           <span className="text-xs uppercase tracking-wide text-muted-foreground">Required</span>
                         </div>
                         <div className="mt-4">
@@ -1324,16 +1323,16 @@ export default function SpaceCreateRoute() {
                     <SpaceAmenitiesStep form={ form } />
                   ) : currentStep === 4 ? (
                     <SpaceAddressFields form={ form } />
-                    ) : currentStep === 5 ? (
-                      <SpaceAvailabilityStep form={ form } />
-                    ) : (
-                      <SpaceVerificationRequirementsStep
-                        uploads={ verificationRequirements }
-                        onUpload={ handleRequirementUpload }
-                        onRemove={ handleRequirementRemove }
-                      />
-                    ) }
-                  </div>
+                  ) : currentStep === 5 ? (
+                    <SpaceAvailabilityStep form={ form } />
+                  ) : (
+                    <SpaceVerificationRequirementsStep
+                      uploads={ verificationRequirements }
+                      onUpload={ handleRequirementUpload }
+                      onRemove={ handleRequirementRemove }
+                    />
+                  ) }
+                </div>
                 { currentStep === 6 && (
                   <div className="mt-4 rounded-lg border border-border/70 bg-background/80 p-4">
                     <div className="flex items-center justify-between">
@@ -1484,11 +1483,10 @@ export default function SpaceCreateRoute() {
                     ) }
                   </div>
                 </div>
-                </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </form>
+        </Form>
       </main>
     </>
   );
