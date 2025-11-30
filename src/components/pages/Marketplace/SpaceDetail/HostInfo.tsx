@@ -22,13 +22,18 @@ export default function HostInfo({
 }: {
   hostName?: string | null;
   avatarUrl?: string | null;
+  spaceName?: string | null;
   onMessageHost?: () => void;
   isMessagingDisabled?: boolean;
   messageButtonRef?: RefObject<HTMLButtonElement>;
 }) {
-  const resolvedName = hostName?.trim() || 'Your host';
-  const fallbackLabel = 'US';
-  const avatarAlt = resolvedName === 'Your host' ? 'Host avatar' : `${resolvedName}'s avatar`;
+  const resolvedName = spaceName?.trim() || hostName?.trim() || 'Your host';
+  const fallbackLabel = (spaceName ?? hostName ?? 'US').slice(0, 2).toUpperCase();
+  const avatarAlt = spaceName?.trim()
+    ? `${spaceName.trim()} featured image`
+    : hostName?.trim()
+      ? `${hostName.trim()}'s avatar`
+      : 'Host avatar';
   const disabledReason = isMessagingDisabled ? 'Sign in to message the host' : undefined;
 
   return (

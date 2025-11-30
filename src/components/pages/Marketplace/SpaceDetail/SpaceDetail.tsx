@@ -169,7 +169,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
         <HostInfo
           spaceName={ space.name }
           hostName={ space.hostName ?? defaultHostName }
-          avatarUrl={ space.hostAvatarUrl }
+          avatarUrl={ space.heroImageUrl ?? space.hostAvatarUrl }
           onMessageHost={ canMessageHost ? handleOpenChat : undefined }
           isMessagingDisabled={ !canMessageHost }
           messageButtonRef={ messageHostButtonRef }
@@ -305,7 +305,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
       spaceId={ space.id }
       spaceName={ space.name }
       hostName={ space.hostName ?? defaultHostName }
-      hostAvatarUrl={ space.hostAvatarUrl }
+      hostAvatarUrl={ space.heroImageUrl ?? space.hostAvatarUrl }
       onClose={ handleCloseChat }
     />
     ) }

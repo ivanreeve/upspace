@@ -282,9 +282,9 @@ senderName,
         <div className="flex items-center gap-2">
           <Avatar className="size-8 border border-border/60">
             { hostAvatarUrl ? (
-              <AvatarImage src={ hostAvatarUrl } alt={ `${hostName ?? 'Host'} avatar` } />
+              <AvatarImage src={ hostAvatarUrl } alt={ `${spaceName} featured image` } />
             ) : (
-              <AvatarFallback>{ hostName?.slice(0, 2)?.toUpperCase() ?? 'US' }</AvatarFallback>
+              <AvatarFallback>{ spaceName?.slice(0, 2)?.toUpperCase() ?? 'US' }</AvatarFallback>
             ) }
           </Avatar>
           <div className="flex flex-col">
