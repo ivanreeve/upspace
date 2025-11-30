@@ -1,6 +1,11 @@
 'use client';
 
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import {
+  useQuery,
+  useQueryClient,
+  useMutation,
+  type UseQueryOptions
+} from '@tanstack/react-query';
 
 import type { ChatMessage, ChatRoomDetail, ChatRoomSummary } from '@/types/chat';
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
@@ -61,8 +66,14 @@ export function useCustomerChatRoom(spaceId: string | null) {
   });
 }
 
-function useChatRooms() {
+export type UseChatRoomsOptions = Omit<UseQueryOptions<ChatRoomSummary[]>, 'queryKey' | 'queryFn'>;
+
+function useChatRooms(options?: UseChatRoomsOptions) {
   const authFetch = useAuthenticatedFetch();
+  const {
+    refetchOnWindowFocus,
+    ...restOptions
+  } = options ?? {};
 
   return useQuery<ChatRoomSummary[]>({
     queryKey: chatKeys.rooms,
@@ -75,16 +86,17 @@ function useChatRooms() {
       const payload = await response.json();
       return (payload.rooms ?? []) as ChatRoomSummary[];
     },
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: refetchOnWindowFocus ?? false,
+    ...restOptions,
   });
 }
 
-export function usePartnerChatRooms() {
-  return useChatRooms();
+export function usePartnerChatRooms(options?: UseChatRoomsOptions) {
+  return useChatRooms(options);
 }
 
-export function useCustomerChatRooms() {
-  return useChatRooms();
+export function useCustomerChatRooms(options?: UseChatRoomsOptions) {
+  return useChatRooms(options);
 }
 
 export function useChatMessages(roomId: string | null) {

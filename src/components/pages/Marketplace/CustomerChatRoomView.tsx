@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import {
   KeyboardEvent,
+  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -15,6 +16,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useCustomerChatRooms, useChatMessages, useSendChatMessage } from '@/hooks/api/useChat';
@@ -54,6 +56,19 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
   }, [activeRoom?.id]);
 
   const hostLabel = activeRoom?.partnerName ?? 'Host';
+  const headerDisplayName = activeRoom?.spaceName ?? activeRoom?.partnerName ?? 'Conversation';
+  const headerLocationLabel = activeRoom
+    ? `${activeRoom.spaceCity ?? ''}${activeRoom.spaceCity && activeRoom.spaceRegion ? ', ' : ''}${activeRoom.spaceRegion ?? ''}` || 'Location unavailable'
+    : 'Select a chat from your inbox.';
+  const headerAvatarInitials = (
+    (activeRoom?.spaceName ?? activeRoom?.partnerName ?? 'UpSpace')
+      .split(' ')
+      .filter((part) => part.length > 0)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join('')
+  ) || 'SP';
+  const headerAvatarUrl = activeRoom?.spaceHeroImageUrl ?? activeRoom?.partnerAvatarUrl ?? null;
 
   const normalizeMessage = useCallback(
     (message: ChatMessage) => {
@@ -204,9 +219,11 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
     if (!sortedRooms.length) {
       return [];
     }
+
     if (!normalizedQuery) {
       return sortedRooms;
     }
+
     return sortedRooms.filter((room) => {
       const haystack = [
         room.spaceName,
@@ -220,9 +237,21 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
     });
   }, [normalizedQuery, sortedRooms]);
 
+  const ChatsListSkeleton = () => (
+    <div className="space-y-3 py-4 px-2">
+      <Skeleton className="h-10 w-full rounded-2xl" />
+      <Skeleton className="h-10 w-full rounded-2xl" />
+      <Skeleton className="h-10 w-3/4 rounded-2xl" />
+    </div>
+  );
+
   const renderList = () => {
     if (roomsLoading) {
-      return <p className="text-sm text-muted-foreground">Loading conversations…</p>;
+      return (
+        <div className="flex flex-1 items-center justify-center">
+          <ChatsListSkeleton />
+        </div>
+      );
     }
 
     if (roomsError) {
@@ -263,13 +292,16 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                   .map((part) => part[0]?.toUpperCase())
                   .join('') || 'SP';
 
+            const listAvatarUrl = room.spaceHeroImageUrl ?? room.partnerAvatarUrl;
+            const showUnread = hasNewMessage && !isActive;
+
             return (
               <Link
                 key={ room.id }
                 href={ `/messages/${room.id}` }
                 aria-current={ isActive ? 'true' : undefined }
                 className={ cn(
-                  'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition',
+                  'relative flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition',
                   isActive
                     ? 'bg-muted text-foreground'
                     : 'hover:bg-muted/70'
@@ -277,22 +309,25 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                 onClick={ handleConversationClick }
               >
                 <Avatar className="h-10 w-10 border border-border/60">
-                  { room.partnerAvatarUrl ? (
-                    <AvatarImage src={ room.partnerAvatarUrl } alt={ room.partnerName ?? 'Host avatar' } />
+                  { listAvatarUrl ? (
+                    <AvatarImage src={ listAvatarUrl } alt={ room.spaceName ?? 'Space avatar' } />
                   ) : null }
                   <AvatarFallback>{ initials }</AvatarFallback>
                 </Avatar>
                 <div className="flex min-w-0 flex-1 flex-col">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="truncate text-sm font-semibold text-foreground">
-                      { room.spaceName }
-                    </p>
-                    { lastMessageTime ? (
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        { lastMessageTime }
-                      </span>
-                    ) : null }
-                  </div>
+            <div className="flex items-center justify-between gap-2">
+              <p className="truncate text-sm font-semibold text-foreground">
+                { room.spaceName }
+              </p>
+              { lastMessageTime ? (
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  { lastMessageTime }
+                </span>
+              ) : null }
+            </div>
+            { hasNewMessage && !isActive ? (
+              <span className="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-destructive" aria-label="New message" />
+            ) : null }
                   <p className="truncate text-xs text-muted-foreground">
                     { location ?? 'Location unavailable' }
                   </p>
@@ -305,6 +340,9 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                     { lastMessageSnippet }
                   </p>
                 </div>
+                { showUnread ? (
+                  <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-destructive" aria-hidden="true" />
+                ) : null }
               </Link>
             );
           }) }
@@ -313,37 +351,56 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
     );
   };
 
+  const ConversationLoadingSkeleton = () => (
+    <div className="flex h-full min-h-full flex-col justify-center space-y-3 px-4 py-6">
+      <Skeleton className="h-4 w-32 rounded-full" />
+      <div className="space-y-3">
+        <Skeleton className="h-12 rounded-2xl" />
+        <Skeleton className="h-12 rounded-2xl" />
+        <Skeleton className="h-12 rounded-2xl" />
+      </div>
+    </div>
+  );
+
+  const ConversationPlaceholder = ({ children, }: { children: ReactNode }) => (
+    <div className="flex h-full min-h-full flex-col items-center justify-center px-4 py-6 text-center">
+      { children }
+    </div>
+  );
+
   const renderMessages = () => {
+    let content: ReactNode;
+
     if (!activeRoom) {
       if (roomsLoading) {
-        return <p className="text-sm text-muted-foreground">Loading conversation…</p>;
+        content = <ConversationLoadingSkeleton />;
+      } else if (roomsError) {
+        content = (
+          <ConversationPlaceholder>
+            <p className="text-sm text-destructive">Unable to load conversation.</p>
+          </ConversationPlaceholder>
+        );
+      } else {
+        content = (
+          <ConversationPlaceholder>
+            <p className="text-sm text-muted-foreground">
+              Conversation not found. Go back to messages and pick another thread.
+            </p>
+          </ConversationPlaceholder>
+        );
       }
-      if (roomsError) {
-        return <p className="text-sm text-destructive">Unable to load conversation.</p>;
-      }
-      return (
-        <p className="text-sm text-muted-foreground">
-          Conversation not found. Go back to messages and pick another thread.
-        </p>
+    } else if (messagesLoading && messages.length === 0) {
+      content = <ConversationLoadingSkeleton />;
+    } else if (messages.length === 0) {
+      content = (
+        <ConversationPlaceholder>
+          <p className="text-sm text-muted-foreground">
+            No messages yet in this conversation. Send a quick note to get things moving.
+          </p>
+        </ConversationPlaceholder>
       );
-    }
-
-    if (messagesLoading && messages.length === 0) {
-      return (
-        <p className="text-sm text-muted-foreground">Loading conversation…</p>
-      );
-    }
-
-    if (messages.length === 0) {
-      return (
-        <p className="text-sm text-muted-foreground">
-          No messages yet in this conversation. Send a quick note to get things moving.
-        </p>
-      );
-    }
-
-    return (
-      <ScrollArea className="flex-1 h-full min-h-0 overflow-y-auto">
+    } else {
+      content = (
         <div className="space-y-3 px-5 py-4 text-sm text-muted-foreground">
           { messages.map((message) => {
             const isCustomerMessage = message.senderRole === 'customer';
@@ -382,6 +439,12 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
           }) }
           <div ref={ scrollAnchorRef } />
         </div>
+      );
+    }
+
+    return (
+      <ScrollArea className="flex-1 h-full min-h-0">
+        { content }
       </ScrollArea>
     );
   };
@@ -443,15 +506,21 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                 <FiArrowLeft className="size-4" aria-hidden="true" />
                 <span className="sr-only">Back</span>
               </button>
-              <div className="flex flex-col">
-                <span className="text-2xl font-semibold tracking-tight text-foreground">
-                  { activeRoom ? activeRoom.spaceName : 'Conversation' }
-                </span>
-                <span className="text-sm text-muted-foreground/90">
-                  { activeRoom
-                    ? `${activeRoom.spaceCity ?? ''}${activeRoom.spaceCity && activeRoom.spaceRegion ? ', ' : ''}${activeRoom.spaceRegion ?? ''}` || 'Location unavailable'
-                    : 'Select a chat from your inbox.' }
-                </span>
+              <div className="flex items-center gap-3">
+                <Avatar className="h-11 w-11 border border-border/60 bg-card">
+                  { headerAvatarUrl ? (
+                    <AvatarImage src={ headerAvatarUrl } alt={ activeRoom?.spaceName ?? 'Space avatar' } />
+                  ) : null }
+                  <AvatarFallback>{ headerAvatarInitials }</AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col">
+                  <span className="text-2xl font-semibold tracking-tight text-foreground">
+                    { headerDisplayName }
+                  </span>
+                  <span className="text-sm text-muted-foreground/90">
+                    { headerLocationLabel }
+                  </span>
+                </div>
               </div>
             </div>
           </header>

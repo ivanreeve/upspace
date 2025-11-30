@@ -22,6 +22,7 @@ import {
   CardTitle
 } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useChatMessages, usePartnerChatRooms, useSendChatMessage } from '@/hooks/api/useChat';
 import { useChatRoomsSubscription, useChatSubscription } from '@/hooks/use-chat-subscription';
@@ -107,6 +108,25 @@ export function PartnerMessagesPanel() {
   useChatSubscription(currentRoomId, appendMessage);
   useChatRoomsSubscription(rooms?.map((room) => room.id) ?? []);
 
+  const ChatsListSkeleton = () => (
+    <div className="space-y-3 py-4 px-2">
+      <Skeleton className="h-12 w-full rounded-2xl" />
+      <Skeleton className="h-12 w-full rounded-2xl" />
+      <Skeleton className="h-12 w-3/4 rounded-2xl" />
+    </div>
+  );
+
+  const ConversationLoadingSkeleton = () => (
+    <div className="space-y-3 px-4 py-6">
+      <Skeleton className="h-4 w-32 rounded-full" />
+      <div className="space-y-3">
+        <Skeleton className="h-12 rounded-2xl" />
+        <Skeleton className="h-12 rounded-2xl" />
+        <Skeleton className="h-12 rounded-2xl" />
+      </div>
+    </div>
+  );
+
   const handleSend = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!currentRoomId) {
@@ -139,15 +159,16 @@ export function PartnerMessagesPanel() {
 
   const renderMessages = () => {
     if (!activeRoom) {
+      if (roomsLoading) {
+        return <ConversationLoadingSkeleton />;
+      }
       return (
         <p className="text-sm text-muted-foreground">Select a conversation to start replying.</p>
       );
     }
 
     if (messagesLoading && messages.length === 0) {
-      return (
-        <p className="text-sm text-muted-foreground">Loading conversation…</p>
-      );
+      return <ConversationLoadingSkeleton />;
     }
 
     if (messages.length === 0) {
@@ -191,7 +212,11 @@ export function PartnerMessagesPanel() {
 
   const renderConversations = () => {
     if (roomsLoading) {
-      return <p className="text-sm text-muted-foreground">Loading conversations…</p>;
+      return (
+        <div className="flex flex-1 items-center justify-center">
+          <ChatsListSkeleton />
+        </div>
+      );
     }
 
     if (roomsError) {

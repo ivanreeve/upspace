@@ -12,6 +12,7 @@ import {
   CardTitle
 } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
 import { usePartnerChatRooms } from '@/hooks/api/useChat';
 import { useChatRoomsSubscription } from '@/hooks/use-chat-subscription';
 import { cn } from '@/lib/utils';
@@ -25,9 +26,21 @@ export function PartnerMessagesList() {
 
   useChatRoomsSubscription(rooms?.map((room) => room.id) ?? []);
 
+  const ChatsListSkeleton = () => (
+    <div className="space-y-3 py-4 px-2">
+      <Skeleton className="h-10 w-full rounded-2xl" />
+      <Skeleton className="h-10 w-full rounded-2xl" />
+      <Skeleton className="h-10 w-3/4 rounded-2xl" />
+    </div>
+  );
+
   const renderConversations = () => {
     if (roomsLoading) {
-      return <p className="text-sm text-muted-foreground">Loading conversations…</p>;
+      return (
+        <div className="flex flex-1 items-center justify-center">
+          <ChatsListSkeleton />
+        </div>
+      );
     }
 
     if (roomsError) {

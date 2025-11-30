@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import type { ChatRoomDetail, ChatRoomSummary } from '@/types/chat';
 import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { chatRoomQuerySchema } from '@/lib/validations/chat';
 import { formatDisplayName, mapChatMessage, resolveAvatarUrl } from '@/lib/chat/utils';
-import type { ChatRoomDetail, ChatRoomSummary } from '@/types/chat';
+import { resolveImageUrl, resolveSignedImageUrls } from '@/lib/spaces/image-urls';
+
+/* eslint-disable comma-dangle */
 
 const unauthorizedResponse = NextResponse.json(
   { error: 'Authentication required.', },
@@ -119,6 +122,14 @@ export async function GET(req: NextRequest) {
                   avatar: true,
                 },
               },
+              space_image: {
+                orderBy: [
+                  { is_primary: 'desc' as const },
+                  { display_order: 'asc' as const },
+                  { created_at: 'asc' as const },
+                ],
+                select: { path: true },
+              },
             },
           },
           chat_message: { orderBy: { created_at: 'asc', }, },
@@ -135,6 +146,14 @@ export async function GET(req: NextRequest) {
         mapChatMessage(chat_message, customerName, partnerName)
       );
 
+      const heroImagePath = room.space.space_image[0]?.path ?? null;
+      const heroImageUrls = await resolveSignedImageUrls(
+        heroImagePath
+          ? [{ path: heroImagePath, }]
+          : []
+      );
+      const spaceHeroImageUrl = resolveImageUrl(heroImagePath, heroImageUrls);
+
       const response: ChatRoomDetail = {
         id: room.id,
         spaceId: room.space.id,
@@ -149,6 +168,7 @@ export async function GET(req: NextRequest) {
         partnerName,
         partnerAvatarUrl: resolveAvatarUrl(room.space.user?.avatar ?? null),
         lastMessage: messages.at(-1) ?? null,
+        spaceHeroImageUrl,
         createdAt: room.created_at.toISOString(),
         messages,
       };
@@ -175,6 +195,14 @@ export async function GET(req: NextRequest) {
                 avatar: true,
               },
             },
+            space_image: {
+              orderBy: [
+                { is_primary: 'desc' as const },
+                { display_order: 'asc' as const },
+                { created_at: 'asc' as const },
+              ],
+              select: { path: true },
+            },
           },
         },
         chat_message: {
@@ -191,6 +219,11 @@ export async function GET(req: NextRequest) {
       avatar: dbUser.avatar,
     });
     const customerAvatarUrl = resolveAvatarUrl(dbUser.avatar);
+    const heroImageEntries = rooms
+      .map((room) => room.space.space_image[0]?.path ?? null)
+      .filter((path): path is string => Boolean(path))
+      .map((path) => ({ path, }));
+    const heroImageUrls = await resolveSignedImageUrls(heroImageEntries);
 
     const summaries = rooms.map((room) => {
       const partnerName = formatDisplayName(room.space.user ?? null);
@@ -199,6 +232,7 @@ export async function GET(req: NextRequest) {
         ? mapChatMessage(room.chat_message[0], customerName, partnerName)
         : null;
 
+      const heroImagePath = room.space.space_image[0]?.path ?? null;
       const summary: ChatRoomSummary = {
         id: room.id,
         spaceId: room.space.id,
@@ -212,6 +246,7 @@ export async function GET(req: NextRequest) {
         partnerId: (room.space.user?.user_id ?? room.space.user_id).toString(),
         partnerName,
         partnerAvatarUrl,
+        spaceHeroImageUrl: resolveImageUrl(heroImagePath, heroImageUrls),
         lastMessage,
         createdAt: room.created_at.toISOString(),
       };
@@ -241,6 +276,14 @@ export async function GET(req: NextRequest) {
             name: true,
             city: true,
             region: true,
+            space_image: {
+              orderBy: [
+                { is_primary: 'desc' as const },
+                { display_order: 'asc' as const },
+                { created_at: 'asc' as const },
+              ],
+              select: { path: true },
+            },
           },
         },
         user: {
@@ -267,7 +310,14 @@ export async function GET(req: NextRequest) {
     });
     const partnerAvatarUrl = resolveAvatarUrl(dbUser.avatar);
 
+    const heroImageEntries = rooms
+      .map((room) => room.space.space_image[0]?.path ?? null)
+      .filter((path): path is string => Boolean(path))
+      .map((path) => ({ path, }));
+    const heroImageUrls = await resolveSignedImageUrls(heroImageEntries);
+
     const summaries = rooms.map((room) => {
+      const heroImagePath = room.space.space_image[0]?.path ?? null;
       const customerName = formatDisplayName(room.user);
       const lastMessage = room.chat_message[0]
         ? mapChatMessage(room.chat_message[0], customerName, partnerName)
@@ -286,6 +336,7 @@ export async function GET(req: NextRequest) {
         partnerId: dbUser.user_id.toString(),
         partnerName,
         partnerAvatarUrl,
+        spaceHeroImageUrl: resolveImageUrl(heroImagePath, heroImageUrls),
         lastMessage,
         createdAt: room.created_at.toISOString(),
       };

@@ -167,6 +167,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
         >
           <div className="space-y-4">
         <HostInfo
+          spaceName={ space.name }
           hostName={ space.hostName ?? defaultHostName }
           avatarUrl={ space.hostAvatarUrl }
           onMessageHost={ canMessageHost ? handleOpenChat : undefined }
@@ -299,13 +300,14 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
       </div>
     </div>
     { canMessageHost && (
-      <SpaceChatBubble
-        isOpen={ isChatOpen }
-        spaceId={ space.id }
-        hostName={ space.hostName ?? defaultHostName }
-        hostAvatarUrl={ space.hostAvatarUrl }
-        onClose={ handleCloseChat }
-      />
+    <SpaceChatBubble
+      isOpen={ isChatOpen }
+      spaceId={ space.id }
+      spaceName={ space.name }
+      hostName={ space.hostName ?? defaultHostName }
+      hostAvatarUrl={ space.hostAvatarUrl }
+      onClose={ handleCloseChat }
+    />
     ) }
     { canMessageHost && !isChatOpen && (
       <Button

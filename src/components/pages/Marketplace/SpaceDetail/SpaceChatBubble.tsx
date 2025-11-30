@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useSession } from '@/components/auth/SessionProvider';
 import { useCustomerChatRoom, useChatMessages, useSendChatMessage } from '@/hooks/api/useChat';
@@ -25,14 +26,47 @@ import type { ChatMessage } from '@/types/chat';
 type SpaceChatBubbleProps = {
   isOpen: boolean;
   spaceId: string;
+  spaceName: string;
   hostName: string | null;
   hostAvatarUrl?: string | null;
   onClose: () => void;
 };
 
+type ConversationEmptyStateProps = {
+  spaceName: string;
+};
+
+function ConversationLoadingSkeleton() {
+  return (
+    <div className="space-y-3 px-1">
+      <Skeleton className="h-3 w-24 rounded-full" />
+      <Skeleton className="h-3 w-32 rounded-full" />
+      { [1, 2, 3].map((_, index) => (
+        <Skeleton key={ `loading-${index}` } className="h-12 rounded-2xl" />
+      )) }
+    </div>
+  );
+}
+
+function ConversationEmptyState(props: ConversationEmptyStateProps) {
+  const { spaceName, } = props;
+  return (
+    <div className="space-y-2 px-1 text-sm text-muted-foreground">
+      <p className="text-base font-semibold text-foreground">
+        Start a message to { spaceName }
+      </p>
+      <p>
+        Ask a quick question about availability, pricing, or on-site amenities.
+        Hosts receive live notifications as soon as you hit send.
+      </p>
+    </div>
+  );
+}
+
 export function SpaceChatBubble({
   isOpen,
   spaceId,
+  spaceName,
   hostName,
   hostAvatarUrl,
   onClose,
@@ -180,16 +214,16 @@ senderName,
       );
     }
 
-    if (messagesLoading && !messages.length) {
-      return <p className="text-sm text-muted-foreground">Loading conversation…</p>;
+    const hasRoom = Boolean(roomData?.id);
+    const isConversationLoading =
+      (isRoomLoading && !hasRoom) || (hasRoom && messagesLoading && !messages.length);
+
+    if (isConversationLoading) {
+      return <ConversationLoadingSkeleton />;
     }
 
     if (!messages.length) {
-      return (
-        <p className="text-sm text-muted-foreground">
-          Start the chat with a quick message. Hosts receive live notifications.
-        </p>
-      );
+      return <ConversationEmptyState spaceName={ spaceName } />;
     }
 
     return (
@@ -255,7 +289,7 @@ senderName,
           </Avatar>
           <div className="flex flex-col">
             <span className="text-sm font-semibold text-foreground">
-              { hostName ? hostName : 'Host' }
+              { spaceName || hostName || 'Conversation' }
             </span>
             <span className="text-[11px] text-muted-foreground">
               Chat with your host

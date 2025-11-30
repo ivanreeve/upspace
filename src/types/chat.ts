@@ -22,6 +22,7 @@ export type ChatRoomSummary = {
   partnerName: string | null;
   partnerAvatarUrl: string | null;
   lastMessage: ChatMessage | null;
+  spaceHeroImageUrl?: string | null;
   createdAt: string;
 };
 
