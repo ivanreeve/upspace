@@ -692,8 +692,7 @@ export function SpaceDetailsPanel({
             <Card className="border-border/70 bg-background/80">
               <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between md:gap-4">
                 <div className="space-y-1">
-                  <CardTitle className="text-xl md:text-2xl">{ space.name }</CardTitle>
-                  <CardDescription className="text-xs md:text-sm">Values currently stored for <code>prisma.space</code>.</CardDescription>
+                  <CardTitle className="text-xl md:text-2xl">{ space.name }&apos;s Address</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="grid gap-3 sm:grid-cols-2 md:gap-6">
