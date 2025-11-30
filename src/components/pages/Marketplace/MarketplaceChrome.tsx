@@ -70,6 +70,7 @@ type SidebarFooterContentProps = {
   onNavigate: (href: string) => void
   onLogout: () => Promise<void> | void
   isGuest: boolean
+  isSidebarLoading: boolean
 };
 
 function SidebarToggleMenuItem() {
@@ -121,6 +122,7 @@ function SidebarFooterContent({
   onNavigate,
   onLogout,
   isGuest,
+  isSidebarLoading,
 }: SidebarFooterContentProps) {
   const { state, } = useSidebar();
   const isCollapsed = state === 'collapsed';
@@ -130,6 +132,11 @@ function SidebarFooterContent({
   const emailLabel = isGuest
     ? 'Public browsing'
     : userEmail ?? 'Email unavailable';
+  const skeletonAvatarClass = cn(
+    'rounded-full',
+    isCollapsed ? 'h-9 w-9' : 'h-11 w-11'
+  );
+  const skeletonTextClass = isCollapsed ? 'h-3 w-16' : 'h-3 w-24';
 
   return (
     <div
@@ -142,7 +149,13 @@ function SidebarFooterContent({
         variant={ isCollapsed ? 'compact' : 'default' }
         className={ isCollapsed ? undefined : 'w-full justify-between' }
       />
-      { isGuest ? (
+      { isSidebarLoading ? (
+        isCollapsed ? (
+          <Skeleton className={ skeletonAvatarClass } />
+        ) : (
+          <Skeleton className="h-16 w-full rounded-md" />
+        )
+      ) : isGuest ? (
         <SidebarMenuButton
           type="button"
           tooltip={ isCollapsed ? 'Sign in' : undefined }
@@ -726,6 +739,7 @@ export function MarketplaceChrome({
             onNavigate={ navData.onNavigate }
             onLogout={ navData.onLogout }
             isGuest={ navData.isGuest }
+            isSidebarLoading={ navData.isSidebarLoading }
           />
           </SidebarFooter>
           <SidebarRail />
