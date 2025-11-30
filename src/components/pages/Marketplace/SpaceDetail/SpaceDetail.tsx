@@ -44,6 +44,20 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const handleOpenChat = useCallback(() => setIsChatOpen(true), []);
   const handleCloseChat = useCallback(() => setIsChatOpen(false), []);
+  const messageHostButtonRef = useRef<HTMLButtonElement | null>(null);
+  const scrollToMessageHostButton = useCallback(() => {
+    const button = messageHostButtonRef.current;
+    if (!button) return;
+
+    button.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+    });
+
+    if (canMessageHost) {
+      button.focus({ preventScroll: true, });
+    }
+  }, [canMessageHost]);
 
   const overviewFallback =
     'Located in the heart of the city, Downtown Space offers a modern and flexible coworking environment designed for entrepreneurs, freelancers, and small teams. With high-speed Wi-Fi, ergonomic workstations, private meeting rooms, and a cozy lounge area, it is the perfect place to stay productive and inspired.';
@@ -157,6 +171,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
           avatarUrl={ space.hostAvatarUrl }
           onMessageHost={ canMessageHost ? handleOpenChat : undefined }
           isMessagingDisabled={ !canMessageHost }
+          messageButtonRef={ messageHostButtonRef }
         />
 
             { /* Booking card for mobile - shown above description */ }
@@ -270,7 +285,11 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
           </div>
         </section>
 
-        <AmenitiesList amenities={ space.amenities } features={ [] } />
+        <AmenitiesList
+          amenities={ space.amenities }
+          features={ [] }
+          onAskHost={ scrollToMessageHostButton }
+        />
 
         <AreasWithRates areas={ space.areas } />
 

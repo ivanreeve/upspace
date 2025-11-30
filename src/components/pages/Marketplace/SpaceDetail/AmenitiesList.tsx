@@ -63,9 +63,11 @@ const FALLBACK_AMENITIES: SpaceAmenityDisplay[] = [
 export default function AmenitiesList({
   amenities,
   features,
+  onAskHost,
 }: {
   amenities: SpaceAmenityDisplay[];
   features: Feature[];
+  onAskHost?: () => void;
 }) {
   const normalizedAmenities = amenities.length > 0 ? amenities : FALLBACK_AMENITIES;
   const amenitiesWithIcons: AmenityWithIcon[] = normalizedAmenities.map((amenity) => ({
@@ -151,6 +153,7 @@ export default function AmenitiesList({
         <button
           type="button"
           className="font-medium text-foreground underline underline-offset-4 hover:text-primary"
+          onClick={ onAskHost }
         >
           Ask the host
         </button>

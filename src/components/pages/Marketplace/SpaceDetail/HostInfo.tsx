@@ -1,3 +1,4 @@
+import type { RefObject } from 'react';
 import { FiMessageSquare } from 'react-icons/fi';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -8,11 +9,13 @@ export default function HostInfo({
   avatarUrl,
   onMessageHost,
   isMessagingDisabled,
+  messageButtonRef,
 }: {
   hostName?: string | null;
   avatarUrl?: string | null;
   onMessageHost?: () => void;
   isMessagingDisabled?: boolean;
+  messageButtonRef?: RefObject<HTMLButtonElement>;
 }) {
   const resolvedName = hostName?.trim() || 'Your host';
   const fallbackLabel = 'US';
@@ -32,6 +35,7 @@ export default function HostInfo({
         </div>
       </div>
       <Button
+        ref={ messageButtonRef }
         variant="default"
         type="button"
         onClick={ () => onMessageHost?.() }
