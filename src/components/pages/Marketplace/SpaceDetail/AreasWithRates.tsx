@@ -21,13 +21,12 @@ export default function AreasWithRates({ areas, }: { areas: SpaceAreaWithRates[]
       <p className="text-muted-foreground">No areas available.</p>
     </section>
   );
-
   return (
     <section className="space-y-4">
       <h2 className="text-xl font-medium">Areas & Rates</h2>
       <div className="space-y-4">
         { areas.map((area) => (
-          <div key={ area.id } className="rounded-lg border p-4">
+          <div key={ area.id } className="rounded-lg border border-[#D8D2C2] dark:border-border p-8">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-medium">{ area.name }</h3>
               <span className="text-sm text-muted-foreground">
