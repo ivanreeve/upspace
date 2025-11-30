@@ -14,41 +14,40 @@ const formatCapacity = (area: SpaceAreaWithRates) => {
   return `${capacityFormatter.format(area.minCapacity)} guests`;
 };
 
-export default function AreasWithRates({ areas, }: { areas: SpaceAreaWithRates[] }) {
+export default function AreasWithRates({ areas }: { areas: SpaceAreaWithRates[] }) {
   if (areas.length === 0) return (
     <section className="space-y-4">
       <h2 className="text-xl font-medium">Areas & Rates</h2>
       <p className="text-muted-foreground">No areas available.</p>
     </section>
   );
-
   return (
     <section className="space-y-4">
       <h2 className="text-xl font-medium">Areas & Rates</h2>
       <div className="space-y-4">
-        { areas.map((area) => (
-          <div key={ area.id } className="rounded-lg border p-4">
+        {areas.map((area) => (
+          <div key={area.id} className="rounded-lg border border-[#D8D2C2] dark:border-border p-8">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium">{ area.name }</h3>
+              <h3 className="text-lg font-medium">{area.name}</h3>
               <span className="text-sm text-muted-foreground">
-                Capacity: { formatCapacity(area) }
+                Capacity: {formatCapacity(area)}
               </span>
             </div>
             <div className="mt-2">
-              { area.rates.length === 0 ? (
+              {area.rates.length === 0 ? (
                 <p className="text-muted-foreground">No rates set.</p>
               ) : (
                 <ul className="list-disc pl-5 text-sm">
-                  { area.rates.map((rate) => (
-                    <li key={ rate.id }>
-                      { rate.timeUnit }: { peso.format(rate.price) }
+                  {area.rates.map((rate) => (
+                    <li key={rate.id}>
+                      {rate.timeUnit}: {peso.format(rate.price)}
                     </li>
-                  )) }
+                  ))}
                 </ul>
-              ) }
+              )}
             </div>
           </div>
-        )) }
+        ))}
       </div>
     </section>
   );

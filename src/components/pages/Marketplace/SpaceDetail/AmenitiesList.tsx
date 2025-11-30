@@ -76,7 +76,7 @@ export default function AmenitiesList({
   const groupedAmenities = groupAmenitiesByCategory(amenitiesWithIcons);
 
   return (
-    <section className="space-y-6 border-t pt-6">
+    <section className="space-y-6 border-b pt-4 pb-6">
       <h2 className="text-xl font-medium">What this place offers</h2>
 
       <div className="space-y-6">
@@ -93,21 +93,21 @@ export default function AmenitiesList({
           </ul>
         ) : null }
 
-        <ul className="grid gap-3.5 text-sm text-foreground/80">
-          { visibleAmenities.map((amenity) => {
+        <ul className="grid gap-3.5 text-sm">
+          {visibleAmenities.map((amenity) => {
             const Icon = amenity.Icon;
             return (
-              <li key={ amenity.id } className="flex items-center gap-3.5">
-                <Icon className="size-4 text-muted-foreground" aria-hidden="true" />
-                <span>{ amenity.name }</span>
+              <li key={amenity.id} className="flex items-center gap-3.5">
+                <Icon className="size-4 text-foreground" aria-hidden="true" />
+                <span className="text-foreground">{amenity.name}</span>
               </li>
             );
-          }) }
+          })}
         </ul>
 
         <Dialog>
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm" aria-label="Show all amenities">
+            <Button variant="outline" size="sm" aria-label="Show all amenities" className="hover:text-white hover:[&_svg]:text-white">
               Show all amenities
             </Button>
           </DialogTrigger>

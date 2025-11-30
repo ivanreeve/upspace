@@ -105,7 +105,7 @@ function ReviewTagsSelector({
             onClick={ () => toggleTag(tag.value) }
             className={ cn(
               badgeVariants({ variant: isActive ? 'default' : 'outline', }),
-              'cursor-pointer select-none'
+              'cursor-pointer select-none', isActive && 'text-white'
             ) }
             aria-pressed={ isActive }
           >
@@ -116,6 +116,7 @@ function ReviewTagsSelector({
     </div>
   );
 }
+
 
 function ReviewCard({ review, }: { review: SpaceReview }) {
   const createdAt = new Date(review.created_at);
@@ -129,7 +130,7 @@ function ReviewCard({ review, }: { review: SpaceReview }) {
             { review.reviewer.avatar ? (
               <AvatarImage src={ review.reviewer.avatar } alt={ review.reviewer.name } />
             ) : null }
-            <AvatarFallback>
+            <AvatarFallback className="text-white">
               { review.reviewer.name.charAt(0).toUpperCase() }
             </AvatarFallback>
           </Avatar>
@@ -315,7 +316,7 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
         </div>
         <Dialog open={ isDialogOpen } onOpenChange={ setIsDialogOpen }>
           <DialogTrigger asChild>
-            <Button type="button" variant="outline">
+            <Button type="button" variant="outline" className="hover:bg-accent hover:text-white transition-colors">
               <RiEditBoxLine className="size-4" aria-hidden="true" />
               Write a review
             </Button>
@@ -435,7 +436,7 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
             { canOpenReviewsModal && (
               <Dialog open={ isReviewsModalOpen } onOpenChange={ handleReviewsModalChange }>
                 <DialogTrigger asChild>
-                  <Button className="text-foreground" type="button" variant="link" size="sm" aria-label="See more reviews">
+                  <Button className="text-gray" type="button" variant="link" size="sm" aria-label="See more reviews">
                     See more reviews
                   </Button>
                 </DialogTrigger>
