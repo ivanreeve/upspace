@@ -42,16 +42,14 @@ export function VoiceSearchDialog({
     : isListening
       ? 4
       : 2;
-  const ringColor = status === 'unsupported'
-    ? 'rgba(148, 163, 184, 0.45)'
-    : isListening
-      ? 'rgba(56, 189, 248, 0.6)'
-      : 'rgba(147, 197, 253, 0.6)';
+  const ringColor = status === 'unsupported' ? 'var(--muted)' : 'var(--secondary)';
   const circleStyle: React.CSSProperties = {
     borderWidth,
     borderStyle: 'solid',
     borderColor: ringColor,
-    boxShadow: isListening ? '0 0 0 12px rgba(147, 197, 253, 0.18)' : undefined,
+    boxShadow: isListening
+      ? '0 0 0 12px color-mix(in oklab, var(--secondary) 22%, transparent)'
+      : undefined,
   };
 
   const handleSubmit = React.useCallback(() => {
