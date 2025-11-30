@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { FiMic } from 'react-icons/fi';
+import { FaMicrophone } from 'react-icons/fa';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -37,23 +37,23 @@ export function VoiceSearchDialog({
   const silenceTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isListening = status === 'listening';
-  const canSubmit = Boolean(transcript.trim());
-  const statusMessage = status === 'unsupported'
-    ? 'Voice search is unavailable in this browser.'
-    : status === 'listening'
-      ? 'Listening… Speak your query now.'
-      : status === 'error'
-        ? errorMessage ?? 'Voice search failed. Try again.'
-        : 'Press the microphone to begin speaking.';
   const hasTranscript = Boolean(transcript.trim());
-  const borderWidth = hasTranscript ? Math.min(6, Math.max(2, transcript.length / 3)) : 0;
-  const circleStyle = hasTranscript
-    ? {
-        borderWidth,
-        borderStyle: 'solid' as const,
-        borderColor: 'rgba(147, 197, 253, 0.6)',
-      }
-    : { borderWidth: 0, };
+  const borderWidth = hasTranscript
+    ? Math.min(6, Math.max(2, transcript.length / 3))
+    : isListening
+      ? 4
+      : 2;
+  const ringColor = status === 'unsupported'
+    ? 'rgba(148, 163, 184, 0.45)'
+    : isListening
+      ? 'rgba(56, 189, 248, 0.6)'
+      : 'rgba(147, 197, 253, 0.6)';
+  const circleStyle: React.CSSProperties = {
+    borderWidth,
+    borderStyle: 'solid',
+    borderColor: ringColor,
+    boxShadow: isListening ? '0 0 0 12px rgba(147, 197, 253, 0.18)' : undefined,
+  };
 
   const handleSubmit = React.useCallback(() => {
     const value = transcript.trim();
@@ -122,18 +122,18 @@ export function VoiceSearchDialog({
 
   return (
     <Dialog open={ open } onOpenChange={ onOpenChange }>
-      <DialogContent className="max-w-sm space-y-5">
+      <DialogContent className="w-full max-w-lg space-y-5 px-10 py-10">
         <DialogHeader className="px-0 text-center">
           <DialogTitle>Voice search</DialogTitle>
           <DialogDescription>Hold the mic, speak, and we’ll type it out.</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col items-center gap-4 px-4">
           <div
-            className="flex h-36 w-36 items-center justify-center rounded-full bg-secondary transition-all duration-300"
+            className="flex h-[108px] w-[108px] items-center justify-center rounded-full bg-secondary/20 transition-all duration-300 mt-6 mb-6"
             style={ circleStyle }
           >
-            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-secondary">
-              <FiMic className="size-5 text-background" aria-hidden="true" />
+            <div className="flex h-[90px] w-[90px] items-center justify-center rounded-full bg-secondary">
+              <FaMicrophone className="size-5 text-background" aria-hidden="true" />
             </div>
           </div>
           <div className="min-h-[3rem] text-center text-sm text-muted-foreground">
@@ -143,18 +143,22 @@ export function VoiceSearchDialog({
               <p>Speak now and your words will appear here…</p>
             ) }
           </div>
-          <p className="text-xs text-muted-foreground text-center">{ statusMessage }</p>
-        <div className="flex w-full items-center justify-center gap-2">
-          <Button
-            variant={ isListening ? 'destructive' : 'secondary' }
-            onClick={ handleToggleListening }
-            disabled={ status === 'unsupported' }
-          >
-            { isListening ? 'Stop listening' : 'Restart listening' }
-          </Button>
+          { errorMessage && (
+            <p className="text-xs text-destructive" role="status" aria-live="polite">
+              { errorMessage }
+            </p>
+          ) }
+          <div className="flex w-full items-center justify-center gap-2">
+            <Button
+              variant={ isListening ? 'destructive' : 'secondary' }
+              onClick={ handleToggleListening }
+              disabled={ status === 'unsupported' }
+            >
+              { isListening ? 'Stop listening' : 'Restart listening' }
+            </Button>
+          </div>
         </div>
-      </div>
-    </DialogContent>
-  </Dialog>
-);
+      </DialogContent>
+    </Dialog>
+  );
 }

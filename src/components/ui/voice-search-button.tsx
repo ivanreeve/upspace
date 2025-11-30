@@ -22,7 +22,7 @@ export function VoiceSearchButton({
       onClick={ onClick }
       disabled={ disabled }
       className={ cn(
-        'inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/60 p-1 text-muted-foreground transition hover:border-border hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50',
+        'inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/60 p-1 text-muted-foreground transition hover:border-border hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary cursor-pointer disabled:cursor-not-allowed disabled:opacity-50',
         disabled && 'cursor-not-allowed opacity-50'
       ) }
     >
