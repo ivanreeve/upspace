@@ -59,8 +59,7 @@ export function SpaceAvailabilityStep({ form, }: SpaceAvailabilityStepProps) {
             <div key={ day } className="rounded-lg border border-border/70 bg-background/70 p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-foreground">{ day }</p>
-                  <p className="text-xs text-muted-foreground">Control when this space can be booked.</p>
+                  <p className="text-md font-semibold text-foreground font-sf">{ day }</p>
                 </div>
                 <FormField
                   control={ form.control }
