@@ -46,6 +46,7 @@ import {
 import { usePartnerSpacesQuery } from '@/hooks/api/usePartnerSpaces';
 import { clearSpaceFormDraft, useSpaceDraftSummary } from '@/hooks/useSpaceFormPersistence';
 import { clearStoredPhotoState } from '@/hooks/usePersistentSpaceImages';
+import type { SpaceStatus } from '@/data/spaces';
 
 const inventoryDateFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -62,10 +63,27 @@ const draftSavedFormatter = new Intl.DateTimeFormat('en-US', {
 });
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50] as const;
+const SPACE_STATUS_VALUES: SpaceStatus[] = ['Live', 'Pending', 'Draft'];
+type StatusFilterValue = SpaceStatus | 'all';
+type StatusFilterOption = {
+  value: StatusFilterValue;
+  label: string;
+};
+const STATUS_FILTER_OPTIONS: StatusFilterOption[] = [
+  {
+    value: 'all',
+    label: 'All statuses',
+  },
+  ...SPACE_STATUS_VALUES.map((status) => ({
+    value: status,
+    label: status,
+  }))
+];
 
 export function SpacesInventoryForm() {
   const [pageSize, setPageSize] = useState<number>(10);
   const [pageIndex, setPageIndex] = useState(0);
+  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>('all');
   const {
     data: spaces,
     isLoading,
@@ -86,7 +104,19 @@ export function SpacesInventoryForm() {
     return null;
   }, [supabaseUrl]);
 
-  const tableRows = useMemo(() => (spaces ?? []).map((space) => {
+  const filteredSpaces = useMemo(() => {
+    if (!spaces) {
+      return [];
+    }
+
+    if (statusFilter === 'all') {
+      return spaces;
+    }
+
+    return spaces.filter((space) => space.status === statusFilter);
+  }, [spaces, statusFilter]);
+
+  const tableRows = useMemo(() => filteredSpaces.map((space) => {
     const images = space.images ?? [];
     const featuredImage = images.find((image) => image.is_primary) ?? images[0] ?? null;
     const imageSrc = featuredImage ? resolveImageSrc(featuredImage.path, featuredImage.public_url) : null;
@@ -102,7 +132,7 @@ export function SpacesInventoryForm() {
       imageSrc,
       fallbackInitials,
     };
-  }), [spaces, resolveImageSrc]);
+  }), [filteredSpaces, resolveImageSrc]);
 
   useEffect(() => {
     setPageIndex((prev) => {
@@ -137,6 +167,10 @@ export function SpacesInventoryForm() {
     setPageSize(parsed);
     setPageIndex(0);
   }, [pageSize]);
+  const handleStatusFilterChange = (value: StatusFilterValue) => {
+    setStatusFilter(value);
+    setPageIndex(0);
+  };
 
   const handleDiscardDraft = useCallback(() => {
     clearSpaceFormDraft();
@@ -274,7 +308,60 @@ export function SpacesInventoryForm() {
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Label
+                  htmlFor="spaces-status-filter"
+                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                >
+                  Status
+                </Label>
+                <Select
+                  value={ statusFilter }
+                  onValueChange={ handleStatusFilterChange }
+                >
+                  <SelectTrigger
+                    id="spaces-status-filter"
+                    className="w-36"
+                    aria-label="Filter spaces by status"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    { STATUS_FILTER_OPTIONS.map((option) => (
+                      <SelectItem key={ option.value } value={ option.value }>
+                        { option.label }
+                      </SelectItem>
+                    )) }
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label
+                  htmlFor="spaces-per-page"
+                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                >
+                  Per page
+                </Label>
+                <Select value={ String(pageSize) } onValueChange={ handlePageSizeChange }>
+                  <SelectTrigger
+                    id="spaces-per-page"
+                    className="w-24"
+                    aria-label="Spaces per page"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    { PAGE_SIZE_OPTIONS.map((option) => (
+                      <SelectItem key={ option } value={ String(option) }>
+                        { option }
+                      </SelectItem>
+                    )) }
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="ml-auto flex items-center gap-2">
               <Button
                 size="sm"
                 variant="outline"
@@ -282,7 +369,7 @@ export function SpacesInventoryForm() {
                 disabled={ pageIndex === 0 }
               >
                 <FiChevronLeft className="size-4" aria-hidden="true" />
-                Previous
+                <span className="sr-only">Previous page</span>
               </Button>
               <Button
                 size="sm"
@@ -290,33 +377,9 @@ export function SpacesInventoryForm() {
                 onClick={ handleNextPage }
                 disabled={ pageIndex >= totalPages - 1 || pageRowCount === 0 }
               >
-                Next
                 <FiChevronRight className="size-4" aria-hidden="true" />
+                <span className="sr-only">Next page</span>
               </Button>
-            </div>
-            <div className="flex items-center gap-2">
-              <Label
-                htmlFor="spaces-per-page"
-                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-              >
-                Per page
-              </Label>
-              <Select value={ String(pageSize) } onValueChange={ handlePageSizeChange }>
-                <SelectTrigger
-                  id="spaces-per-page"
-                  className="w-24"
-                  aria-label="Spaces per page"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  { PAGE_SIZE_OPTIONS.map((option) => (
-                    <SelectItem key={ option } value={ String(option) }>
-                      { option }
-                    </SelectItem>
-                  )) }
-                </SelectContent>
-              </Select>
             </div>
           </div>
         </div>
