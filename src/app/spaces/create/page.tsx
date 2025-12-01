@@ -22,6 +22,7 @@ import {
   FiList,
   FiMapPin,
   FiPlus,
+  FiSave,
   FiShield,
   FiTrash,
   FiX
@@ -285,8 +286,9 @@ export default function SpaceCreateRoute() {
   });
   const {
     clearDraft,
+    saveDraft,
     isHydrated: isFormHydrated,
-  } = useSpaceFormPersistence(form);
+  } = useSpaceFormPersistence(form, currentStep);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [listingChecklistState, setListingChecklistState] = useState<Record<string, boolean>>(createListingChecklistState);
@@ -1104,6 +1106,17 @@ export default function SpaceCreateRoute() {
     }
   };
 
+  const handleSaveDraft = useCallback(() => {
+    const summary = saveDraft();
+    if (!summary) {
+      toast.error('Drafts can only be saved in browsers that support local storage.');
+      return;
+    }
+
+    const name = summary.name.trim() || 'Space draft';
+    toast.success(`${name} saved as draft.`);
+  }, [saveDraft]);
+
   return (
     <>
       <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
@@ -1364,19 +1377,30 @@ export default function SpaceCreateRoute() {
                   </div>
                 ) }
                 <div className="flex items-center justify-between gap-2 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={ isSubmitting }
-                    onClick={ () => {
-                      clearDraft();
-                      clearImages();
-                      resetVerificationRequirements();
-                      router.push('/spaces');
-                    } }
-                  >
-                    Cancel
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={ isSubmitting }
+                      onClick={ () => {
+                        clearDraft();
+                        clearImages();
+                        resetVerificationRequirements();
+                        router.push('/spaces');
+                      } }
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={ isSubmitting }
+                      onClick={ handleSaveDraft }
+                    >
+                      <FiSave className="size-4" aria-hidden="true" />
+                      Save as draft
+                    </Button>
+                  </div>
                   <div className="flex items-center gap-2">
                     { currentStep === 1 && (
                       <Button type="button" disabled={ !isBasicsStepComplete } onClick={ goToPhotoStep }>

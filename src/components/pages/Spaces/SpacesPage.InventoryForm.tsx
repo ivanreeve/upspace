@@ -1,13 +1,21 @@
 'use client';
 
 import {
-useCallback,
-useEffect,
-useMemo,
-useState
+  useCallback,
+  useEffect,
+  useMemo,
+  useState
 } from 'react';
 import Link from 'next/link';
-import { FiChevronLeft, FiChevronRight, FiPlus } from 'react-icons/fi';
+import {
+  FiChevronLeft,
+  FiChevronRight,
+  FiEdit3,
+  FiFileText,
+  FiPlus,
+  FiTrash2
+} from 'react-icons/fi';
+import { toast } from 'sonner';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -36,12 +44,21 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { usePartnerSpacesQuery } from '@/hooks/api/usePartnerSpaces';
+import { clearSpaceFormDraft, useSpaceDraftSummary } from '@/hooks/useSpaceFormPersistence';
+import { clearStoredPhotoState } from '@/hooks/usePersistentSpaceImages';
 
 const inventoryDateFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'short',
   day: 'numeric',
   year: 'numeric',
   timeZone: 'UTC',
+});
+
+const draftSavedFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
 });
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50] as const;
@@ -55,6 +72,10 @@ export function SpacesInventoryForm() {
     isError,
     error,
   } = usePartnerSpacesQuery();
+  const {
+    summary: draftSummary,
+    refresh: refreshDraftSummary,
+  } = useSpaceDraftSummary();
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '') ?? null;
   const resolveImageSrc = useCallback((path?: string | null, publicUrl?: string | null) => {
@@ -116,6 +137,69 @@ export function SpacesInventoryForm() {
     setPageSize(parsed);
     setPageIndex(0);
   }, [pageSize]);
+
+  const handleDiscardDraft = useCallback(() => {
+    clearSpaceFormDraft();
+    clearStoredPhotoState();
+    refreshDraftSummary();
+    toast.success('Draft cleared.');
+  }, [refreshDraftSummary]);
+
+  const renderDraftCard = () => {
+    if (!draftSummary) {
+      return null;
+    }
+
+    const savedAt = (() => {
+      const parsedDate = draftSummary.savedAt ? new Date(draftSummary.savedAt) : null;
+      return parsedDate && !Number.isNaN(parsedDate.valueOf())
+        ? draftSavedFormatter.format(parsedDate)
+        : 'just now';
+    })();
+    const location = [draftSummary.city, draftSummary.region].filter(Boolean).join(', ');
+
+    return (
+      <Card className="border-dashed border-primary/40 bg-primary/5">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-primary/10 text-primary">
+              <FiFileText className="size-5" aria-hidden="true" />
+            </div>
+            <div className="space-y-1">
+              <CardTitle className="text-base leading-tight">{ draftSummary.name }</CardTitle>
+              <CardDescription className="text-sm">
+                Saved { savedAt }
+                { location ? ` · ${location}` : '' }
+                { draftSummary.step ? ` · Step ${draftSummary.step}` : '' }
+              </CardDescription>
+            </div>
+          </div>
+          <Badge variant="outline">Draft</Badge>
+        </CardHeader>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 px-6 py-3">
+          <p className="text-xs text-muted-foreground">
+            Drafts stay on this device until you submit a space.
+          </p>
+          <div className="flex items-center gap-2">
+            <Button asChild size="sm">
+              <Link href="/spaces/create">
+                <FiEdit3 className="size-4" aria-hidden="true" />
+                Resume draft
+              </Link>
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={ handleDiscardDraft }
+            >
+              <FiTrash2 className="size-4" aria-hidden="true" />
+              Discard
+            </Button>
+          </div>
+        </div>
+      </Card>
+    );
+  };
 
   const renderContent = () => {
     if (isLoading) {
@@ -361,6 +445,8 @@ export function SpacesInventoryForm() {
           Review every listing in a single table. Use the plus button to open the dedicated space creation page.
         </p>
       </div>
+
+      { renderDraftCard() }
 
       { renderContent() }
 
