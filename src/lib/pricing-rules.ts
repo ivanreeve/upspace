@@ -6,7 +6,7 @@ export type PriceRuleConditionConnector = (typeof PRICE_RULE_CONNECTORS)[number]
 export const PRICE_RULE_COMPARATORS = ['<', '<=', '>', '>=', '=', '!='] as const;
 export type PriceRuleComparator = (typeof PRICE_RULE_COMPARATORS)[number];
 
-export const PRICE_RULE_LITERAL_TYPES = ['text', 'number', 'datetime'] as const;
+export const PRICE_RULE_LITERAL_TYPES = ['text', 'number', 'datetime', 'date', 'time'] as const;
 export type PriceRuleLiteralType = (typeof PRICE_RULE_LITERAL_TYPES)[number];
 
 export type PriceRuleVariableType = 'text' | 'number';
@@ -137,6 +137,12 @@ export const PRICE_RULE_SPECIAL_CONSTANTS: PriceRuleConstant[] = [
     key: 'time',
     label: 'Current time',
     type: 'time',
+    special: true,
+  },
+  {
+    key: 'day_of_week',
+    label: 'Day of week',
+    type: 'number',
     special: true,
   }
 ];
