@@ -95,13 +95,6 @@ export type PriceRuleFormValues = z.infer<typeof priceRuleSchema>;
 
 export const PRICE_RULE_INITIAL_VARIABLES: PriceRuleVariable[] = [
   {
-    key: 'input_text',
-    label: 'Input text',
-    type: 'text',
-    initialValue: '',
-    userInput: false,
-  },
-  {
     key: 'booking_hours',
     label: 'Booking hours',
     type: 'number',

@@ -51,7 +51,6 @@ import {
   PriceRuleDefinition,
   PriceRuleFormValues,
   PriceRuleOperand,
-  PriceRuleVariable,
   priceRuleSchema
 } from '@/lib/pricing-rules';
 
@@ -76,6 +75,12 @@ const ensureUniqueKey = (desired: string, existing: string[]) => {
 };
 
 const randomId = () => globalThis?.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2);
+
+const RESERVED_VARIABLE_KEYS = PRICE_RULE_INITIAL_VARIABLES.map((variable) => variable.key);
+
+const KEYWORD_NORMALIZATION_REGEX = /\b(if|then|and|or|not)\b/gi;
+const normalizeConditionKeywords = (value: string) =>
+  value.replace(KEYWORD_NORMALIZATION_REGEX, (match) => match.toUpperCase());
 
 const formatDateForInput = (value: Date) => {
   const year = value.getFullYear();
@@ -159,6 +164,7 @@ type ParserState = {
   length: number;
   pos: number;
   variables: VariableValueMap;
+  onVariable?: (key: string) => void;
 };
 
 const isDigit = (char?: string) => typeof char === 'string' && char >= '0' && char <= '9';
@@ -177,7 +183,11 @@ const skipWhitespace = (state: ParserState) => {
 
 const peekChar = (state: ParserState) => state.expression[state.pos];
 
-function evaluateFormula(expression: string, variables: VariableValueMap): number {
+function evaluateFormula(
+  expression: string,
+  variables: VariableValueMap,
+  onVariable?: (key: string) => void
+): number {
   if (!expression.trim()) {
     throw new Error('Enter a formula before validating.');
   }
@@ -187,6 +197,7 @@ function evaluateFormula(expression: string, variables: VariableValueMap): numbe
     length: expression.length,
     pos: 0,
     variables,
+    onVariable,
   };
 
   const result = parseExpression(state);
@@ -307,8 +318,57 @@ function parseVariable(state: ParserState): number {
     state.pos += 1;
   }
   const key = state.expression.slice(start, state.pos);
-  return state.variables[key] ?? 0;
+  if (!Object.prototype.hasOwnProperty.call(state.variables, key)) {
+    throw new Error(`Unknown variable "${key}".`);
+  }
+  state.onVariable?.(key);
+  return state.variables[key];
 }
+
+const createVariableValueMap = (definition: PriceRuleDefinition): VariableValueMap => {
+  const map: VariableValueMap = {};
+  definition.variables.forEach((variable) => {
+    map[variable.key] = 0;
+  });
+  return map;
+};
+
+const validatePriceExpression = (
+  expression: string,
+  label: 'THEN' | 'ELSE',
+  variableMap: VariableValueMap,
+  definition: PriceRuleDefinition
+) => {
+  const trimmed = expression.trim();
+  if (!trimmed) {
+    throw new Error(`${label} expression is required.`);
+  }
+  if (/[<>=!]/.test(trimmed)) {
+    throw new Error(`${label} expression can only use arithmetic operators and variables.`);
+  }
+  try {
+    const usedVariables = new Set<string>();
+    evaluateFormula(trimmed, variableMap, (key) => {
+      usedVariables.add(key);
+    });
+    const allowedVariables = new Set<string>(['booking_hours']);
+    definition.variables.forEach((variable) => {
+      if (!RESERVED_VARIABLE_KEYS.includes(variable.key) && variable.type === 'number') {
+        allowedVariables.add(variable.key);
+      }
+    });
+    usedVariables.forEach((key) => {
+      if (!allowedVariables.has(key)) {
+        throw new Error(
+          `${label} expression can only reference booking_hours or number variables you’ve added.`
+        );
+      }
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'invalid';
+    throw new Error(`${label} expression is invalid. ${message}`);
+  }
+};
 
 type ConditionSegment = {
   text: string;
@@ -570,7 +630,14 @@ export const parseConditionExpression = (
   }));
 };
 
-const splitConditionAndFormula = (expression: string) => {
+type ConditionFormulaSplit = {
+  condition: string;
+  formula: string;
+  thenFormula: string;
+  elseFormula: string;
+};
+
+const splitConditionAndFormula = (expression: string): ConditionFormulaSplit => {
   const trimmed = expression.trim();
   const lower = trimmed.toLowerCase();
   const thenSeparator = ' then ';
@@ -581,6 +648,8 @@ const splitConditionAndFormula = (expression: string) => {
     return {
       condition: trimmed,
       formula: '',
+      thenFormula: '',
+      elseFormula: '',
     };
   }
 
@@ -591,18 +660,31 @@ const splitConditionAndFormula = (expression: string) => {
 
   const formulaSection = trimmed.slice(thenIndex + thenSeparator.length);
   const elseIndex = formulaSection.toLowerCase().indexOf(elseSeparator);
+
   if (elseIndex === -1) {
+    const thenFormula = formulaSection.trim();
     return {
       condition,
-      formula: formulaSection.trim(),
+      formula: thenFormula,
+      thenFormula,
+      elseFormula: '',
     };
   }
 
-  const primary = formulaSection.slice(0, elseIndex).trim();
-  const elsePart = formulaSection.slice(elseIndex + elseSeparator.length).trim();
+  const thenFormula = formulaSection.slice(0, elseIndex).trim();
+  const elseFormula = formulaSection
+    .slice(elseIndex + elseSeparator.length)
+    .trim();
+
+  if (!elseFormula) {
+    throw new Error('Add a price expression after ELSE.');
+  }
+
   return {
     condition,
-    formula: `${primary}${elsePart ? ` ELSE ${elsePart}` : ''}`.trim(),
+    formula: `${thenFormula} ELSE ${elseFormula}`.trim(),
+    thenFormula,
+    elseFormula,
   };
 };
 
@@ -625,8 +707,6 @@ const createDefaultRule = (): PriceRuleFormValues => ({
     formula: '',
   },
 });
-
-const RESERVED_VARIABLE_KEYS = PRICE_RULE_INITIAL_VARIABLES.map((variable) => variable.key);
 
 export type PriceRuleFormState = {
   values: PriceRuleFormValues;
@@ -747,38 +827,63 @@ export function usePriceRuleFormState(
   };
 
   const handleConditionExpressionChange = (nextExpression: string) => {
-    setConditionExpression(nextExpression);
-    if (!nextExpression.trim()) {
+    const normalizedExpression = normalizeConditionKeywords(nextExpression);
+    setConditionExpression(normalizedExpression);
+    const trimmedExpression = normalizedExpression.trim();
+    if (!trimmedExpression) {
       updateDefinition((definition) => ({
         ...definition,
         conditions: [],
         formula: '0',
       }));
       setConditionError(null);
-      return;
+      return normalizedExpression;
+    }
+
+    const lowerExpression = trimmedExpression.toLowerCase();
+    if (!/^if\b/.test(lowerExpression)) {
+      setConditionError('Condition must begin with IF.');
+      return normalizedExpression;
+    }
+
+    if (!lowerExpression.includes(' then ')) {
+      setConditionError('Add a THEN clause with the formula to apply.');
+      return normalizedExpression;
     }
 
     try {
       const {
         condition,
         formula,
-      } = splitConditionAndFormula(nextExpression);
-      const parsedConditions = condition
-        ? parseConditionExpression(condition, values.definition)
-        : [];
+        thenFormula,
+        elseFormula,
+      } = splitConditionAndFormula(trimmedExpression);
+
+      if (!condition) {
+        throw new Error('Condition is missing operands.');
+      }
+
+      if (!thenFormula) {
+        throw new Error('Add a price expression after THEN.');
+      }
+
+      const variableMap = createVariableValueMap(values.definition);
+      validatePriceExpression(thenFormula, 'THEN', variableMap, values.definition);
+      if (elseFormula) {
+        validatePriceExpression(elseFormula, 'ELSE', variableMap, values.definition);
+      }
+
+      const parsedConditions = parseConditionExpression(condition, values.definition);
       updateDefinition((definition) => ({
         ...definition,
         conditions: parsedConditions,
         formula: formula || '0',
       }));
-      if (!formula.trim() && condition) {
-        setConditionError('Add a THEN clause with the formula to apply.');
-      } else {
-        setConditionError(null);
-      }
+      setConditionError(null);
     } catch (error) {
       setConditionError(error instanceof Error ? error.message : 'Invalid condition expression.');
     }
+    return normalizedExpression;
   };
 
   return {
@@ -899,8 +1004,8 @@ function RuleLanguageEditor({
     const end = textarea.selectionEnd ?? 0;
     const nextExpression = `${conditionExpression.slice(0, start)}${value}${conditionExpression.slice(end)}`;
     const cursor = start + value.length;
-    handleConditionExpressionChange(nextExpression);
-    updateSuggestions(nextExpression, cursor);
+    const normalized = handleConditionExpressionChange(nextExpression);
+    updateSuggestions(normalized, cursor);
     requestAnimationFrame(() => {
       textarea.focus();
       textarea.setSelectionRange(cursor, cursor);
@@ -1078,8 +1183,8 @@ function RuleLanguageEditor({
     const before = conditionExpression.slice(0, tokenRange.start);
     const after = conditionExpression.slice(tokenRange.end);
     const nextExpression = `${before}${suggestion.insert}${after}`;
-    handleConditionExpressionChange(nextExpression);
-    updateSuggestions(nextExpression, before.length + suggestion.insert.length);
+    const normalized = handleConditionExpressionChange(nextExpression);
+    updateSuggestions(normalized, before.length + suggestion.insert.length);
     requestAnimationFrame(() => {
       const textarea = textareaRef.current;
       if (textarea) {
@@ -1093,9 +1198,9 @@ function RuleLanguageEditor({
 
   const handleTextareaChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
     const next = event.target.value;
-    handleConditionExpressionChange(next);
-    const cursor = event.target.selectionStart ?? next.length;
-    updateSuggestions(next, cursor);
+    const normalized = handleConditionExpressionChange(next);
+    const cursor = event.target.selectionStart ?? normalized.length;
+    updateSuggestions(normalized, cursor);
   };
 
   const handleSuggestionKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -1373,9 +1478,9 @@ function RuleLanguageEditor({
             ) }
           </div>
           { conditionError ? (
-            <p className="text-xs text-destructive">{ conditionError }</p>
+            <p className="text-xs text-destructive font-sf">{ conditionError }</p>
           ) : (
-            <p id="condition-language-help" className="text-xs text-muted-foreground">
+            <p id="condition-language-help" className="text-xs text-muted-foreground font-sf">
               Start with a variable, add a comparator, then a literal. Use <strong>AND</strong>/<strong>OR</strong> to chain.
             </p>
           ) }
@@ -1536,16 +1641,19 @@ export function PriceRuleFormShell({
         conditionError={ conditionError }
         handleConditionExpressionChange={ handleConditionExpressionChange }
       />
-      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end px-0 pb-0 pt-2">
-        { onCancel && (
-          <Button variant="outline" onClick={ onCancel } disabled={ isSubmitting }>
-            Cancel
-          </Button>
-        ) }
-        <Button onClick={ handleSubmit } disabled={ isSubmitting }>
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end px-0 pb-0 pt-2">
+          { onCancel && (
+            <Button variant="outline" onClick={ onCancel } disabled={ isSubmitting }>
+              Cancel
+            </Button>
+          ) }
+        <Button
+          onClick={ handleSubmit }
+          disabled={ isSubmitting || Boolean(conditionError) || !conditionExpression.trim() }
+        >
           { isSubmitting ? 'Saving…' : mode === 'create' ? 'Save rule' : 'Update rule' }
         </Button>
-      </div>
+        </div>
     </div>
   );
 }
