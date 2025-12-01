@@ -628,7 +628,7 @@ export function MarketplaceChrome({
                       label="Home"
                       icon={ FiHome }
                       tooltip="Home"
-                      iconProps={ { strokeWidth: 1.4, } }
+                      iconProps={ { strokeWidth: 2, } }
                     />
                     <SidebarMenuItem>
                       <SidebarMenuButton
@@ -637,7 +637,7 @@ export function MarketplaceChrome({
                         type="button"
                         onClick={ handleSearch }
                       >
-                        <FiSearch className="size-4" strokeWidth={ 1.4 } />
+                        <FiSearch className="size-4" strokeWidth={ 2 } />
                         <span data-sidebar-label>Search</span>
                         { onSearchOpen ? (
                           <Kbd className="ml-auto hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden">
@@ -661,7 +661,7 @@ export function MarketplaceChrome({
                         label="Notifications"
                         icon={ FiBell }
                         tooltip="Notifications"
-                        iconProps={ { strokeWidth: 1.4, } }
+                        iconProps={ { strokeWidth: 2, } }
                       />
                     ) }
                     { shouldShowNotifications && (
@@ -670,7 +670,7 @@ export function MarketplaceChrome({
                         label="Messages"
                         icon={ FiMessageSquare }
                         tooltip="Messages"
-                        iconProps={ { strokeWidth: 1.4, } }
+                        iconProps={ { strokeWidth: 2, } }
                       />
                     ) }
                     { isPartnerRole && (
@@ -703,7 +703,7 @@ export function MarketplaceChrome({
                         label="Dashboard"
                         icon={ FiBarChart2 }
                         tooltip="Dashboard"
-                        iconProps={ { strokeWidth: 1.4, } }
+                        iconProps={ { strokeWidth: 2, } }
                       />
                     ) }
                     { isAdminRole && (
@@ -712,7 +712,7 @@ export function MarketplaceChrome({
                         label="Verification Queue"
                         icon={ HiOutlineDocumentText }
                         tooltip="Verification queue"
-                        iconProps={ { strokeWidth: 1, } }
+                        iconProps={ { strokeWidth: 2, } }
                       />
                     ) }
                     { isAdminRole && (
