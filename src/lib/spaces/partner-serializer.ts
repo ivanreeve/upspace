@@ -12,6 +12,7 @@ import {
   createDefaultWeeklyAvailability
 } from '@/data/spaces';
 import { buildPublicObjectUrl, isAbsoluteUrl, resolveSignedImageUrls } from '@/lib/spaces/image-urls';
+import type { PriceRuleDefinition, PriceRuleRecord } from '@/lib/pricing-rules';
 
 const DAY_INDEX_TO_WEEKDAY: Record<number, WeekdayName> = {
   0: 'Monday',
@@ -42,8 +43,12 @@ export const partnerSpaceInclude = {
   space_availability: { orderBy: { day_of_week: 'asc' as const, }, },
   area: {
     orderBy: { created_at: 'asc' as const, },
-    include: { price_rate: { orderBy: { created_at: 'asc' as const, }, }, },
+    include: {
+      price_rate: { orderBy: { created_at: 'asc' as const, }, },
+      price_rule: true,
+    },
   },
+  price_rule: { orderBy: { created_at: 'asc' as const, }, },
   space_image: {
     orderBy: { display_order: 'asc' as const, },
     select: {
@@ -93,6 +98,7 @@ export async function serializePartnerSpace(space: PartnerSpaceRow): Promise<Spa
     created_at: space.created_at instanceof Date ? space.created_at.toISOString() : String(space.created_at),
     areas: space.area.map(serializeArea),
     images: await buildImageRecords(space.space_image),
+    pricing_rules: space.price_rule.map(serializePriceRule),
   };
 }
 
@@ -123,6 +129,17 @@ const buildAvailability = (
   return availability;
 };
 
+const serializePriceRule = (
+  rule: PartnerSpaceRow['price_rule'][number]
+): PriceRuleRecord => ({
+  id: rule.id,
+  name: rule.name,
+  description: rule.description ?? null,
+  definition: rule.definition as PriceRuleDefinition,
+  created_at: rule.created_at instanceof Date ? rule.created_at.toISOString() : String(rule.created_at),
+  updated_at: rule.updated_at instanceof Date ? rule.updated_at.toISOString() : null,
+});
+
 export const serializeArea = (
   area: PartnerSpaceRow['area'][number]
 ): AreaRecord => {
@@ -135,6 +152,7 @@ export const serializeArea = (
     rate_time_unit: (primaryRate?.time_unit as AreaRecord['rate_time_unit']) ?? AREA_INPUT_DEFAULT.rate_time_unit,
     rate_amount: primaryRate ? Number(primaryRate.price) : AREA_INPUT_DEFAULT.rate_amount,
     created_at: area.created_at instanceof Date ? area.created_at.toISOString() : String(area.created_at),
+    price_rule: area.price_rule ? serializePriceRule(area.price_rule) : null,
   };
 };
 

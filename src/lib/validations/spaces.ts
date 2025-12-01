@@ -147,6 +147,11 @@ export const areaSchema = z
       .min(1, 'Maximum capacity must be at least 1 seat.'),
     rate_time_unit: z.enum(rateUnits, { required_error: 'Select a billing cadence.', }),
     rate_amount: z.coerce.number({ message: 'Provide a rate amount.', }).positive('Rate must be greater than zero.'),
+    price_rule_id: z
+      .string()
+      .uuid()
+      .optional()
+      .nullable(),
   })
   .refine((values) => values.max_capacity >= values.min_capacity, {
     path: ['max_capacity'],

@@ -62,6 +62,7 @@ import {
   SpaceRecord,
   type WeeklyAvailability
 } from '@/data/spaces';
+import type { PriceRuleRecord } from '@/lib/pricing-rules';
 import {
   Form,
   FormControl,
@@ -257,7 +258,10 @@ export const createSpaceFormDefaults = (): SpaceFormValues => ({
   availability: disableWeeklyAvailability(cloneWeeklyAvailability(SPACE_INPUT_DEFAULT.availability)),
 });
 
-export const createAreaFormDefaults = (): AreaFormValues => ({ ...AREA_INPUT_DEFAULT, });
+export const createAreaFormDefaults = (): AreaFormValues => ({
+  ...AREA_INPUT_DEFAULT,
+  price_rule_id: null,
+});
 
 export const spaceRecordToFormValues = (space: SpaceRecord): SpaceFormValues => ({
   name: space.name,
@@ -282,6 +286,7 @@ export const areaRecordToFormValues = (area: AreaRecord): AreaFormValues => ({
   max_capacity: area.max_capacity,
   rate_time_unit: area.rate_time_unit,
   rate_amount: area.rate_amount,
+  price_rule_id: area.price_rule?.id ?? null,
 });
 
 export type DescriptionEditorProps<TFieldValues extends { description: string }> = {
@@ -1991,6 +1996,7 @@ type AreaDialogProps = {
   onSubmit: (values: AreaFormValues) => void;
   mode?: 'create' | 'edit';
   isSubmitting?: boolean;
+  pricingRules: PriceRuleRecord[];
 };
 
 export function AreaDialog({
@@ -2000,6 +2006,7 @@ export function AreaDialog({
   onSubmit,
   mode = 'create',
   isSubmitting = false,
+  pricingRules,
 }: AreaDialogProps) {
   const form = useForm<AreaFormValues>({
     resolver: zodResolver(areaSchema),
@@ -2120,15 +2127,44 @@ export function AreaDialog({
               </FormItem>
             ) }
           />
-            </div>
-            <DialogFooter className="flex-col gap-2 sm:flex-row">
-              <Button type="button" variant="outline" onClick={ close } disabled={ isSubmitting }>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={ isSubmitting }>
-                { isSubmitting ? 'Saving…' : mode === 'edit' ? 'Update area' : 'Save area' }
-              </Button>
-            </DialogFooter>
+        </div>
+        <FormField
+          control={ form.control }
+          name="price_rule_id"
+          render={ ({ field, }) => (
+            <FormItem>
+              <FormLabel>Pricing rule</FormLabel>
+              <FormControl>
+                <Select
+                  value={ field.value ?? '' }
+                  onValueChange={ (value) => field.onChange(value === '' ? null : value) }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    { pricingRules.map((rule) => (
+                      <SelectItem key={ rule.id } value={ rule.id }>
+                        { rule.name }
+                      </SelectItem>
+                    )) }
+                  </SelectContent>
+                </Select>
+              </FormControl>
+              <FormDescription>Apply a pricing rule to adjust the base rate automatically.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          ) }
+        />
+        <DialogFooter className="flex-col gap-2 sm:flex-row">
+          <Button type="button" variant="outline" onClick={ close } disabled={ isSubmitting }>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={ isSubmitting }>
+            { isSubmitting ? 'Saving…' : mode === 'edit' ? 'Update area' : 'Save area' }
+          </Button>
+        </DialogFooter>
           </form>
         </Form>
       </DialogContent>

@@ -56,15 +56,36 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
       return NextResponse.json({ error: 'Area not found.', }, { status: 404, });
     }
 
-    const result = await prisma.$transaction(async (tx): Promise<PartnerSpaceRow['area'][number]> => {
-      const updatedArea = await tx.area.update({
-        where: { id: areaIdParam, },
-        data: {
-          name: parsed.data.name.trim(),
-          min_capacity: BigInt(parsed.data.min_capacity),
-          max_capacity: BigInt(parsed.data.max_capacity),
-          updated_at: new Date(),
+    if (parsed.data.price_rule_id) {
+      const rule = await prisma.price_rule.findFirst({
+        where: {
+          id: parsed.data.price_rule_id,
+          space_id: spaceIdParam,
         },
+        select: { id: true, },
+      });
+
+      if (!rule) {
+        return NextResponse.json({ error: 'Selected pricing rule is invalid.', }, { status: 400, });
+      }
+    }
+
+    const result = await prisma.$transaction(async (tx): Promise<PartnerSpaceRow['area'][number]> => {
+      const updatePayload: Parameters<typeof tx.area.update>[0]['data'] = {
+        name: parsed.data.name.trim(),
+        min_capacity: BigInt(parsed.data.min_capacity),
+        max_capacity: BigInt(parsed.data.max_capacity),
+        updated_at: new Date(),
+      };
+
+      const priceRuleId = parsed.data.price_rule_id;
+      if (priceRuleId !== undefined) {
+        updatePayload.price_rule_id = priceRuleId;
+      }
+
+      await tx.area.update({
+        where: { id: areaIdParam, },
+        data: updatePayload,
       });
 
       const existingRate = await tx.price_rate.findFirst({
@@ -91,15 +112,19 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
         });
       }
 
-      const priceRates = await tx.price_rate.findMany({
-        where: { area_id: areaIdParam, },
-        orderBy: { created_at: 'asc', },
+      const areaWithRelations = await tx.area.findFirst({
+        where: { id: areaIdParam, },
+        include: {
+          price_rate: { orderBy: { created_at: 'asc', }, },
+          price_rule: true,
+        },
       });
 
-      return {
-        ...updatedArea,
-        price_rate: priceRates,
-      };
+      if (!areaWithRelations) {
+        throw new Error('Area could not be retrieved after update.');
+      }
+
+      return areaWithRelations;
     });
 
     return NextResponse.json({ data: serializeArea(result), });

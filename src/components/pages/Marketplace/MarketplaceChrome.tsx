@@ -14,10 +14,11 @@ import {
   FiSettings,
   FiUser
 } from 'react-icons/fi';
+import { PiMoneyWavyBold } from 'react-icons/pi';
 import { HiOutlineDocumentText } from 'react-icons/hi';
+import { LuSparkles, LuTicket } from 'react-icons/lu';
 import { MdFormatListBulleted, MdOutlineSpaceDashboard, MdWorkOutline } from 'react-icons/md';
 import { TbLayoutSidebarFilled } from 'react-icons/tb';
-import { LuSparkles, LuTicket } from 'react-icons/lu';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Kbd } from '@/components/ui/kbd';
@@ -679,6 +680,14 @@ export function MarketplaceChrome({
                         label="Spaces"
                         icon={ MdWorkOutline }
                         tooltip="Spaces"
+                      />
+                    ) }
+                    { isPartnerRole && (
+                      <SidebarLinkItem
+                        href="/spaces/pricing-rules"
+                        label="Price Rules"
+                        icon={ PiMoneyWavyBold }
+                        tooltip="Price rules"
                       />
                     ) }
                     { isPartnerRole && (

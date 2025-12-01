@@ -40,6 +40,8 @@ export const cloneWeeklyAvailability = (availability: WeeklyAvailability): Weekl
   return clone;
 };
 
+import type { PriceRuleRecord } from '@/lib/pricing-rules';
+
 export type SpaceInput = {
   name: string;
   description: string;
@@ -63,11 +65,13 @@ export type AreaInput = {
   max_capacity: number;
   rate_time_unit: 'hour' | 'day' | 'week';
   rate_amount: number;
+  price_rule_id?: string | null;
 };
 
 export type AreaRecord = AreaInput & {
   id: string;
   created_at: string;
+  price_rule: PriceRuleRecord | null;
 };
 
 export type SpaceImageRecord = {
@@ -84,6 +88,7 @@ export type SpaceRecord = SpaceInput & {
   status: SpaceStatus;
   created_at: string;
   areas: AreaRecord[];
+  pricing_rules: PriceRuleRecord[];
   images: SpaceImageRecord[];
 };
 
@@ -132,6 +137,7 @@ export const INITIAL_SPACES: SpaceRecord[] = [
     status: 'Live',
     created_at: '2025-02-10T10:00:00.000Z',
     images: [],
+    pricing_rules: [],
     areas: [
       {
         id: 'atlas-loft-boardroom',
@@ -141,6 +147,7 @@ export const INITIAL_SPACES: SpaceRecord[] = [
         rate_time_unit: 'hour',
         rate_amount: 185,
         created_at: '2025-02-11T09:00:00.000Z',
+        price_rule: null,
       }
     ],
   },
@@ -163,6 +170,7 @@ export const INITIAL_SPACES: SpaceRecord[] = [
     status: 'Pending',
     created_at: '2025-03-01T13:15:00.000Z',
     images: [],
+    pricing_rules: [],
     areas: [
       {
         id: 'beacon-maker-lab',
@@ -172,6 +180,7 @@ export const INITIAL_SPACES: SpaceRecord[] = [
         rate_time_unit: 'hour',
         rate_amount: 145,
         created_at: '2025-03-02T08:00:00.000Z',
+        price_rule: null,
       },
       {
         id: 'beacon-podcast',
@@ -181,6 +190,7 @@ export const INITIAL_SPACES: SpaceRecord[] = [
         rate_time_unit: 'hour',
         rate_amount: 95,
         created_at: '2025-03-02T08:30:00.000Z',
+        price_rule: null,
       }
     ],
   },
@@ -203,6 +213,7 @@ export const INITIAL_SPACES: SpaceRecord[] = [
     status: 'Draft',
     created_at: '2025-03-05T08:45:00.000Z',
     images: [],
+    pricing_rules: [],
     areas: [],
   }
 ];

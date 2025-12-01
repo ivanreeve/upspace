@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AreaRecord, SpaceRecord } from '@/data/spaces';
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
 import type { AreaFormValues, SpaceFormValues } from '@/lib/validations/spaces';
+import type { PriceRuleFormValues, PriceRuleRecord } from '@/lib/pricing-rules';
 
 export const partnerSpacesKeys = {
   all: ['partner-spaces'] as const,
@@ -147,6 +148,85 @@ export function useDeleteAreaMutation(spaceId: string) {
       }
 
       return areaId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), });
+    },
+  });
+}
+
+export function useCreatePriceRuleMutation(spaceId: string) {
+  const authFetch = useAuthenticatedFetch();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: PriceRuleFormValues) => {
+      const response = await authFetch(`/api/v1/partner/spaces/${spaceId}/pricing-rules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+      }
+
+      const data = (await response.json()) as { data: PriceRuleRecord };
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), });
+    },
+  });
+}
+
+export function useUpdatePriceRuleMutation(spaceId: string) {
+  const authFetch = useAuthenticatedFetch();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      priceRuleId,
+      payload,
+    }: {
+      priceRuleId: string;
+      payload: PriceRuleFormValues;
+    }) => {
+      const response = await authFetch(`/api/v1/partner/spaces/${spaceId}/pricing-rules/${priceRuleId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+      }
+
+      const data = (await response.json()) as { data: PriceRuleRecord };
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), });
+    },
+  });
+}
+
+export function useDeletePriceRuleMutation(spaceId: string) {
+  const authFetch = useAuthenticatedFetch();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (priceRuleId: string) => {
+      const response = await authFetch(`/api/v1/partner/spaces/${spaceId}/pricing-rules/${priceRuleId}`, { method: 'DELETE', });
+
+      if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+      }
+
+      return priceRuleId;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });

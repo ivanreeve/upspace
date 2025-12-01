@@ -43,6 +43,20 @@ export async function POST(req: NextRequest, { params, }: RouteParams) {
       return NextResponse.json({ error: 'Space not found.', }, { status: 404, });
     }
 
+    if (parsed.data.price_rule_id) {
+      const rule = await prisma.price_rule.findFirst({
+        where: {
+          id: parsed.data.price_rule_id,
+          space_id: spaceIdParam,
+        },
+        select: { id: true, },
+      });
+
+      if (!rule) {
+        return NextResponse.json({ error: 'Selected pricing rule is invalid.', }, { status: 400, });
+      }
+    }
+
     const result = await prisma.$transaction(async (tx): Promise<PartnerSpaceRow['area'][number]> => {
       const createdArea = await tx.area.create({
         data: {
@@ -50,10 +64,11 @@ export async function POST(req: NextRequest, { params, }: RouteParams) {
           name: parsed.data.name.trim(),
           min_capacity: BigInt(parsed.data.min_capacity),
           max_capacity: BigInt(parsed.data.max_capacity),
+          ...(parsed.data.price_rule_id !== undefined ? { price_rule_id: parsed.data.price_rule_id, } : {}),
         },
       });
 
-      const createdRate = await tx.price_rate.create({
+      await tx.price_rate.create({
         data: {
           area_id: createdArea.id,
           time_unit: parsed.data.rate_time_unit,
@@ -61,10 +76,19 @@ export async function POST(req: NextRequest, { params, }: RouteParams) {
         },
       });
 
-      return {
-        ...createdArea,
-        price_rate: [createdRate],
-      };
+      const areaWithRelations = await tx.area.findFirst({
+        where: { id: createdArea.id, },
+        include: {
+          price_rate: { orderBy: { created_at: 'asc', }, },
+          price_rule: true,
+        },
+      });
+
+      if (!areaWithRelations) {
+        throw new Error('Created area could not be retrieved.');
+      }
+
+      return areaWithRelations;
     });
 
     return NextResponse.json({ data: serializeArea(result), }, { status: 201, });

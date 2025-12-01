@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import {
   useEffect,
   useMemo,
@@ -133,7 +134,6 @@ export function SpaceDetailsPanel({
   const createAreaMutation = useCreateAreaMutation(normalizedSpaceId);
   const updateAreaMutation = useUpdateAreaMutation(normalizedSpaceId);
   const deleteAreaMutation = useDeleteAreaMutation(normalizedSpaceId);
-
   const descriptionForm = useForm<DescriptionFormValues>({
     resolver: zodResolver(descriptionSchema),
     defaultValues: { description: '', },
@@ -713,6 +713,22 @@ export function SpaceDetailsPanel({
           </div>
 
           <Card className="border-border/70 bg-background/80">
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between md:gap-4">
+              <div className="space-y-1">
+                <CardTitle className="text-xl md:text-2xl">Pricing rules</CardTitle>
+                <CardDescription className="text-sm text-muted-foreground">
+                  Pricing rules now live on a dedicated page. Use the sidebar link or the button to open the shared view.
+                </CardDescription>
+              </div>
+              <Button type="button" variant="outline" asChild>
+                <Link href="/spaces/pricing-rules" className="inline-flex items-center gap-2">
+                  <FiPlus className="size-4" aria-hidden="true" />
+                  View price rules
+                </Link>
+              </Button>
+            </CardHeader>
+          </Card>
+          <Card className="border-border/70 bg-background/80">
             <CardHeader className="flex flex-col gap-3 md:gap-4">
               <div className="space-y-1">
                 <CardTitle className="text-xl md:text-2xl">Areas</CardTitle>
@@ -777,11 +793,19 @@ export function SpaceDetailsPanel({
                         </dd>
                       </div>
                     </dl>
-                </div>
-              ))
-            ) }
-          </CardContent>
-          <CardFooter className="flex flex-col gap-2">
+                    { area.price_rule ? (
+                      <div className="mt-3 space-y-1 text-[11px] text-muted-foreground">
+                        <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                          Rule: { area.price_rule.name }
+                        </Badge>
+                        <p>Formula: { area.price_rule.definition.formula }</p>
+                      </div>
+                    ) : null }
+                  </div>
+                ))
+              ) }
+            </CardContent>
+            <CardFooter className="flex flex-col gap-2">
             <div className="w-full">
               <Button
                 type="button"
@@ -806,6 +830,7 @@ export function SpaceDetailsPanel({
         onOpenChange={ handleAreaDialogOpenChange }
         onSubmit={ handleAreaSubmit }
         isSubmitting={ editingAreaId ? updateAreaMutation.isPending : createAreaMutation.isPending }
+        pricingRules={ space.pricing_rules ?? [] }
       />
 
       <Dialog open={ Boolean(areaPendingDelete) } onOpenChange={ handleDeleteDialogOpenChange }>

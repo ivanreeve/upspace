@@ -141,6 +141,9 @@
   --ufont-instrument-serif: "Instrument Serif";
   --error-red: oklch(0.5505 0.2155 19.81);
   --success-green: oklch(0.625 0.1772 140.44);
+  --toast-background: var(--card);
+  --toast-border: var(--ring);
+  --toast-shadow: 0 40px 75px -35px rgba(15, 23, 42, 0.45);
 }
 
 .dark {
@@ -177,6 +180,9 @@
   --ufont-sf: "SF Pro Text";
   --ufont-serif: "Noto Serif";
   --ufont-instrument-serif: "Instrument Serif";
+  --toast-background: var(--card);
+  --toast-border: oklch(1 0 0 / 10%);
+  --toast-shadow: 0 40px 75px -35px rgba(0, 0, 0, 0.6);
 }
 
 ::selection {
@@ -268,6 +274,35 @@
 }
 
 /* Sonner Custom Styles */
+.custom-toast {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: calc(var(--radius) + 2px);
+  max-width: min(420px, 90vw);
+  font-family: var(--ufont-sf);
+  color: var(--foreground);
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.custom-toast svg {
+  color: inherit;
+}
+
+.custom-toast:hover {
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .custom-toast {
+    transition: none;
+  }
+}
+
 .custom-toast button[data-close-button] {
   position: absolute !important;
   right: 12px !important;
