@@ -1105,9 +1105,24 @@ function RuleLanguageEditor({
   onFormulaChange,
 }: RuleLanguageEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const mirrorRef = useRef<HTMLDivElement | null>(null);
   const [suggestionCandidates, setSuggestionCandidates] = useState<Suggestion[]>([]);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
   const [tokenRange, setTokenRange] = useState<TokenRange | null>(null);
+  const [suggestionPosition, setSuggestionPosition] = useState({
+    top: 0,
+    left: 0,
+  });
+
+  useEffect(() => {
+    const mirror = document.createElement('div');
+    mirrorRef.current = mirror;
+    document.body.appendChild(mirror);
+    return () => {
+      mirror.remove();
+      mirrorRef.current = null;
+    };
+  }, []);
 
   const insertToken = (value: string) => {
     const textarea = textareaRef.current;
@@ -1214,6 +1229,41 @@ function RuleLanguageEditor({
     return [...connectors, ...comparators, ...references, ...literals];
   }, [connectorTokens, comparatorDescriptions, literalTokens, referenceTokens]);
 
+  const updateCaretPosition = useCallback((cursor: number) => {
+    const textarea = textareaRef.current;
+    const mirror = mirrorRef.current;
+    if (!textarea || !mirror) {
+      return;
+    }
+    const computedStyle = window.getComputedStyle(textarea);
+    const textareaRect = textarea.getBoundingClientRect();
+    mirror.style.position = 'absolute';
+    mirror.style.visibility = 'hidden';
+    mirror.style.whiteSpace = 'pre-wrap';
+    mirror.style.wordWrap = 'break-word';
+    mirror.style.overflowWrap = 'break-word';
+    mirror.style.padding = computedStyle.padding;
+    mirror.style.border = computedStyle.border;
+    mirror.style.font = computedStyle.font;
+    mirror.style.letterSpacing = computedStyle.letterSpacing;
+    mirror.style.top = `${textareaRect.top + window.scrollY}px`;
+    mirror.style.left = `${textareaRect.left + window.scrollX}px`;
+    mirror.style.width = `${textarea.clientWidth}px`;
+    mirror.style.boxSizing = computedStyle.boxSizing;
+    mirror.textContent = textarea.value.slice(0, cursor);
+    const span = document.createElement('span');
+    span.textContent = '\u200b';
+    mirror.appendChild(span);
+    const spanRect = span.getBoundingClientRect();
+    const top = (spanRect.top - textareaRect.top) + textarea.scrollTop;
+    const left = spanRect.left - textareaRect.left;
+    const lineHeight = parseFloat(computedStyle.lineHeight || '20');
+    setSuggestionPosition({
+      top: Math.max(0, top + lineHeight),
+      left: Math.max(0, left),
+    });
+  }, []);
+
   const updateSuggestions = useCallback((text: string, cursor: number) => {
     const range = computeTokenRange(text, cursor);
     setTokenRange(range);
@@ -1222,6 +1272,7 @@ function RuleLanguageEditor({
     if (!prefix) {
       setSuggestionCandidates([]);
       setActiveSuggestionIndex(0);
+      updateCaretPosition(cursor);
       return;
     }
 
@@ -1232,7 +1283,8 @@ function RuleLanguageEditor({
 
     setSuggestionCandidates(filtered);
     setActiveSuggestionIndex(0);
-  }, [allSuggestions]);
+    updateCaretPosition(cursor);
+  }, [allSuggestions, updateCaretPosition]);
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -1464,13 +1516,20 @@ function RuleLanguageEditor({
               aria-haspopup="listbox"
             />
             { suggestionCandidates.length > 0 && (
-              <div className="absolute left-0 right-0 z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-border/70 bg-popover shadow-lg">
+              <div
+                className="absolute z-10 mt-1 max-h-48 overflow-y-auto rounded-none border border-border/70 bg-popover shadow-lg"
+                style={ {
+                  top: suggestionPosition.top,
+                  left: suggestionPosition.left,
+                  minWidth: 192,
+                } }
+              >
                 <ul className="divide-y divide-border/60" role="listbox">
                   { suggestionCandidates.map((suggestion, index) => (
                     <li key={ suggestion.id }>
                       <button
                         type="button"
-                        className={ `flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs ${
+                        className={ `flex w-full items-center justify-between gap-3 px-3 py-1 text-left text-xs ${
                           index === activeSuggestionIndex ? 'bg-primary/10' : 'hover:bg-border/60'
                         }` }
                         onMouseDown={ (event) => {
