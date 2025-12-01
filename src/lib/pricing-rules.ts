@@ -9,7 +9,7 @@ export type PriceRuleComparator = (typeof PRICE_RULE_COMPARATORS)[number];
 export const PRICE_RULE_LITERAL_TYPES = ['text', 'number', 'datetime', 'date', 'time'] as const;
 export type PriceRuleLiteralType = (typeof PRICE_RULE_LITERAL_TYPES)[number];
 
-export type PriceRuleVariableType = 'text' | 'number';
+export type PriceRuleVariableType = 'text' | 'number' | 'date' | 'time';
 export type PriceRuleConstantType = 'date' | 'time' | 'text' | 'number';
 
 export type PriceRuleOperand =
@@ -90,7 +90,7 @@ export const priceRuleDefinitionSchema = z.object({
     z.object({
       key: z.string().min(1),
       label: z.string().min(1),
-      type: z.enum(['text', 'number']),
+      type: z.enum(['text', 'number', 'date', 'time']),
       initialValue: z.string().optional(),
       userInput: z.boolean().optional(),
     })

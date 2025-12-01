@@ -11,7 +11,15 @@ import {
   useRef,
   useState
 } from 'react';
-import { FiPlus, FiTrash2 } from 'react-icons/fi';
+import {
+  FiCalendar,
+  FiChevronDown,
+  FiClock,
+  FiHash,
+  FiPlus,
+  FiType,
+  FiTrash2
+} from 'react-icons/fi';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -31,6 +39,8 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import {
   PRICE_RULE_COMPARATORS,
   PRICE_RULE_CONNECTORS,
@@ -78,6 +88,81 @@ const ensureSpecialConstants = (constants: PriceRuleConstant[]) => {
     ...constants.map((constant) => ({ ...constant, })),
     ...missing
   ];
+};
+
+const formatDateForInput = (value: Date) => {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+type DatePickerInputProps = {
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+};
+
+function DatePickerInput({
+  value,
+  onChange,
+  disabled,
+}: DatePickerInputProps) {
+  const selectedDate = value ? new Date(value) : undefined;
+  const label = selectedDate
+    ? selectedDate.toLocaleDateString()
+    : 'Pick a date';
+
+  return (
+    <Popover modal={ false }>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className="w-full justify-between font-normal tracking-tight"
+          disabled={ disabled }
+          type="button"
+          aria-label={ selectedDate ? `Selected date ${label}` : 'Select date' }
+        >
+          <span className="flex items-center gap-2 text-sm">
+            <FiCalendar className="size-4 text-muted-foreground" aria-hidden="true" />
+            <span className={ selectedDate ? '' : 'text-muted-foreground' }>{ label }</span>
+          </span>
+          <FiChevronDown className="size-4 text-muted-foreground" aria-hidden="true" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0">
+        <Calendar
+          mode="single"
+          selected={ selectedDate }
+          onSelect={ (date) => {
+            if (date) {
+              onChange(formatDateForInput(date));
+            }
+          } }
+          defaultMonth={ selectedDate ?? undefined }
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+type DataType = 'text' | 'number' | 'date' | 'time';
+type TypeIconProps = {
+  type: DataType;
+};
+
+const TypeIcon = (props: TypeIconProps) => {
+  const type = props.type;
+  if (type === 'number') {
+    return <FiHash className="size-4" aria-hidden="true" />;
+  }
+  if (type === 'date') {
+    return <FiCalendar className="size-4" aria-hidden="true" />;
+  }
+  if (type === 'time') {
+    return <FiClock className="size-4" aria-hidden="true" />;
+  }
+  return <FiType className="size-4" aria-hidden="true" />;
 };
 
 type VariableValueMap = Record<string, number>;
@@ -507,6 +592,42 @@ export const parseConditionExpression = (
   }));
 };
 
+const splitConditionAndFormula = (expression: string) => {
+  const trimmed = expression.trim();
+  const lower = trimmed.toLowerCase();
+  const thenSeparator = ' then ';
+  const elseSeparator = ' else ';
+  const thenIndex = lower.indexOf(thenSeparator);
+
+  if (thenIndex === -1) {
+    return {
+      condition: trimmed,
+      formula: '',
+    };
+  }
+
+  let condition = trimmed.slice(0, thenIndex).trim();
+  if (condition.toLowerCase().startsWith('if ')) {
+    condition = condition.slice(3).trim();
+  }
+
+  const formulaSection = trimmed.slice(thenIndex + thenSeparator.length);
+  const elseIndex = formulaSection.toLowerCase().indexOf(elseSeparator);
+  if (elseIndex === -1) {
+    return {
+      condition,
+      formula: formulaSection.trim(),
+    };
+  }
+
+  const primary = formulaSection.slice(0, elseIndex).trim();
+  const elsePart = formulaSection.slice(elseIndex + elseSeparator.length).trim();
+  return {
+    condition,
+    formula: `${primary}${elsePart ? ` ELSE ${elsePart}` : ''}`.trim(),
+  };
+};
+
 const cloneDefinition = (definition: PriceRuleDefinition): PriceRuleDefinition => ({
   constants: ensureSpecialConstants(definition.constants),
   variables: definition.variables.map((variable) => ({ ...variable, })),
@@ -538,8 +659,8 @@ export type PriceRuleFormState = {
   setErrorMessage: Dispatch<SetStateAction<string | null>>;
   newVariableLabel: string;
   setNewVariableLabel: Dispatch<SetStateAction<string>>;
-  newVariableType: 'text' | 'number';
-  setNewVariableType: Dispatch<SetStateAction<'text' | 'number'>>;
+  newVariableType: 'text' | 'number' | 'date' | 'time';
+  setNewVariableType: Dispatch<SetStateAction<'text' | 'number' | 'date' | 'time'>>;
   newVariableValue: string;
   setNewVariableValue: Dispatch<SetStateAction<string>>;
   newVariableUserInput: boolean;
@@ -560,7 +681,7 @@ export function usePriceRuleFormState(
   const [values, setValues] = useState<PriceRuleFormValues>(createDefaultRule);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [newVariableLabel, setNewVariableLabel] = useState('');
-  const [newVariableType, setNewVariableType] = useState<'text' | 'number'>('text');
+  const [newVariableType, setNewVariableType] = useState<'text' | 'number' | 'date' | 'time'>('text');
   const [newVariableValue, setNewVariableValue] = useState('');
   const [newVariableUserInput, setNewVariableUserInput] = useState(false);
   const [conditionExpression, setConditionExpression] = useState('');
@@ -655,18 +776,30 @@ export function usePriceRuleFormState(
       updateDefinition((definition) => ({
         ...definition,
         conditions: [],
+        formula: '0',
       }));
       setConditionError(null);
       return;
     }
 
     try {
-      const parsedConditions = parseConditionExpression(nextExpression, values.definition);
+      const {
+        condition,
+        formula,
+      } = splitConditionAndFormula(nextExpression);
+      const parsedConditions = condition
+        ? parseConditionExpression(condition, values.definition)
+        : [];
       updateDefinition((definition) => ({
         ...definition,
         conditions: parsedConditions,
+        formula: formula || '0',
       }));
-      setConditionError(null);
+      if (!formula.trim() && condition) {
+        setConditionError('Add a THEN clause with the formula to apply.');
+      } else {
+        setConditionError(null);
+      }
     } catch (error) {
       setConditionError(error instanceof Error ? error.message : 'Invalid condition expression.');
     }
@@ -695,348 +828,6 @@ export function usePriceRuleFormState(
   };
 }
 
-type FormulaCalculatorProps = {
-  expression: string;
-  onExpressionChange: (expression: string) => void;
-  variables: PriceRuleVariable[];
-};
-
-function FormulaCalculator({
-  expression,
-  onExpressionChange,
-  variables,
-}: FormulaCalculatorProps) {
-  const [calcResult, setCalcResult] = useState<string | null>(null);
-  const [calcError, setCalcError] = useState<string | null>(null);
-  const [cursorIndex, setCursorIndex] = useState(0);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    setCursorIndex((current) => {
-      const next = Math.min(current, expression.length);
-      requestAnimationFrame(() => {
-        inputRef.current?.setSelectionRange(next, next);
-      });
-      return next;
-    });
-  }, [expression]);
-
-  const variableValues = useMemo(() => {
-    return variables.reduce((map, variable) => {
-      const nextValue = variable.initialValue ?? '0';
-      const parsed = Number(nextValue);
-      map[variable.key] = Number.isFinite(parsed) ? parsed : 0;
-      return map;
-    }, {} as Record<string, number>);
-  }, [variables]);
-
-  const insertableReferences = useMemo(() => {
-    return variables
-      .filter((variable) => variable.type === 'number')
-      .filter((variable) => variable.key === 'booking_hours' || !RESERVED_VARIABLE_KEYS.includes(variable.key))
-      .map((variable) => ({
-        key: variable.key,
-        label: `${variable.label} (${variable.key})`,
-      }));
-  }, [variables]);
-
-  const resetCalcFeedback = () => {
-    setCalcResult(null);
-    setCalcError(null);
-  };
-
-  const positionCursor = (position: number) => {
-    requestAnimationFrame(() => {
-      inputRef.current?.setSelectionRange(position, position);
-    });
-  };
-
-  const commitExpression = (nextExpression: string, nextCursor: number) => {
-    onExpressionChange(nextExpression);
-    setCursorIndex(nextCursor);
-    positionCursor(nextCursor);
-  };
-
-  const normalizedCursor = () => Math.min(Math.max(cursorIndex, 0), expression.length);
-
-  const insertAtCursor = (value: string, cursorOffset = value.length) => {
-    const idx = normalizedCursor();
-    const before = expression.slice(0, idx);
-    const after = expression.slice(idx);
-    resetCalcFeedback();
-    commitExpression(`${before}${value}${after}`, before.length + cursorOffset);
-  };
-
-  const appendCharacter = (value: string) => {
-    insertAtCursor(value);
-  };
-
-  const handleDelete = () => {
-    const idx = normalizedCursor();
-    if (idx === 0) {
-      return;
-    }
-    resetCalcFeedback();
-    const nextExpression = `${expression.slice(0, idx - 1)}${expression.slice(idx)}`;
-    commitExpression(nextExpression, idx - 1);
-  };
-
-  const handleClear = () => {
-    resetCalcFeedback();
-    commitExpression('', 0);
-  };
-
-  const handleReferenceInsert = (variableKey: string) => {
-    if (!variableKey) {
-      return;
-    }
-    const idx = normalizedCursor();
-    const beforeChar = expression.slice(idx - 1, idx);
-    const needsSpaceBefore = beforeChar && /[0-9a-zA-Z_\)]/.test(beforeChar);
-    const content = `${needsSpaceBefore ? ' ' : ''}${variableKey} `;
-    insertAtCursor(content);
-  };
-
-  const handleSelectOpenParenthesis = () => {
-    insertAtCursor('()', 1);
-  };
-
-  const handleCalculate = () => {
-    if (!expression.trim()) {
-      setCalcResult(null);
-      setCalcError('Enter a formula before validating.');
-      return;
-    }
-    try {
-      const value = evaluateFormula(expression, variableValues);
-      setCalcResult(String(value));
-      setCalcError(null);
-    } catch (error) {
-      setCalcResult(null);
-      setCalcError(error instanceof Error ? error.message : 'Invalid formula.');
-    }
-  };
-
-  const keypad: (string | 'VARIABLE_SELECT')[][] = [
-    ['AC', 'DEL', '(', 'VARIABLE_SELECT'],
-    ['7', '8', '9', '/'],
-    ['4', '5', '6', '*'],
-    ['1', '2', '3', '-'],
-    ['0', '.', '=', '+']
-  ];
-  const normalizedExpression = expression.replace(/\s+$/g, '');
-  const lastChar = normalizedExpression.slice(-1);
-  const operatorChars = new Set(['+', '-', '*', '/', '(']);
-  const noInput = normalizedExpression.length === 0;
-  const shouldDisableOperators =
-    noInput || Boolean(lastChar) && operatorChars.has(lastChar);
-  const referenceDisabled =
-    noInput || (Boolean(lastChar) && !operatorChars.has(lastChar));
-  const lastSlashIndex = normalizedExpression.lastIndexOf('/');
-  const segmentAfterSlash = lastSlashIndex >= 0
-    ? normalizedExpression.slice(lastSlashIndex + 1)
-    : '';
-  const zeroDisableAfterSlash = lastSlashIndex >= 0
-    && !/[1-9a-zA-Z]/.test(segmentAfterSlash);
-  const currentNumberMatch = normalizedExpression.match(/([0-9.]*)$/);
-  const currentNumber = currentNumberMatch ? currentNumberMatch[1] : '';
-  const disableDecimal =
-    noInput || Boolean(lastChar) && operatorChars.has(lastChar) || currentNumber.includes('.') || normalizedExpression.endsWith('.');
-  const cursorPosition = normalizedCursor();
-  const insideParenthesis = cursorPosition < expression.length && expression[cursorPosition] === ')';
-
-  const renderKeyButton = (value: string | 'VARIABLE_SELECT', identifier: string) => {
-    if (value === 'VARIABLE_SELECT') {
-      return (
-        <div key={ identifier } className="flex">
-          <Select
-            disabled={ referenceDisabled }
-            onValueChange={ (nextValue) => {
-              if (nextValue && nextValue !== '__none__') {
-                handleReferenceInsert(nextValue);
-              }
-            } }
-          >
-            <SelectTrigger className="w-full justify-center text-xs">
-              <SelectValue placeholder="Add variable" />
-            </SelectTrigger>
-            <SelectContent>
-              { insertableReferences.length === 0 ? (
-                <SelectItem value="__none__" disabled>
-                  No numeric variables available
-                </SelectItem>
-              ) : (
-                insertableReferences.map((reference) => (
-                  <SelectItem key={ reference.key } value={ reference.key }>
-                    { reference.label }
-                  </SelectItem>
-                ))
-              ) }
-            </SelectContent>
-          </Select>
-        </div>
-      );
-    }
-
-    if (value === 'DEL') {
-      return (
-        <Button
-          key={ identifier }
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={ handleDelete }
-        >
-          DEL
-        </Button>
-      );
-    }
-
-    if (value === 'AC') {
-      return (
-        <Button
-          key={ identifier }
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={ handleClear }
-        >
-          AC
-        </Button>
-      );
-    }
-
-    if (value === '(') {
-      return (
-        insideParenthesis ? (
-          <Button
-            key={ identifier }
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={ () => commitExpression(expression, cursorPosition + 1) }
-          >
-            ESC
-          </Button>
-        ) : (
-          <Button
-            key={ identifier }
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={ handleSelectOpenParenthesis }
-          >
-            (
-          </Button>
-        )
-      );
-    }
-
-    if (value === '=') {
-      return (
-        <Button
-          key={ identifier }
-          type="button"
-          size="sm"
-          onClick={ handleCalculate }
-        >
-          =
-        </Button>
-      );
-    }
-
-    if (value === '0') {
-      return (
-        <Button
-          key={ identifier }
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={ zeroDisableAfterSlash }
-          onClick={ () => appendCharacter(value) }
-        >
-          { value }
-        </Button>
-      );
-    }
-
-    if (value === '.') {
-      return (
-        <Button
-          key={ identifier }
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={ disableDecimal }
-          onClick={ () => appendCharacter(value) }
-        >
-          { value }
-        </Button>
-      );
-    }
-
-    if (operatorChars.has(value)) {
-      return (
-        <Button
-          key={ identifier }
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={ shouldDisableOperators }
-          onClick={ () => appendCharacter(value) }
-        >
-          { value }
-        </Button>
-      );
-    }
-
-    return (
-      <Button
-        key={ identifier }
-        type="button"
-        size="sm"
-        variant="outline"
-        onClick={ () => appendCharacter(value) }
-      >
-        { value }
-      </Button>
-    );
-  };
-
-  return (
-    <div className="space-y-3">
-      <div className="space-y-1">
-        <Input
-          id="formula-display"
-          placeholder="0"
-          value={ expression || '0' }
-          readOnly
-          ref={ inputRef }
-        />
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Parentheses auto-close and the numeric variable selector lives inside the keypad.
-      </p>
-      <div className="grid grid-cols-4 gap-2">
-        { keypad.flatMap((row, rowIndex) =>
-          row.map((buttonValue) => renderKeyButton(buttonValue, `${rowIndex}-${buttonValue}`))
-        ) }
-      </div>
-      <div className="min-h-[2rem] text-xs">
-        { calcResult !== null && (
-          <p className="text-foreground">Result: { calcResult }</p>
-        ) }
-        { calcError && (
-          <p className="text-destructive">{ calcError }</p>
-        ) }
-        { calcResult === null && !calcError && (
-          <p className="text-muted-foreground">Press the equals key to validate the expression.</p>
-        ) }
-      </div>
-    </div>
-  );
-}
-
 type RuleLanguageEditorProps = {
   definition: PriceRuleDefinition;
   newVariableLabel: string;
@@ -1053,11 +844,9 @@ type RuleLanguageEditorProps = {
   conditionExpression: string;
   conditionError: string | null;
   handleConditionExpressionChange: (value: string) => void;
-  formulaExpression: string;
-  onFormulaChange: (next: string) => void;
 };
 
-type SuggestionCategory = 'connector' | 'comparator' | 'reference' | 'literal';
+type SuggestionCategory = 'connector' | 'comparator' | 'literal';
 type Suggestion = {
   id: string;
   label: string;
@@ -1166,6 +955,24 @@ function RuleLanguageEditor({
     }
   ], []);
 
+  const keywordTokens = useMemo(() => [
+    {
+      label: 'IF',
+      value: 'if ',
+      description: 'Start condition',
+    },
+    {
+      label: 'THEN',
+      value: ' then ',
+      description: 'Primary formula',
+    },
+    {
+      label: 'ELSE',
+      value: ' else ',
+      description: 'Fallback formula',
+    }
+  ], []);
+
   const literalTokens = useMemo(() => [
     "date('2024-01-01')",
     "time('08:30')",
@@ -1173,25 +980,6 @@ function RuleLanguageEditor({
     "'Downtown'",
     '123'
   ], []);
-
-  type ReferenceToken = {
-    label: string;
-    description: string;
-    kind: 'variable' | 'constant';
-  };
-
-  const referenceTokens = useMemo<ReferenceToken[]>(() => [
-    ...definition.variables.map((variable) => ({
-      label: variable.key,
-      description: variable.label,
-      kind: 'variable' as const,
-    })),
-    ...definition.constants.map((constant) => ({
-      label: constant.key,
-      description: constant.label,
-      kind: 'constant' as const,
-    }))
-  ], [definition.constants, definition.variables]);
 
   const allSuggestions = useMemo(() => {
     const connectors: Suggestion[] = connectorTokens.map((token) => ({
@@ -1210,14 +998,6 @@ function RuleLanguageEditor({
       category: 'comparator',
     }));
 
-    const references: Suggestion[] = referenceTokens.map((reference) => ({
-      id: `reference-${reference.kind}-${reference.label}`,
-      label: reference.label,
-      insert: `${reference.label} `,
-      description: reference.description,
-      category: 'reference',
-    }));
-
     const literals: Suggestion[] = literalTokens.map((literal) => ({
       id: `literal-${literal}`,
       label: literal,
@@ -1226,8 +1006,15 @@ function RuleLanguageEditor({
       category: 'literal',
     }));
 
-    return [...connectors, ...comparators, ...references, ...literals];
-  }, [connectorTokens, comparatorDescriptions, literalTokens, referenceTokens]);
+    const keywords: Suggestion[] = keywordTokens.map((keyword) => ({
+      id: `keyword-${keyword.label}`,
+      label: keyword.label,
+      insert: keyword.value,
+      description: keyword.description,
+      category: 'connector',
+    }));
+    return [...connectors, ...comparators, ...literals, ...keywords];
+  }, [connectorTokens, comparatorDescriptions, literalTokens, keywordTokens]);
 
   const updateCaretPosition = useCallback((cursor: number) => {
     const textarea = textareaRef.current;
@@ -1379,7 +1166,10 @@ function RuleLanguageEditor({
                   key={ variable.key }
                   className="flex items-center gap-2 rounded-md border border-border/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide"
                 >
-                  <span className="text-xs">{ variable.label }</span>
+                  <div className="flex items-center gap-2">
+                    <TypeIcon type={ variable.type } />
+                    <span className="text-xs">{ variable.label }</span>
+                  </div>
                   { variable.userInput ? (
                     <span className="text-[9px] font-semibold text-muted-foreground">
                       Input
@@ -1418,70 +1208,114 @@ function RuleLanguageEditor({
               value={ newVariableLabel }
               onChange={ (event) => setNewVariableLabel(event.target.value) }
             />
-            <Select
-              value={ newVariableType }
-              onValueChange={ (value) => setNewVariableType(value as 'text' | 'number') }
-            >
-              <SelectTrigger className="min-w-[8rem]">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="text">Text</SelectItem>
-                <SelectItem value="number">Number</SelectItem>
-              </SelectContent>
-            </Select>
-            <Input
-              className="min-w-[8rem]"
-              placeholder="Default value"
-              type={ newVariableType === 'number' ? 'number' : 'text' }
-              inputMode={ newVariableType === 'number' ? 'decimal' : undefined }
-              value={ newVariableValue }
-              onChange={ (event) => {
-                const nextValue = event.target.value;
-                if (newVariableType === 'number') {
-                  const sanitized = nextValue.replace(/[^0-9.-]/g, '');
-                  const match = sanitized.match(/^-?(?:\d+)?(?:\.\d*)?/);
-                  setNewVariableValue(match ? match[0] : '');
-                  return;
-                }
-                setNewVariableValue(nextValue);
-              } }
-              disabled={ newVariableUserInput }
-              step={ newVariableType === 'number' ? 'any' : undefined }
-              onKeyDown={ (event) => {
-                if (newVariableType !== 'number') {
-                  return;
-                }
+                <Select
+                  value={ newVariableType }
+                  onValueChange={ (value) => setNewVariableType(value as DataType) }
+                >
+                  <SelectTrigger className="min-w-[8rem]">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="text">
+                      <div className="flex items-center gap-2">
+                        <TypeIcon type="text" />
+                        Text
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="number">
+                      <div className="flex items-center gap-2">
+                        <TypeIcon type="number" />
+                        Number
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="date">
+                      <div className="flex items-center gap-2">
+                        <TypeIcon type="date" />
+                        Date
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="time">
+                      <div className="flex items-center gap-2">
+                        <TypeIcon type="time" />
+                        Time
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+            { newVariableType === 'date' ? (
+              <div className="w-full">
+              <DatePickerInput
+                value={ newVariableValue }
+                onChange={ (nextValue) => setNewVariableValue(nextValue) }
+                disabled={ newVariableUserInput }
+              />
+              </div>
+            ) : newVariableType === 'time' ? (
+              <div className="w-full border border-input rounded-md">
+                <Input
+                  readOnly={ newVariableUserInput }
+                  className="w-full border-none pl-4 focus-visible:outline-none"
+                  placeholder="Default value"
+                  type="time"
+                  value={ newVariableValue }
+                  onChange={ (event) => setNewVariableValue(event.target.value) }
+                  disabled={ newVariableUserInput }
+                />
+              </div>
+            ) : (
+              <Input
+                className="min-w-[8rem]"
+                placeholder="Default value"
+                type={ newVariableType === 'number' ? 'number' : 'text' }
+                inputMode={ newVariableType === 'number' ? 'decimal' : undefined }
+                value={ newVariableValue }
+                onChange={ (event) => {
+                  const nextValue = event.target.value;
+                  if (newVariableType === 'number') {
+                    const sanitized = nextValue.replace(/[^0-9.-]/g, '');
+                    const match = sanitized.match(/^-?(?:\d+)?(?:\.\d*)?/);
+                    setNewVariableValue(match ? match[0] : '');
+                    return;
+                  }
+                  setNewVariableValue(nextValue);
+                } }
+                disabled={ newVariableUserInput }
+                step={ newVariableType === 'number' ? 'any' : undefined }
+                onKeyDown={ (event) => {
+                  if (newVariableType !== 'number') {
+                    return;
+                  }
 
-                const allowed = [
-                  'Backspace',
-                  'Tab',
-                  'ArrowLeft',
-                  'ArrowRight',
-                  'Delete',
-                  'Home',
-                  'End',
-                  'Enter',
-                  'Escape',
-                  '.',
-                  '-'
-                ];
+                  const allowed = [
+                    'Backspace',
+                    'Tab',
+                    'ArrowLeft',
+                    'ArrowRight',
+                    'Delete',
+                    'Home',
+                    'End',
+                    'Enter',
+                    'Escape',
+                    '.',
+                    '-'
+                  ];
 
-                if (
-                  allowed.includes(event.key)
-                  || event.ctrlKey
-                  || event.metaKey
-                ) {
-                  return;
-                }
+                  if (
+                    allowed.includes(event.key)
+                    || event.ctrlKey
+                    || event.metaKey
+                  ) {
+                    return;
+                  }
 
-                if (/^[0-9]$/.test(event.key)) {
-                  return;
-                }
+                  if (/^[0-9]$/.test(event.key)) {
+                    return;
+                  }
 
-                event.preventDefault();
-              } }
-            />
+                  event.preventDefault();
+                } }
+              />
+            ) }
             <div className="flex items-center gap-2 whitespace-nowrap">
               <Switch
                 id="variable-user-input"
@@ -1510,7 +1344,7 @@ function RuleLanguageEditor({
               value={ conditionExpression }
               onChange={ handleTextareaChange }
               onKeyDown={ handleSuggestionKeyDown }
-              placeholder="booking_hours >= 4 AND day_of_week = 5"
+              placeholder="IF booking_hours >= 4 THEN booking_hours * 10 ELSE booking_hours * 8"
               className="min-h-[10rem] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm leading-relaxed transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               aria-describedby="condition-language-help"
               aria-haspopup="listbox"
@@ -1552,7 +1386,7 @@ function RuleLanguageEditor({
             <p className="text-xs text-destructive">{ conditionError }</p>
           ) : (
             <p id="condition-language-help" className="text-xs text-muted-foreground">
-              Start with a variable or constant, add a comparator, then a literal or another reference. Use <strong>AND</strong>/<strong>OR</strong> to chain.
+              Start with a variable or constant, add a comparator, then a literal. Use <strong>AND</strong>/<strong>OR</strong> to chain.
             </p>
           ) }
           <div className="space-y-3 rounded-xl border border-border/80 bg-muted/30 p-3">
@@ -1594,26 +1428,6 @@ function RuleLanguageEditor({
                 </div>
               </div>
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                  References
-                </p>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  { referenceTokens.map((reference) => (
-                    <Button
-                      key={ `${reference.kind}-${reference.label}` }
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="rounded-full border border-border/80 px-3 text-[11px] font-medium uppercase tracking-wide"
-                      title={ `${reference.description} (${reference.kind})` }
-                      onClick={ () => insertToken(`${reference.label} `) }
-                    >
-                      { reference.label }
-                    </Button>
-                  )) }
-                </div>
-              </div>
-              <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Literals</p>
                 <div className="flex flex-wrap gap-2 pt-1">
                   { literalTokens.map((literal) => (
@@ -1633,14 +1447,6 @@ function RuleLanguageEditor({
             </div>
           </div>
         </div>
-      </div>
-      <div className="space-y-2">
-        <Label>Price Formula</Label>
-        <FormulaCalculator
-          expression={ formulaExpression }
-          onExpressionChange={ onFormulaChange }
-          variables={ definition.variables }
-        />
       </div>
     </section>
   );
@@ -1739,11 +1545,6 @@ export function PriceRuleFormShell({
         conditionExpression={ conditionExpression }
         conditionError={ conditionError }
         handleConditionExpressionChange={ handleConditionExpressionChange }
-        formulaExpression={ values.definition.formula }
-        onFormulaChange={ (next) => updateDefinition((definition) => ({
-          ...definition,
-          formula: next,
-        })) }
       />
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-end px-0 pb-0 pt-2">
         { onCancel && (
