@@ -10,11 +10,9 @@ export const PRICE_RULE_LITERAL_TYPES = ['text', 'number', 'datetime', 'date', '
 export type PriceRuleLiteralType = (typeof PRICE_RULE_LITERAL_TYPES)[number];
 
 export type PriceRuleVariableType = 'text' | 'number' | 'date' | 'time';
-export type PriceRuleConstantType = 'date' | 'time' | 'text' | 'number';
 
 export type PriceRuleOperand =
   | { kind: 'variable'; key: string; }
-  | { kind: 'constant'; key: string; }
   | { kind: 'literal'; value: string; valueType: PriceRuleLiteralType; };
 
 export type PriceRuleCondition = {
@@ -32,14 +30,6 @@ export type PriceRuleVariable = {
   type: PriceRuleVariableType;
   initialValue?: string;
   userInput?: boolean;
-};
-
-export type PriceRuleConstant = {
-  key: string;
-  label: string;
-  type: PriceRuleConstantType;
-  special?: boolean;
-  value?: string;
 };
 
 export type PriceRuleDefinition = {
@@ -63,10 +53,6 @@ const priceRuleComparatorSchema = z.enum(PRICE_RULE_COMPARATORS);
 export const priceRuleOperandSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('variable'),
-    key: z.string().min(1),
-  }),
-  z.object({
-    kind: z.literal('constant'),
     key: z.string().min(1),
   }),
   z.object({
@@ -95,27 +81,8 @@ export const priceRuleDefinitionSchema = z.object({
       userInput: z.boolean().optional(),
     })
   ),
-  constants: z.array(
-    z.object({
-      key: z.string().min(1),
-      label: z.string().min(1),
-      type: z.enum(['date', 'time', 'text', 'number']),
-      special: z.boolean().optional(),
-      value: z.string().min(1).optional(),
-    })
-  ),
   conditions: z.array(priceRuleConditionSchema),
   formula: z.string().min(1, 'Add a formula to determine the price action.'),
-}).superRefine((definition, ctx) => {
-  definition.constants.forEach((constant, index) => {
-    if (!constant.special && !constant.value) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Give each constant a value.',
-        path: ['constants', index, 'value'],
-      });
-    }
-  });
 });
 
 export const priceRuleSchema = z.object({
@@ -125,27 +92,6 @@ export const priceRuleSchema = z.object({
 });
 
 export type PriceRuleFormValues = z.infer<typeof priceRuleSchema>;
-
-export const PRICE_RULE_SPECIAL_CONSTANTS: PriceRuleConstant[] = [
-  {
-    key: 'date',
-    label: 'Current date',
-    type: 'date',
-    special: true,
-  },
-  {
-    key: 'time',
-    label: 'Current time',
-    type: 'time',
-    special: true,
-  },
-  {
-    key: 'day_of_week',
-    label: 'Day of week',
-    type: 'number',
-    special: true,
-  }
-];
 
 export const PRICE_RULE_INITIAL_VARIABLES: PriceRuleVariable[] = [
   {
@@ -160,6 +106,24 @@ export const PRICE_RULE_INITIAL_VARIABLES: PriceRuleVariable[] = [
     label: 'Booking hours',
     type: 'number',
     initialValue: '1',
+    userInput: false,
+  },
+  {
+    key: 'date',
+    label: 'Current date',
+    type: 'date',
+    userInput: false,
+  },
+  {
+    key: 'time',
+    label: 'Current time',
+    type: 'time',
+    userInput: false,
+  },
+  {
+    key: 'day_of_week',
+    label: 'Day of week',
+    type: 'number',
     userInput: false,
   }
 ];

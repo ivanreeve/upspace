@@ -45,11 +45,9 @@ import {
   PRICE_RULE_COMPARATORS,
   PRICE_RULE_CONNECTORS,
   PRICE_RULE_INITIAL_VARIABLES,
-  PRICE_RULE_SPECIAL_CONSTANTS,
   PriceRuleCondition,
   PriceRuleConditionConnector,
   PriceRuleComparator,
-  PriceRuleConstant,
   PriceRuleDefinition,
   PriceRuleFormValues,
   PriceRuleOperand,
@@ -78,17 +76,6 @@ const ensureUniqueKey = (desired: string, existing: string[]) => {
 };
 
 const randomId = () => globalThis?.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2);
-
-const ensureSpecialConstants = (constants: PriceRuleConstant[]) => {
-  const seen = new Set(constants.map((constant) => constant.key));
-  const missing = PRICE_RULE_SPECIAL_CONSTANTS
-    .filter((constant) => !seen.has(constant.key))
-    .map((constant) => ({ ...constant, }));
-  return [
-    ...constants.map((constant) => ({ ...constant, })),
-    ...missing
-  ];
-};
 
 const formatDateForInput = (value: Date) => {
   const year = value.getFullYear();
@@ -337,7 +324,7 @@ const COMPARATORS_IN_ORDER = [...PRICE_RULE_COMPARATORS].sort((a, b) => b.length
 const escapeSingleQuote = (value: string) => value.replace(/'/g, "\\'");
 
 const formatOperandToken = (operand: PriceRuleOperand): string => {
-  if (operand.kind === 'variable' || operand.kind === 'constant') {
+  if (operand.kind === 'variable') {
     return operand.key;
   }
 
@@ -502,15 +489,6 @@ const parseOperandReference = (token: string, definition: PriceRuleDefinition): 
       key: trimmed,
     };
   }
-
-  const constant = definition.constants.find((item) => item.key === trimmed);
-  if (constant) {
-    return {
-      kind: 'constant',
-      key: trimmed,
-    };
-  }
-
   throw new Error(`Unrecognized reference "${trimmed}".`);
 };
 
@@ -629,7 +607,6 @@ const splitConditionAndFormula = (expression: string) => {
 };
 
 const cloneDefinition = (definition: PriceRuleDefinition): PriceRuleDefinition => ({
-  constants: ensureSpecialConstants(definition.constants),
   variables: definition.variables.map((variable) => ({ ...variable, })),
   conditions: definition.conditions.map((condition) => ({
     ...condition,
@@ -644,7 +621,6 @@ const createDefaultRule = (): PriceRuleFormValues => ({
   description: '',
   definition: {
     variables: PRICE_RULE_INITIAL_VARIABLES.map((variable) => ({ ...variable, })),
-    constants: PRICE_RULE_SPECIAL_CONSTANTS.map((constant) => ({ ...constant, })),
     conditions: [],
     formula: '',
   },
@@ -846,7 +822,7 @@ type RuleLanguageEditorProps = {
   handleConditionExpressionChange: (value: string) => void;
 };
 
-type SuggestionCategory = 'connector' | 'comparator' | 'literal';
+type SuggestionCategory = 'connector' | 'comparator' | 'literal' | 'variable';
 type Suggestion = {
   id: string;
   label: string;
@@ -981,6 +957,14 @@ function RuleLanguageEditor({
     '123'
   ], []);
 
+  const variableSuggestions = useMemo(() => definition.variables.map((variable) => ({
+    id: `variable-${variable.key}`,
+    label: variable.label,
+    insert: `${variable.key} `,
+    description: `${variable.type} • ${variable.key}`,
+    category: 'variable',
+  })), [definition.variables]);
+
   const allSuggestions = useMemo(() => {
     const connectors: Suggestion[] = connectorTokens.map((token) => ({
       id: `connector-${token.label}`,
@@ -1013,8 +997,8 @@ function RuleLanguageEditor({
       description: keyword.description,
       category: 'connector',
     }));
-    return [...connectors, ...comparators, ...literals, ...keywords];
-  }, [connectorTokens, comparatorDescriptions, literalTokens, keywordTokens]);
+    return [...variableSuggestions, ...connectors, ...comparators, ...literals, ...keywords];
+  }, [connectorTokens, comparatorDescriptions, literalTokens, keywordTokens, variableSuggestions]);
 
   const updateCaretPosition = useCallback((cursor: number) => {
     const textarea = textareaRef.current;
@@ -1065,7 +1049,13 @@ function RuleLanguageEditor({
 
     const normalized = prefix.toLowerCase();
     const filtered = allSuggestions
-      .filter((suggestion) => suggestion.label.toLowerCase().startsWith(normalized))
+      .filter((suggestion) => {
+        const trimmedInsert = suggestion.insert.trim().toLowerCase();
+        return (
+          suggestion.label.toLowerCase().startsWith(normalized)
+          || trimmedInsert.startsWith(normalized)
+        );
+      })
       .slice(0, 8);
 
     setSuggestionCandidates(filtered);
@@ -1386,7 +1376,7 @@ function RuleLanguageEditor({
             <p className="text-xs text-destructive">{ conditionError }</p>
           ) : (
             <p id="condition-language-help" className="text-xs text-muted-foreground">
-              Start with a variable or constant, add a comparator, then a literal. Use <strong>AND</strong>/<strong>OR</strong> to chain.
+              Start with a variable, add a comparator, then a literal. Use <strong>AND</strong>/<strong>OR</strong> to chain.
             </p>
           ) }
           <div className="space-y-3 rounded-xl border border-border/80 bg-muted/30 p-3">
