@@ -971,47 +971,13 @@ function RuleLanguageEditor({
   conditionExpression,
   conditionError,
   handleConditionExpressionChange,
-  formulaExpression,
-  onFormulaChange,
 }: RuleLanguageEditorProps) {
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const mirrorRef = useRef<HTMLDivElement | null>(null);
+  const [expressionField, setExpressionField] = useState('');
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const [suggestionCandidates, setSuggestionCandidates] = useState<Suggestion[]>([]);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
   const [tokenRange, setTokenRange] = useState<TokenRange | null>(null);
-  const [suggestionPosition, setSuggestionPosition] = useState({
-    top: 0,
-    left: 0,
-  });
-
-  useEffect(() => {
-    const mirror = document.createElement('div');
-    mirrorRef.current = mirror;
-    document.body.appendChild(mirror);
-    return () => {
-      mirror.remove();
-      mirrorRef.current = null;
-    };
-  }, []);
-
-  const insertToken = (value: string) => {
-    const textarea = textareaRef.current;
-    if (!textarea) {
-      handleConditionExpressionChange(`${conditionExpression}${value}`);
-      return;
-    }
-    const start = textarea.selectionStart ?? 0;
-    const end = textarea.selectionEnd ?? 0;
-    const nextExpression = `${conditionExpression.slice(0, start)}${value}${conditionExpression.slice(end)}`;
-    const cursor = start + value.length;
-    const normalized = handleConditionExpressionChange(nextExpression);
-    updateSuggestions(normalized, cursor);
-    requestAnimationFrame(() => {
-      textarea.focus();
-      textarea.setSelectionRange(cursor, cursor);
-    });
-  };
-
+  const [expressionError, setExpressionError] = useState<string | null>(null);
   const comparatorDescriptions = useMemo<Record<PriceRuleComparator, string>>(() => ({
     '<': 'Less than',
     '<=': 'Less than or equal',
@@ -1049,7 +1015,7 @@ function RuleLanguageEditor({
     },
     {
       label: 'ELSE',
-      value: ' else ',
+      value: ' ELSE ',
       description: 'Fallback formula',
     }
   ], []);
@@ -1071,6 +1037,66 @@ function RuleLanguageEditor({
       category: 'variable',
     };
   }), [definition.variables]);
+
+  const expressionSegments = useMemo(() => {
+    const trimmedExpression = conditionExpression.trim();
+    if (!trimmedExpression) {
+      return [];
+    }
+    return trimmedExpression
+      .split(/\s+(?:AND|OR)\s+/gi)
+      .map((segment) => segment.trim())
+      .filter(Boolean);
+  }, [conditionExpression]);
+
+  const validateClause = useCallback((text: string) => {
+    const normalized = normalizeConditionKeywords(text).trim();
+    if (!normalized) {
+      return 'Enter a clause to add.';
+    }
+    const lower = normalized.toLowerCase();
+    if (!lower.startsWith('if ')) {
+      return 'Clause must begin with IF.';
+    }
+    if (!lower.includes(' then ')) {
+      return 'Add a THEN clause.';
+    }
+    try {
+      const {
+        condition,
+        thenFormula,
+        elseFormula,
+      } = splitConditionAndFormula(normalized);
+      if (!condition) {
+        return 'Condition is missing operands.';
+      }
+      if (!thenFormula) {
+        return 'Add a formula after THEN.';
+      }
+      const variableMap = createVariableValueMap(definition);
+      validatePriceExpression(thenFormula, 'THEN', variableMap, definition);
+      if (elseFormula) {
+        validatePriceExpression(elseFormula, 'ELSE', variableMap, definition);
+      }
+      parseConditionExpression(condition, definition);
+      return null;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Invalid clause.';
+      return message;
+    }
+  }, [definition]);
+
+  const isExpressionFieldValid = useMemo(() => validateClause(expressionField) === null, [expressionField, validateClause]);
+
+  useEffect(() => {
+    const trimmed = expressionField.trim();
+    if (!trimmed) {
+      setExpressionError(null);
+      return;
+    }
+
+    setExpressionError(validateClause(expressionField));
+  }, [expressionField, validateClause]);
 
   const allSuggestions = useMemo(() => {
     const connectors: Suggestion[] = connectorTokens.map((token) => ({
@@ -1104,43 +1130,9 @@ function RuleLanguageEditor({
       description: keyword.description,
       category: 'connector',
     }));
+
     return [...variableSuggestions, ...connectors, ...comparators, ...literals, ...keywords];
   }, [connectorTokens, comparatorDescriptions, literalTokens, keywordTokens, variableSuggestions]);
-
-  const updateCaretPosition = useCallback((cursor: number) => {
-    const textarea = textareaRef.current;
-    const mirror = mirrorRef.current;
-    if (!textarea || !mirror) {
-      return;
-    }
-    const computedStyle = window.getComputedStyle(textarea);
-    const textareaRect = textarea.getBoundingClientRect();
-    mirror.style.position = 'absolute';
-    mirror.style.visibility = 'hidden';
-    mirror.style.whiteSpace = 'pre-wrap';
-    mirror.style.wordWrap = 'break-word';
-    mirror.style.overflowWrap = 'break-word';
-    mirror.style.padding = computedStyle.padding;
-    mirror.style.border = computedStyle.border;
-    mirror.style.font = computedStyle.font;
-    mirror.style.letterSpacing = computedStyle.letterSpacing;
-    mirror.style.top = `${textareaRect.top + window.scrollY}px`;
-    mirror.style.left = `${textareaRect.left + window.scrollX}px`;
-    mirror.style.width = `${textarea.clientWidth}px`;
-    mirror.style.boxSizing = computedStyle.boxSizing;
-    mirror.textContent = textarea.value.slice(0, cursor);
-    const span = document.createElement('span');
-    span.textContent = '\u200b';
-    mirror.appendChild(span);
-    const spanRect = span.getBoundingClientRect();
-    const top = (spanRect.top - textareaRect.top) + textarea.scrollTop;
-    const left = spanRect.left - textareaRect.left;
-    const lineHeight = parseFloat(computedStyle.lineHeight || '20');
-    setSuggestionPosition({
-      top: Math.max(0, top + lineHeight),
-      left: Math.max(0, left),
-    });
-  }, []);
 
   const updateSuggestions = useCallback((text: string, cursor: number) => {
     const range = computeTokenRange(text, cursor);
@@ -1150,7 +1142,6 @@ function RuleLanguageEditor({
     if (!prefix) {
       setSuggestionCandidates([]);
       setActiveSuggestionIndex(0);
-      updateCaretPosition(cursor);
       return;
     }
 
@@ -1167,71 +1158,88 @@ function RuleLanguageEditor({
 
     setSuggestionCandidates(filtered);
     setActiveSuggestionIndex(0);
-    updateCaretPosition(cursor);
-  }, [allSuggestions, updateCaretPosition]);
+  }, [allSuggestions]);
 
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    updateSuggestions(
-      conditionExpression,
-      textarea?.selectionStart ?? conditionExpression.length
-    );
-  }, [conditionExpression, updateSuggestions]);
-
-  const insertSuggestion = (suggestion: Suggestion) => {
+  const insertSuggestion = useCallback((suggestion: Suggestion) => {
     if (!tokenRange) {
       return;
     }
-    const before = conditionExpression.slice(0, tokenRange.start);
-    const after = conditionExpression.slice(tokenRange.end);
+    const before = expressionField.slice(0, tokenRange.start);
+    const after = expressionField.slice(tokenRange.end);
     const nextExpression = `${before}${suggestion.insert}${after}`;
-    const normalized = handleConditionExpressionChange(nextExpression);
-    updateSuggestions(normalized, before.length + suggestion.insert.length);
-    requestAnimationFrame(() => {
-      const textarea = textareaRef.current;
-      if (textarea) {
-        const cursor = before.length + suggestion.insert.length;
-        textarea.focus();
-        textarea.setSelectionRange(cursor, cursor);
-      }
-    });
+    const normalized = normalizeConditionKeywords(nextExpression);
+    const cursor = before.length + suggestion.insert.length;
+    setExpressionField(normalized);
+    updateSuggestions(normalized, cursor);
     setSuggestionCandidates([]);
-  };
+  }, [expressionField, tokenRange, updateSuggestions]);
 
-  const handleTextareaChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+  const handleExpressionFieldChange = (event: ChangeEvent<HTMLInputElement>) => {
     const next = event.target.value;
-    const normalized = handleConditionExpressionChange(next);
-    const cursor = event.target.selectionStart ?? normalized.length;
+    const normalized = normalizeConditionKeywords(next);
+    setExpressionField(normalized);
+    const cursor = event.target.selectionStart ?? next.length;
     updateSuggestions(normalized, cursor);
   };
 
-  const handleSuggestionKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (suggestionCandidates.length === 0) {
+  const addExpressionSegment = useCallback(() => {
+    const trimmed = expressionField.trim();
+    if (!trimmed) {
       return;
     }
+    const baseExpression = conditionExpression.trim();
+    const separator = baseExpression ? ' AND ' : '';
+    handleConditionExpressionChange(`${baseExpression}${separator}${trimmed}`);
+    setExpressionField('');
+    setSuggestionCandidates([]);
+    setActiveSuggestionIndex(0);
+    setTokenRange(null);
+    setExpressionError(null);
+  }, [conditionExpression, expressionField, handleConditionExpressionChange]);
 
-    if (event.key === 'ArrowDown') {
+  const handleExpressionFieldKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (suggestionCandidates.length > 0) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setActiveSuggestionIndex((prev) => (prev + 1) % suggestionCandidates.length);
+        return;
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setActiveSuggestionIndex((prev) => (prev - 1 + suggestionCandidates.length) % suggestionCandidates.length);
+        return;
+      }
+      if (event.key === 'Enter' || event.key === 'Tab') {
+        event.preventDefault();
+        insertSuggestion(suggestionCandidates[activeSuggestionIndex]);
+        return;
+      }
+      if (event.key === 'Escape') {
+        setSuggestionCandidates([]);
+        setActiveSuggestionIndex(0);
+        return;
+      }
+    }
+
+    if (event.key === 'Enter') {
       event.preventDefault();
-      setActiveSuggestionIndex((prev) => (prev + 1) % suggestionCandidates.length);
-      return;
-    }
-
-    if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      setActiveSuggestionIndex((prev) => (prev - 1 + suggestionCandidates.length) % suggestionCandidates.length);
-      return;
-    }
-
-    if (event.key === 'Enter' || event.key === 'Tab') {
-      event.preventDefault();
-      insertSuggestion(suggestionCandidates[activeSuggestionIndex]);
-      return;
-    }
-
-    if (event.key === 'Escape') {
-      setSuggestionCandidates([]);
+      addExpressionSegment();
     }
   };
+
+  const insertSnippet = useCallback((value: string) => {
+    setExpressionField((prev) => {
+      const next = `${prev}${value}`;
+      const normalized = normalizeConditionKeywords(next);
+      updateSuggestions(normalized, normalized.length);
+      return normalized;
+    });
+  }, [updateSuggestions]);
+
+  const removeExpressionSegment = useCallback((index: number) => {
+    const updatedSegments = expressionSegments.filter((_, idx) => idx !== index);
+    handleConditionExpressionChange(updatedSegments.join(' AND '));
+  }, [expressionSegments, handleConditionExpressionChange]);
 
   return (
     <section className="space-y-4 rounded-xl border border-border bg-background p-4 shadow-sm">
@@ -1430,55 +1438,86 @@ function RuleLanguageEditor({
             </div>
           </div>
         </div>
-        <div className="space-y-3">
+          <div className="space-y-3">
           <div className="flex items-baseline justify-between gap-2">
-            <Label htmlFor="condition-expression">Conditions</Label>
+            <Label htmlFor="condition-field">Conditions</Label>
           </div>
-          <div className="relative">
-            <textarea
-              id="condition-expression"
-              ref={ textareaRef }
-              value={ conditionExpression }
-              onChange={ handleTextareaChange }
-              onKeyDown={ handleSuggestionKeyDown }
-              placeholder="IF booking_hours >= 4 THEN booking_hours * 10 ELSE booking_hours * 8"
-              className="min-h-[10rem] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm leading-relaxed transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-              aria-describedby="condition-language-help"
-              aria-haspopup="listbox"
-            />
-            { suggestionCandidates.length > 0 && (
-              <div
-                className="absolute z-10 mt-1 max-h-48 overflow-y-auto rounded-none border border-border/70 bg-popover shadow-lg"
-                style={ {
-                  top: suggestionPosition.top,
-                  left: suggestionPosition.left,
-                  minWidth: 192,
-                } }
-              >
-                <ul className="divide-y divide-border/60" role="listbox">
-                  { suggestionCandidates.map((suggestion, index) => (
-                    <li key={ suggestion.id }>
-                      <button
-                        type="button"
-                        className={ `flex w-full items-center justify-between gap-3 px-3 py-1 text-left text-xs ${
-                          index === activeSuggestionIndex ? 'bg-primary/10' : 'hover:bg-border/60'
-                        }` }
-                        onMouseDown={ (event) => {
-                          event.preventDefault();
-                          insertSuggestion(suggestion);
-                        } }
-                        role="option"
-                        aria-selected={ index === activeSuggestionIndex }
-                      >
-                        <span className={ `font-medium tracking-wide${suggestion.category === 'variable' ? '' : ' uppercase'}` }>{ suggestion.label }</span>
-                        <span className="text-[10px] text-muted-foreground">{ suggestion.description }</span>
-                      </button>
-                    </li>
-                  )) }
-                </ul>
-              </div>
-            ) }
+          <div className="flex items-start gap-2">
+            <div className="relative flex-1">
+              <Input
+                id="condition-field"
+                ref={ inputRef }
+                value={ expressionField }
+                onChange={ handleExpressionFieldChange }
+                onKeyDown={ handleExpressionFieldKeyDown }
+                className="flex-1 min-w-0"
+                placeholder="IF booking_hours >= 4 THEN booking_hours * 10 ELSE booking_hours * 8"
+                aria-label="Add condition expression"
+              />
+              { suggestionCandidates.length > 0 && (
+                <div className="absolute left-0 right-0 z-10 mt-1 max-h-48 overflow-y-auto rounded-lg border border-border/70 bg-popover shadow-lg">
+                  <ul className="divide-y divide-border/60" role="listbox">
+                    { suggestionCandidates.map((suggestion, index) => (
+                      <li key={ suggestion.id }>
+                        <button
+                          type="button"
+                          className={ `flex w-full items-center justify-between gap-3 px-3 py-1 text-left text-xs ${
+                            index === activeSuggestionIndex ? 'bg-primary/10' : 'hover:bg-border/60'
+                          }` }
+                          onMouseDown={ (event) => {
+                            event.preventDefault();
+                            insertSuggestion(suggestion);
+                          } }
+                          role="option"
+                          aria-selected={ index === activeSuggestionIndex }
+                        >
+                          <span className={ `font-medium tracking-wide${suggestion.category === 'variable' ? '' : ' uppercase'}` }>{ suggestion.label }</span>
+                          <span className="text-[10px] text-muted-foreground">{ suggestion.description }</span>
+                        </button>
+                      </li>
+                    )) }
+                  </ul>
+                </div>
+              ) }
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 aspect-square p-0"
+              onClick={ addExpressionSegment }
+              disabled={ !expressionField.trim() || !isExpressionFieldValid }
+              aria-label="Add expression"
+            >
+              <FiPlus className="size-4" aria-hidden="true" />
+              <span className="sr-only">Add expression</span>
+            </Button>
           </div>
+          { expressionError && (
+            <p className="text-xs text-destructive font-sf">
+              { expressionError }
+            </p>
+          ) }
+          { expressionSegments.length > 0 && (
+            <div className="flex flex-col gap-2">
+              { expressionSegments.map((segment, index) => (
+                <div
+                  key={ `${segment}-${index}` }
+                  className="flex items-center justify-between gap-2 rounded-lg border border-border/80 bg-border/10 px-3 py-2 text-[12px] font-semibold"
+                >
+                  <span className="truncate">{ segment }</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={ () => removeExpressionSegment(index) }
+                  >
+                    <FiTrash2 className="size-3" aria-hidden="true" />
+                    <span className="sr-only">Delete clause</span>
+                  </Button>
+                </div>
+              )) }
+            </div>
+          ) }
           { conditionError ? (
             <p className="text-xs text-destructive font-sf">{ conditionError }</p>
           ) : (
@@ -1486,63 +1525,6 @@ function RuleLanguageEditor({
               Start with a variable, add a comparator, then a literal. Use <strong>AND</strong>/<strong>OR</strong> to chain.
             </p>
           ) }
-          <div className="space-y-3 rounded-xl border border-border/80 bg-muted/30 p-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Quick inserts</p>
-            <div className="space-y-2">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Connectors</p>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  { connectorTokens.map((token) => (
-                    <Button
-                      key={ token.label }
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="rounded-full text-[11px] uppercase tracking-wide"
-                      onClick={ () => insertToken(token.value) }
-                    >
-                      { token.label }
-                    </Button>
-                  )) }
-                </div>
-              </div>
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Comparators</p>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  { PRICE_RULE_COMPARATORS.map((operator) => (
-                    <Button
-                      key={ operator }
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="rounded-full text-[11px] uppercase tracking-wide"
-                      onClick={ () => insertToken(` ${operator} `) }
-                      title={ comparatorDescriptions[operator] }
-                    >
-                      { operator }
-                    </Button>
-                  )) }
-                </div>
-              </div>
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Literals</p>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  { literalTokens.map((literal) => (
-                    <Button
-                      key={ literal }
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="rounded-full text-[11px] uppercase tracking-wide"
-                      onClick={ () => insertToken(`${literal} `) }
-                    >
-                      { literal }
-                    </Button>
-                  )) }
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </section>
