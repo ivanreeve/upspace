@@ -1060,13 +1060,16 @@ function RuleLanguageEditor({
     "datetime('2024-01-01T08:30:00Z')"
   ], []);
 
-  const variableSuggestions = useMemo(() => definition.variables.map((variable) => ({
-    id: `variable-${variable.key}`,
-    label: variable.label,
-    insert: `${variable.key} `,
-    description: `${variable.type} • ${variable.key}`,
-    category: 'variable',
-  })), [definition.variables]);
+  const variableSuggestions = useMemo(() => definition.variables.map((variable) => {
+    const normalizedKey = variable.key.toLowerCase();
+    return {
+      id: `variable-${normalizedKey}`,
+      label: normalizedKey,
+      insert: `${normalizedKey} `,
+      description: `${variable.type} • ${normalizedKey}`,
+      category: 'variable',
+    };
+  }), [definition.variables]);
 
   const allSuggestions = useMemo(() => {
     const connectors: Suggestion[] = connectorTokens.map((token) => ({
