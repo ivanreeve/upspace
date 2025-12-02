@@ -105,11 +105,11 @@
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-left: env(safe-area-inset-left, 0px);
   --safe-area-right: env(safe-area-inset-right, 0px);
-  --background: oklch(0.9942 0.021 112.56);
+  --background: #fefefe;
   --foreground: oklch(0.1776 0 0);
-  --card: oklch(94.261% 0.03157 78.124);
+  --card: #ffffff;
   --card-foreground: oklch(33.191% 0.07195 69.827);
-  --popover: oklch(1 0 0);
+  --popover: #ffffff;
   --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.3018 0.06 231.92);
   --primary-foreground: oklch(0.985 0 0);

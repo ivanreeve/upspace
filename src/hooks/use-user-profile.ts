@@ -13,6 +13,7 @@ export type UserProfile = {
   lastName: string | null;
   avatar: string | null;
   role: 'customer' | 'partner' | 'admin';
+  birthday: string | null;
 };
 
 export function useUserProfile() {

@@ -112,7 +112,7 @@ function AccountMenu({
             </div>
           </div>
           <DropdownMenuSeparator className="my-1" />
-          <DropdownMenuItem onSelect={ () => onNavigate('/onboarding') }>
+          <DropdownMenuItem onSelect={ () => onNavigate('/account') }>
             <FiUser className="size-4" aria-hidden="true" />
             <span>Account</span>
           </DropdownMenuItem>
