@@ -11,6 +11,7 @@ import {
   useRef,
   useState
 } from 'react';
+import { CgSpinner } from 'react-icons/cg';
 import {
   FiCalendar,
   FiChevronDown,
@@ -1873,7 +1874,9 @@ export function PriceRuleFormShell({
         <Button
           onClick={ handleSubmit }
           disabled={ isSubmitting || Boolean(conditionError) || !conditionExpression.trim() }
+          className="inline-flex items-center justify-center gap-2"
         >
+          { isSubmitting && <CgSpinner className="size-4 animate-spin" aria-hidden="true" /> }
           { isSubmitting ? 'Saving…' : mode === 'create' ? 'Save rule' : 'Update rule' }
         </Button>
         </div>
