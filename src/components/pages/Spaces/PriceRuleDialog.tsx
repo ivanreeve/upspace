@@ -383,6 +383,20 @@ const validatePriceExpression = (
   }
 };
 
+const isArithmeticOperand = (value: string, definition: PriceRuleDefinition) => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return false;
+  }
+  try {
+    const variableMap = createVariableValueMap(definition);
+    validatePriceExpression(trimmed, 'Operand', variableMap, definition);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 type ConditionSegment = {
   text: string;
   connector?: PriceRuleConditionConnector;
@@ -572,6 +586,14 @@ const parseOperandReference = (token: string, definition: PriceRuleDefinition): 
         valueType: 'datetime',
       };
     }
+  }
+
+  if (isArithmeticOperand(trimmed, definition)) {
+    return {
+      kind: 'literal',
+      value: trimmed,
+      valueType: 'number',
+    };
   }
 
   const variable = definition.variables.find((item) => item.key === trimmed);
