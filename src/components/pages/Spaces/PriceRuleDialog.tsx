@@ -1204,7 +1204,7 @@ function RuleLanguageEditor({
 
   const literalTokens = useMemo(() => [
     "date('2024-01-01')",
-    "time('08:30')",
+    "time('08:30', 'AM')",
     "datetime('2024-01-01T08:30:00Z')"
   ], []);
 
