@@ -1057,7 +1057,7 @@ function RuleLanguageEditor({
   const literalTokens = useMemo(() => [
     "date('2024-01-01')",
     "time('08:30')",
-    "datetime('2024-01-01T08:30:00Z')",
+    "datetime('2024-01-01T08:30:00Z')"
   ], []);
 
   const variableSuggestions = useMemo(() => definition.variables.map((variable) => ({
