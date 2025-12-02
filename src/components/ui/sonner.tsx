@@ -9,7 +9,7 @@ export const Toaster = ({ ...props }: ToasterProps) => {
         className="toaster group"
         visibleToasts={ 1 }
         position="top-center"
-        offset={ 80 }
+        offset={ 32 }
         closeButton
         toastOptions={ {
           className: 'custom-toast',
