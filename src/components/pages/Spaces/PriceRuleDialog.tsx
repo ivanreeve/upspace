@@ -50,7 +50,9 @@ import {
   PriceRuleComparator,
   PriceRuleDefinition,
   PriceRuleFormValues,
+  PriceRuleLiteralType,
   PriceRuleOperand,
+  PriceRuleVariableType,
   priceRuleSchema
 } from '@/lib/pricing-rules';
 
@@ -78,7 +80,7 @@ const randomId = () => globalThis?.crypto?.randomUUID?.() ?? Math.random().toStr
 
 const RESERVED_VARIABLE_KEYS = PRICE_RULE_INITIAL_VARIABLES.map((variable) => variable.key);
 
-const KEYWORD_NORMALIZATION_REGEX = /\b(if|then|and|or|not)\b/gi;
+const KEYWORD_NORMALIZATION_REGEX = /\b(if|then|else|and|or|not)\b/gi;
 const normalizeConditionKeywords = (value: string) =>
   value.replace(KEYWORD_NORMALIZATION_REGEX, (match) => match.toUpperCase());
 
@@ -515,28 +517,47 @@ const parseOperandReference = (token: string, definition: PriceRuleDefinition): 
     };
   }
 
-  const functionMatch = trimmed.match(/^([a-z_]+)\(\s*(['"])(.+?)\2\s*\)$/i);
+  const functionMatch = trimmed.match(/^([a-z_]+)\(([\s\S]*)\)$/i);
   if (functionMatch) {
-    const [, functionName, , innerValue] = functionMatch;
+    const [, functionName, rawArguments] = functionMatch;
     const normalized = functionName.toLowerCase();
+    const args = parseFunctionArguments(rawArguments);
+
     if (normalized === 'date') {
+      if (args.length !== 1) {
+        throw new Error('date() expects a single argument.');
+      }
+      const value = args[0];
+      validateDateLiteral(value);
       return {
         kind: 'literal',
-        value: innerValue,
+        value,
         valueType: 'date',
       };
     }
+
     if (normalized === 'time') {
+      if (args.length === 0 || args.length > 2) {
+        throw new Error('time() expects one or two arguments.');
+      }
+      const [value, meridiem] = args;
+      const normalizedValue = normalizeTimeLiteral(value, meridiem);
       return {
         kind: 'literal',
-        value: innerValue,
+        value: normalizedValue,
         valueType: 'time',
       };
     }
+
     if (normalized === 'datetime') {
+      if (args.length !== 1) {
+        throw new Error('datetime() expects a single argument.');
+      }
+      const value = args[0];
+      validateDatetimeLiteral(value);
       return {
         kind: 'literal',
-        value: innerValue,
+        value,
         valueType: 'datetime',
       };
     }
@@ -551,6 +572,163 @@ const parseOperandReference = (token: string, definition: PriceRuleDefinition): 
   }
   throw new Error(`Unrecognized reference "${trimmed}".`);
 };
+
+const VARIABLE_LITERAL_COMPATIBILITY: Record<PriceRuleVariableType, PriceRuleLiteralType[]> = {
+  number: ['number'],
+  text: ['text'],
+  date: ['date', 'datetime'],
+  time: ['time'],
+};
+
+const VARIABLE_TYPE_LABELS: Record<PriceRuleVariableType, string> = {
+  number: 'numeric value',
+  text: 'text value',
+  date: 'date value',
+  time: 'time value',
+};
+
+const LITERAL_TYPE_LABELS: Record<PriceRuleLiteralType, string> = {
+  number: 'numeric literal',
+  text: 'text literal',
+  date: 'date literal',
+  time: 'time literal',
+  datetime: 'datetime literal',
+};
+
+const getVariableType = (definition: PriceRuleDefinition, key: string): PriceRuleVariableType => {
+  const variable = definition.variables.find((item) => item.key === key);
+  if (!variable) {
+    throw new Error(`Unknown variable "${key}".`);
+  }
+  return variable.type;
+};
+
+const ensureVariableMatchesLiteral = (
+  variable: Extract<PriceRuleOperand, { kind: 'variable' }>,
+  literal: Extract<PriceRuleOperand, { kind: 'literal' }>,
+  definition: PriceRuleDefinition
+) => {
+  const variableType = getVariableType(definition, variable.key);
+  const allowedLiteralTypes = VARIABLE_LITERAL_COMPATIBILITY[variableType];
+  if (!allowedLiteralTypes.includes(literal.valueType)) {
+    const variableLabel = VARIABLE_TYPE_LABELS[variableType];
+    const literalLabel = LITERAL_TYPE_LABELS[literal.valueType];
+    throw new Error(
+      `${variable.key} expects a ${variableLabel} and cannot be compared to a ${literalLabel}.`
+    );
+  }
+};
+
+const ensureOperandTypesAreCompatible = (
+  left: PriceRuleOperand,
+  right: PriceRuleOperand,
+  definition: PriceRuleDefinition
+) => {
+  if (left.kind === 'variable' && right.kind === 'literal') {
+    ensureVariableMatchesLiteral(left, right, definition);
+  } else if (right.kind === 'variable' && left.kind === 'literal') {
+    ensureVariableMatchesLiteral(right, left, definition);
+  } else if (left.kind === 'variable' && right.kind === 'variable') {
+    const leftType = getVariableType(definition, left.key);
+    const rightType = getVariableType(definition, right.key);
+    if (leftType !== rightType) {
+      const leftLabel = VARIABLE_TYPE_LABELS[leftType];
+      const rightLabel = VARIABLE_TYPE_LABELS[rightType];
+      throw new Error(
+        `Cannot compare ${left.key} (${leftLabel}) with ${right.key} (${rightLabel}).`
+      );
+    }
+  }
+};
+
+const DATE_LITERAL_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_LITERAL_REGEX = /^\d{1,2}:\d{2}(?::\d{2})?$/;
+
+function parseFunctionArguments(input: string): string[] {
+  if (!input.trim()) {
+    return [];
+  }
+
+  return input
+    .split(',')
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .map((segment) => {
+      const match = segment.match(/^(['"])([\s\S]*?)\1$/);
+      if (!match) {
+        throw new Error('Function arguments must be quoted text.');
+      }
+      return match[2];
+    });
+}
+
+const padTwo = (value: number) => String(value).padStart(2, '0');
+
+function normalizeTimeLiteral(value: string, meridiem?: string) {
+  const trimmed = value.trim();
+  if (!TIME_LITERAL_REGEX.test(trimmed)) {
+    throw new Error(`Invalid time literal "${value}". Expected HH:MM or HH:MM:SS.`);
+  }
+
+  const [hoursSegment, minutesSegment, secondsSegment] = trimmed.split(':');
+  const hours = Number(hoursSegment);
+  const minutes = Number(minutesSegment);
+  const seconds = secondsSegment !== undefined ? Number(secondsSegment) : undefined;
+
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+    throw new Error(`Invalid time literal "${value}".`);
+  }
+
+  if (minutes < 0 || minutes > 59) {
+    throw new Error(`Invalid time literal "${value}".`);
+  }
+
+  if (seconds !== undefined && (Number.isNaN(seconds) || seconds < 0 || seconds > 59)) {
+    throw new Error(`Invalid time literal "${value}".`);
+  }
+
+  let normalizedHours = hours;
+
+  if (meridiem) {
+    const normalizedMeridiem = meridiem.trim().toUpperCase();
+    if (normalizedMeridiem !== 'AM' && normalizedMeridiem !== 'PM') {
+      throw new Error(`Invalid meridiem "${meridiem}" in time literal.`);
+    }
+    if (normalizedHours < 1 || normalizedHours > 12) {
+      throw new Error(`Invalid time literal "${value}" for 12-hour clock.`);
+    }
+    if (normalizedHours === 12) {
+      normalizedHours = normalizedMeridiem === 'AM' ? 0 : 12;
+    } else if (normalizedMeridiem === 'PM') {
+      normalizedHours += 12;
+    }
+  } else if (normalizedHours < 0 || normalizedHours > 23) {
+    throw new Error(`Invalid time literal "${value}".`);
+  }
+
+  const parts = [padTwo(normalizedHours), padTwo(minutes)];
+  if (seconds !== undefined) {
+    parts.push(padTwo(seconds));
+  }
+  return parts.join(':');
+}
+
+function validateDateLiteral(value: string) {
+  if (!DATE_LITERAL_REGEX.test(value)) {
+    throw new Error(`Invalid date literal "${value}". Expected YYYY-MM-DD.`);
+  }
+  const parsed = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error(`Invalid date literal "${value}".`);
+  }
+}
+
+function validateDatetimeLiteral(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error(`Invalid datetime literal "${value}".`);
+  }
+}
 
 const parseConditionText = (text: string, definition: PriceRuleDefinition): Omit<PriceRuleCondition, 'id'> => {
   const normalized = text.trim();
@@ -605,11 +783,15 @@ const parseConditionText = (text: string, definition: PriceRuleDefinition): Omit
     throw new Error('Both sides of the comparison must have a value.');
   }
 
+  const leftOperand = parseOperandReference(leftToken, definition);
+  const rightOperand = parseOperandReference(rightToken, definition);
+  ensureOperandTypesAreCompatible(leftOperand, rightOperand, definition);
+
   return {
     comparator,
     negated,
-    left: parseOperandReference(leftToken, definition),
-    right: parseOperandReference(rightToken, definition),
+    left: leftOperand,
+    right: rightOperand,
   };
 };
 
