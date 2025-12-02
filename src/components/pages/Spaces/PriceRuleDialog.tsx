@@ -80,6 +80,16 @@ const randomId = () => globalThis?.crypto?.randomUUID?.() ?? Math.random().toStr
 
 const RESERVED_VARIABLE_KEYS = PRICE_RULE_INITIAL_VARIABLES.map((variable) => variable.key);
 
+const normalizeVariableName = (value: string) => {
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed) {
+    return '';
+  }
+  return trimmed
+    .replace(/\s+/g, '_')
+    .replace(/[^a-z0-9_]/g, '_');
+};
+
 const KEYWORD_NORMALIZATION_REGEX = /\b(if|then|else|and|or|not)\b/gi;
 const normalizeConditionKeywords = (value: string) =>
   value.replace(KEYWORD_NORMALIZATION_REGEX, (match) => match.toUpperCase());
@@ -957,7 +967,7 @@ export function usePriceRuleFormState(
   };
 
   const handleAddVariable = () => {
-    const normalizedLabel = newVariableLabel.trim().toLowerCase();
+    const normalizedLabel = normalizeVariableName(newVariableLabel);
     if (!normalizedLabel) {
       return;
     }
@@ -1469,7 +1479,7 @@ function RuleLanguageEditor({
               .map((variable) => (
                 <div
                   key={ variable.key }
-                  className="flex items-center gap-2 rounded-md border border-border/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide"
+                  className="flex items-center gap-2 rounded-md border border-border/80 px-3 py-1 text-[11px] font-semibold tracking-wide"
                 >
                   <div className="flex items-center gap-2">
                     <TypeIcon type={ variable.type } />
@@ -1511,7 +1521,7 @@ function RuleLanguageEditor({
               className="min-w-[12rem]"
               placeholder="New variable label"
               value={ newVariableLabel }
-              onChange={ (event) => setNewVariableLabel(event.target.value.toLowerCase()) }
+              onChange={ (event) => setNewVariableLabel(normalizeVariableName(event.target.value)) }
             />
             <Select
               value={ newVariableType }
