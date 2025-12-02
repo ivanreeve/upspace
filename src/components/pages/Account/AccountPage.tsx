@@ -56,7 +56,9 @@ const roleOptions = ALLOWED_USER_ROLES.map((value) => ({
 }));
 
 export default function AccountPage() {
-  const { data: profile, isLoading } = useUserProfile();
+  const {
+ data: profile, isLoading, 
+} = useUserProfile();
   const queryClient = useQueryClient();
   const router = useRouter();
   const [initialRole, setInitialRole] = useState<AllowedUserRole | 'admin' | ''>('');
@@ -156,7 +158,7 @@ export default function AccountPage() {
     try {
       const response = await fetch('/api/v1/auth/profile', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', },
         body: JSON.stringify(payload),
       });
 
@@ -166,7 +168,10 @@ export default function AccountPage() {
       }
 
       toast.success('Profile updated.');
-      queryClient.invalidateQueries({ queryKey: ['user-profile'], exact: true }).catch(() => undefined);
+      queryClient.invalidateQueries({
+ queryKey: ['user-profile'],
+exact: true, 
+}).catch(() => undefined);
       setJustSaved(true);
       setTimeout(() => {
         setJustSaved(false);
@@ -241,7 +246,7 @@ export default function AccountPage() {
                                 ? 'border-secondary role-card-selected'
                                 : 'border-border hover:border-secondary'
                             ) }
-                            style={ { minHeight: '14rem' } }
+                            style={ { minHeight: '14rem', } }
                           >
                             <Image
                               src={ option.image }

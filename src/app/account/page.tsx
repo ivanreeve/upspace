@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default async function AccountRoutePage() {
   const supabase = await createSupabaseServerClient();
-  const { data: authData } = await supabase.auth.getUser();
+  const { data: authData, } = await supabase.auth.getUser();
 
   if (!authData?.user) {
     redirect('/');
