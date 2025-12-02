@@ -713,22 +713,6 @@ export function SpaceDetailsPanel({
           </div>
 
           <Card className="border-border/70 bg-background/80">
-            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between md:gap-4">
-              <div className="space-y-1">
-                <CardTitle className="text-xl md:text-2xl">Pricing rules</CardTitle>
-                <CardDescription className="text-sm text-muted-foreground">
-                  Pricing rules now live on a dedicated page. Use the sidebar link or the button to open the shared view.
-                </CardDescription>
-              </div>
-              <Button type="button" variant="outline" asChild>
-                <Link href="/spaces/pricing-rules" className="inline-flex items-center gap-2">
-                  <FiPlus className="size-4" aria-hidden="true" />
-                  View price rules
-                </Link>
-              </Button>
-            </CardHeader>
-          </Card>
-          <Card className="border-border/70 bg-background/80">
             <CardHeader className="flex flex-col gap-3 md:gap-4">
               <div className="space-y-1">
                 <CardTitle className="text-xl md:text-2xl">Areas</CardTitle>
