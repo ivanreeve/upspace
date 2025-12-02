@@ -1024,7 +1024,18 @@ export function usePriceRuleFormState(
 
     const lowerExpression = trimmedExpression.toLowerCase();
     if (!/^if\b/.test(lowerExpression)) {
-      setConditionError('Condition must begin with IF.');
+      try {
+        const variableMap = createVariableValueMap(values.definition);
+        validatePriceExpression(trimmedExpression, 'Formula', variableMap, values.definition);
+        updateDefinition((definition) => ({
+          ...definition,
+          conditions: [],
+          formula: trimmedExpression,
+        }));
+        setConditionError(null);
+      } catch (error) {
+        setConditionError(error instanceof Error ? error.message : 'Invalid price expression.');
+      }
       return normalizedExpression;
     }
 
@@ -1238,7 +1249,14 @@ function RuleLanguageEditor({
     }
     const lower = normalized.toLowerCase();
     if (!lower.startsWith('if ')) {
-      return 'Clause must begin with IF.';
+      try {
+        const variableMap = createVariableValueMap(definition);
+        validatePriceExpression(normalized, 'Formula', variableMap, definition);
+        return null;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Invalid clause.';
+        return message;
+      }
     }
     if (!lower.includes(' then ')) {
       return 'Add a THEN clause.';
@@ -1704,7 +1722,7 @@ function RuleLanguageEditor({
             <p className="text-xs text-destructive font-sf">{ conditionError }</p>
           ) : (
             <p id="condition-language-help" className="text-xs text-muted-foreground font-sf">
-              Start with a variable, add a comparator, then a literal. Use <strong>AND</strong>/<strong>OR</strong> to chain.
+              Use <strong>IF ... THEN ...</strong> for conditional logic or type a standalone expression such as <code>booking_hours * 1.5</code>. Use <strong>AND</strong>/<strong>OR</strong> to chain conditions.
             </p>
           ) }
         </div>
