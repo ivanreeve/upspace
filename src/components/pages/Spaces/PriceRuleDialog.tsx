@@ -1479,7 +1479,7 @@ function RuleLanguageEditor({
               .map((variable) => (
                 <div
                   key={ variable.key }
-                  className="flex items-center gap-2 rounded-md border border-border/80 px-3 py-1 text-[11px] font-semibold tracking-wide"
+                  className="flex items-center gap-2 rounded-md border border-border/80 pr-1 pl-3 py-1 text-[11px] font-semibold tracking-wide"
                 >
                   <div className="flex items-center gap-2">
                     <TypeIcon type={ variable.type } />
