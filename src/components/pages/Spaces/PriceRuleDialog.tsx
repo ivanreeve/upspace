@@ -775,13 +775,13 @@ export function usePriceRuleFormState(
   };
 
   const handleAddVariable = () => {
-    const trimmedLabel = newVariableLabel.trim();
-    if (!trimmedLabel) {
+    const normalizedLabel = newVariableLabel.trim().toLowerCase();
+    if (!normalizedLabel) {
       return;
     }
 
     const existingKeys = values.definition.variables.map((variable) => variable.key);
-    const key = ensureUniqueKey(trimmedLabel, existingKeys);
+    const key = ensureUniqueKey(normalizedLabel, existingKeys);
 
     updateDefinition((definition) => ({
       ...definition,
@@ -789,7 +789,7 @@ export function usePriceRuleFormState(
         ...definition.variables,
         {
           key,
-          label: trimmedLabel,
+          label: normalizedLabel,
           type: newVariableType,
           initialValue: newVariableUserInput ? undefined : newVariableValue || undefined,
           userInput: newVariableUserInput || undefined,
@@ -1062,11 +1062,12 @@ function RuleLanguageEditor({
 
   const variableSuggestions = useMemo(() => definition.variables.map((variable) => {
     const normalizedKey = variable.key.toLowerCase();
+    const normalizedLabel = variable.label.toLowerCase();
     return {
       id: `variable-${normalizedKey}`,
       label: normalizedKey,
       insert: `${normalizedKey} `,
-      description: `${variable.type} • ${normalizedKey}`,
+      description: `${variable.type} • ${normalizedLabel}`,
       category: 'variable',
     };
   }), [definition.variables]);
@@ -1264,7 +1265,7 @@ function RuleLanguageEditor({
                 >
                   <div className="flex items-center gap-2">
                     <TypeIcon type={ variable.type } />
-                    <span className="text-xs">{ variable.label }</span>
+                    <span className="text-xs">{ variable.label.toLowerCase() }</span>
                   </div>
                   { variable.userInput ? (
                     <span className="text-[9px] font-semibold text-muted-foreground">
@@ -1302,42 +1303,42 @@ function RuleLanguageEditor({
               className="min-w-[12rem]"
               placeholder="New variable label"
               value={ newVariableLabel }
-              onChange={ (event) => setNewVariableLabel(event.target.value) }
+              onChange={ (event) => setNewVariableLabel(event.target.value.toLowerCase()) }
             />
-                <Select
-                  value={ newVariableType }
-                  onValueChange={ (value) => setNewVariableType(value as DataType) }
-                >
-                  <SelectTrigger className="min-w-[8rem]">
-                    <SelectValue placeholder="Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="text">
-                      <div className="flex items-center gap-2">
-                        <TypeIcon type="text" />
-                        Text
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="number">
-                      <div className="flex items-center gap-2">
-                        <TypeIcon type="number" />
-                        Number
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="date">
-                      <div className="flex items-center gap-2">
-                        <TypeIcon type="date" />
-                        Date
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="time">
-                      <div className="flex items-center gap-2">
-                        <TypeIcon type="time" />
-                        Time
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+            <Select
+              value={ newVariableType }
+              onValueChange={ (value) => setNewVariableType(value as DataType) }
+            >
+              <SelectTrigger className="min-w-[8rem]">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="text">
+                  <div className="flex items-center gap-2">
+                    <TypeIcon type="text" />
+                    Text
+                  </div>
+                </SelectItem>
+                <SelectItem value="number">
+                  <div className="flex items-center gap-2">
+                    <TypeIcon type="number" />
+                    Number
+                  </div>
+                </SelectItem>
+                <SelectItem value="date">
+                  <div className="flex items-center gap-2">
+                    <TypeIcon type="date" />
+                    Date
+                  </div>
+                </SelectItem>
+                <SelectItem value="time">
+                  <div className="flex items-center gap-2">
+                    <TypeIcon type="time" />
+                    Time
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
             { newVariableType === 'date' ? (
               <div className="w-full">
               <DatePickerInput
@@ -1469,7 +1470,7 @@ function RuleLanguageEditor({
                         role="option"
                         aria-selected={ index === activeSuggestionIndex }
                       >
-                        <span className="font-medium uppercase tracking-wide">{ suggestion.label }</span>
+                        <span className={ `font-medium tracking-wide${suggestion.category === 'variable' ? '' : ' uppercase'}` }>{ suggestion.label }</span>
                         <span className="text-[10px] text-muted-foreground">{ suggestion.description }</span>
                       </button>
                     </li>
