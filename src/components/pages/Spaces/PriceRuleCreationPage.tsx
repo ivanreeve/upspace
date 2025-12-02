@@ -67,7 +67,7 @@ export function PriceRuleCreationPage() {
 
   return (
     <div className="w-full px-4 pb-8 pt-8 sm:px-6 lg:px-10">
-      <SpacesBreadcrumbs currentPage="New pricing rule" className="mb-4 sm:mb-6" />
+      <SpacesBreadcrumbs currentPage="New pricing rule" className="mt-6 mb-4 sm:mb-6" />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
