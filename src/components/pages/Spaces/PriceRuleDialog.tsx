@@ -93,6 +93,7 @@ const normalizeVariableName = (value: string) => {
 const KEYWORD_NORMALIZATION_REGEX = /\b(if|then|else|and|or|not)\b/gi;
 const normalizeConditionKeywords = (value: string) =>
   value.replace(KEYWORD_NORMALIZATION_REGEX, (match) => match.toUpperCase());
+const normalizeConditionSegment = (value: string) => normalizeConditionKeywords(value).trim().toLowerCase();
 
 const formatDateForInput = (value: Date) => {
   const year = value.getFullYear();
@@ -1397,6 +1398,12 @@ function RuleLanguageEditor({
     if (!trimmed) {
       return;
     }
+
+    const normalizedSegment = normalizeConditionSegment(trimmed);
+    if (expressionSegments.some((segment) => normalizeConditionSegment(segment) === normalizedSegment)) {
+      setExpressionError('This condition already exists.');
+      return;
+    }
     const baseExpression = conditionExpression.trim();
     const separator = baseExpression ? ' AND ' : '';
     handleConditionExpressionChange(`${baseExpression}${separator}${trimmed}`);
@@ -1405,7 +1412,7 @@ function RuleLanguageEditor({
     setActiveSuggestionIndex(0);
     setTokenRange(null);
     setExpressionError(null);
-  }, [conditionExpression, expressionField, handleConditionExpressionChange]);
+  }, [conditionExpression, expressionField, expressionSegments, handleConditionExpressionChange]);
 
   const handleExpressionFieldKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (suggestionCandidates.length > 0) {
