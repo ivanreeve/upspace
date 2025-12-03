@@ -222,9 +222,6 @@ export function SpacesPriceRulesPage() {
                           { rule.description ?? 'No description provided.' }
                         </p>
                         <p className="text-[11px] text-muted-foreground">
-                          Formula: { rule.definition.formula }
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">
                           { rule.definition.conditions.length } condition{ rule.definition.conditions.length === 1 ? '' : 's' }
                         </p>
                       </div>

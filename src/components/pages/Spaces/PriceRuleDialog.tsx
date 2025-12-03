@@ -357,7 +357,8 @@ const validatePriceExpression = (
   if (!trimmed) {
     throw new Error(`${label} expression is required.`);
   }
-  if (/[<>=!]/.test(trimmed)) {
+  const isLiteral = SIMPLE_NUMBER_REGEX.test(trimmed);
+  if (!isLiteral && /[<>=!]/.test(trimmed)) {
     throw new Error(`${label} expression can only use arithmetic operators and variables.`);
   }
   try {
@@ -1334,7 +1335,12 @@ const splitConditionAndFormula = (expression: string): ConditionFormulaSplit => 
     condition = condition.slice(3).trim();
   }
 
-  const formulaSection = trimmed.slice(thenIndex + thenSeparator.length);
+  let formulaSection = trimmed.slice(thenIndex + thenSeparator.length);
+  const connectorPattern = /\s+(AND|OR)\s+/i;
+  const connectorMatch = formulaSection.match(connectorPattern);
+  if (connectorMatch && connectorMatch.index !== undefined) {
+    formulaSection = formulaSection.slice(0, connectorMatch.index);
+  }
   const elseIndex = formulaSection.toLowerCase().indexOf(elseSeparator);
 
   if (elseIndex === -1) {
@@ -1895,6 +1901,19 @@ function RuleLanguageEditor({
       setExpressionError('This condition already exists.');
       return;
     }
+    try {
+      const condition = splitConditionAndFormula(trimmed).condition;
+      const parsedConditions = parseConditionExpression(condition, definition);
+      const simulatedConditions = [...definition.conditions, ...parsedConditions];
+      const collisionError = detectConditionCollisions(simulatedConditions, definition);
+      if (collisionError) {
+        setExpressionError(collisionError);
+        return;
+      }
+    } catch (error) {
+      setExpressionError(error instanceof Error ? error.message : 'Invalid condition.');
+      return;
+    }
     const baseExpression = conditionExpression.trim();
     const separator = baseExpression ? ' AND ' : '';
     handleConditionExpressionChange(`${baseExpression}${separator}${trimmed}`);
@@ -1903,7 +1922,7 @@ function RuleLanguageEditor({
     setActiveSuggestionIndex(0);
     setTokenRange(null);
     setExpressionError(null);
-  }, [conditionExpression, expressionField, expressionSegments, handleConditionExpressionChange]);
+  }, [conditionExpression, definition, expressionField, expressionSegments, handleConditionExpressionChange]);
 
   const handleExpressionFieldKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (suggestionCandidates.length > 0) {
