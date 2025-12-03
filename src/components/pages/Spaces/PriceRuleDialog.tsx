@@ -1117,16 +1117,17 @@ const splitConditionAndFormula = (expression: string): ConditionFormulaSplit => 
   if (connectorMatch && connectorMatch.index !== undefined) {
     formulaSection = formulaSection.slice(0, connectorMatch.index);
   }
-  const elseIndex = formulaSection.toLowerCase().indexOf(elseSeparator);
+
+  const lowerFormulaSection = formulaSection.toLowerCase();
+  const elseOccurrences = lowerFormulaSection.match(/\belse\b/g);
+  if (elseOccurrences && elseOccurrences.length > 1) {
+    throw new Error('Use ELSE only once per condition.');
+  }
+
+  const elseIndex = lowerFormulaSection.indexOf(elseSeparator);
 
   if (elseIndex === -1) {
-    const thenFormula = formulaSection.trim();
-    return {
-      condition,
-      formula: thenFormula,
-      thenFormula,
-      elseFormula: '',
-    };
+    throw new Error('Add an ELSE clause with fallback pricing.');
   }
 
   const thenFormula = formulaSection.slice(0, elseIndex).trim();
