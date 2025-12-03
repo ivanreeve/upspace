@@ -1376,10 +1376,68 @@ const splitExpressionSegments = (expression: string) => {
   if (!trimmed) {
     return [];
   }
-  return trimmed
-    .split(/\s+(?:AND|OR)\s+/gi)
-    .map((segment) => segment.trim())
-    .filter(Boolean);
+
+  const segments: string[] = [];
+  let cursor = 0;
+  let bufferStart = 0;
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  const lower = trimmed.toLowerCase();
+
+  const commitSegment = (end: number) => {
+    const segment = trimmed.slice(bufferStart, end).trim();
+    if (segment) {
+      segments.push(segment);
+    }
+    bufferStart = end;
+  };
+
+  while (cursor < trimmed.length) {
+    const char = trimmed[cursor];
+
+    if (char === "'" && !inDoubleQuote) {
+      inSingleQuote = !inSingleQuote;
+    } else if (char === '"' && !inSingleQuote) {
+      inDoubleQuote = !inDoubleQuote;
+    }
+
+    if (!inSingleQuote && !inDoubleQuote) {
+      for (const connector of SPLIT_CONNECTORS) {
+        const end = cursor + connector.length;
+        if (lower.slice(cursor, end) !== connector) {
+          continue;
+        }
+
+        const before = cursor === 0 ? undefined : trimmed[cursor - 1];
+        const after = trimmed[end];
+        if (!isConnectorBoundary(before) || !isConnectorBoundary(after)) {
+          continue;
+        }
+
+        let lookahead = end;
+        while (lookahead < trimmed.length && /\s/.test(trimmed[lookahead])) {
+          lookahead += 1;
+        }
+
+        const hasFollowingIf = lower.slice(lookahead, lookahead + 2) === 'if'
+          && isConnectorBoundary(trimmed[lookahead + 2]);
+
+        if (!hasFollowingIf) {
+          continue;
+        }
+
+        commitSegment(cursor);
+        bufferStart = lookahead;
+        cursor = lookahead - 1;
+        break;
+      }
+    }
+
+    cursor += 1;
+  }
+
+  commitSegment(trimmed.length);
+  return segments;
 };
 
 const getConditionTargetKey = (segment: string): string | null => {
@@ -1789,16 +1847,7 @@ function RuleLanguageEditor({
     };
   }), [definition.variables]);
 
-  const expressionSegments = useMemo(() => {
-    const trimmedExpression = conditionExpression.trim();
-    if (!trimmedExpression) {
-      return [];
-    }
-    return trimmedExpression
-      .split(/\s+(?:AND|OR)\s+/gi)
-      .map((segment) => segment.trim())
-      .filter(Boolean);
-  }, [conditionExpression]);
+  const expressionSegments = useMemo(() => splitExpressionSegments(conditionExpression), [conditionExpression]);
 
   const expressionConditionKeys = useMemo(() => (
     expressionSegments
