@@ -1,4 +1,13 @@
-export const PUBLIC_PATHS = new Set<string>(['/', '/signup', '/forgot-password','/docs']);
+export const PUBLIC_PATHS = new Set<string>([
+  '/',
+  '/signup',
+  '/forgot-password',
+  '/docs',
+  '/manifest.webmanifest',
+  '/sw.js',
+  '/favicon.svg',
+  '/openapi.json'
+]);
 export const PUBLIC_PATH_PREFIXES = ['/marketplace'];
 export const IGNORED_PREFIXES = ['/api', '/_next', '/static', '/assets', '/img', '/fonts'];
 export const ONBOARDING_PATH = '/onboarding';
