@@ -124,7 +124,12 @@ const formatDateForInput = (value: Date) => {
 };
 
 const CONDITION_FIELD_PLACEHOLDER = 'IF booking_hours >= 4 THEN booking_hours * 10 ELSE booking_hours * 8';
-const CONDITION_FIELD_CARET_STYLE = { caretColor: 'var(--foreground)', } as const;
+const CONDITION_FIELD_CARET_STYLE = {
+  caretColor: 'var(--foreground)',
+  color: 'transparent',
+  WebkitTextFillColor: 'transparent',
+  MozTextFillColor: 'transparent',
+} as const;
 const CONDITION_FIELD_TEXT_STYLES = 'text-base font-mono leading-6 tracking-tight md:text-sm';
 
 type HighlightTokenType = 'whitespace' | 'keyword' | 'connector' | 'comparator' | 'literal' | 'number' | 'operator' | 'punctuation' | 'variable';
