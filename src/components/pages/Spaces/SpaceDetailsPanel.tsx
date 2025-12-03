@@ -138,6 +138,7 @@ export function SpaceDetailsPanel({
   const [areaDialogValues, setAreaDialogValues] = useState<AreaFormValues>(createAreaFormDefaults());
   const [editingAreaId, setEditingAreaId] = useState<string | null>(null);
   const [areaPendingDelete, setAreaPendingDelete] = useState<AreaRecord | null>(null);
+  const getDefaultAreaFormValues = () => createAreaFormDefaults(space?.pricing_rules?.[0]?.id ?? null);
   
   // Controls the full-screen gallery modal
   const [galleryOpen, setGalleryOpen] = useState(false);
@@ -299,7 +300,7 @@ export function SpaceDetailsPanel({
   const handleAddArea = () => {
     if (!space) return;
     setEditingAreaId(null);
-    setAreaDialogValues(createAreaFormDefaults());
+    setAreaDialogValues(getDefaultAreaFormValues());
     setAreaDialogOpen(true);
   };
 
@@ -314,7 +315,7 @@ export function SpaceDetailsPanel({
     setAreaDialogOpen(open);
     if (!open) {
       setEditingAreaId(null);
-      setAreaDialogValues(createAreaFormDefaults());
+      setAreaDialogValues(getDefaultAreaFormValues());
     }
   };
 

@@ -11,9 +11,10 @@ CardTitle
 
 type BookingCardProps = {
   spaceName: string;
+  onBook: () => void;
 };
 
-export function BookingCard({ spaceName, }: BookingCardProps) {
+export function BookingCard({ spaceName, onBook }: BookingCardProps) {
   return (
     <Card className="shadow-sm lg:sticky lg:top-28 rounded-md">
       <CardHeader className="pb-0">
@@ -24,7 +25,7 @@ export function BookingCard({ spaceName, }: BookingCardProps) {
         <p className="text-sm text-muted-foreground">
           Share your details and we will confirm availability with the host.
         </p>
-        <Button type="button" className="w-full">
+        <Button type="button" className="w-full" onClick={ onBook }>
           <FiCalendar className="mr-2 size-4" aria-hidden="true" />
           Book a reservation
         </Button>

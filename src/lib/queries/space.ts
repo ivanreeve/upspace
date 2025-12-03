@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 
+import type { PriceRuleDefinition, PriceRuleRecord } from '@/lib/pricing-rules';
 import type { SpaceStatus } from '@/data/spaces';
 import { prisma } from '@/lib/prisma';
 import { buildPublicObjectUrl, isAbsoluteUrl, resolveSignedImageUrls } from '@/lib/spaces/image-urls';
@@ -42,6 +43,17 @@ const marketplaceSpaceInclude = {
           name: true,
         },
       },
+    },
+  },
+  price_rule: {
+    orderBy: { created_at: 'asc' as const, },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      definition: true,
+      created_at: true,
+      updated_at: true,
     },
   },
   space_availability: {
@@ -92,6 +104,7 @@ export type SpaceAreaWithRates = {
   minCapacity: number;
   maxCapacity: number | null;
   pricingRuleName: string | null;
+  pricingRuleId: string | null;
 };
 
 export type SpaceAvailabilityDisplay = {
@@ -137,6 +150,7 @@ export type MarketplaceSpaceDetail = {
   amenities: SpaceAmenityDisplay[];
   availability: SpaceAvailabilityDisplay[];
   areas: SpaceAreaWithRates[];
+  pricingRules: PriceRuleRecord[];
   hostName: string | null;
   hostAvatarUrl: string | null;
 };
@@ -181,7 +195,19 @@ const buildAreaSummaries = (areas: MarketplaceSpaceRow['area']): SpaceAreaWithRa
     minCapacity: Number(area.min_capacity),
     maxCapacity: area.max_capacity === null ? null : Number(area.max_capacity),
     pricingRuleName: area.price_rule?.name ?? null,
+    pricingRuleId: area.price_rule?.id ?? null,
   }));
+
+const serializeMarketplacePriceRule = (
+  rule: MarketplaceSpaceRow['price_rule'][number]
+): PriceRuleRecord => ({
+  id: rule.id,
+  name: rule.name,
+  description: rule.description ?? null,
+  definition: rule.definition as PriceRuleDefinition,
+  created_at: rule.created_at instanceof Date ? rule.created_at.toISOString() : String(rule.created_at),
+  updated_at: rule.updated_at instanceof Date ? rule.updated_at.toISOString() : null,
+});
 
 const buildAmenities = (amenities: MarketplaceSpaceRow['amenity']): SpaceAmenityDisplay[] =>
   amenities
@@ -293,6 +319,7 @@ export async function getSpaceDetail(
   const availability = buildAvailabilityDisplay(space.space_availability);
   const areas = buildAreaSummaries(space.area);
   const amenities = buildAmenities(space.amenity);
+  const pricingRules = space.price_rule.map(serializeMarketplacePriceRule);
 
   return {
     id: space.id,
@@ -317,6 +344,7 @@ export async function getSpaceDetail(
     amenities,
     availability,
     areas,
+    pricingRules,
     hostName: buildHostName(space.user),
     hostAvatarUrl: buildHostAvatarUrl(space.user),
   };

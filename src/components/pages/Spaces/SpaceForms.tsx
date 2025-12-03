@@ -2066,6 +2066,11 @@ export function AreaDialog({
     name: 'booking_notes_enabled',
     defaultValue: initialValues.booking_notes_enabled,
   });
+  const selectedPriceRuleId = useWatch({
+    control: form.control,
+    name: 'price_rule_id',
+    defaultValue: initialValues.price_rule_id,
+  });
 
   useEffect(() => {
     form.reset(initialValues);
@@ -2091,6 +2096,10 @@ export function AreaDialog({
       form.setValue('booking_notes', null, FORM_SET_OPTIONS);
     }
   }, [bookingNotesEnabled, form]);
+
+  const isPriceRuleRequired = mode === 'create';
+  const isPriceRuleSelected = Boolean(selectedPriceRuleId);
+  const disableSaveButton = isSubmitting || (isPriceRuleRequired && !isPriceRuleSelected);
 
   const close = () => onOpenChange(false);
 
@@ -2245,6 +2254,7 @@ export function AreaDialog({
               </FormControl>
               <FormDescription>
                 Billing cadence and rate now live in the selected pricing rule. Choose a rule to apply its logic to this area.
+                { mode === 'create' ? ' Selecting a pricing rule is required to save a new area.' : '' }
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -2387,7 +2397,7 @@ export function AreaDialog({
           <Button type="button" variant="outline" onClick={ close } disabled={ isSubmitting }>
             Cancel
           </Button>
-          <Button type="submit" disabled={ isSubmitting }>
+          <Button type="submit" disabled={ disableSaveButton }>
             { isSubmitting ? 'Saving…' : mode === 'edit' ? 'Update area' : 'Save area' }
           </Button>
         </DialogFooter>
