@@ -134,7 +134,7 @@ function ReviewCard({ review, }: { review: SpaceReview }) {
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium text-foreground">{ review.reviewer.name }</p>
+            <p className="font-medium text-foreground font-sf">{ review.reviewer.name }</p>
             <p className="text-xs text-muted-foreground">{ formattedDate }</p>
           </div>
         </div>

@@ -113,7 +113,10 @@ export default function AmenitiesList({
               Show all amenities
             </Button>
           </DialogTrigger>
-          <DialogContent className="w-full h-full max-h-[100vh] overflow-hidden rounded-none sm:rounded-2xl sm:max-w-2xl sm:max-h-[90vh]">
+        <DialogContent
+          mobileFullScreen
+          className="overflow-hidden rounded-none sm:rounded-2xl sm:max-w-2xl sm:max-h-[90vh]"
+        >
             <DialogHeader className="space-y-1 mb-4">
               <DialogTitle>All amenities</DialogTitle>
               <DialogDescription>Grouped by category for this space.</DialogDescription>
