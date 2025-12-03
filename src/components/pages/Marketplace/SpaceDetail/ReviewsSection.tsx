@@ -329,7 +329,7 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
           </DialogHeader>
           <form className="space-y-4" onSubmit={ handleSubmit }>
             <div className="mt-4 flex flex-col items-center space-y-3">
-              <Label htmlFor="rating-modal">Your rating</Label>
+              <p className="text-sm font-medium text-foreground">Your rating</p>
               <StarRatingSelector value={ rating } onChange={ setRating } />
             </div>
 
