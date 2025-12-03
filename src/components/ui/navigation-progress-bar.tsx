@@ -35,6 +35,7 @@ export function NavigationProgressBar() {
   const [progress, setProgress] = useState(0);
   const incrementRef = useRef<NodeJS.Timeout | null>(null);
   const hideRef = useRef<NodeJS.Timeout | null>(null);
+  const lastPathnameRef = useRef(pathname);
 
   const startProgress = useCallback(() => {
     if (hideRef.current) {
@@ -64,8 +65,11 @@ export function NavigationProgressBar() {
   }, []);
 
   useEffect(() => {
-    if (visible) {
-      finishProgress();
+    if (pathname !== lastPathnameRef.current) {
+      lastPathnameRef.current = pathname;
+      if (visible) {
+        finishProgress();
+      }
     }
   }, [pathname, visible, finishProgress]);
 
@@ -101,19 +105,27 @@ export function NavigationProgressBar() {
 
     router.push = (...args) => {
       startProgress();
-      return originalPush.apply(router, args);
+      const promise = originalPush.apply(router, args);
+      promise.finally(finishProgress);
+      return promise;
     };
     router.replace = (...args) => {
       startProgress();
-      return originalReplace.apply(router, args);
+      const promise = originalReplace.apply(router, args);
+      promise.finally(finishProgress);
+      return promise;
     };
     router.back = () => {
       startProgress();
-      return originalBack.apply(router);
+      const result = originalBack.apply(router);
+      finishProgress();
+      return result;
     };
     router.forward = () => {
       startProgress();
-      return originalForward.apply(router);
+      const result = originalForward.apply(router);
+      finishProgress();
+      return result;
     };
 
     return () => {
@@ -122,7 +134,7 @@ export function NavigationProgressBar() {
       router.back = originalBack;
       router.forward = originalForward;
     };
-  }, [router, startProgress]);
+  }, [router, startProgress, finishProgress]);
 
   useEffect(() => {
     return () => {
