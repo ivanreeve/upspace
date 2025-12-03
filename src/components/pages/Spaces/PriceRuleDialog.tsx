@@ -2383,9 +2383,6 @@ function RuleLanguageEditor({
           { expressionSegments.length > 0 && (
             <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.5em] text-muted-foreground">
-                    Conditions
-                  </p>
                   { selectedIndices.size > 0 && (
                     <Button
                       type="button"
