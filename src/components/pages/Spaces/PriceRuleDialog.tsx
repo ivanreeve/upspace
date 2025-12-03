@@ -1445,7 +1445,7 @@ const splitExpressionSegments = (expression: string) => {
   return segments;
 };
 
-const getConditionTargetKey = (segment: string): string | null => {
+const getConditionTargetKey = (segment: string, definition: PriceRuleDefinition): string | null => {
   const trimmed = segment.trim();
   if (!trimmed) {
     return null;
@@ -1458,18 +1458,72 @@ const getConditionTargetKey = (segment: string): string | null => {
     if (!condition.trim()) {
       return null;
     }
-    return normalizeConditionSegment(condition);
+    const parsed = parseConditionExpression(condition, definition);
+    if (!parsed.length) {
+      return null;
+    }
+
+    const operandSignature = (operand: PriceRuleOperand) => {
+      if (operand.kind === 'variable') {
+        return `var:${operand.key.toLowerCase()}`;
+      }
+      const value = operand.value.trim();
+      if (operand.valueType === 'number') {
+        const numeric = Number(value);
+        return Number.isNaN(numeric) ? `lit:number:${value}` : `lit:number:${numeric}`;
+      }
+      return `lit:${operand.valueType}:${value.toLowerCase()}`;
+    };
+
+    const clauseSignature = (conditionClause: PriceRuleCondition) => {
+      const constraint = buildConstraintFromCondition(conditionClause, definition);
+      if (constraint) {
+        const value = typeof constraint.value === 'number'
+          ? constraint.value
+          : constraint.value.toString().toLowerCase();
+        return `constraint:${constraint.variableKey.toLowerCase()}:${constraint.comparator}:${value}`;
+      }
+      const comparator = conditionClause.negated
+        ? `!${conditionClause.comparator}`
+        : conditionClause.comparator;
+      return [
+        operandSignature(conditionClause.left),
+        comparator,
+        operandSignature(conditionClause.right)
+      ].join('|');
+    };
+
+    const connectors = parsed
+      .slice(1)
+      .map((item) => item.connector)
+      .filter((connector): connector is PriceRuleConditionConnector => Boolean(connector));
+    const uniqueConnectors = new Set(connectors);
+    const connectorKey = connectors.length === 0
+      ? 'single'
+      : uniqueConnectors.size === 1
+        ? connectors[0] ?? 'single'
+        : 'mixed';
+
+    const clauseSignatures = parsed.map((item) => clauseSignature(item));
+    const canonicalClauses = connectorKey === 'mixed'
+      ? clauseSignatures
+      : [...clauseSignatures].sort();
+
+    return `${connectorKey}:${canonicalClauses.join('|')}`;
   } catch {
     return null;
   }
 };
 
-const findDuplicateConditionTargetKey = (expression: string): string | null => {
+const findDuplicateConditionTargetKey = (
+  expression: string,
+  definition: PriceRuleDefinition
+): string | null => {
   const segments = splitExpressionSegments(expression);
   const seen = new Set<string>();
 
   for (const segment of segments) {
-    const key = getConditionTargetKey(segment);
+    const key = getConditionTargetKey(segment, definition);
     if (!key) {
       continue;
     }
@@ -1672,7 +1726,7 @@ export function usePriceRuleFormState(
         throw new Error('Add a price expression after THEN.');
       }
 
-      const duplicateConditionKey = findDuplicateConditionTargetKey(trimmedExpression);
+      const duplicateConditionKey = findDuplicateConditionTargetKey(trimmedExpression, values.definition);
       if (duplicateConditionKey) {
         throw new Error('This condition already exists.');
       }
@@ -1856,9 +1910,9 @@ function RuleLanguageEditor({
 
   const expressionConditionKeys = useMemo(() => (
     expressionSegments
-      .map((segment) => getConditionTargetKey(segment))
+      .map((segment) => getConditionTargetKey(segment, definition))
       .filter((key): key is string => Boolean(key))
-  ), [expressionSegments]);
+  ), [definition, expressionSegments]);
 
   const validateClause = useCallback((text: string) => {
     const normalized = normalizeConditionKeywords(text).trim();
@@ -1885,7 +1939,7 @@ function RuleLanguageEditor({
         thenFormula,
         elseFormula,
       } = splitConditionAndFormula(normalized);
-      const clauseConditionKey = getConditionTargetKey(normalized);
+      const clauseConditionKey = getConditionTargetKey(normalized, definition);
       if (clauseConditionKey && expressionConditionKeys.includes(clauseConditionKey)) {
         return 'This condition already exists.';
       }
@@ -2019,7 +2073,7 @@ function RuleLanguageEditor({
       setExpressionError('This condition already exists.');
       return;
     }
-    const clauseConditionKey = getConditionTargetKey(trimmed);
+    const clauseConditionKey = getConditionTargetKey(trimmed, definition);
     if (clauseConditionKey && expressionConditionKeys.includes(clauseConditionKey)) {
       setExpressionError('This condition already exists.');
       return;
