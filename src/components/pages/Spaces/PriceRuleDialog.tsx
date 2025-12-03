@@ -512,6 +512,7 @@ const findConnectorSegments = (expression: string): ConditionSegment[] => {
       text: raw,
       connector: segments.length === 0 ? undefined : lastConnector,
     });
+    lastConnector = undefined;
     bufferStart = end;
   };
 
@@ -550,6 +551,10 @@ const findConnectorSegments = (expression: string): ConditionSegment[] => {
   }
 
   commitSegment(expression.length, false);
+
+  if (lastConnector) {
+    throw new Error('Condition expected after connector.');
+  }
   return segments;
 };
 
