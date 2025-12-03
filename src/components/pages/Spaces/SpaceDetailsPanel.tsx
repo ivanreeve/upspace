@@ -759,12 +759,6 @@ export function SpaceDetailsPanel({
                       <div>
                         <dt className="text-[10px] uppercase tracking-wide md:text-xs">Capacity</dt>
                         <dd className="text-sm text-foreground md:text-base">Up to { area.max_capacity } seats</dd>
-                        <div className="mt-2">
-                          <Badge variant="secondary" className="flex w-fit items-center gap-1 text-[10px] md:text-xs">
-                            <FiLayers className="size-3" aria-hidden="true" />
-                            Up to { area.max_capacity } pax
-                          </Badge>
-                        </div>
                       </div>
                       <div>
                         <dt className="text-[10px] uppercase tracking-wide md:text-xs">Pricing</dt>
@@ -778,7 +772,6 @@ export function SpaceDetailsPanel({
                         <Badge variant="outline" className="text-[10px] text-muted-foreground">
                           Rule: { area.price_rule.name }
                         </Badge>
-                        <p>Formula: { area.price_rule.definition.formula }</p>
                       </div>
                     ) : null }
                   </div>

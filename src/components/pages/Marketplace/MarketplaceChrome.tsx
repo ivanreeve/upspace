@@ -802,7 +802,8 @@ icon: FiMessageSquare,
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
-      if (event.key.toLowerCase() !== 'k') return;
+      const key = event.key;
+      if (typeof key !== 'string' || key.toLowerCase() !== 'k') return;
       if (!event.metaKey && !event.ctrlKey) return;
 
       event.preventDefault();

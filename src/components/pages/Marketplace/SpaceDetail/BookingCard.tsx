@@ -12,10 +12,11 @@ CardTitle
 type BookingCardProps = {
   spaceName: string;
   onBook: () => void;
+  isDisabled?: boolean;
 };
 
 export function BookingCard({
- spaceName, onBook, 
+ spaceName, onBook, isDisabled = false, 
 }: BookingCardProps) {
   return (
     <Card className="shadow-sm lg:sticky lg:top-28 rounded-md">
@@ -27,7 +28,12 @@ export function BookingCard({
         <p className="text-sm text-muted-foreground">
           Share your details and we will confirm availability with the host.
         </p>
-        <Button type="button" className="w-full" onClick={ onBook }>
+        <Button
+          type="button"
+          className="w-full"
+          onClick={ onBook }
+          disabled={ isDisabled }
+        >
           <FiCalendar className="mr-2 size-4" aria-hidden="true" />
           Book a reservation
         </Button>

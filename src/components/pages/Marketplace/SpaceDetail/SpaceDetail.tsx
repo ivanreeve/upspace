@@ -74,6 +74,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
 
   const locationParts = [space.city, space.region, space.countryCode].filter(Boolean);
   const location = locationParts.length > 0 ? locationParts.join(', ') : 'Global City, Taguig';
+  const hasAreas = space.areas.length > 0;
 
   const defaultHostName = 'Trisha M.';
   const [isBookingOpen, setIsBookingOpen] = useState(false);
@@ -102,7 +103,12 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     }
   }, [canMessageHost]);
 
-  const handleOpenBooking = useCallback(() => setIsBookingOpen(true), []);
+  const handleOpenBooking = useCallback(() => {
+    if (!hasAreas) {
+      return;
+    }
+    setIsBookingOpen(true);
+  }, [hasAreas]);
   const handleCloseBooking = useCallback(() => setIsBookingOpen(false), []);
   const handleConfirmBooking = useCallback(() => setIsBookingOpen(false), []);
   const increaseBookingHours = useCallback(() => {
@@ -391,7 +397,11 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
             { /* Booking card for mobile - shown above description */ }
             { !isGuest && (
               <div className="lg:hidden">
-                <BookingCard spaceName={ space.name } onBook={ handleOpenBooking } />
+                <BookingCard
+                  spaceName={ space.name }
+                  onBook={ handleOpenBooking }
+                  isDisabled={ !hasAreas }
+                />
               </div>
             ) }
 
@@ -469,7 +479,11 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
           { /* Booking card for desktop - shows in sidebar */ }
           { !isGuest && (
             <div className="hidden lg:block">
-              <BookingCard spaceName={ space.name } onBook={ handleOpenBooking } />
+              <BookingCard
+                spaceName={ space.name }
+                onBook={ handleOpenBooking }
+                isDisabled={ !hasAreas }
+              />
             </div>
           ) }
         </div>
@@ -506,6 +520,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
             type="button"
             className="w-full lg:w-auto"
             onClick={ handleConfirmBooking }
+            disabled={ !hasAreas }
           >
             Book
           </Button>
@@ -530,7 +545,12 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
         </SheetHeader>
         <div className="px-6 pb-4">{ bookingDurationContent }</div>
         <SheetFooter className="space-y-3 px-6 pb-6">
-          <Button type="button" className="w-full" onClick={ handleConfirmBooking }>
+          <Button
+            type="button"
+            className="w-full"
+            onClick={ handleConfirmBooking }
+            disabled={ !hasAreas }
+          >
             Book
           </Button>
           <Button
