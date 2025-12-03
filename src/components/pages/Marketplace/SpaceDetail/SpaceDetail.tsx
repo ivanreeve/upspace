@@ -112,13 +112,27 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     setIsPricingLoading(false);
   }, []);
 
+  const findFirstPricedAreaId = useCallback(() => {
+    const areaWithPricing = space.areas.find(
+      (area) => area.pricingRuleId && area.pricingRuleName
+    );
+    return areaWithPricing?.id ?? null;
+  }, [space.areas]);
+
+  const initializeBookingSelection = useCallback(() => {
+    const defaultAreaId = findFirstPricedAreaId();
+    setBookingHours(MIN_BOOKING_HOURS);
+    setSelectedAreaId(defaultAreaId);
+    setIsPricingLoading(Boolean(defaultAreaId));
+  }, [findFirstPricedAreaId]);
+
   const handleOpenBooking = useCallback(() => {
     if (!hasAreas) {
       return;
     }
-    resetBookingState();
+    initializeBookingSelection();
     setIsBookingOpen(true);
-  }, [hasAreas, resetBookingState]);
+  }, [hasAreas, initializeBookingSelection]);
   const handleCloseBooking = useCallback(() => {
     resetBookingState();
     setIsBookingOpen(false);
@@ -414,29 +428,6 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                 This pricing rule applies a fixed rate for every booking.
               </p>
             ) }
-            { priceEvaluation ? (
-              <div className="space-y-2 text-center">
-                { priceEvaluation.price !== null ? (
-                  <>
-                    <p className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
-                      Estimated total
-                    </p>
-                    <p className="text-3xl font-semibold tracking-tight">
-                      { PRICE_FORMATTER.format(priceEvaluation.price) }
-                    </p>
-                    <p className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
-                      { priceBranchLabel(priceEvaluation.branch) }
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-sm text-center text-destructive/80">
-                    { priceEvaluation.branch === 'no-match'
-                      ? 'No pricing tier matches this duration. Try a different number of hours or message the host.'
-                      : 'This pricing rule does not define a numeric value for the selected duration.' }
-                  </p>
-                ) }
-              </div>
-            ) : null }
           </div>
         ) : (
           <div className="rounded-lg border border-dashed border-border/70 bg-muted/40 px-4 py-5 text-center text-sm text-muted-foreground">
@@ -708,9 +699,10 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
 }
 
 const BOOKING_HOURS_VARIABLE = 'booking_hours';
+const BOOKING_HOURS_KEY = BOOKING_HOURS_VARIABLE.toLowerCase();
 
 function isBookingHoursOperand(operand: PriceRuleOperand): boolean {
-  return operand.kind === 'variable' && operand.key === BOOKING_HOURS_VARIABLE;
+  return operand.kind === 'variable' && operand.key.trim().toLowerCase() === BOOKING_HOURS_KEY;
 }
 
 function doesRuleUseBookingHours(rule: PriceRuleRecord | null): boolean {
@@ -723,7 +715,13 @@ function doesRuleUseBookingHours(rule: PriceRuleRecord | null): boolean {
       isBookingHoursOperand(condition.left) || isBookingHoursOperand(condition.right)
   );
 
-  const formulaReferencesBookingHours = rule.definition.formula.includes(BOOKING_HOURS_VARIABLE);
+  const formulaReferencesBookingHours = rule.definition.formula
+    .toLowerCase()
+    .includes(BOOKING_HOURS_KEY);
 
-  return referencesInConditions || formulaReferencesBookingHours;
+  const declaresBookingHoursVariable = rule.definition.variables.some(
+    (variable) => variable.key.trim().toLowerCase() === BOOKING_HOURS_KEY
+  );
+
+  return referencesInConditions || formulaReferencesBookingHours || declaresBookingHoursVariable;
 }
