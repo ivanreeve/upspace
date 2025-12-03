@@ -125,6 +125,7 @@ const formatDateForInput = (value: Date) => {
 
 const CONDITION_FIELD_PLACEHOLDER = 'IF booking_hours >= 4 THEN booking_hours * 10 ELSE booking_hours * 8';
 const CONDITION_FIELD_CARET_STYLE = { caretColor: 'var(--foreground)', } as const;
+const CONDITION_FIELD_TEXT_STYLES = 'text-base font-mono leading-6 tracking-tight md:text-sm';
 
 type HighlightTokenType = 'whitespace' | 'keyword' | 'connector' | 'comparator' | 'literal' | 'number' | 'operator' | 'punctuation' | 'variable';
 type HighlightToken = {
@@ -2305,14 +2306,14 @@ function RuleLanguageEditor({
               <div className="relative">
                 <div
                   aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-md px-3 py-1 font-mono text-base leading-6 text-foreground/70 whitespace-pre md:text-sm"
+                  className={ `pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-md px-3 py-1 text-foreground/70 whitespace-pre ${CONDITION_FIELD_TEXT_STYLES}` }
                 >
                   { isConditionFieldEmpty ? (
-                    <span className="text-base whitespace-pre text-muted-foreground md:text-sm">
+                    <span className={ `m-0 whitespace-pre text-muted-foreground ${CONDITION_FIELD_TEXT_STYLES}` }>
                       { CONDITION_FIELD_PLACEHOLDER }
                     </span>
                   ) : (
-                    <pre className="m-0 text-base leading-6 whitespace-pre md:text-sm">
+                    <pre className={ `m-0 whitespace-pre ${CONDITION_FIELD_TEXT_STYLES}` }>
                       { conditionFieldHighlights.map((segment, index) => (
                         <span
                           key={ `condition-highlight-${index}-${segment.text}` }
@@ -2330,7 +2331,7 @@ function RuleLanguageEditor({
                   value={ expressionField }
                   onChange={ handleExpressionFieldChange }
                   onKeyDown={ handleExpressionFieldKeyDown }
-                  className="relative z-10 text-transparent placeholder:text-transparent"
+                  className={ `relative z-10 text-transparent placeholder:text-transparent ${CONDITION_FIELD_TEXT_STYLES}` }
                   placeholder={ CONDITION_FIELD_PLACEHOLDER }
                   aria-label="Add condition expression"
                   style={ CONDITION_FIELD_CARET_STYLE }
