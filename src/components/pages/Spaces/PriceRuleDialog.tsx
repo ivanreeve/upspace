@@ -1631,6 +1631,8 @@ export function usePriceRuleFormState(
     const existingKeys = values.definition.variables.map((variable) => variable.key);
     const key = ensureUniqueKey(normalizedLabel, existingKeys);
 
+    const userInputAllowed = newVariableUserInput && (newVariableType === 'text' || newVariableType === 'number');
+
     updateDefinition((definition) => ({
       ...definition,
       variables: [
@@ -1640,7 +1642,7 @@ export function usePriceRuleFormState(
           label: normalizedLabel,
           type: newVariableType,
           initialValue: newVariableUserInput ? undefined : newVariableValue || undefined,
-          userInput: newVariableUserInput || undefined,
+          userInput: userInputAllowed || undefined,
         }
       ],
     }));
@@ -2219,7 +2221,13 @@ function RuleLanguageEditor({
             />
             <Select
               value={ newVariableType }
-              onValueChange={ (value) => setNewVariableType(value as DataType) }
+              onValueChange={ (value) => {
+                const nextType = value as DataType;
+                setNewVariableType(nextType);
+                if (nextType === 'date' || nextType === 'time') {
+                  setNewVariableUserInput(false);
+                }
+              } }
             >
               <SelectTrigger className="min-w-[8rem]">
                 <SelectValue placeholder="Type" />
@@ -2326,18 +2334,21 @@ function RuleLanguageEditor({
               />
             ) }
             <div className="flex items-center gap-2 whitespace-nowrap">
+              { /* Date/Time variables must be derived, not user-provided. */ }
               <Switch
                 id="variable-user-input"
-                checked={ newVariableUserInput }
+                checked={ newVariableUserInput && newVariableType !== 'date' && newVariableType !== 'time' }
+                disabled={ newVariableType === 'date' || newVariableType === 'time' }
                 onCheckedChange={ (checked) => {
-                  setNewVariableUserInput(Boolean(checked));
-                  if (checked) {
+                  const allowed = newVariableType === 'text' || newVariableType === 'number';
+                  setNewVariableUserInput(allowed && Boolean(checked));
+                  if (checked && !allowed) {
                     setNewVariableValue('');
                   }
                 } }
               />
               <label htmlFor="variable-user-input" className="text-xs text-muted-foreground">
-                User Input
+                User Input{ (newVariableType === 'date' || newVariableType === 'time') ? ' (not available for date/time)' : '' }
               </label>
             </div>
           </div>
