@@ -16,6 +16,7 @@ import {
   FiMinus,
   FiPlus
 } from 'react-icons/fi';
+import { CgSpinner } from 'react-icons/cg';
 
 import SpaceHeader from './SpaceHeader';
 import SpacePhotos from './SpacePhotos';
@@ -79,6 +80,8 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
   const defaultHostName = 'Trisha M.';
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [bookingHours, setBookingHours] = useState(MIN_BOOKING_HOURS);
+  const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
+  const [isPricingLoading, setIsPricingLoading] = useState(false);
   const [isDesktopViewport, setIsDesktopViewport] = useState(() => {
     if (typeof window === 'undefined') {
       return false;
@@ -103,19 +106,37 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     }
   }, [canMessageHost]);
 
+  const resetBookingState = useCallback(() => {
+    setBookingHours(MIN_BOOKING_HOURS);
+    setSelectedAreaId(null);
+    setIsPricingLoading(false);
+  }, []);
+
   const handleOpenBooking = useCallback(() => {
     if (!hasAreas) {
       return;
     }
+    resetBookingState();
     setIsBookingOpen(true);
-  }, [hasAreas]);
-  const handleCloseBooking = useCallback(() => setIsBookingOpen(false), []);
-  const handleConfirmBooking = useCallback(() => setIsBookingOpen(false), []);
+  }, [hasAreas, resetBookingState]);
+  const handleCloseBooking = useCallback(() => {
+    resetBookingState();
+    setIsBookingOpen(false);
+  }, [resetBookingState]);
+  const handleConfirmBooking = useCallback(() => {
+    resetBookingState();
+    setIsBookingOpen(false);
+  }, [resetBookingState]);
   const increaseBookingHours = useCallback(() => {
     setBookingHours((prev) => Math.min(prev + 1, MAX_BOOKING_HOURS));
   }, []);
   const decreaseBookingHours = useCallback(() => {
     setBookingHours((prev) => Math.max(prev - 1, MIN_BOOKING_HOURS));
+  }, []);
+  const handleSelectArea = useCallback((areaId: string) => {
+    setSelectedAreaId(areaId);
+    setBookingHours(MIN_BOOKING_HOURS);
+    setIsPricingLoading(true);
   }, []);
 
   useEffect(() => {
@@ -207,9 +228,9 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
 
   useEffect(() => {
     if (!isBookingOpen) {
-      setBookingHours(MIN_BOOKING_HOURS);
+      resetBookingState();
     }
-  }, [isBookingOpen]);
+  }, [isBookingOpen, resetBookingState]);
 
   const scrollToBottomOfDescription = () => {
     const section = descriptionSectionRef.current;
@@ -228,17 +249,27 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
   const shouldClampDescription = !isDescriptionExpanded;
   const shouldShowGradient = shouldClampDescription && isDescriptionOverflowing;
 
-  const activeAreaWithPricingRule = useMemo(
-    () => space.areas.find((area) => area.pricingRuleId && area.pricingRuleName) ?? null,
-    [space.areas]
+  const selectedArea = useMemo(
+    () => space.areas.find((area) => area.id === selectedAreaId) ?? null,
+    [selectedAreaId, space.areas]
   );
 
   const activePriceRule = useMemo<PriceRuleRecord | null>(() => {
-    if (!activeAreaWithPricingRule) {
-      return space.pricingRules.length > 0 ? space.pricingRules[0] : null;
+    if (!selectedArea?.pricingRuleId) {
+      return null;
     }
-    return space.pricingRules.find((rule) => rule.id === activeAreaWithPricingRule.pricingRuleId) ?? null;
-  }, [activeAreaWithPricingRule, space.pricingRules]);
+    return space.pricingRules.find((rule) => rule.id === selectedArea.pricingRuleId) ?? null;
+  }, [selectedArea?.pricingRuleId, space.pricingRules]);
+
+  useEffect(() => {
+    if (!selectedAreaId || !isPricingLoading) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => setIsPricingLoading(false), 600);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isPricingLoading, selectedAreaId]);
 
   const shouldShowHourSelector = useMemo(
     () => doesRuleUseBookingHours(activePriceRule),
@@ -267,94 +298,181 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
 
   const bookingDurationContent = (
     <div className="space-y-6">
-      <div className="text-center">
-        <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Booking duration</p>
+      <div className="space-y-3">
+        <p className="text-xs text-center uppercase tracking-[0.3em] text-muted-foreground">Choose an area</p>
+        { space.areas.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border/70 bg-muted/40 px-4 py-5 text-center text-sm text-muted-foreground">
+            This space has no areas to book yet.
+          </div>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2">
+            { space.areas.map((area) => {
+              const isSelected = selectedAreaId === area.id;
+              const hasPricingRule = Boolean(area.pricingRuleId && area.pricingRuleName);
+              return (
+                <Button
+                  key={ area.id }
+                  type="button"
+                  variant={ isSelected ? 'default' : 'outline' }
+                  className={ cn(
+                    'justify-between rounded-lg border-2 px-4 py-3 text-left',
+                    isSelected ? 'border-primary shadow-sm' : 'border-border/70 bg-background text-foreground',
+                    !hasPricingRule ? 'opacity-70' : ''
+                  ) }
+                  onClick={ () => handleSelectArea(area.id) }
+                  disabled={ !hasPricingRule }
+                  aria-pressed={ isSelected }
+                  aria-label={ `Choose ${area.name}` }
+                >
+                  <div className="flex flex-col items-start">
+                    <span className="text-sm font-semibold leading-5">{ area.name }</span>
+                    <span className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground">
+                      { hasPricingRule ? area.pricingRuleName : 'Pricing not set' }
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                    { isSelected ? 'Selected' : hasPricingRule ? 'Select' : 'Unavailable' }
+                  </span>
+                </Button>
+              );
+            }) }
+          </div>
+        ) }
       </div>
-      { shouldShowHourSelector ? (
-        <div className="space-y-5">
-          <div className="flex items-center justify-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-10 w-10 rounded-full"
-              disabled
-            >
-              <FiChevronLeft className="size-4" aria-hidden="true" />
-              <span className="sr-only">Previous unit</span>
-            </Button>
-            <span className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">Hour</span>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-10 w-10 rounded-full"
-              disabled
-            >
-              <FiChevronRight className="size-4" aria-hidden="true" />
-              <span className="sr-only">Next unit</span>
-            </Button>
-          </div>
-          <div className="flex items-center justify-center gap-6">
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-12 w-12 rounded-full"
-              onClick={ decreaseBookingHours }
-              disabled={ bookingHours <= MIN_BOOKING_HOURS }
-            >
-              <FiMinus className="size-4" aria-hidden="true" />
-              <span className="sr-only">Decrease hours</span>
-            </Button>
-            <div className="text-center">
-              <div className="text-5xl font-semibold tracking-tight">{ bookingHours }</div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.4em] text-muted-foreground">Hours</p>
+
+      { selectedAreaId ? (
+        isPricingLoading ? (
+          <div className="flex items-center justify-center gap-3 rounded-lg border border-dashed border-border/70 bg-muted/40 px-4 py-6">
+            <CgSpinner className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />
+            <div className="space-y-1 text-center">
+              <p className="text-sm font-semibold text-foreground">Computing pricing data...</p>
+              <p className="text-xs text-muted-foreground">Applying { selectedArea?.pricingRuleName ?? 'pricing rules' }.</p>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-12 w-12 rounded-full"
-              onClick={ increaseBookingHours }
-              disabled={ bookingHours >= MAX_BOOKING_HOURS }
-            >
-              <FiPlus className="size-4" aria-hidden="true" />
-              <span className="sr-only">Increase hours</span>
-            </Button>
           </div>
-        </div>
+        ) : activePriceRule ? (
+          <div className="space-y-5">
+            <div className="space-y-1 text-center">
+              <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Booking duration</p>
+              <p className="text-sm font-medium text-foreground">{ selectedArea?.name }</p>
+            </div>
+            { shouldShowHourSelector ? (
+              <div className="space-y-5">
+                <div className="flex items-center justify-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-10 w-10 rounded-full"
+                    disabled
+                  >
+                    <FiChevronLeft className="size-4" aria-hidden="true" />
+                    <span className="sr-only">Previous unit</span>
+                  </Button>
+                  <span className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">Hour</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-10 w-10 rounded-full"
+                    disabled
+                  >
+                    <FiChevronRight className="size-4" aria-hidden="true" />
+                    <span className="sr-only">Next unit</span>
+                  </Button>
+                </div>
+                <div className="flex items-center justify-center gap-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-12 w-12 rounded-full"
+                    onClick={ decreaseBookingHours }
+                    disabled={ bookingHours <= MIN_BOOKING_HOURS || isPricingLoading }
+                  >
+                    <FiMinus className="size-4" aria-hidden="true" />
+                    <span className="sr-only">Decrease hours</span>
+                  </Button>
+                  <div className="text-center">
+                    <div className="text-5xl font-semibold tracking-tight">{ bookingHours }</div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.4em] text-muted-foreground">Hours</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-12 w-12 rounded-full"
+                    onClick={ increaseBookingHours }
+                    disabled={ bookingHours >= MAX_BOOKING_HOURS || isPricingLoading }
+                  >
+                    <FiPlus className="size-4" aria-hidden="true" />
+                    <span className="sr-only">Increase hours</span>
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-center text-muted-foreground">
+                This pricing rule applies a fixed rate for every booking.
+              </p>
+            ) }
+            { priceEvaluation ? (
+              <div className="space-y-2 text-center">
+                { priceEvaluation.price !== null ? (
+                  <>
+                    <p className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
+                      Estimated total
+                    </p>
+                    <p className="text-3xl font-semibold tracking-tight">
+                      { PRICE_FORMATTER.format(priceEvaluation.price) }
+                    </p>
+                    <p className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
+                      { priceBranchLabel(priceEvaluation.branch) }
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-center text-destructive/80">
+                    { priceEvaluation.branch === 'no-match'
+                      ? 'No pricing tier matches this duration. Try a different number of hours or message the host.'
+                      : 'This pricing rule does not define a numeric value for the selected duration.' }
+                  </p>
+                ) }
+              </div>
+            ) : null }
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-border/70 bg-muted/40 px-4 py-5 text-center text-sm text-muted-foreground">
+            Pricing for this area is not yet available. Choose another area or message the host.
+          </div>
+        )
       ) : (
         <p className="text-sm text-center text-muted-foreground">
-          { activePriceRule
-            ? 'This pricing rule applies a fixed rate for every booking.'
-            : 'Booking duration selection will appear once the host publishes pricing.' }
+          Select an area to preview pricing.
         </p>
       ) }
-      { activePriceRule && priceEvaluation ? (
-        <div className="space-y-2 text-center">
-          { priceEvaluation.price !== null ? (
-            <>
-              <p className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
-                Estimated total
-              </p>
-              <p className="text-3xl font-semibold tracking-tight">
-                { PRICE_FORMATTER.format(priceEvaluation.price) }
-              </p>
-              <p className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
-                { priceBranchLabel(priceEvaluation.branch) }
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-center text-destructive/80">
-              { priceEvaluation.branch === 'no-match'
-                ? 'No pricing tier matches this duration. Try a different number of hours or message the host.'
-                : 'This pricing rule does not define a numeric value for the selected duration.' }
-            </p>
-          ) }
-        </div>
-      ) : null }
     </div>
+  );
+
+  const primaryActionLabel = (() => {
+    if (!selectedAreaId) {
+      return 'Select an area';
+    }
+    if (isPricingLoading) {
+      return 'Computing price...';
+    }
+    if (!activePriceRule) {
+      return 'Pricing unavailable';
+    }
+    if (!priceEvaluation || priceEvaluation.price === null) {
+      return 'Price unavailable';
+    }
+    return PRICE_FORMATTER.format(priceEvaluation.price);
+  })();
+
+  const canConfirmBooking = Boolean(
+    selectedAreaId &&
+    !isPricingLoading &&
+    activePriceRule &&
+    priceEvaluation &&
+    priceEvaluation.price !== null
   );
 
   return (
@@ -520,9 +638,9 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
             type="button"
             className="w-full lg:w-auto"
             onClick={ handleConfirmBooking }
-            disabled={ !hasAreas }
+            disabled={ !canConfirmBooking }
           >
-            Book
+            { primaryActionLabel }
           </Button>
           <Button
             type="button"
@@ -549,9 +667,9 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
             type="button"
             className="w-full"
             onClick={ handleConfirmBooking }
-            disabled={ !hasAreas }
+            disabled={ !canConfirmBooking }
           >
-            Book
+            { primaryActionLabel }
           </Button>
           <Button
             type="button"
