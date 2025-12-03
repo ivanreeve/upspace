@@ -61,7 +61,8 @@ export function useCustomerChatRoom(spaceId: string | null) {
       }
 
       const payload = await response.json();
-      return payload.room as ChatRoomDetail | null;
+      const room = payload.room ?? null;
+      return room as ChatRoomDetail | null;
     },
   });
 }
