@@ -1,6 +1,11 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseQueryOptions
+} from '@tanstack/react-query';
 
 import type { AreaRecord, SpaceRecord } from '@/data/spaces';
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
@@ -28,7 +33,9 @@ const parseErrorMessage = async (response: Response) => {
   return 'Something went wrong. Please try again.';
 };
 
-export function usePartnerSpacesQuery() {
+export function usePartnerSpacesQuery(
+  options?: Omit<UseQueryOptions<SpaceRecord[], Error>, 'queryKey' | 'queryFn'>
+) {
   const authFetch = useAuthenticatedFetch();
 
   return useQuery<SpaceRecord[]>({
@@ -42,6 +49,7 @@ export function usePartnerSpacesQuery() {
       const payload = (await response.json()) as { data: SpaceRecord[] };
       return payload.data;
     },
+    ...options,
   });
 }
 
