@@ -250,7 +250,7 @@ export default function AccountPage() {
       })
     : null;
 
-  
+  const isAdminRole = profile?.role === 'admin';
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -561,38 +561,40 @@ export default function AccountPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border border-border/60 bg-card/80 shadow-sm shadow-slate-900/5">
-            <CardContent className="p-6 sm:p-10 space-y-6">
-              <div className="space-y-2">
-                <h2 className="text-xl font-semibold text-foreground">Delete account</h2>
-                <p className="text-sm text-muted-foreground">
-                  Deletion permanently removes your profile, bookings, and usage data. This cannot be undone.
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Submitting a deletion request schedules permanent removal in 30 days unless you log back in.
-                </p>
-                { formattedDeletionDeadline ? (
-                  <p className="text-xs text-muted-foreground">
-                    Your deletion window ends on { formattedDeletionDeadline }.
+          { isAdminRole && (
+            <Card className="border border-border/60 bg-card/80 shadow-sm shadow-slate-900/5">
+              <CardContent className="p-6 sm:p-10 space-y-6">
+                <div className="space-y-2">
+                  <h2 className="text-xl font-semibold text-foreground">Delete account</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Deletion permanently removes your profile, bookings, and usage data. This cannot be undone.
                   </p>
-                ) : null }
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <Button
-                  type="button"
-                  variant="destructive"
-                  className="w-full sm:w-auto"
-                  onClick={ handleDeleteAccount }
-                  disabled={ isDeleting }
-                >
-                  { isDeleting ? 'Scheduling deletion...' : 'Schedule deletion' }
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  Need details? <Link href="/data-deletion" className="underline">Review the deletion guide</Link>.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+                  <p className="text-xs text-muted-foreground">
+                    Submitting a deletion request schedules permanent removal in 30 days unless you log back in.
+                  </p>
+                  { formattedDeletionDeadline ? (
+                    <p className="text-xs text-muted-foreground">
+                      Your deletion window ends on { formattedDeletionDeadline }.
+                    </p>
+                  ) : null }
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    className="w-full sm:w-auto"
+                    onClick={ handleDeleteAccount }
+                    disabled={ isDeleting }
+                  >
+                    { isDeleting ? 'Scheduling deletion...' : 'Schedule deletion' }
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Need details? <Link href="/data-deletion" className="underline">Review the deletion guide</Link>.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) }
         </div>
       </main>
     </>

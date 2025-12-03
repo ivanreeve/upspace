@@ -39,6 +39,7 @@ export type ListSpacesParams = Partial<{
   barangay: string;
   street: string;
   country: string;
+  bookmark_user_id: string;
   amenities: string[]; // names
   amenities_mode: 'all' | 'any';
   amenities_negate: boolean;
@@ -74,6 +75,9 @@ export async function listSpaces(params: ListSpacesParams = {}) {
   if (params.barangay) sp.set('barangay', params.barangay);
   if (params.street) sp.set('street', params.street);
   if (params.country) sp.set('country', params.country);
+  if (params.bookmark_user_id) {
+    sp.set('bookmark_user_id', params.bookmark_user_id);
+  }
   if (params.amenities?.length) sp.set('amenities', params.amenities.join(','));
   if (params.amenities_mode) sp.set('amenities_mode', params.amenities_mode);
   if (typeof params.amenities_negate === 'boolean') {

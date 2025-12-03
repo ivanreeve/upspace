@@ -8,11 +8,12 @@ import { TbSparkles } from 'react-icons/tb';
 import { LuBookOpenText, LuUsers } from 'react-icons/lu';
 import { FaQuestion } from 'react-icons/fa6';
 import {
-  FiSidebar,
+  FiBell,
+  FiChevronRight,
   FiLogOut,
-  FiUser,
   FiSettings,
-  FiBell
+  FiSidebar,
+  FiUser
 } from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
 
@@ -344,31 +345,101 @@ export default function NavBar({
                 </SheetTrigger>
                 <SheetContent
                   side="right"
-                  className="w-[300px] sm:w-[400px]"
+                  className="w-full max-w-[480px] overflow-hidden border-l bg-background/95 p-0 backdrop-blur-xl"
                 >
-                  <SheetHeader className='border-t-transparent border-r-transparent border-l-transparent border-2 border-b-muted'>
-                    <SheetTitle className="flex items-center gap-2">
-                      <LogoSymbolic className='text-primary dark:text-secondary' />
-                      <span className='text-xl font-bold'>UpSpace</span>
-                    </SheetTitle>
-                  </SheetHeader>
-                  <div className="mt-6">
-                    { resolvedMenuItems.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <Link
-                          key={ item.href }
-                          href={ item.href }
-                          onClick={ (event) => handleNavLinkClick(event, item.href, true) }
-                          className="flex rounded-md items-center gap-3 px-4 py-3 bg-transparent text-sm font-medium transition-colors active:bg-secondary/20 active:text-primary dark:active:bg-secondary/10 dark:active:text-secondary group outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-                        >
-                          { Icon && (
-                            <Icon className="h-5 w-5 group-active:scale-110 transition-transform" />
-                          ) }
-                          <span>{ item.label }</span>
-                        </Link>
-                      );
-                    }) }
+                  <div className="relative flex h-full flex-col">
+                    <div className="pointer-events-none absolute inset-0">
+                      <div className="absolute -left-10 top-6 size-44 rounded-full bg-primary/12 blur-3xl" />
+                      <div className="absolute right-[-56px] top-24 size-48 rounded-full bg-secondary/10 blur-3xl" />
+                    </div>
+
+                    <div className="relative border-b border-border/60 bg-gradient-to-br from-background/95 via-background/80 to-secondary/5 px-5 pb-6 pt-8 shadow-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <LogoSymbolic className="text-primary dark:text-secondary" />
+                          <div className="flex flex-col">
+                            <span className="text-base font-semibold">UpSpace</span>
+                            <span className="text-xs text-muted-foreground">Find your next workspace</span>
+                          </div>
+                        </div>
+                        <span className="rounded-full border border-border/60 bg-card/80 px-3 py-1 text-xs font-medium text-muted-foreground">
+                          Menu
+                        </span>
+                      </div>
+                      <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                        Book inspiring coworking spaces and stay close to your team, wherever you are.
+                      </p>
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <Button asChild size="sm">
+                          <Link
+                            href="/#features"
+                            onClick={ (event) => handleNavLinkClick(event, '/#features', true) }
+                            aria-label="Explore featured workspaces"
+                          >
+                            Book a space
+                          </Link>
+                        </Button>
+                        <Button asChild size="sm" variant="outline">
+                          <Link
+                            href="/#faqs"
+                            onClick={ (event) => handleNavLinkClick(event, '/#faqs', true) }
+                            aria-label="Browse frequently asked questions"
+                          >
+                            FAQs
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+
+                    <nav
+                      aria-label="Mobile primary navigation"
+                      className="relative flex-1 overflow-y-auto px-4 py-4"
+                    >
+                      <div className="flex flex-col gap-2">
+                        { resolvedMenuItems.map((item) => {
+                          const Icon = item.icon;
+                          return (
+                            <Link
+                              key={ item.href }
+                              href={ item.href }
+                              onClick={ (event) => handleNavLinkClick(event, item.href, true) }
+                              className="group flex items-center gap-3 rounded-lg border border-border/70 bg-card/80 px-4 py-3 text-sm font-semibold text-foreground shadow-sm transition hover:-translate-x-1 hover:border-primary/50 hover:bg-card focus-visible:ring-ring/50 focus-visible:ring-[3px] active:scale-[0.995]"
+                            >
+                              { Icon && (
+                                <span className="rounded-md bg-muted/60 p-2 text-primary transition group-hover:bg-primary/10 group-hover:text-primary">
+                                  <Icon className="h-5 w-5" aria-hidden="true" />
+                                </span>
+                              ) }
+                              <div className="flex flex-1 flex-col items-start">
+                                <span>{ item.label }</span>
+                                <span className="text-xs font-normal text-muted-foreground">
+                                  Jump to the { item.label.toLowerCase() } section
+                                </span>
+                              </div>
+                              <FiChevronRight className="size-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" aria-hidden="true" />
+                            </Link>
+                          );
+                        }) }
+                      </div>
+                    </nav>
+
+                    <div className="relative border-t border-border/60 bg-card/80 px-4 py-5">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-foreground">Need a space today?</span>
+                          <span className="text-xs text-muted-foreground">Chat with our team for tailored options.</span>
+                        </div>
+                        <Button size="sm" variant="secondary" asChild>
+                          <Link
+                            href="/#team"
+                            onClick={ (event) => handleNavLinkClick(event, '/#team', true) }
+                            aria-label="Meet the UpSpace team"
+                          >
+                            Meet the team
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </SheetContent>
               </Sheet>

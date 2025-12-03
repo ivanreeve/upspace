@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useTheme } from 'next-themes';
-import { FiMonitor, FiMoon, FiSun } from 'react-icons/fi';
+import { FiMoon, FiSmartphone, FiSun } from 'react-icons/fi';
 
 import { cn } from '@/lib/utils';
 
@@ -20,7 +20,7 @@ const themeOptions = [
   {
     value: 'system',
     label: 'Auto',
-    icon: FiMonitor,
+    icon: FiSmartphone,
   },
   {
     value: 'dark',

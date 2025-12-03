@@ -58,7 +58,13 @@ export function CardsGrid({ items, }: { items: Space[] }) {
   );
 }
 
-export function SpaceCard({ space, }: { space: Space }) {
+export function SpaceCard({
+  space,
+  onBookmarkChange,
+}: {
+  space: Space;
+  onBookmarkChange?: (spaceId: string, isBookmarked: boolean) => void;
+}) {
   const { session, } = useSession();
   const isGuest = !session;
   const [isSaved, setIsSaved] = useState(Boolean(space.isBookmarked));
@@ -94,13 +100,14 @@ export function SpaceCard({ space, }: { space: Space }) {
       }
 
       setIsSaved(!shouldRemove);
+      onBookmarkChange?.(space.space_id, !shouldRemove);
       toast.success(shouldRemove ? 'Removed from your bookmarks.' : 'Saved to your bookmarks.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to save right now.');
     } finally {
       setIsSaving(false);
     }
-  }, [isSaved, isSaving, space.space_id]);
+  }, [isSaved, isSaving, onBookmarkChange, space.space_id]);
 
   return (
     <Card className="w-full rounded-sm group flex flex-col overflow-hidden text-card-foreground border-none bg-transparent shadow-none py-0 !gap-3">

@@ -6,13 +6,16 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   FiBarChart2,
   FiBell,
+  FiBookmark,
   FiCommand,
   FiHome,
   FiLogOut,
+  FiMenu,
   FiMessageSquare,
   FiSearch,
   FiSettings,
-  FiUser
+  FiUser,
+  FiChevronRight
 } from 'react-icons/fi';
 import { PiMoneyWavyBold } from 'react-icons/pi';
 import { HiOutlineDocumentText } from 'react-icons/hi';
@@ -78,11 +81,41 @@ function SidebarToggleMenuItem() {
   const {
     state,
     toggleSidebar,
+    isMobile,
   } = useSidebar();
   const isExpanded = state === 'expanded';
   const Icon = isExpanded
     ? TbLayoutSidebarFilled
     : TbLayoutSidebarFilled;
+
+  if (isMobile) {
+    const CloseIcon = FiChevronRight;
+
+    return (
+      <SidebarMenuItem className="flex items-center justify-between gap-2 pr-1">
+        <Link
+          href="/"
+          className="flex items-center gap-2 text-sm font-semibold text-foreground"
+        >
+          <LogoSymbolic className="size-5 text-primary dark:text-secondary" />
+          <span className="leading-tight">UpSpace</span>
+        </Link>
+        <div className="flex items-center gap-2">
+          <ThemeSwitcher variant="compact" />
+          <SidebarMenuButton
+            tooltip="Close menu"
+            type="button"
+            onClick={ toggleSidebar }
+            className="w-10 justify-center p-2"
+            aria-label="Close menu"
+          >
+            <CloseIcon className="size-4" aria-hidden="true" />
+            <span className="sr-only">Close menu</span>
+          </SidebarMenuButton>
+        </div>
+      </SidebarMenuItem>
+    );
+  }
 
   return (
     <SidebarMenuItem
@@ -125,7 +158,7 @@ function SidebarFooterContent({
   isGuest,
   isSidebarLoading,
 }: SidebarFooterContentProps) {
-  const { state, } = useSidebar();
+  const { state, isMobile, } = useSidebar();
   const isCollapsed = state === 'collapsed';
   const secondaryLabel = isGuest
     ? 'Public browsing'
@@ -138,6 +171,10 @@ function SidebarFooterContent({
     isCollapsed ? 'h-9 w-9' : 'h-11 w-11'
   );
   const skeletonTextClass = isCollapsed ? 'h-3 w-16' : 'h-3 w-24';
+
+  if (isMobile) {
+    return null;
+  }
 
   return (
     <div
@@ -322,6 +359,9 @@ function MobileTopNav({
   onNavigate,
   onLogout,
   isGuest,
+  showSidebarToggle = false,
+  showSearchButton = true,
+  showThemeSwitcher = false,
 }: {
   avatarUrl: string | null
   avatarFallback: string
@@ -331,7 +371,12 @@ function MobileTopNav({
   onNavigate: (href: string) => void
   onLogout: () => Promise<void> | void
   isGuest: boolean
+  showSidebarToggle?: boolean
+  showSearchButton?: boolean
+  showThemeSwitcher?: boolean
 }) {
+  const { toggleSidebar, } = useSidebar();
+
   return (
     <header
       className="fixed inset-x-0 top-0 z-40 border-b bg-background/90 px-4 py-3 backdrop-blur-md md:hidden"
@@ -359,14 +404,27 @@ function MobileTopNav({
               <FiBell className="size-5" aria-hidden="true" />
             </Link>
           ) }
-          <button
-            type="button"
-            aria-label="Search"
-            onClick={ onSearchOpen }
-            className="rounded-full p-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            <FiSearch className="size-5" aria-hidden="true" />
-          </button>
+          { showSearchButton && (
+            <button
+              type="button"
+              aria-label="Search"
+              onClick={ onSearchOpen }
+              className="rounded-full p-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <FiSearch className="size-5" aria-hidden="true" />
+            </button>
+          ) }
+          { showSidebarToggle && (
+            <button
+              type="button"
+              aria-label="Open navigation menu"
+              onClick={ toggleSidebar }
+              className="rounded-full p-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <FiMenu className="size-5" aria-hidden="true" />
+            </button>
+          ) }
+          { showThemeSwitcher && <ThemeSwitcher variant="compact" /> }
           { isGuest ? (
             <button
               type="button"
@@ -641,14 +699,17 @@ export function MarketplaceChrome({
   const pathname = usePathname();
   const isAccountRoute = (pathname ?? '').startsWith('/account');
   const isMobile = useIsMobile();
+  const shouldRenderMobileBottomNav = isMobile && !isAccountRoute && !isPartnerRole;
   const mobileInsetPadding = React.useMemo<React.CSSProperties | undefined>(
     () => (isMobile
       ? {
           paddingTop: 'calc(4rem + var(--safe-area-top))',
-          paddingBottom: 'calc(2.75rem + var(--safe-area-bottom))',
+          paddingBottom: shouldRenderMobileBottomNav
+            ? 'calc(2.75rem + var(--safe-area-bottom))'
+            : 'var(--safe-area-bottom)',
         }
       : undefined),
-    [isMobile]
+    [isMobile, shouldRenderMobileBottomNav]
   );
   const handleSearch = React.useCallback(() => {
     if (onSearchOpen) {
@@ -656,42 +717,42 @@ export function MarketplaceChrome({
       return;
     }
 
-          onNavigate('/marketplace?search=1');
+    onNavigate('/marketplace?search=1');
   }, [onNavigate, onSearchOpen]);
 
-  const shouldRenderMobileBottomNav = !isAccountRoute;
   const mobileBottomNavActions = React.useMemo(
-    (): MobileBottomNavAction[] => [
-      {
-        label: 'Home',
-        href: '/marketplace',
-        icon: FiHome,
-      },
-      {
-        label: 'Search',
-        icon: FiSearch,
-        onClick: handleSearch,
-      },
-      {
-        label: 'AI Search',
-        href: '/ai-search',
-        icon: LuSparkles,
-        show: isCustomerRole,
-      },
-      {
-        label: 'Notifications',
-        href: '/notifications',
-        icon: FiBell,
-        show: shouldShowNotifications,
-      },
-      {
-        label: 'Messages',
-        href: resolvedMessageHref,
-        icon: FiMessageSquare,
-        show: shouldShowNotifications,
+    (): MobileBottomNavAction[] => {
+      if (isAdminRole) {
+        return [
+          { label: 'Home', href: '/marketplace', icon: FiHome },
+          { label: 'Dashboard', href: '/marketplace/dashboard', icon: FiBarChart2 },
+          { label: 'Queue', href: '/admin', icon: HiOutlineDocumentText },
+          { label: 'Observe', href: '/observability', icon: MdFormatListBulleted },
+        ];
       }
-    ],
-    [handleSearch, isCustomerRole, resolvedMessageHref, shouldShowNotifications]
+
+      const actions: MobileBottomNavAction[] = [
+        { label: 'Home', href: '/marketplace', icon: FiHome },
+      ];
+
+      if (isCustomerRole) {
+        actions.push({ label: 'Bookmarks', href: '/bookmarks', icon: FiBookmark });
+        actions.push({ label: 'AI Search', href: '/ai-search', icon: LuSparkles });
+      } else {
+        actions.push({ label: 'Search', icon: FiSearch, onClick: handleSearch });
+      }
+
+      if (shouldShowNotifications && !isCustomerRole) {
+        actions.push({ label: 'Notifications', href: '/notifications', icon: FiBell });
+      }
+
+      if (shouldShowNotifications) {
+        actions.push({ label: 'Messages', href: resolvedMessageHref, icon: FiMessageSquare });
+      }
+
+      return actions;
+    },
+    [handleSearch, isAdminRole, isCustomerRole, resolvedMessageHref, shouldShowNotifications]
   );
 
   React.useEffect(() => {
@@ -723,6 +784,8 @@ export function MarketplaceChrome({
           onNavigate={ navData.onNavigate }
           onLogout={ navData.onLogout }
           isGuest={ navData.isGuest }
+          showSidebarToggle={ isPartnerRole }
+          showThemeSwitcher={ isCustomerRole || isAdminRole }
         />
       ) }
       <div className="flex min-h-screen w-full">
@@ -764,6 +827,15 @@ export function MarketplaceChrome({
                         label="AI Search"
                         icon={ LuSparkles }
                         tooltip="AI Search"
+                      />
+                    ) }
+                    { isCustomerRole && (
+                      <SidebarLinkItem
+                        href="/bookmarks"
+                        label="Bookmarks"
+                        icon={ FiBookmark }
+                        tooltip="Bookmarks"
+                        iconProps={ { strokeWidth: 2, } }
                       />
                     ) }
                     { shouldShowNotifications && (
