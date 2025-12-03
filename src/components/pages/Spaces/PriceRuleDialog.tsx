@@ -103,6 +103,10 @@ const normalizeConditionKeywords = (value: string) =>
   value.replace(KEYWORD_NORMALIZATION_REGEX, (match) => match.toUpperCase());
 const normalizeConditionSegment = (value: string) => normalizeConditionKeywords(value).trim().toLowerCase();
 
+const countElseOccurrences = (value: string) => (
+  value.toLowerCase().match(/\belse\b/g)?.length ?? 0
+);
+
 const formatDateForInput = (value: Date) => {
   const year = value.getFullYear();
   const month = String(value.getMonth() + 1).padStart(2, '0');
@@ -1127,7 +1131,13 @@ const splitConditionAndFormula = (expression: string): ConditionFormulaSplit => 
   const elseIndex = lowerFormulaSection.indexOf(elseSeparator);
 
   if (elseIndex === -1) {
-    throw new Error('Add an ELSE clause with fallback pricing.');
+    const thenFormula = formulaSection.trim();
+    return {
+      condition,
+      formula: thenFormula,
+      thenFormula,
+      elseFormula: '',
+    };
   }
 
   const thenFormula = formulaSection.slice(0, elseIndex).trim();
@@ -1461,6 +1471,12 @@ export function usePriceRuleFormState(
       return normalizedExpression;
     }
 
+    const totalElseCount = countElseOccurrences(normalizedExpression);
+    if (totalElseCount > 1) {
+      setConditionError('Only one ELSE clause is allowed across all conditions.');
+      return normalizedExpression;
+    }
+
     const lowerExpression = trimmedExpression.toLowerCase();
     if (!/^if\b/.test(lowerExpression)) {
       try {
@@ -1477,6 +1493,8 @@ export function usePriceRuleFormState(
       }
       return normalizedExpression;
     }
+
+    const missingElse = totalElseCount === 0;
 
     if (!lowerExpression.includes(' then ')) {
       setConditionError('Add a THEN clause with the formula to apply.');
@@ -1520,7 +1538,7 @@ export function usePriceRuleFormState(
         conditions: parsedConditions,
         formula: formula || '0',
       }));
-      setConditionError(null);
+      setConditionError(missingElse ? 'Add an ELSE clause to the rule.' : null);
     } catch (error) {
       setConditionError(error instanceof Error ? error.message : 'Invalid condition expression.');
     }
@@ -1692,6 +1710,11 @@ function RuleLanguageEditor({
     if (!normalized) {
       return 'Enter a clause to add.';
     }
+    const existingElseCount = countElseOccurrences(conditionExpression);
+    const clauseElseCount = countElseOccurrences(normalized);
+    if (existingElseCount + clauseElseCount > 1) {
+      return 'Only one ELSE clause is allowed across all conditions.';
+    }
     const lower = normalized.toLowerCase();
     if (!lower.startsWith('if ')) {
       try {
@@ -1705,6 +1728,9 @@ function RuleLanguageEditor({
     }
     if (!lower.includes(' then ')) {
       return 'Add a THEN clause.';
+    }
+    if (existingElseCount === 0 && clauseElseCount === 0) {
+      return 'Add an ELSE clause.';
     }
     try {
       const {
@@ -1737,7 +1763,7 @@ function RuleLanguageEditor({
       const message = error instanceof Error ? error.message : 'Invalid clause.';
       return message;
     }
-  }, [definition, expressionConditionKeys]);
+  }, [conditionExpression, definition, expressionConditionKeys]);
 
   const isExpressionFieldValid = useMemo(() => validateClause(expressionField) === null, [expressionField, validateClause]);
 

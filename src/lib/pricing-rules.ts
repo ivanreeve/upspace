@@ -89,6 +89,23 @@ export const priceRuleSchema = z.object({
   name: z.string().min(1, 'Name is required.'),
   description: z.string().max(500).optional(),
   definition: priceRuleDefinitionSchema,
+}).superRefine((value, ctx) => {
+  const formula = value.definition.formula.trim();
+  if (!formula) {
+    return;
+  }
+  const hasIfClause = /\bif\b/i.test(formula);
+  if (!hasIfClause) {
+    return;
+  }
+  const elseMatches = formula.toLowerCase().match(/\belse\b/g) ?? [];
+  if (elseMatches.length !== 1) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Conditions that use IF statements must include exactly one ELSE clause.',
+      path: ['definition', 'formula'],
+    });
+  }
 });
 
 export type PriceRuleFormValues = z.infer<typeof priceRuleSchema>;
