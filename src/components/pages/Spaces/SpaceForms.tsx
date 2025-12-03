@@ -2112,6 +2112,9 @@ export function AreaDialog({
       >
         <DialogHeader className="mb-6">
           <DialogTitle>{ mode === 'edit' ? 'Edit area' : 'Add area' }</DialogTitle>
+          <DialogDescription>
+            Adjust capacity, availability, and pricing settings for this space area.
+          </DialogDescription>
         </DialogHeader>
         <Form { ...form }>
           <form className="space-y-4" onSubmit={ form.handleSubmit(onSubmit) }>
