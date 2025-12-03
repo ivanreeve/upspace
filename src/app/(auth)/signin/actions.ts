@@ -5,6 +5,8 @@ import { z } from 'zod';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { ROLE_REDIRECT_MAP } from '@/lib/constants';
+import { prisma } from '@/lib/prisma';
+import { reactivateUserIfEligible } from '@/lib/auth/reactivate-user';
 
 type SupabaseSessionPayload = {
   access_token: string;
@@ -41,6 +43,7 @@ function extractSupabaseSession(session: Session | null): SupabaseSessionPayload
     refresh_token: session.refresh_token,
   };
 }
+
 
 export async function loginAction(_prev: LoginState, formData: FormData): Promise<LoginState> {
   
@@ -116,12 +119,21 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
       .maybeSingle();
 
     if (profile?.is_disabled) {
-      await supabase.auth.signOut();
+      const reactivated = await reactivateUserIfEligible(authedUser.id).catch((error) => {
+        console.error('Failed to attempt reactivation', error);
+        return false;
+      });
 
-      return {
-        ok: false,
-        message: 'Your account has been disabled. Contact support for help.',
-      };
+      if (!reactivated) {
+        await supabase.auth.signOut();
+
+        return {
+          ok: false,
+          message: 'Your account has been disabled. Contact support for help.',
+        };
+      }
+
+      profile.is_disabled = false;
     }
 
     if (profileError) {

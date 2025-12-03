@@ -1,38 +1,41 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState
+} from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDownIcon } from 'lucide-react';
 import { CgSpinner } from 'react-icons/cg';
-import { FaCheck } from 'react-icons/fa';
+import { FiChevronLeft } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUserProfile } from '@/hooks/use-user-profile';
-import { cn } from '@/lib/utils';
-import { ALLOWED_USER_ROLES, ROLE_DETAILS, type AllowedUserRole } from '@/lib/user-roles';
+import { useSession } from '@/components/auth/SessionProvider';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { ALLOWED_USER_ROLES, type AllowedUserRole } from '@/lib/user-roles';
 
 type FormState = {
   firstName: string;
   middleName: string;
   lastName: string;
+};
+
+type PasswordFormState = {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
 };
 
 type SavePayload = {
@@ -50,18 +53,14 @@ function formatBirthday(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-const roleOptions = ALLOWED_USER_ROLES.map((value) => ({
-  value,
-  ...ROLE_DETAILS[value],
-}));
-
 export default function AccountPage() {
   const {
- data: profile, isLoading, 
-} = useUserProfile();
+    data: profile,
+    isLoading,
+  } = useUserProfile();
   const queryClient = useQueryClient();
   const router = useRouter();
-  const [initialRole, setInitialRole] = useState<AllowedUserRole | 'admin' | ''>('');
+  const { session, } = useSession();
   const [initialBirthday, setInitialBirthday] = useState<string | null>(null);
   const [initialForm, setInitialForm] = useState<FormState>({
     firstName: '',
@@ -70,17 +69,35 @@ export default function AccountPage() {
   });
   const [justSaved, setJustSaved] = useState(false);
 
+  const [passwordForm, setPasswordForm] = useState<PasswordFormState>({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false);
+  const [isDeactivating, setIsDeactivating] = useState(false);
+  const [deletionDeadline, setDeletionDeadline] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const [formState, setFormState] = useState<FormState>({
     firstName: '',
     middleName: '',
     lastName: '',
   });
-  const [selectedRole, setSelectedRole] = useState<AllowedUserRole | ''>('');
   const [birthday, setBirthday] = useState<Date | undefined>(undefined);
   const [isBirthdayOpen, setBirthdayOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingSave, setPendingSave] = useState<SavePayload | null>(null);
+  const hasPasswordIdentity = Boolean(
+    session?.user?.identities?.some((identity) => identity?.provider === 'email')
+  );
+  const handleSignOut = useCallback(async () => {
+    const supabase = getSupabaseBrowserClient();
+    const { error, } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Sign-out failed', error);
+    }
+    await router.push('/');
+  }, [router]);
 
   useEffect(() => {
     if (!profile) return;
@@ -96,16 +113,14 @@ export default function AccountPage() {
       lastName: profile.lastName ?? '',
     });
     setInitialBirthday(profile.birthday ?? null);
-    setInitialRole(profile.role);
-    setSelectedRole(profile.role === 'admin' ? '' : profile.role);
     setBirthday(profile.birthday ? new Date(`${profile.birthday}T00:00:00Z`) : undefined);
   }, [profile]);
 
   const isSaveDisabled = useMemo(() => {
     const trimmedFirst = formState.firstName.trim();
     const trimmedLast = formState.lastName.trim();
-    return !trimmedFirst || !trimmedLast || !selectedRole || isSubmitting;
-  }, [formState.firstName, formState.lastName, isSubmitting, selectedRole]);
+    return !trimmedFirst || !trimmedLast || isSubmitting;
+  }, [formState.firstName, formState.lastName, isSubmitting]);
 
   const handleInputChange =
     (field: keyof FormState) => (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,12 +133,124 @@ export default function AccountPage() {
   const handleReset = () => {
     if (!profile) return;
     setFormState(initialForm);
-    setSelectedRole(initialRole === 'admin' ? '' : initialRole);
     setBirthday(initialBirthday ? new Date(`${initialBirthday}T00:00:00Z`) : undefined);
-    setConfirmOpen(false);
-    setPendingSave(null);
     setJustSaved(false);
   };
+
+  const passwordMismatch =
+    Boolean(passwordForm.newPassword) &&
+    Boolean(passwordForm.confirmPassword) &&
+    passwordForm.newPassword !== passwordForm.confirmPassword;
+  const isPasswordChangeDisabled =
+    isPasswordSubmitting ||
+    !passwordForm.currentPassword ||
+    !passwordForm.newPassword ||
+    !passwordForm.confirmPassword ||
+    passwordMismatch;
+
+  const handlePasswordInputChange =
+    (field: keyof PasswordFormState) => (event: React.ChangeEvent<HTMLInputElement>) => {
+      setPasswordForm((prev) => ({
+        ...prev,
+        [field]: event.target.value,
+      }));
+    };
+
+  const handlePasswordSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (passwordMismatch) {
+      toast.error('New passwords must match.');
+      return;
+    }
+
+    setIsPasswordSubmitting(true);
+    try {
+      const response = await fetch('/api/v1/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.message ?? 'Unable to update your password right now.');
+      }
+
+      toast.success('Password updated.');
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to update your password.';
+      toast.error(message);
+    } finally {
+      setIsPasswordSubmitting(false);
+    }
+  };
+
+  const handleDeactivateAccount = async () => {
+    if (!window.confirm('Requesting deactivation will disable access to your account. You can reactivate anytime by logging back in. Proceed?')) {
+      return;
+    }
+
+    setIsDeactivating(true);
+    try {
+      const response = await fetch('/api/v1/auth/deactivate', { method: 'POST', });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.message ?? 'Unable to schedule deactivation right now.');
+      }
+
+      toast.success('Account deactivated. You can reactivate anytime by logging back in.');
+      await handleSignOut();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to deactivate your account.';
+      toast.error(message);
+    } finally {
+      setIsDeactivating(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!window.confirm('Requesting deletion will permanently remove your data after 30 days unless you sign in again. Proceed?')) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch('/api/v1/auth/delete', { method: 'POST', });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.message ?? 'Unable to schedule deletion right now.');
+      }
+
+      toast.success('Account deletion scheduled. Log in within 30 days to cancel the request.');
+      setDeletionDeadline(payload?.reactivationDeadline ?? null);
+      await handleSignOut();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to delete your account.';
+      toast.error(message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const formattedDeletionDeadline = deletionDeadline
+    ? new Date(deletionDeadline).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : null;
+
+  
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -131,24 +258,28 @@ export default function AccountPage() {
     const trimmedFirst = formState.firstName.trim();
     const trimmedLast = formState.lastName.trim();
 
-    if (!trimmedFirst || !trimmedLast || !selectedRole) {
+    if (!trimmedFirst || !trimmedLast) {
       toast.error('Please complete required fields before saving.');
       return;
     }
+
+    if (!profile) {
+      toast.error('Unable to update your profile right now.');
+      return;
+    }
+
+    const validRole =
+      ALLOWED_USER_ROLES.includes(profile.role as AllowedUserRole)
+        ? (profile.role as AllowedUserRole)
+        : 'customer';
 
     const payload: SavePayload = {
       firstName: trimmedFirst,
       middleName: formState.middleName.trim(),
       lastName: trimmedLast,
-      role: selectedRole,
+      role: validRole,
       birthday: birthday ? formatBirthday(birthday) : undefined,
     };
-
-    if (initialRole === 'partner' && selectedRole === 'customer') {
-      setPendingSave(payload);
-      setConfirmOpen(true);
-      return;
-    }
 
     void performSave(payload);
   };
@@ -169,14 +300,14 @@ export default function AccountPage() {
 
       toast.success('Profile updated.');
       queryClient.invalidateQueries({
- queryKey: ['user-profile'],
-exact: true, 
-}).catch(() => undefined);
+        queryKey: ['user-profile'],
+        exact: true,
+      }).catch(() => undefined);
       setJustSaved(true);
+      void router.refresh();
       setTimeout(() => {
         setJustSaved(false);
-        router.replace('/marketplace');
-      }, 500);
+      }, 1500);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Something went wrong. Please try again.';
       toast.error(message);
@@ -190,16 +321,22 @@ exact: true,
       <main className="flex-1 overflow-y-auto bg-background px-4 pb-10 sm:py-12">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
           <header className="space-y-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground md:hidden">
+              <Link
+                href="/marketplace"
+                className="inline-flex items-center gap-1 rounded-full border border-border/60 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                <FiChevronLeft className="size-4" aria-hidden="true" />
+                <span>Back to Home</span>
+              </Link>
+            </div>
             <div className="flex items-center justify-between gap-4">
               <h1 className="text-3xl font-semibold leading-tight text-foreground sm:text-4xl">
                 Account
               </h1>
-              <Button asChild variant="link" className="px-0 text-muted-foreground hover:text-foreground">
-                <Link href="/marketplace">Back to Home</Link>
-              </Button>
             </div>
             <p className="text-sm text-muted-foreground sm:text-base">
-              Update your basic details and primary role. These keep your Upspace experience tailored whether you book spaces or manage them.
+              Update your personal details so bookings and verifications stay accurate.
             </p>
           </header>
 
@@ -221,70 +358,11 @@ exact: true,
                 </div>
               ) : (
                 <form onSubmit={ handleSubmit } className="space-y-10">
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <div>
-                        <Label className="text-base">Select your primary role</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Choose how you use Upspace. You can switch between partner and customer as needed.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      { roleOptions.map((option) => {
-                        const active = selectedRole === option.value;
-                        return (
-                          <button
-                            key={ option.value }
-                            type="button"
-                            aria-pressed={ active }
-                            onClick={ () => setSelectedRole(option.value) }
-                            className={ cn(
-                              'relative cursor-pointer flex h-full w-full flex-col justify-between overflow-hidden border-2 p-5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                              active
-                                ? 'border-secondary role-card-selected'
-                                : 'border-border hover:border-secondary'
-                            ) }
-                            style={ { minHeight: '14rem', } }
-                          >
-                            <Image
-                              src={ option.image }
-                              alt=""
-                              fill
-                              sizes="(max-width: 640px) 100vw, 50vw"
-                              className="pointer-events-none object-cover"
-                              aria-hidden="true"
-                            />
-                            <div
-                              className="pointer-events-none backdrop-blur-xs absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.7)_0%,rgba(0,0,0,0.7)_40%,rgba(0,0,0,0.7)_80%)]"
-                              aria-hidden="true"
-                            />
-                            <div className="relative z-10 flex items-center justify-between gap-3">
-                              <div>
-                                <p className="text-lg font-semibold text-white font-sf">{ option.title }</p>
-                              </div>
-                              <span
-                                className={ cn(
-                                  'flex h-6 w-6 items-center justify-center rounded-full border text-xs font-semibold bg-background/80',
-                                  active ? 'border-secondary bg-secondary text-primary-foreground' : 'border-border text-muted-foreground'
-                                ) }
-                              >
-                                { active ? <FaCheck className="size-3" aria-hidden="true" /> : null }
-                              </span>
-                            </div>
-                            <p className="relative z-10 mt-4 font-sf text-sm leading-relaxed text-white/90">{ option.description }</p>
-                          </button>
-                        );
-                      }) }
-                    </div>
-                  </div>
-
                   <div className="space-y-6">
                     <div className="space-y-2">
                       <h2 className="text-xl font-semibold text-foreground">Your details</h2>
                       <p className="text-sm text-muted-foreground">
-                        Keep your name and birthday up to date so bookings and verifications stay accurate.
+                        Keep your personal information current.
                       </p>
                     </div>
 
@@ -356,71 +434,167 @@ exact: true,
                     </div>
                   </div>
 
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-sm text-muted-foreground">
-                    Changes apply to both customer and partner experiences tied to this account.
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="text-sm text-muted-foreground">
+                      Changes stay in sync wherever your Upspace account is used.
+                    </div>
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full sm:w-auto"
+                        onClick={ handleReset }
+                        disabled={ isSubmitting || isLoading }
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        className="w-full justify-center gap-2 sm:w-auto"
+                        disabled={ isSaveDisabled }
+                      >
+                        { isSubmitting && <CgSpinner className="h-4 w-4 animate-spin" aria-hidden="true" /> }
+                        <span>{ justSaved ? 'Saved' : isSubmitting ? 'Saving...' : 'Save changes' }</span>
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full sm:w-auto"
-                      onClick={ handleReset }
-                      disabled={ isSubmitting || isLoading }
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      className="w-full justify-center gap-2 sm:w-auto"
-                      disabled={ isSaveDisabled }
-                    >
-                      { isSubmitting && <CgSpinner className="h-4 w-4 animate-spin" aria-hidden="true" /> }
-                      <span>{ justSaved ? 'Saved' : isSubmitting ? 'Saving...' : 'Save changes' }</span>
-                    </Button>
+                </form>
+              ) }
+            </CardContent>
+          </Card>
+          <Card className="border border-border/60 bg-card/80 shadow-sm shadow-slate-900/5">
+            <CardContent className="p-6 sm:p-10 space-y-6">
+              <div className="space-y-2">
+                <h2 className="text-xl font-semibold text-foreground">Security</h2>
+                <p className="text-sm text-muted-foreground">
+                  Update your password to keep your account secure across all devices.
+                </p>
+              </div>
+              { hasPasswordIdentity ? (
+                <form onSubmit={ handlePasswordSubmit } className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="currentPassword">Current password</Label>
+                    <Input
+                      id="currentPassword"
+                      name="currentPassword"
+                      type="password"
+                      placeholder="Current password"
+                      value={ passwordForm.currentPassword }
+                      onChange={ handlePasswordInputChange('currentPassword') }
+                      required
+                      autoComplete="current-password"
+                    />
                   </div>
-                </div>
-              </form>
-            ) }
-          </CardContent>
-        </Card>
+                  <div className="space-y-2">
+                    <Label htmlFor="newPassword">New password</Label>
+                    <Input
+                      id="newPassword"
+                      name="newPassword"
+                      type="password"
+                      placeholder="New password"
+                      value={ passwordForm.newPassword }
+                      onChange={ handlePasswordInputChange('newPassword') }
+                      required
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirm new password</Label>
+                    <Input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type="password"
+                      placeholder="Confirm new password"
+                      value={ passwordForm.confirmPassword }
+                      onChange={ handlePasswordInputChange('confirmPassword') }
+                      required
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <p className="text-muted-foreground">
+                      Minimum 8 characters, uppercase, lowercase, number, and symbol.
+                    </p>
+                    { passwordMismatch ? (
+                      <p className="text-destructive">Passwords must match.</p>
+                    ) : null }
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full justify-center"
+                    disabled={ isPasswordChangeDisabled }
+                  >
+                    { isPasswordSubmitting ? 'Updating password...' : 'Change password' }
+                  </Button>
+                </form>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  This account was created through an OAuth provider, so no password is stored locally.
+                </p>
+              ) }
+            </CardContent>
+          </Card>
+          <Card className="border border-border/60 bg-card/80 shadow-sm shadow-slate-900/5">
+            <CardContent className="p-6 sm:p-10 space-y-6">
+              <div className="space-y-2">
+                <h2 className="text-xl font-semibold text-foreground">Deactivate account</h2>
+                <p className="text-sm text-muted-foreground">
+                  Disabling your account locks your profile and removes it from public search until you reactivate.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  This is different from deleting your account—deactivation is temporary and reversible, while deletion permanently removes your data.
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="w-full sm:w-auto"
+                  onClick={ handleDeactivateAccount }
+                  disabled={ isDeactivating }
+                >
+                  { isDeactivating ? 'Deactivating...' : 'Deactivate account' }
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Reactivate instantly by signing back in.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border border-border/60 bg-card/80 shadow-sm shadow-slate-900/5">
+            <CardContent className="p-6 sm:p-10 space-y-6">
+              <div className="space-y-2">
+                <h2 className="text-xl font-semibold text-foreground">Delete account</h2>
+                <p className="text-sm text-muted-foreground">
+                  Deletion permanently removes your profile, bookings, and usage data. This cannot be undone.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Submitting a deletion request schedules permanent removal in 30 days unless you log back in.
+                </p>
+                { formattedDeletionDeadline ? (
+                  <p className="text-xs text-muted-foreground">
+                    Your deletion window ends on { formattedDeletionDeadline }.
+                  </p>
+                ) : null }
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="w-full sm:w-auto"
+                  onClick={ handleDeleteAccount }
+                  disabled={ isDeleting }
+                >
+                  { isDeleting ? 'Scheduling deletion...' : 'Schedule deletion' }
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Need details? <Link href="/data-deletion" className="underline">Review the deletion guide</Link>.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </main>
-
-      <Dialog open={ confirmOpen } onOpenChange={ setConfirmOpen }>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Switch to a customer account?</DialogTitle>
-            <DialogDescription>
-              You will temporarily lose access to partner tools and space management until you switch back to partner.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={ () => {
-                setConfirmOpen(false);
-                setPendingSave(null);
-              } }
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={ () => {
-                if (pendingSave) {
-                  setConfirmOpen(false);
-                  setPendingSave(null);
-                  void performSave(pendingSave);
-                }
-              } }
-            >
-              Yes, switch to customer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }

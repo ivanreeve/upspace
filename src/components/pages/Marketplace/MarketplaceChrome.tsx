@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   FiBarChart2,
   FiBell,
@@ -444,7 +444,75 @@ function MobileTopNav({
           ) }
         </div>
       </div>
-    </header>
+      </header>
+  );
+}
+
+type MobileBottomNavAction = {
+  label: string;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  href?: string;
+  onClick?: () => void;
+  show?: boolean;
+};
+
+type MobileBottomNavProps = {
+  actions: MobileBottomNavAction[];
+};
+
+function MobileBottomNav({ actions, }: MobileBottomNavProps) {
+  const visibleActions = actions.filter((action) => action.show ?? true);
+  if (visibleActions.length === 0) {
+    return null;
+  }
+
+  const actionClassName =
+    'flex-1 flex items-center justify-center rounded-md px-2 py-2 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+
+  return (
+    <nav
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border/70 bg-background/90 px-4 py-2 backdrop-blur-md md:hidden"
+      style={ { paddingBottom: 'calc(var(--safe-area-bottom) + 0.5rem)', } }
+      aria-label="Secondary navigation"
+    >
+      <div className="mx-auto flex w-full max-w-[1440px] gap-1">
+        { visibleActions.map(
+          ({
+            label,
+            href,
+            icon: ActionIcon,
+            onClick,
+          }) => {
+            if (href) {
+              return (
+                <Link
+                  key={ label }
+                  href={ href }
+                  className={ actionClassName }
+                  aria-label={ label }
+                >
+                  <ActionIcon className="size-5" aria-hidden="true" />
+                  <span className="sr-only">{ label }</span>
+                </Link>
+              );
+            }
+
+            return (
+              <button
+                key={ label }
+                type="button"
+                onClick={ onClick }
+                className={ actionClassName }
+                aria-label={ label }
+              >
+                <ActionIcon className="size-5" aria-hidden="true" />
+                <span className="sr-only">{ label }</span>
+              </button>
+            );
+          }
+        ) }
+      </div>
+    </nav>
   );
 }
 
@@ -467,16 +535,21 @@ function useMarketplaceNavData() {
   const preferredUsernameLabel =
     preferredUsername && preferredUsername.includes('@') ? undefined : preferredUsername;
   const resolvedHandleLabel = profileHandleLabel ?? preferredUsernameLabel;
+  const registeredFirstName = userProfile?.firstName?.trim();
   const isGuest = !session;
   const resolvedHandleValue = isGuest
     ? null
     : userProfile?.handle ?? preferredUsernameLabel ?? null;
   const avatarFallback = isGuest
     ? 'GU'
-    : (resolvedHandleValue?.slice(0, 2)?.toUpperCase() ?? 'US');
+    : (
+      registeredFirstName
+        ? registeredFirstName.slice(0, 2).toUpperCase()
+        : (resolvedHandleValue?.slice(0, 2)?.toUpperCase() ?? 'US')
+    );
   const avatarDisplayName = isGuest
     ? 'Guest'
-    : (resolvedHandleLabel ?? 'UpSpace User');
+    : (registeredFirstName ?? resolvedHandleLabel ?? 'UpSpace User');
   const userEmail = session?.user?.email ?? null;
   const handleNavigation = React.useCallback((href: string) => {
     router.push(href);
@@ -565,6 +638,8 @@ export function MarketplaceChrome({
   const isAdminRole = effectiveRole === 'admin';
   const shouldShowNotifications = isCustomerRole || isPartnerRole;
   const resolvedMessageHref = messageHref ?? '/messages';
+  const pathname = usePathname();
+  const isAccountRoute = (pathname ?? '').startsWith('/account');
   const isMobile = useIsMobile();
   const mobileInsetPadding = React.useMemo<React.CSSProperties | undefined>(
     () => (isMobile
@@ -581,8 +656,43 @@ export function MarketplaceChrome({
       return;
     }
 
-    onNavigate('/marketplace?search=1');
+          onNavigate('/marketplace?search=1');
   }, [onNavigate, onSearchOpen]);
+
+  const shouldRenderMobileBottomNav = !isAccountRoute;
+  const mobileBottomNavActions = React.useMemo(
+    (): MobileBottomNavAction[] => [
+      {
+        label: 'Home',
+        href: '/marketplace',
+        icon: FiHome,
+      },
+      {
+        label: 'Search',
+        icon: FiSearch,
+        onClick: handleSearch,
+      },
+      {
+        label: 'AI Search',
+        href: '/ai-search',
+        icon: LuSparkles,
+        show: isCustomerRole,
+      },
+      {
+        label: 'Notifications',
+        href: '/notifications',
+        icon: FiBell,
+        show: shouldShowNotifications,
+      },
+      {
+        label: 'Messages',
+        href: resolvedMessageHref,
+        icon: FiMessageSquare,
+        show: shouldShowNotifications,
+      }
+    ],
+    [handleSearch, isCustomerRole, resolvedMessageHref, shouldShowNotifications]
+  );
 
   React.useEffect(() => {
     if (!onSearchOpen) return undefined;
@@ -764,6 +874,9 @@ export function MarketplaceChrome({
           { children }
         </SidebarInset>
       </div>
+      { shouldRenderMobileBottomNav && (
+        <MobileBottomNav actions={ mobileBottomNavActions } />
+      ) }
     </SidebarProvider>
   );
 }

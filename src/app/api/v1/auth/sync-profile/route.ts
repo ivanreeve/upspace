@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
 import { ensureUserProfile } from '@/lib/auth/user-profile';
+import { reactivateUserIfEligible } from '@/lib/auth/reactivate-user';
 
 export async function POST() {
   try {
@@ -55,6 +56,15 @@ export async function POST() {
       email: user.email ?? null,
       metadata: user.user_metadata ?? {},
     });
+
+    const reactivated = await reactivateUserIfEligible(user.id).catch((error) => {
+      console.error('Failed to reactivate user during sync-profile', error);
+      return false;
+    });
+
+    if (reactivated) {
+      console.info('Reactivated disabled user during profile sync', user.id);
+    }
 
     return NextResponse.json({ ok: true, });
   } catch (error) {
