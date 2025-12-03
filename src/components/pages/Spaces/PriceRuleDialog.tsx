@@ -540,6 +540,7 @@ const findConnectorSegments = (expression: string): ConditionSegment[] => {
 
         commitSegment(cursor, true);
         lastConnector = keyword;
+        bufferStart = cursor + keyword.length;
         cursor = end - 1;
         break;
       }
@@ -1370,6 +1371,54 @@ const splitConditionAndFormula = (expression: string): ConditionFormulaSplit => 
   };
 };
 
+const splitExpressionSegments = (expression: string) => {
+  const trimmed = expression.trim();
+  if (!trimmed) {
+    return [];
+  }
+  return trimmed
+    .split(/\s+(?:AND|OR)\s+/gi)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+};
+
+const getConditionTargetKey = (segment: string): string | null => {
+  const trimmed = segment.trim();
+  if (!trimmed) {
+    return null;
+  }
+  if (!/^if\b/i.test(trimmed)) {
+    return null;
+  }
+  try {
+    const { condition, } = splitConditionAndFormula(trimmed);
+    if (!condition.trim()) {
+      return null;
+    }
+    return normalizeConditionSegment(condition);
+  } catch {
+    return null;
+  }
+};
+
+const findDuplicateConditionTargetKey = (expression: string): string | null => {
+  const segments = splitExpressionSegments(expression);
+  const seen = new Set<string>();
+
+  for (const segment of segments) {
+    const key = getConditionTargetKey(segment);
+    if (!key) {
+      continue;
+    }
+    if (seen.has(key)) {
+      return key;
+    }
+    seen.add(key);
+  }
+
+  return null;
+};
+
 const cloneDefinition = (definition: PriceRuleDefinition): PriceRuleDefinition => ({
   variables: definition.variables.map((variable) => ({ ...variable, })),
   conditions: definition.conditions.map((condition) => ({
@@ -1560,6 +1609,11 @@ export function usePriceRuleFormState(
         throw new Error('Add a price expression after THEN.');
       }
 
+      const duplicateConditionKey = findDuplicateConditionTargetKey(trimmedExpression);
+      if (duplicateConditionKey) {
+        throw new Error('This condition already exists.');
+      }
+
       const variableMap = createVariableValueMap(values.definition);
       validatePriceExpression(thenFormula, 'THEN', variableMap, values.definition);
       if (elseFormula) {
@@ -1746,6 +1800,12 @@ function RuleLanguageEditor({
       .filter(Boolean);
   }, [conditionExpression]);
 
+  const expressionConditionKeys = useMemo(() => (
+    expressionSegments
+      .map((segment) => getConditionTargetKey(segment))
+      .filter((key): key is string => Boolean(key))
+  ), [expressionSegments]);
+
   const validateClause = useCallback((text: string) => {
     const normalized = normalizeConditionKeywords(text).trim();
     if (!normalized) {
@@ -1771,6 +1831,10 @@ function RuleLanguageEditor({
         thenFormula,
         elseFormula,
       } = splitConditionAndFormula(normalized);
+      const clauseConditionKey = getConditionTargetKey(normalized);
+      if (clauseConditionKey && expressionConditionKeys.includes(clauseConditionKey)) {
+        return 'This condition already exists.';
+      }
       if (!condition) {
         return 'Condition is missing operands.';
       }
@@ -1792,7 +1856,7 @@ function RuleLanguageEditor({
       const message = error instanceof Error ? error.message : 'Invalid clause.';
       return message;
     }
-  }, [definition]);
+  }, [definition, expressionConditionKeys]);
 
   const isExpressionFieldValid = useMemo(() => validateClause(expressionField) === null, [expressionField, validateClause]);
 
@@ -1901,6 +1965,11 @@ function RuleLanguageEditor({
       setExpressionError('This condition already exists.');
       return;
     }
+    const clauseConditionKey = getConditionTargetKey(trimmed);
+    if (clauseConditionKey && expressionConditionKeys.includes(clauseConditionKey)) {
+      setExpressionError('This condition already exists.');
+      return;
+    }
     try {
       const condition = splitConditionAndFormula(trimmed).condition;
       const parsedConditions = parseConditionExpression(condition, definition);
@@ -1922,7 +1991,7 @@ function RuleLanguageEditor({
     setActiveSuggestionIndex(0);
     setTokenRange(null);
     setExpressionError(null);
-  }, [conditionExpression, definition, expressionField, expressionSegments, handleConditionExpressionChange]);
+  }, [conditionExpression, definition, expressionConditionKeys, expressionField, expressionSegments, handleConditionExpressionChange]);
 
   const handleExpressionFieldKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (suggestionCandidates.length > 0) {
