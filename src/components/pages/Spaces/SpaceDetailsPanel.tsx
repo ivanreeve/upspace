@@ -87,11 +87,6 @@ const areaCreatedDateFormatter = new Intl.DateTimeFormat('en-US', {
   timeZone: 'UTC',
 });
 
-const rateAmountFormatter = new Intl.NumberFormat('en-US', {
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
-});
-
 const descriptionSchema = z.object({
   description: z
     .string()
@@ -761,19 +756,19 @@ export function SpaceDetailsPanel({
                     </div>
                     <dl className="mt-3 grid gap-3 text-xs text-muted-foreground sm:grid-cols-2 md:text-sm">
                       <div>
-                        <dt className="text-[10px] uppercase tracking-wide md:text-xs">Capacity range</dt>
-                        <dd className="text-sm text-foreground md:text-base">{ area.min_capacity } to { area.max_capacity } seats</dd>
+                        <dt className="text-[10px] uppercase tracking-wide md:text-xs">Capacity</dt>
+                        <dd className="text-sm text-foreground md:text-base">Up to { area.max_capacity } seats</dd>
                         <div className="mt-2">
                           <Badge variant="secondary" className="flex w-fit items-center gap-1 text-[10px] md:text-xs">
                             <FiLayers className="size-3" aria-hidden="true" />
-                            { area.min_capacity }-{ area.max_capacity } pax
+                            Up to { area.max_capacity } pax
                           </Badge>
                         </div>
                       </div>
                       <div>
-                        <dt className="text-[10px] uppercase tracking-wide md:text-xs">Base rate</dt>
+                        <dt className="text-[10px] uppercase tracking-wide md:text-xs">Pricing</dt>
                         <dd className="text-sm text-foreground md:text-base">
-                          ${ rateAmountFormatter.format(area.rate_amount) } / { area.rate_time_unit }
+                          { area.price_rule ? area.price_rule.name : 'Pricing rule not set' }
                         </dd>
                       </div>
                     </dl>
