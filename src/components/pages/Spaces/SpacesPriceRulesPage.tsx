@@ -217,8 +217,8 @@ export function SpacesPriceRulesPage() {
                   <div key={ rule.id } className="rounded-md border border-border/60 p-3 md:p-4">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div className="space-y-1">
-                        <p className="text-sm font-semibold">{ rule.name }</p>
-                        <p className="text-[11px] text-muted-foreground">
+                        <p className="text-sm font-semibold font-sf">{ rule.name }</p>
+                        <p className="text-[11px] text-muted-foreground font-sf">
                           { rule.description ?? 'No description provided.' }
                         </p>
                         <p className="text-[11px] text-muted-foreground">
