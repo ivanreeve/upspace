@@ -496,6 +496,9 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
       <DialogContent showCloseButton={ false }>
         <DialogHeader>
           <DialogTitle>Book a reservation</DialogTitle>
+          <DialogDescription>
+            Confirm your preferred duration and review the booking summary before checkout.
+          </DialogDescription>
         </DialogHeader>
         { bookingDurationContent }
         <DialogFooter className="flex-col gap-3 lg:flex-row lg:items-center">
