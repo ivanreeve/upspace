@@ -123,6 +123,90 @@ const formatDateForInput = (value: Date) => {
   return `${year}-${month}-${day}`;
 };
 
+const CONDITION_FIELD_PLACEHOLDER = 'IF booking_hours >= 4 THEN booking_hours * 10 ELSE booking_hours * 8';
+const CONDITION_FIELD_CARET_STYLE = { caretColor: 'var(--foreground)', } as const;
+
+type HighlightTokenType = 'whitespace' | 'keyword' | 'connector' | 'comparator' | 'literal' | 'number' | 'operator' | 'punctuation' | 'variable';
+type HighlightToken = {
+  text: string;
+  type: HighlightTokenType;
+};
+
+const HIGHLIGHT_TOKEN_REGEX = /\s+|<=|>=|!=|=|<|>|\+|-|\*|\/|\(|\)|,|[^<=!=>\s]+/g;
+const HIGHLIGHT_KEYWORDS = new Set(['if', 'then', 'else']);
+const HIGHLIGHT_CONNECTORS = new Set(['and', 'or', 'not']);
+const HIGHLIGHT_OPERATORS = new Set(['+', '-', '*', '/']);
+const HIGHLIGHT_PUNCTUATION = new Set(['(', ')', ',']);
+const HIGHLIGHT_NUMBER_REGEX = /^\d+(?:\.\d+)?$/;
+const COMPARATOR_SET = new Set(PRICE_RULE_COMPARATORS);
+
+const classifyHighlightToken = (value: string): HighlightTokenType => {
+  if (/^\s+$/.test(value)) {
+    return 'whitespace';
+  }
+  const trimmed = value.trim();
+  const lower = trimmed.toLowerCase();
+  if (HIGHLIGHT_KEYWORDS.has(lower)) {
+    return 'keyword';
+  }
+  if (HIGHLIGHT_CONNECTORS.has(lower)) {
+    return 'connector';
+  }
+  if (COMPARATOR_SET.has(trimmed)) {
+    return 'comparator';
+  }
+  if (HIGHLIGHT_OPERATORS.has(trimmed)) {
+    return 'operator';
+  }
+  if (HIGHLIGHT_PUNCTUATION.has(trimmed)) {
+    return 'punctuation';
+  }
+  if (trimmed.includes("'") || trimmed.includes('"')) {
+    return 'literal';
+  }
+  if (HIGHLIGHT_NUMBER_REGEX.test(trimmed)) {
+    return 'number';
+  }
+  return 'variable';
+};
+
+const computeHighlightSegments = (value: string): HighlightToken[] => {
+  const segments: HighlightToken[] = [];
+  if (!value) {
+    return segments;
+  }
+  let match: RegExpExecArray | null = null;
+  while ((match = HIGHLIGHT_TOKEN_REGEX.exec(value)) !== null) {
+    segments.push({
+      text: match[0],
+      type: classifyHighlightToken(match[0]),
+    });
+  }
+  return segments;
+};
+
+const getHighlightSegmentClassName = (type: HighlightTokenType): string => {
+  switch (type) {
+    case 'keyword':
+      return 'text-amber-400 font-semibold';
+    case 'connector':
+      return 'text-emerald-400 font-semibold';
+    case 'comparator':
+      return 'text-sky-400 font-semibold';
+    case 'literal':
+      return 'text-rose-400';
+    case 'number':
+      return 'text-purple-400';
+    case 'operator':
+      return 'text-foreground/70';
+    case 'punctuation':
+      return 'text-muted-foreground';
+    case 'variable':
+    default:
+      return 'text-foreground';
+  }
+};
+
 type DatePickerInputProps = {
   value: string;
   onChange: (value: string) => void;
@@ -1708,6 +1792,8 @@ function RuleLanguageEditor({
   }), [definition.variables]);
 
   const expressionSegments = useMemo(() => splitExpressionSegments(conditionExpression), [conditionExpression]);
+  const conditionFieldHighlights = useMemo(() => computeHighlightSegments(expressionField), [expressionField]);
+  const isConditionFieldEmpty = expressionField.length === 0;
 
   const expressionConditionKeys = useMemo(() => (
     expressionSegments
@@ -2216,18 +2302,42 @@ function RuleLanguageEditor({
           </div>
           <div className="flex items-start gap-2">
             <div className="relative flex-1">
-              <Input
-                id="condition-field"
-                ref={ inputRef }
-                value={ expressionField }
-                onChange={ handleExpressionFieldChange }
-                onKeyDown={ handleExpressionFieldKeyDown }
-                className="flex-1 min-w-0"
-                placeholder="IF booking_hours >= 4 THEN booking_hours * 10 ELSE booking_hours * 8"
-                aria-label="Add condition expression"
-              />
+              <div className="relative">
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-md px-3 py-1 font-mono text-base leading-6 text-foreground/70 whitespace-pre md:text-sm"
+                >
+                  { isConditionFieldEmpty ? (
+                    <span className="text-base whitespace-pre text-muted-foreground md:text-sm">
+                      { CONDITION_FIELD_PLACEHOLDER }
+                    </span>
+                  ) : (
+                    <pre className="m-0 text-base leading-6 whitespace-pre md:text-sm">
+                      { conditionFieldHighlights.map((segment, index) => (
+                        <span
+                          key={ `condition-highlight-${index}-${segment.text}` }
+                          className={ getHighlightSegmentClassName(segment.type) }
+                        >
+                          { segment.text }
+                        </span>
+                      )) }
+                    </pre>
+                  ) }
+                </div>
+                <Input
+                  id="condition-field"
+                  ref={ inputRef }
+                  value={ expressionField }
+                  onChange={ handleExpressionFieldChange }
+                  onKeyDown={ handleExpressionFieldKeyDown }
+                  className="relative z-10 text-transparent placeholder:text-transparent"
+                  placeholder={ CONDITION_FIELD_PLACEHOLDER }
+                  aria-label="Add condition expression"
+                  style={ CONDITION_FIELD_CARET_STYLE }
+                />
+              </div>
               { suggestionCandidates.length > 0 && (
-                <div className="absolute left-0 right-0 z-10 mt-1 max-h-48 overflow-y-auto rounded-lg border border-border/70 bg-popover shadow-lg">
+                <div className="absolute left-0 right-0 z-20 mt-1 max-h-48 overflow-y-auto rounded-lg border border-border/70 bg-popover shadow-lg">
                   <ul className="divide-y divide-border/60" role="listbox">
                     { suggestionCandidates.map((suggestion, index) => (
                       <li key={ suggestion.id }>
@@ -2271,22 +2381,23 @@ function RuleLanguageEditor({
           ) }
           { expressionSegments.length > 0 && (
             <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold uppercase tracking-[0.5em] text-muted-foreground">
-                  Conditions
-                </p>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="sm"
-                  onClick={ handleBulkDelete }
-                  disabled={ selectedIndices.size === 0 }
-                  className="gap-2"
-                >
-                  <FiTrash2 className="size-3" aria-hidden="true" />
-                  <span>Delete selected</span>
-                </Button>
-              </div>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.5em] text-muted-foreground">
+                    Conditions
+                  </p>
+                  { selectedIndices.size > 0 && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={ handleBulkDelete }
+                      className="gap-2"
+                    >
+                      <FiTrash2 className="size-3" aria-hidden="true" />
+                      <span>Delete selected</span>
+                    </Button>
+                  ) }
+                </div>
               <Table className="rounded-lg border border-border/80 bg-background/80">
                 <TableHeader>
                   <TableRow>
