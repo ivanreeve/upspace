@@ -452,6 +452,39 @@ const serializeConditions = (conditions: PriceRuleCondition[]): string => {
   }, '');
 };
 
+const buildConditionExpressionFromDefinition = (definition: PriceRuleDefinition): string => {
+  const conditionText = serializeConditions(definition.conditions).trim();
+  const trimmedFormula = definition.formula.trim();
+
+  if (!conditionText) {
+    return trimmedFormula;
+  }
+
+  if (!trimmedFormula) {
+    return conditionText;
+  }
+
+  const elseSeparator = ' ELSE ';
+  const elseIndex = trimmedFormula.indexOf(elseSeparator);
+
+  if (elseIndex === -1) {
+    return `IF ${conditionText} THEN ${trimmedFormula}`;
+  }
+
+  const thenFormula = trimmedFormula.slice(0, elseIndex).trim();
+  const elseFormula = trimmedFormula.slice(elseIndex + elseSeparator.length).trim();
+
+  if (!thenFormula) {
+    return `IF ${conditionText} THEN ${trimmedFormula}`;
+  }
+
+  if (!elseFormula) {
+    return `IF ${conditionText} THEN ${thenFormula}`;
+  }
+
+  return `IF ${conditionText} THEN ${thenFormula} ELSE ${elseFormula}`;
+};
+
 const findConnectorSegments = (expression: string): ConditionSegment[] => {
   const segments: ConditionSegment[] = [];
   let lastConnector: PriceRuleConditionConnector | undefined;
@@ -970,7 +1003,7 @@ export function usePriceRuleFormState(
         ...initialValues,
         definition: clonedDefinition,
       });
-      setConditionExpression(serializeConditions(clonedDefinition.conditions));
+      setConditionExpression(buildConditionExpressionFromDefinition(clonedDefinition));
     } else {
       setValues(createDefaultRule());
       setConditionExpression('');
