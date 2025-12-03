@@ -47,7 +47,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
+  TableRow
 } from '@/components/ui/table';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -1749,7 +1749,7 @@ function RuleLanguageEditor({
       setSelectedIndices(new Set());
       return;
     }
-    setSelectedIndices(new Set(Array.from({ length: expressionSegments.length }, (_, index) => index)));
+    setSelectedIndices(new Set(Array.from({ length: expressionSegments.length, }, (_, index) => index)));
   }, [allConditionsSelected, expressionSegments.length]);
 
   const handleBulkDelete = useCallback(() => {
