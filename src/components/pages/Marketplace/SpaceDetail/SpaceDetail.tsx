@@ -52,11 +52,17 @@ import {
 } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import type { PriceRuleOperand, PriceRuleRecord } from '@/lib/pricing-rules';
+import { evaluatePriceRule, type PriceRuleEvaluationResult } from '@/lib/pricing-rules-evaluator';
 
 const DESCRIPTION_COLLAPSED_HEIGHT = 360; // px
 const MIN_BOOKING_HOURS = 1;
 const MAX_BOOKING_HOURS = 24;
 const DESKTOP_BREAKPOINT_QUERY = '(min-width: 1024px)';
+const PRICE_FORMATTER = new Intl.NumberFormat('en-PH', {
+  style: 'currency',
+  currency: 'PHP',
+  maximumFractionDigits: 0,
+});
 type SpaceDetailProps = {
   space: MarketplaceSpaceDetail;
 };
@@ -233,9 +239,25 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     [activePriceRule]
   );
 
-  const bookingHeaderDescription = activePriceRule
-    ? `Pricing rule: ${activePriceRule.name}`
-    : 'Pricing details are not available yet.';
+  const priceEvaluation = useMemo(() => {
+    if (!activePriceRule) {
+      return null;
+    }
+    return evaluatePriceRule(activePriceRule.definition, { bookingHours, });
+  }, [activePriceRule, bookingHours]);
+
+  const priceBranchLabel = (branch: PriceRuleEvaluationResult['branch']) => {
+    switch (branch) {
+      case 'then':
+        return 'Matches rule conditions';
+      case 'else':
+        return 'Fallback pricing applied';
+      case 'unconditional':
+        return 'Flat rate applied';
+      default:
+        return 'Pricing rule';
+    }
+  };
 
   const bookingDurationContent = (
     <div className="space-y-6">
@@ -303,10 +325,28 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
             : 'Booking duration selection will appear once the host publishes pricing.' }
         </p>
       ) }
-      { activePriceRule ? (
-        <p className="text-xs text-center text-muted-foreground">
-          Formula: { activePriceRule.definition.formula }
-        </p>
+      { activePriceRule && priceEvaluation ? (
+        <div className="space-y-2 text-center">
+          { priceEvaluation.price !== null ? (
+            <>
+              <p className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
+                Estimated total
+              </p>
+              <p className="text-3xl font-semibold tracking-tight">
+                { PRICE_FORMATTER.format(priceEvaluation.price) }
+              </p>
+              <p className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
+                { priceBranchLabel(priceEvaluation.branch) }
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-center text-destructive/80">
+              { priceEvaluation.branch === 'no-match'
+                ? 'No pricing tier matches this duration. Try a different number of hours or message the host.'
+                : 'This pricing rule does not define a numeric value for the selected duration.' }
+            </p>
+          ) }
+        </div>
       ) : null }
     </div>
   );
@@ -456,7 +496,6 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
       <DialogContent showCloseButton={ false }>
         <DialogHeader>
           <DialogTitle>Book a reservation</DialogTitle>
-          <DialogDescription>{ bookingHeaderDescription }</DialogDescription>
         </DialogHeader>
         { bookingDurationContent }
         <DialogFooter className="flex-col gap-3 lg:flex-row lg:items-center">
@@ -485,7 +524,6 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
       <SheetContent side="bottom" className="gap-4">
         <SheetHeader>
           <SheetTitle>Book a reservation</SheetTitle>
-          <SheetDescription>{ bookingHeaderDescription }</SheetDescription>
         </SheetHeader>
         <div className="px-6 pb-4">{ bookingDurationContent }</div>
         <SheetFooter className="space-y-3 px-6 pb-6">

@@ -56,6 +56,13 @@ import {
   PriceRuleVariableType,
   priceRuleSchema
 } from '@/lib/pricing-rules';
+import {
+  evaluateFormula,
+  FormulaVariableValueMap,
+  normalizeTimeLiteral,
+  validateDateLiteral,
+  validateDatetimeLiteral
+} from '@/lib/pricing-rules-evaluator';
 
 const ensureUniqueKey = (desired: string, existing: string[]) => {
   const normalized = desired
@@ -171,173 +178,7 @@ const TypeIcon = (props: TypeIconProps) => {
   return <FiType className="size-4" aria-hidden="true" />;
 };
 
-type VariableValueMap = Record<string, number>;
-
-type ParserState = {
-  expression: string;
-  length: number;
-  pos: number;
-  variables: VariableValueMap;
-  onVariable?: (key: string) => void;
-};
-
-const isDigit = (char?: string) => typeof char === 'string' && char >= '0' && char <= '9';
-const isLetter = (char?: string) => typeof char === 'string' && (
-  (char >= 'a' && char <= 'z')
-  || (char >= 'A' && char <= 'Z')
-);
-const isVariableStart = (char?: string) => char === '_' || isLetter(char);
-const isVariablePart = (char?: string) => isVariableStart(char) || isDigit(char);
-
-const skipWhitespace = (state: ParserState) => {
-  while (state.pos < state.length && /\s/.test(state.expression[state.pos])) {
-    state.pos += 1;
-  }
-};
-
-const peekChar = (state: ParserState) => state.expression[state.pos];
-
-function evaluateFormula(
-  expression: string,
-  variables: VariableValueMap,
-  onVariable?: (key: string) => void
-): number {
-  if (!expression.trim()) {
-    throw new Error('Enter a formula before validating.');
-  }
-
-  const state: ParserState = {
-    expression,
-    length: expression.length,
-    pos: 0,
-    variables,
-    onVariable,
-  };
-
-  const result = parseExpression(state);
-  skipWhitespace(state);
-
-  if (state.pos < state.length) {
-    throw new Error(`Unexpected character "${state.expression[state.pos]}".`);
-  }
-
-  if (!Number.isFinite(result)) {
-    throw new Error('Expression evaluates to an invalid number.');
-  }
-
-  return result;
-}
-
-function parseExpression(state: ParserState): number {
-  let value = parseTerm(state);
-  while (true) {
-    skipWhitespace(state);
-    const char = peekChar(state);
-    if (char === '+' || char === '-') {
-      state.pos += 1;
-      const nextValue = parseTerm(state);
-      value = char === '+' ? value + nextValue : value - nextValue;
-      continue;
-    }
-    break;
-  }
-  return value;
-}
-
-function parseTerm(state: ParserState): number {
-  let value = parseFactor(state);
-  while (true) {
-    skipWhitespace(state);
-    const char = peekChar(state);
-    if (char === '*' || char === '/') {
-      state.pos += 1;
-      const nextValue = parseFactor(state);
-      if (char === '/' && nextValue === 0) {
-        throw new Error('Division by zero.');
-      }
-      value = char === '*' ? value * nextValue : value / nextValue;
-      continue;
-    }
-    break;
-  }
-  return value;
-}
-
-function parseFactor(state: ParserState): number {
-  skipWhitespace(state);
-  const char = peekChar(state);
-
-  if (!char) {
-    throw new Error('Unexpected end of expression.');
-  }
-
-  if (char === '+' || char === '-') {
-    state.pos += 1;
-    const nextValue = parseFactor(state);
-    return char === '-' ? -nextValue : nextValue;
-  }
-
-  if (char === '(') {
-    state.pos += 1;
-    const value = parseExpression(state);
-    skipWhitespace(state);
-    if (peekChar(state) !== ')') {
-      throw new Error('Expected closing parenthesis.');
-    }
-    state.pos += 1;
-    return value;
-  }
-
-  if (isDigit(char) || char === '.') {
-    return parseNumber(state);
-  }
-
-  if (isVariableStart(char)) {
-    return parseVariable(state);
-  }
-
-  throw new Error(`Unexpected character "${char}".`);
-}
-
-function parseNumber(state: ParserState): number {
-  const start = state.pos;
-  while (isDigit(peekChar(state))) {
-    state.pos += 1;
-  }
-
-  if (peekChar(state) === '.') {
-    state.pos += 1;
-    while (isDigit(peekChar(state))) {
-      state.pos += 1;
-    }
-  }
-
-  const raw = state.expression.slice(start, state.pos);
-  if (!raw || raw === '.') {
-    throw new Error('Invalid number literal.');
-  }
-
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed)) {
-    throw new Error(`Invalid number "${raw}".`);
-  }
-
-  return parsed;
-}
-
-function parseVariable(state: ParserState): number {
-  const start = state.pos;
-  state.pos += 1;
-  while (isVariablePart(peekChar(state))) {
-    state.pos += 1;
-  }
-  const key = state.expression.slice(start, state.pos);
-  if (!Object.prototype.hasOwnProperty.call(state.variables, key)) {
-    throw new Error(`Unknown variable "${key}".`);
-  }
-  state.onVariable?.(key);
-  return state.variables[key];
-}
+type VariableValueMap = FormulaVariableValueMap;
 
 const createVariableValueMap = (definition: PriceRuleDefinition): VariableValueMap => {
   const map: VariableValueMap = {};
@@ -715,9 +556,6 @@ const ensureOperandTypesAreCompatible = (
   }
 };
 
-const DATE_LITERAL_REGEX = /^\d{4}-\d{2}-\d{2}$/;
-const TIME_LITERAL_REGEX = /^\d{1,2}:\d{2}(?::\d{2})?$/;
-
 function parseFunctionArguments(input: string): string[] {
   if (!input.trim()) {
     return [];
@@ -734,74 +572,6 @@ function parseFunctionArguments(input: string): string[] {
       }
       return match[2];
     });
-}
-
-const padTwo = (value: number) => String(value).padStart(2, '0');
-
-function normalizeTimeLiteral(value: string, meridiem?: string) {
-  const trimmed = value.trim();
-  if (!TIME_LITERAL_REGEX.test(trimmed)) {
-    throw new Error(`Invalid time literal "${value}". Expected HH:MM or HH:MM:SS.`);
-  }
-
-  const [hoursSegment, minutesSegment, secondsSegment] = trimmed.split(':');
-  const hours = Number(hoursSegment);
-  const minutes = Number(minutesSegment);
-  const seconds = secondsSegment !== undefined ? Number(secondsSegment) : undefined;
-
-  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
-    throw new Error(`Invalid time literal "${value}".`);
-  }
-
-  if (minutes < 0 || minutes > 59) {
-    throw new Error(`Invalid time literal "${value}".`);
-  }
-
-  if (seconds !== undefined && (Number.isNaN(seconds) || seconds < 0 || seconds > 59)) {
-    throw new Error(`Invalid time literal "${value}".`);
-  }
-
-  let normalizedHours = hours;
-
-  if (meridiem) {
-    const normalizedMeridiem = meridiem.trim().toUpperCase();
-    if (normalizedMeridiem !== 'AM' && normalizedMeridiem !== 'PM') {
-      throw new Error(`Invalid meridiem "${meridiem}" in time literal.`);
-    }
-    if (normalizedHours < 1 || normalizedHours > 12) {
-      throw new Error(`Invalid time literal "${value}" for 12-hour clock.`);
-    }
-    if (normalizedHours === 12) {
-      normalizedHours = normalizedMeridiem === 'AM' ? 0 : 12;
-    } else if (normalizedMeridiem === 'PM') {
-      normalizedHours += 12;
-    }
-  } else if (normalizedHours < 0 || normalizedHours > 23) {
-    throw new Error(`Invalid time literal "${value}".`);
-  }
-
-  const parts = [padTwo(normalizedHours), padTwo(minutes)];
-  if (seconds !== undefined) {
-    parts.push(padTwo(seconds));
-  }
-  return parts.join(':');
-}
-
-function validateDateLiteral(value: string) {
-  if (!DATE_LITERAL_REGEX.test(value)) {
-    throw new Error(`Invalid date literal "${value}". Expected YYYY-MM-DD.`);
-  }
-  const parsed = new Date(`${value}T00:00:00Z`);
-  if (Number.isNaN(parsed.getTime())) {
-    throw new Error(`Invalid date literal "${value}".`);
-  }
-}
-
-function validateDatetimeLiteral(value: string) {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    throw new Error(`Invalid datetime literal "${value}".`);
-  }
 }
 
 const parseConditionText = (text: string, definition: PriceRuleDefinition): Omit<PriceRuleCondition, 'id'> => {
