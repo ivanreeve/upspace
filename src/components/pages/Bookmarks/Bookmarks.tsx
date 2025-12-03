@@ -3,11 +3,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import {
-  FiAlertTriangle,
-  FiBookmark,
-  FiRefreshCw
-} from 'react-icons/fi';
+import { FiAlertTriangle, FiBookmark, FiRefreshCw } from 'react-icons/fi';
 
 import { SkeletonGrid, SpaceCard } from '@/components/pages/Marketplace/Marketplace.Cards';
 import { Button } from '@/components/ui/button';

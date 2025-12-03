@@ -158,7 +158,9 @@ function SidebarFooterContent({
   isGuest,
   isSidebarLoading,
 }: SidebarFooterContentProps) {
-  const { state, isMobile, } = useSidebar();
+  const {
+ state, isMobile, 
+} = useSidebar();
   const isCollapsed = state === 'collapsed';
   const secondaryLabel = isGuest
     ? 'Public browsing'
@@ -724,30 +726,70 @@ export function MarketplaceChrome({
     (): MobileBottomNavAction[] => {
       if (isAdminRole) {
         return [
-          { label: 'Home', href: '/marketplace', icon: FiHome },
-          { label: 'Dashboard', href: '/marketplace/dashboard', icon: FiBarChart2 },
-          { label: 'Queue', href: '/admin', icon: HiOutlineDocumentText },
-          { label: 'Observe', href: '/observability', icon: MdFormatListBulleted },
+          {
+ label: 'Home',
+href: '/marketplace',
+icon: FiHome, 
+},
+          {
+ label: 'Dashboard',
+href: '/marketplace/dashboard',
+icon: FiBarChart2, 
+},
+          {
+ label: 'Queue',
+href: '/admin',
+icon: HiOutlineDocumentText, 
+},
+          {
+ label: 'Observe',
+href: '/observability',
+icon: MdFormatListBulleted, 
+}
         ];
       }
 
       const actions: MobileBottomNavAction[] = [
-        { label: 'Home', href: '/marketplace', icon: FiHome },
+        {
+ label: 'Home',
+href: '/marketplace',
+icon: FiHome, 
+}
       ];
 
       if (isCustomerRole) {
-        actions.push({ label: 'Bookmarks', href: '/bookmarks', icon: FiBookmark });
-        actions.push({ label: 'AI Search', href: '/ai-search', icon: LuSparkles });
+        actions.push({
+ label: 'Bookmarks',
+href: '/bookmarks',
+icon: FiBookmark, 
+});
+        actions.push({
+ label: 'AI Search',
+href: '/ai-search',
+icon: LuSparkles, 
+});
       } else {
-        actions.push({ label: 'Search', icon: FiSearch, onClick: handleSearch });
+        actions.push({
+ label: 'Search',
+icon: FiSearch,
+onClick: handleSearch, 
+});
       }
 
       if (shouldShowNotifications && !isCustomerRole) {
-        actions.push({ label: 'Notifications', href: '/notifications', icon: FiBell });
+        actions.push({
+ label: 'Notifications',
+href: '/notifications',
+icon: FiBell, 
+});
       }
 
       if (shouldShowNotifications) {
-        actions.push({ label: 'Messages', href: resolvedMessageHref, icon: FiMessageSquare });
+        actions.push({
+ label: 'Messages',
+href: resolvedMessageHref,
+icon: FiMessageSquare, 
+});
       }
 
       return actions;
