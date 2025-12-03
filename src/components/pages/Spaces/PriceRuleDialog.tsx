@@ -40,6 +40,15 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -1637,6 +1646,7 @@ function RuleLanguageEditor({
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
   const [tokenRange, setTokenRange] = useState<TokenRange | null>(null);
   const [expressionError, setExpressionError] = useState<string | null>(null);
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(() => new Set());
   const comparatorDescriptions = useMemo<Record<PriceRuleComparator, string>>(() => ({
     '<': 'Less than',
     '<=': 'Less than or equal',
@@ -1704,6 +1714,56 @@ function RuleLanguageEditor({
       .map((segment) => getConditionTargetKey(segment, definition))
       .filter((key): key is string => Boolean(key))
   ), [definition, expressionSegments]);
+
+  useEffect(() => {
+    setSelectedIndices((prev) => {
+      const next = new Set<number>();
+      prev.forEach((index) => {
+        if (index < expressionSegments.length) {
+          next.add(index);
+        }
+      });
+      return next;
+    });
+  }, [expressionSegments.length]);
+
+  const allConditionsSelected = expressionSegments.length > 0 && selectedIndices.size === expressionSegments.length;
+
+  const toggleSegmentSelection = useCallback((index: number) => {
+    setSelectedIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    if (expressionSegments.length === 0) {
+      return;
+    }
+    if (allConditionsSelected) {
+      setSelectedIndices(new Set());
+      return;
+    }
+    setSelectedIndices(new Set(Array.from({ length: expressionSegments.length }, (_, index) => index)));
+  }, [allConditionsSelected, expressionSegments.length]);
+
+  const handleBulkDelete = useCallback(() => {
+    setSelectedIndices((prev) => {
+      if (prev.size === 0) {
+        return prev;
+      }
+      const remainingExpression = expressionSegments
+        .filter((_, index) => !prev.has(index))
+        .join(' AND ');
+      handleConditionExpressionChange(remainingExpression);
+      return new Set();
+    });
+  }, [expressionSegments, handleConditionExpressionChange]);
 
   const validateClause = useCallback((text: string) => {
     const normalized = normalizeConditionKeywords(text).trim();
@@ -2210,24 +2270,72 @@ function RuleLanguageEditor({
             </p>
           ) }
           { expressionSegments.length > 0 && (
-            <div className="flex flex-col gap-2">
-              { expressionSegments.map((segment, index) => (
-                <div
-                  key={ `${segment}-${index}` }
-                  className="flex items-center justify-between gap-2 rounded-lg border border-border/80 bg-border/10 px-3 py-2 text-[12px] font-semibold"
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.5em] text-muted-foreground">
+                  Conditions
+                </p>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={ handleBulkDelete }
+                  disabled={ selectedIndices.size === 0 }
+                  className="gap-2"
                 >
-                  <span className="truncate">{ segment }</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={ () => removeExpressionSegment(index) }
-                  >
-                    <FiTrash2 className="size-3" aria-hidden="true" />
-                    <span className="sr-only">Delete clause</span>
-                  </Button>
-                </div>
-              )) }
+                  <FiTrash2 className="size-3" aria-hidden="true" />
+                  <span>Delete selected</span>
+                </Button>
+              </div>
+              <Table className="rounded-lg border border-border/80 bg-background/80">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12 px-2">
+                      <Checkbox
+                        checked={ allConditionsSelected }
+                        onCheckedChange={ toggleSelectAll }
+                        aria-label={ allConditionsSelected ? 'Deselect all conditions' : 'Select all conditions' }
+                      />
+                    </TableHead>
+                    <TableHead className="w-12 text-xs uppercase tracking-[0.3em] text-muted-foreground">ID</TableHead>
+                    <TableHead className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Rule</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  { expressionSegments.map((segment, index) => {
+                    const isSelected = selectedIndices.has(index);
+                    return (
+                      <TableRow
+                        key={ `${segment}-${index}` }
+                        data-state={ isSelected ? 'selected' : undefined }
+                      >
+                        <TableCell className="px-2">
+                          <Checkbox
+                            checked={ isSelected }
+                            onCheckedChange={ () => toggleSegmentSelection(index) }
+                            aria-label={ `Select condition ${index + 1}` }
+                          />
+                        </TableCell>
+                        <TableCell>{ index + 1 }</TableCell>
+                        <TableCell className="max-w-[1px]">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="truncate text-[12px] font-semibold">{ segment }</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={ () => removeExpressionSegment(index) }
+                            >
+                              <FiTrash2 className="size-3" aria-hidden="true" />
+                              <span className="sr-only">Delete clause</span>
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  }) }
+                </TableBody>
+              </Table>
             </div>
           ) }
           { conditionError ? (
