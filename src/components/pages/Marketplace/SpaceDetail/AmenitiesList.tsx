@@ -113,7 +113,7 @@ export default function AmenitiesList({
               Show all amenities
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-2xl">
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden">
             <DialogHeader className="space-y-1 mb-4">
               <DialogTitle>All amenities</DialogTitle>
               <DialogDescription>Grouped by category for this space.</DialogDescription>
@@ -121,7 +121,7 @@ export default function AmenitiesList({
             { groupedAmenities.length === 0 ? (
               <p className="text-sm text-muted-foreground">No amenities listed yet.</p>
             ) : (
-              <ScrollArea className="max-h-[60vh] pr-3">
+              <ScrollArea className="h-[60vh] max-h-[60vh] pr-3">
                 <div className="space-y-6 pr-2">
                   { groupedAmenities.map((group) => (
                     <section key={ group.key } className="space-y-2.5">
