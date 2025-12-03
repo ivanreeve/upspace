@@ -2306,14 +2306,14 @@ function RuleLanguageEditor({
               <div className="relative">
                 <div
                   aria-hidden="true"
-                  className={ `pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-md px-3 py-1 text-foreground/70 whitespace-pre ${CONDITION_FIELD_TEXT_STYLES}` }
+                  className={ `pointer-events-none absolute inset-0 z-0 flex items-center overflow-hidden rounded-md px-3 py-1 text-foreground/70 ${CONDITION_FIELD_TEXT_STYLES}` }
                 >
                   { isConditionFieldEmpty ? (
-                    <span className={ `m-0 whitespace-pre text-muted-foreground ${CONDITION_FIELD_TEXT_STYLES}` }>
+                    <span className="m-0 w-full whitespace-pre text-muted-foreground">
                       { CONDITION_FIELD_PLACEHOLDER }
                     </span>
                   ) : (
-                    <pre className={ `m-0 whitespace-pre ${CONDITION_FIELD_TEXT_STYLES}` }>
+                    <pre className="m-0 w-full whitespace-pre">
                       { conditionFieldHighlights.map((segment, index) => (
                         <span
                           key={ `condition-highlight-${index}-${segment.text}` }
