@@ -14,7 +14,9 @@ type BookingCardProps = {
   onBook: () => void;
 };
 
-export function BookingCard({ spaceName, onBook }: BookingCardProps) {
+export function BookingCard({
+ spaceName, onBook, 
+}: BookingCardProps) {
   return (
     <Card className="shadow-sm lg:sticky lg:top-28 rounded-md">
       <CardHeader className="pb-0">
