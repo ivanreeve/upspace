@@ -879,6 +879,433 @@ export const parseConditionExpression = (
   }));
 };
 
+type ConstraintKind = 'numeric' | 'text';
+
+type ConditionConstraint = {
+  variableKey: string;
+  comparator: PriceRuleComparator;
+  kind: ConstraintKind;
+  value: number | string;
+};
+
+type NumericRangeState = {
+  kind: 'numeric';
+  lower?: Bound;
+  upper?: Bound;
+  equalValue?: number;
+  excludes: Set<number>;
+};
+
+type TextRangeState = {
+  kind: 'text';
+  equalValue?: string;
+  excludes: Set<string>;
+};
+
+type RangeState = NumericRangeState | TextRangeState;
+
+type Bound = {
+  value: number;
+  inclusive: boolean;
+};
+
+const SIMPLE_NUMBER_REGEX = /^[+-]?\d+(?:\.\d+)?$/;
+
+const NEGATED_COMPARATORS: Record<PriceRuleComparator, PriceRuleComparator> = {
+  '=': '!=',
+  '!=': '=',
+  '<': '>=',
+  '<=': '>',
+  '>': '<=',
+  '>=': '<',
+};
+
+const FLIPPED_COMPARATORS: Record<PriceRuleComparator, PriceRuleComparator> = {
+  '=': '=',
+  '!=': '!=',
+  '<': '>',
+  '<=': '>=',
+  '>': '<',
+  '>=': '<=',
+};
+
+const detectConditionCollisions = (
+  conditions: PriceRuleCondition[],
+  definition: PriceRuleDefinition
+): string | null => {
+  const buildRangeState = (kind: ConstraintKind): RangeState => {
+    if (kind === 'numeric') {
+      return {
+        kind,
+        excludes: new Set<number>(),
+      };
+    }
+    return {
+      kind,
+      excludes: new Set<string>(),
+    };
+  };
+
+const describeConstraintId = (constraint: ConditionConstraint) => {
+  const value = typeof constraint.value === 'number'
+    ? constraint.value.toString()
+    : constraint.value;
+  return `${constraint.variableKey}|${constraint.comparator}|${value}`;
+};
+
+const flushGroup = (group: PriceRuleCondition[]): string | null => {
+  if (group.length <= 1) {
+    return null;
+  }
+
+  const stateMap = new Map<string, RangeState>();
+  const seenConstraints = new Set<string>();
+
+  for (const condition of group) {
+    const constraint = buildConstraintFromCondition(condition, definition);
+    if (!constraint) {
+      continue;
+    }
+
+    const descriptor = describeConstraintId(constraint);
+    if (seenConstraints.has(descriptor)) {
+      return `Condition for "${constraint.variableKey}" already exists.`;
+    }
+    seenConstraints.add(descriptor);
+
+    const state = stateMap.get(constraint.variableKey) ?? buildRangeState(constraint.kind);
+    const conflict = applyRangeConstraint(state, constraint);
+    if (conflict) {
+      return conflict;
+    }
+
+    stateMap.set(constraint.variableKey, state);
+  }
+
+  return null;
+  };
+
+  let group: PriceRuleCondition[] = [];
+
+  for (const condition of conditions) {
+    if (condition.connector === 'or') {
+      const conflict = flushGroup(group);
+      if (conflict) {
+        return conflict;
+      }
+      group = [condition];
+      continue;
+    }
+
+    group.push(condition);
+  }
+
+  return flushGroup(group);
+};
+
+const buildConstraintFromCondition = (
+  condition: PriceRuleCondition,
+  definition: PriceRuleDefinition
+): ConditionConstraint | null => {
+  let comparator = condition.comparator;
+  let left = condition.left;
+  let right = condition.right;
+
+  if (left.kind === 'literal' && right.kind === 'variable') {
+    comparator = FLIPPED_COMPARATORS[comparator];
+    [left, right] = [right, left];
+  }
+
+  if (left.kind !== 'variable' || right.kind !== 'literal') {
+    return null;
+  }
+
+  const normalizedComparator = condition.negated
+    ? NEGATED_COMPARATORS[comparator]
+    : comparator;
+
+  const variableType = getVariableType(definition, left.key);
+  const kind: ConstraintKind = variableType === 'text' ? 'text' : 'numeric';
+  const parsedValue = parseComparableValue(right, variableType);
+  if (parsedValue === null) {
+    return null;
+  }
+
+  return {
+    variableKey: left.key,
+    comparator: normalizedComparator,
+    kind,
+    value: parsedValue,
+  };
+};
+
+const parseComparableValue = (
+  literal: Extract<PriceRuleOperand, { kind: 'literal' }>,
+  variableType: PriceRuleVariableType
+): number | string | null => {
+  const value = literal.value.trim();
+  if (variableType === 'text') {
+    if (literal.valueType !== 'text') {
+      return null;
+    }
+    return value;
+  }
+
+  if (variableType === 'number') {
+    if (!SIMPLE_NUMBER_REGEX.test(value)) {
+      return null;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  if (variableType === 'date' || variableType === 'datetime') {
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  if (variableType === 'time') {
+    const segments = value.split(':');
+    if (segments.length < 2 || segments.length > 3) {
+      return null;
+    }
+    const parsedSegments = segments.map((segment) => Number(segment));
+    if (parsedSegments.some((segment) => Number.isNaN(segment))) {
+      return null;
+    }
+    const [hours, minutes, seconds = 0] = parsedSegments;
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59 || seconds < 0 || seconds > 59) {
+      return null;
+    }
+    return hours * 3600 + minutes * 60 + seconds;
+  }
+
+  return null;
+};
+
+const applyRangeConstraint = (state: RangeState, constraint: ConditionConstraint): string | null => {
+  if (constraint.kind === 'numeric') {
+    if (typeof constraint.value !== 'number') {
+      return null;
+    }
+    return applyNumericConstraint(state as NumericRangeState, constraint.comparator, constraint.value, constraint.variableKey);
+  }
+  if (constraint.kind === 'text') {
+    if (typeof constraint.value !== 'string') {
+      return null;
+    }
+    return applyTextConstraint(state as TextRangeState, constraint.comparator, constraint.value, constraint.variableKey);
+  }
+  return null;
+};
+
+const applyTextConstraint = (
+  state: TextRangeState,
+  comparator: PriceRuleComparator,
+  value: string,
+  variableKey: string
+): string | null => {
+  const message = `Conflicting conditions for "${variableKey}".`;
+  if (comparator === '=') {
+    if (state.equalValue !== undefined && state.equalValue !== value) {
+      return message;
+    }
+    if (state.excludes.has(value)) {
+      return message;
+    }
+    state.equalValue = value;
+    return null;
+  }
+
+  if (comparator === '!=') {
+    if (state.equalValue === value) {
+      return message;
+    }
+    state.excludes.add(value);
+  }
+  return null;
+};
+
+const applyNumericConstraint = (
+  state: NumericRangeState,
+  comparator: PriceRuleComparator,
+  value: number,
+  variableKey: string
+): string | null => {
+  const message = `Conflicting conditions for "${variableKey}".`;
+
+  const ensureEqualValueStillFits = () => {
+    if (state.equalValue === undefined) {
+      return true;
+    }
+    return valueWithinBounds(state.equalValue, state.lower, state.upper);
+  };
+
+  switch (comparator) {
+    case '>': {
+      const conflict = updateLowerBound(state, {
+        value,
+        inclusive: false,
+      });
+      if (conflict) {
+        return message;
+      }
+      break;
+    }
+    case '>=': {
+      const conflict = updateLowerBound(state, {
+        value,
+        inclusive: true,
+      });
+      if (conflict) {
+        return message;
+      }
+      break;
+    }
+    case '<': {
+      const conflict = updateUpperBound(state, {
+        value,
+        inclusive: false,
+      });
+      if (conflict) {
+        return message;
+      }
+      break;
+    }
+    case '<=': {
+      const conflict = updateUpperBound(state, {
+        value,
+        inclusive: true,
+      });
+      if (conflict) {
+        return message;
+      }
+      break;
+    }
+    case '=': {
+      if (state.excludes.has(value)) {
+        return message;
+      }
+      if (!valueWithinBounds(value, state.lower, state.upper)) {
+        return message;
+      }
+      state.equalValue = value;
+      state.lower = {
+        value,
+        inclusive: true,
+      };
+      state.upper = {
+        value,
+        inclusive: true,
+      };
+      break;
+    }
+    case '!=':
+      if (state.equalValue === value) {
+        return message;
+      }
+      state.excludes.add(value);
+      break;
+    default:
+      break;
+  }
+
+  if (!ensureEqualValueStillFits()) {
+    return message;
+  }
+
+  return null;
+};
+
+const updateLowerBound = (
+  state: NumericRangeState,
+  bound: Bound
+): boolean => {
+  if (state.upper && isLowerAboveUpper(bound, state.upper)) {
+    return true;
+  }
+
+  if (!state.lower || isMoreRestrictiveLower(bound, state.lower)) {
+    state.lower = bound;
+  }
+
+  if (state.upper && isLowerAboveUpper(state.lower, state.upper)) {
+    return true;
+  }
+
+  if (
+    state.equalValue !== undefined
+    && !valueWithinBounds(state.equalValue, state.lower, state.upper)
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
+const updateUpperBound = (
+  state: NumericRangeState,
+  bound: Bound
+): boolean => {
+  if (state.lower && isLowerAboveUpper(state.lower, bound)) {
+    return true;
+  }
+
+  if (!state.upper || isMoreRestrictiveUpper(bound, state.upper)) {
+    state.upper = bound;
+  }
+
+  if (state.lower && isLowerAboveUpper(state.lower, state.upper)) {
+    return true;
+  }
+
+  if (
+    state.equalValue !== undefined
+    && !valueWithinBounds(state.equalValue, state.lower, state.upper)
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
+const valueWithinBounds = (value: number, lower?: Bound, upper?: Bound) => {
+  if (lower) {
+    if (value < lower.value || (value === lower.value && !lower.inclusive)) {
+      return false;
+    }
+  }
+  if (upper) {
+    if (value > upper.value || (value === upper.value && !upper.inclusive)) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const isLowerAboveUpper = (lower?: Bound, upper?: Bound) => {
+  if (!lower || !upper) {
+    return false;
+  }
+  if (lower.value > upper.value) {
+    return true;
+  }
+  if (lower.value === upper.value && (!lower.inclusive || !upper.inclusive)) {
+    return true;
+  }
+  return false;
+};
+
+const isMoreRestrictiveLower = (candidate: Bound, current: Bound) => (
+  candidate.value > current.value
+  || (candidate.value === current.value && !candidate.inclusive && current.inclusive)
+);
+
+const isMoreRestrictiveUpper = (candidate: Bound, current: Bound) => (
+  candidate.value < current.value
+  || (candidate.value === current.value && !candidate.inclusive && current.inclusive)
+);
+
 type ConditionFormulaSplit = {
   condition: string;
   formula: string;
@@ -1134,6 +1561,10 @@ export function usePriceRuleFormState(
       }
 
       const parsedConditions = parseConditionExpression(condition, values.definition);
+      const collisionError = detectConditionCollisions(parsedConditions, values.definition);
+      if (collisionError) {
+        throw new Error(collisionError);
+      }
       updateDefinition((definition) => ({
         ...definition,
         conditions: parsedConditions,
@@ -1345,7 +1776,11 @@ function RuleLanguageEditor({
       if (elseFormula) {
         validatePriceExpression(elseFormula, 'ELSE', variableMap, definition);
       }
-      parseConditionExpression(condition, definition);
+      const parsedConditions = parseConditionExpression(condition, definition);
+      const collisionError = detectConditionCollisions(parsedConditions, definition);
+      if (collisionError) {
+        return collisionError;
+      }
       return null;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Invalid clause.';
