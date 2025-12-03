@@ -2,10 +2,9 @@ import { z } from 'zod';
 
 import { WEEKDAY_ORDER } from '@/data/spaces';
 
-export const rateUnits = ['hour', 'day', 'week'] as const;
+export const advanceBookingUnits = ['days', 'weeks', 'months'] as const;
 
 const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
-
 const weekdayEnum = z.enum(WEEKDAY_ORDER);
 
 const toMinutes = (value: string) => {
@@ -145,8 +144,24 @@ export const areaSchema = z
       .number({ message: 'Provide the maximum capacity.', })
       .int()
       .min(1, 'Maximum capacity must be at least 1 seat.'),
-    rate_time_unit: z.enum(rateUnits, { required_error: 'Select a billing cadence.', }),
-    rate_amount: z.coerce.number({ message: 'Provide a rate amount.', }).positive('Rate must be greater than zero.'),
+    automatic_booking_enabled: z.boolean().default(false),
+    request_approval_at_capacity: z.boolean().default(false),
+    advance_booking_enabled: z.boolean().default(false),
+    advance_booking_value: z
+      .coerce
+      .number({ message: 'Provide an advance booking window.', })
+      .int()
+      .min(1, 'Advance booking window must be at least 1.')
+      .optional()
+      .nullable(),
+    advance_booking_unit: z.enum(advanceBookingUnits).optional().nullable(),
+    booking_notes_enabled: z.boolean().default(false),
+    booking_notes: z
+      .string()
+      .trim()
+      .max(2000, 'Booking notes must be 2,000 characters or less.')
+      .optional()
+      .nullable(),
     price_rule_id: z
       .string()
       .uuid()
@@ -156,7 +171,28 @@ export const areaSchema = z
   .refine((values) => values.max_capacity >= values.min_capacity, {
     path: ['max_capacity'],
     message: 'Max capacity must be greater than or equal to min capacity.',
-  });
+  })
+  .refine(
+    (values) => !values.advance_booking_enabled || (values.advance_booking_value && values.advance_booking_unit),
+    {
+      path: ['advance_booking_value'],
+      message: 'Set a window and unit when advance booking is enabled.',
+    }
+  )
+  .refine(
+    (values) => !values.advance_booking_enabled || Boolean(values.advance_booking_unit),
+    {
+      path: ['advance_booking_unit'],
+      message: 'Choose a unit when advance booking is enabled.',
+    }
+  )
+  .refine(
+    (values) => !values.automatic_booking_enabled || values.max_capacity >= 1,
+    {
+      path: ['max_capacity'],
+      message: 'Maximum capacity is required when automatic booking is enabled.',
+    }
+  );
 
 export type SpaceFormValues = z.infer<typeof spaceSchema>;
 export type AreaFormValues = z.infer<typeof areaSchema>;

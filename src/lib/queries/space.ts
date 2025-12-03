@@ -36,12 +36,10 @@ const marketplaceSpaceInclude = {
       name: true,
       min_capacity: true,
       max_capacity: true,
-      price_rate: {
-        orderBy: { created_at: 'asc' as const, },
+      price_rule: {
         select: {
           id: true,
-          price: true,
-          time_unit: true,
+          name: true,
         },
       },
     },
@@ -88,18 +86,12 @@ type MarketplaceSpaceRow = Prisma.spaceGetPayload<{
   include: typeof marketplaceSpaceInclude;
 }>;
 
-export type SpaceAreaRate = {
-  id: string;
-  price: number;
-  timeUnit: string;
-};
-
 export type SpaceAreaWithRates = {
   id: string;
   name: string;
   minCapacity: number;
   maxCapacity: number | null;
-  rates: SpaceAreaRate[];
+  pricingRuleName: string | null;
 };
 
 export type SpaceAvailabilityDisplay = {
@@ -188,11 +180,7 @@ const buildAreaSummaries = (areas: MarketplaceSpaceRow['area']): SpaceAreaWithRa
     name: area.name,
     minCapacity: Number(area.min_capacity),
     maxCapacity: area.max_capacity === null ? null : Number(area.max_capacity),
-    rates: area.price_rate.map((rate) => ({
-      id: rate.id,
-      price: Number(rate.price),
-      timeUnit: rate.time_unit,
-    })),
+    pricingRuleName: area.price_rule?.name ?? null,
   }));
 
 const buildAmenities = (amenities: MarketplaceSpaceRow['amenity']): SpaceAmenityDisplay[] =>

@@ -373,7 +373,7 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
       setShowThread(false);
       setStayOnList(true);
     }
-  }, [isMobile, router]);
+  }, [isMobile]);
 
   const handleConversationClick = useCallback(() => {
     if (isMobile) {

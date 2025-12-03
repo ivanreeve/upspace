@@ -43,10 +43,7 @@ export const partnerSpaceInclude = {
   space_availability: { orderBy: { day_of_week: 'asc' as const, }, },
   area: {
     orderBy: { created_at: 'asc' as const, },
-    include: {
-      price_rate: { orderBy: { created_at: 'asc' as const, }, },
-      price_rule: true,
-    },
+    include: { price_rule: true, },
   },
   price_rule: { orderBy: { created_at: 'asc' as const, }, },
   space_image: {
@@ -143,14 +140,18 @@ const serializePriceRule = (
 export const serializeArea = (
   area: PartnerSpaceRow['area'][number]
 ): AreaRecord => {
-  const primaryRate = area.price_rate[0];
   return {
     id: area.id,
     name: area.name,
     min_capacity: Number(area.min_capacity),
-    max_capacity: Number(area.max_capacity),
-    rate_time_unit: (primaryRate?.time_unit as AreaRecord['rate_time_unit']) ?? AREA_INPUT_DEFAULT.rate_time_unit,
-    rate_amount: primaryRate ? Number(primaryRate.price) : AREA_INPUT_DEFAULT.rate_amount,
+    max_capacity: Number(area.max_capacity ?? AREA_INPUT_DEFAULT.max_capacity),
+    automatic_booking_enabled: Boolean(area.automatic_booking_enabled),
+    request_approval_at_capacity: Boolean(area.request_approval_at_capacity),
+    advance_booking_enabled: Boolean(area.advance_booking_enabled),
+    advance_booking_value: area.advance_booking_value ?? null,
+    advance_booking_unit: (area.advance_booking_unit as AreaRecord['advance_booking_unit']) ?? null,
+    booking_notes_enabled: Boolean(area.booking_notes_enabled),
+    booking_notes: area.booking_notes ?? null,
     created_at: area.created_at instanceof Date ? area.created_at.toISOString() : String(area.created_at),
     price_rule: area.price_rule ? serializePriceRule(area.price_rule) : null,
   };

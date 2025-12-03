@@ -170,25 +170,6 @@ const DAY_NAME_TO_INDEX: Record<WeekdayName, number> = {
 
 const padTime = (value: number) => value.toString().padStart(2, '0');
 const formatTime = (value: Date) => `${padTime(value.getUTCHours())}:${padTime(value.getUTCMinutes())}`;
-const summarizeRates = (
-  areas: {
-    price_rate: {
-      price: Prisma.Decimal | number;
-      time_unit: string;
-    }[];
-  }[]
-) => {
-  const allRates = areas.flatMap((area) => area.price_rate ?? []);
-  if (!allRates.length) {
-    return null;
-  }
-  const numericPrices = allRates.map((rate) => Number(rate.price));
-  return {
-    min: Math.min(...numericPrices),
-    max: Math.max(...numericPrices),
-    unit: allRates[0]?.time_unit ?? null,
-  };
-};
 
 const serializeAvailabilitySlots = (
   slots: {
@@ -307,11 +288,6 @@ export async function GET(req: NextRequest) {
       min_capacity: z.coerce.number().int().min(0).optional(),
       bookmark_user_id: z.string().regex(/^\d+$/).optional(),
       available_days: z.string().optional(), // comma-separated day_of_week
-
-      // rate-based filters through areas->rates
-      rate_time_unit: z.string().min(1).optional(),
-      min_rate_price: z.coerce.number().nonnegative().optional(),
-      max_rate_price: z.coerce.number().nonnegative().optional(),
       available_from: z.string().regex(TIME_24H_PATTERN).optional(),
       available_to: z.string().regex(TIME_24H_PATTERN).optional(),
       include_pending: z.coerce.boolean().optional().default(false),
@@ -343,9 +319,6 @@ export async function GET(req: NextRequest) {
       min_capacity: searchParams.get('min_capacity') ?? undefined,
       bookmark_user_id: searchParams.get('bookmark_user_id') ?? undefined,
       available_days: searchParams.get('available_days') ?? undefined,
-      rate_time_unit: searchParams.get('rate_time_unit') ?? undefined,
-      min_rate_price: searchParams.get('min_rate_price') ?? undefined,
-      max_rate_price: searchParams.get('max_rate_price') ?? undefined,
       available_from: searchParams.get('available_from') ?? undefined,
       available_to: searchParams.get('available_to') ?? undefined,
       include_pending: searchParams.get('include_pending') ?? undefined,
@@ -379,9 +352,6 @@ export async function GET(req: NextRequest) {
       min_capacity,
       bookmark_user_id,
       available_days,
-      rate_time_unit,
-      min_rate_price,
-      max_rate_price,
       available_from,
       available_to,
       include_pending,
@@ -590,18 +560,6 @@ mode: 'insensitive' as const,
       and.push({ space_availability: { some: availabilityClause, }, });
     }
 
-    // Rate-based price/time-unit filter via areas -> rates
-    if (rate_time_unit || typeof min_rate_price === 'number' || typeof max_rate_price === 'number') {
-      const priceCond: any = {};
-      if (typeof min_rate_price === 'number') priceCond.gte = min_rate_price;
-      if (typeof max_rate_price === 'number') priceCond.lte = max_rate_price;
-      const rateCond: any = {};
-      if (rate_time_unit) rateCond.time_unit = rate_time_unit;
-      if (Object.keys(priceCond).length > 0) rateCond.price = priceCond;
-
-      and.push({ area: { some: { rate_rate_area_idToarea: { some: rateCond, }, }, }, });
-    }
-
     const where = and.length > 0 ? { AND: and, } : {};
 
     // Pagination and sorting
@@ -631,17 +589,6 @@ mode: 'insensitive' as const,
             display_order: true,
           },
           take: 2,
-        },
-        area: {
-          select: {
-            id: true,
-            price_rate: {
-              select: {
-                price: true,
-                time_unit: true,
-              },
-            },
-          },
         },
         verification: {
           orderBy: { created_at: 'desc' as const, },
@@ -724,7 +671,6 @@ mode: 'insensitive' as const,
     const payload = items.map((space) => {
       const base = serializeSpace(space);
       const primaryImage = space.space_image[0];
-      const priceSummary = summarizeRates(space.area);
       const resolvedImageUrl = (() => {
         const path = primaryImage?.path ?? null;
         if (!path) return null;
@@ -741,9 +687,9 @@ mode: 'insensitive' as const,
         ...base,
         status: deriveSpaceStatus(space.verification[0]?.status ?? null),
         image_url: resolvedImageUrl,
-        min_rate_price: priceSummary?.min ?? null,
-        max_rate_price: priceSummary?.max ?? null,
-        rate_time_unit: priceSummary?.unit ?? null,
+        min_rate_price: null,
+        max_rate_price: null,
+        rate_time_unit: null,
         availability: serializeAvailabilitySlots(space.space_availability),
         isBookmarked: bookmarkedSpaceIds?.has(space.id) ?? false,
         average_rating: ratingSummary.average_rating,

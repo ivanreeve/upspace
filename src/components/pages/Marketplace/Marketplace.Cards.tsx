@@ -1,11 +1,6 @@
 'use client';
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState
-} from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { CgSpinner } from 'react-icons/cg';
@@ -73,15 +68,7 @@ export function SpaceCard({ space, }: { space: Space }) {
     setIsSaved(Boolean(space.isBookmarked));
   }, [space.isBookmarked]);
 
-  const priceLabel = useMemo(() => {
-    const hasMin = typeof space.min_rate_price === 'number';
-
-    if (hasMin) {
-      return `From ${peso.format(space.min_rate_price ?? 0)}`;
-    }
-
-    return 'Price TBA';
-  }, [space.min_rate_price]);
+  const priceLabel = 'Pricing via rules';
 
   const handleToggleSave = useCallback(async () => {
     if (isSaving) {

@@ -70,11 +70,24 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
       }
     }
 
+    const bookingNotesEnabled = parsed.data.booking_notes_enabled;
+    const bookingNotes = bookingNotesEnabled ? parsed.data.booking_notes?.trim() || null : null;
+    const advanceBookingEnabled = parsed.data.advance_booking_enabled;
+    const advanceBookingValue = advanceBookingEnabled ? parsed.data.advance_booking_value ?? null : null;
+    const advanceBookingUnit = advanceBookingEnabled ? parsed.data.advance_booking_unit ?? null : null;
+
     const result = await prisma.$transaction(async (tx): Promise<PartnerSpaceRow['area'][number]> => {
       const updatePayload: Parameters<typeof tx.area.update>[0]['data'] = {
         name: parsed.data.name.trim(),
         min_capacity: BigInt(parsed.data.min_capacity),
         max_capacity: BigInt(parsed.data.max_capacity),
+        automatic_booking_enabled: parsed.data.automatic_booking_enabled,
+        request_approval_at_capacity: parsed.data.request_approval_at_capacity,
+        advance_booking_enabled: advanceBookingEnabled,
+        advance_booking_value: advanceBookingValue,
+        advance_booking_unit: advanceBookingUnit,
+        booking_notes_enabled: bookingNotesEnabled,
+        booking_notes: bookingNotes,
         updated_at: new Date(),
       };
 
@@ -88,36 +101,9 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
         data: updatePayload,
       });
 
-      const existingRate = await tx.price_rate.findFirst({
-        where: { area_id: areaIdParam, },
-        orderBy: { created_at: 'asc', },
-      });
-
-      if (existingRate) {
-        await tx.price_rate.update({
-          where: { id: existingRate.id, },
-          data: {
-            time_unit: parsed.data.rate_time_unit,
-            price: parsed.data.rate_amount.toString(),
-            updated_at: new Date(),
-          },
-        });
-      } else {
-        await tx.price_rate.create({
-          data: {
-            area_id: areaIdParam,
-            time_unit: parsed.data.rate_time_unit,
-            price: parsed.data.rate_amount.toString(),
-          },
-        });
-      }
-
       const areaWithRelations = await tx.area.findFirst({
         where: { id: areaIdParam, },
-        include: {
-          price_rate: { orderBy: { created_at: 'asc', }, },
-          price_rule: true,
-        },
+        include: { price_rule: true, },
       });
 
       if (!areaWithRelations) {
@@ -172,7 +158,6 @@ export async function DELETE(_req: NextRequest, { params, }: RouteParams) {
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.price_rate.deleteMany({ where: { area_id: areaIdParam, }, });
       await tx.area.delete({ where: { id: areaIdParam, }, });
     });
 

@@ -118,6 +118,7 @@ import {
 } from '@/lib/philippines-addresses/client';
 import { dedupeAddressOptions } from '@/lib/addresses';
 import {
+  advanceBookingUnits,
   areaSchema,
   spaceSchema,
   type AreaFormValues,
@@ -292,8 +293,13 @@ export const areaRecordToFormValues = (area: AreaRecord): AreaFormValues => ({
   name: area.name,
   min_capacity: area.min_capacity,
   max_capacity: area.max_capacity,
-  rate_time_unit: area.rate_time_unit,
-  rate_amount: area.rate_amount,
+  automatic_booking_enabled: area.automatic_booking_enabled ?? false,
+  request_approval_at_capacity: area.request_approval_at_capacity ?? false,
+  advance_booking_enabled: area.advance_booking_enabled ?? false,
+  advance_booking_value: area.advance_booking_value ?? null,
+  advance_booking_unit: area.advance_booking_unit ?? null,
+  booking_notes_enabled: area.booking_notes_enabled ?? false,
+  booking_notes: area.booking_notes ?? null,
   price_rule_id: area.price_rule?.id ?? null,
 });
 
@@ -1966,14 +1972,30 @@ export function SpaceDialog({
 
   useEffect(() => {
     form.reset(initialValues);
-    setAutomaticBookingEnabled(false);
-    setRequireApprovalAtCapacity(false);
-    setAdvanceBookingEnabled(false);
-    setAdvanceBookingWindow('');
-    setAdvanceBookingUnit('days');
-    setBookingNotesEnabled(false);
-    setBookingNotes('');
   }, [initialValues, form]);
+
+  /* eslint-disable react-hooks/exhaustive-deps */
+  useEffect(() => {
+    if (!automaticBookingEnabled) {
+      form.setValue('request_approval_at_capacity', false, FORM_SET_OPTIONS);
+    }
+  }, [automaticBookingEnabled, form]);
+
+  useEffect(() => {
+    if (!advanceBookingEnabled) {
+      form.setValue('advance_booking_value', null, FORM_SET_OPTIONS);
+      form.setValue('advance_booking_unit', null, FORM_SET_OPTIONS);
+    } else if (!form.getValues('advance_booking_unit')) {
+      form.setValue('advance_booking_unit', 'days', FORM_SET_OPTIONS);
+    }
+  }, [advanceBookingEnabled, form]);
+
+  useEffect(() => {
+    if (!bookingNotesEnabled) {
+      form.setValue('booking_notes', null, FORM_SET_OPTIONS);
+    }
+  }, [bookingNotesEnabled, form]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const close = () => onOpenChange(false);
 
@@ -2014,7 +2036,7 @@ type AreaDialogProps = {
   pricingRules: PriceRuleRecord[];
 };
 
-type AdvanceBookingUnit = 'days' | 'weeks' | 'months';
+type AdvanceBookingUnit = (typeof advanceBookingUnits)[number];
 
 export function AreaDialog({
   open,
@@ -2029,24 +2051,46 @@ export function AreaDialog({
     resolver: zodResolver(areaSchema),
     defaultValues: initialValues,
   });
-  const [automaticBookingEnabled, setAutomaticBookingEnabled] = useState(false);
-  const [requireApprovalAtCapacity, setRequireApprovalAtCapacity] = useState(false);
-  const [advanceBookingEnabled, setAdvanceBookingEnabled] = useState(false);
-  const [advanceBookingWindow, setAdvanceBookingWindow] = useState('');
-  const [advanceBookingUnit, setAdvanceBookingUnit] = useState<AdvanceBookingUnit>('days');
-  const [bookingNotesEnabled, setBookingNotesEnabled] = useState(false);
-  const [bookingNotes, setBookingNotes] = useState('');
+  const automaticBookingEnabled = useWatch({
+    control: form.control,
+    name: 'automatic_booking_enabled',
+    defaultValue: initialValues.automatic_booking_enabled,
+  });
+  const advanceBookingEnabled = useWatch({
+    control: form.control,
+    name: 'advance_booking_enabled',
+    defaultValue: initialValues.advance_booking_enabled,
+  });
+  const bookingNotesEnabled = useWatch({
+    control: form.control,
+    name: 'booking_notes_enabled',
+    defaultValue: initialValues.booking_notes_enabled,
+  });
 
   useEffect(() => {
     form.reset(initialValues);
-    setAutomaticBookingEnabled(false);
-    setRequireApprovalAtCapacity(false);
-    setAdvanceBookingEnabled(false);
-    setAdvanceBookingWindow('');
-    setAdvanceBookingUnit('days');
-    setBookingNotesEnabled(false);
-    setBookingNotes('');
   }, [initialValues, form]);
+
+  useEffect(() => {
+    if (!automaticBookingEnabled) {
+      form.setValue('request_approval_at_capacity', false, FORM_SET_OPTIONS);
+    }
+  }, [automaticBookingEnabled, form]);
+
+  useEffect(() => {
+    if (!advanceBookingEnabled) {
+      form.setValue('advance_booking_value', null, FORM_SET_OPTIONS);
+      form.setValue('advance_booking_unit', null, FORM_SET_OPTIONS);
+    } else if (!form.getValues('advance_booking_unit')) {
+      form.setValue('advance_booking_unit', 'days', FORM_SET_OPTIONS);
+    }
+  }, [advanceBookingEnabled, form]);
+
+  useEffect(() => {
+    if (!bookingNotesEnabled) {
+      form.setValue('booking_notes', null, FORM_SET_OPTIONS);
+    }
+  }, [bookingNotesEnabled, form]);
 
   const close = () => onOpenChange(false);
 
@@ -2075,88 +2119,105 @@ export function AreaDialog({
                 </FormItem>
               ) }
             />
-        <div className="space-y-3 rounded-lg border border-border/70 bg-muted/30 p-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-foreground">Allow automatic booking</p>
-              <p className="text-xs text-muted-foreground">
-                Default off. When disabled, all bookings require manual approval by the partner.
-              </p>
-            </div>
-            <Switch
-              id="automatic-booking"
-              checked={ automaticBookingEnabled }
-              onCheckedChange={ setAutomaticBookingEnabled }
-              aria-label="Allow automatic booking"
-            />
-          </div>
-          { automaticBookingEnabled ? (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-3 rounded-lg border border-border/70 bg-muted/30 p-4">
               <FormField
                 control={ form.control }
-                name="max_capacity"
+                name="automatic_booking_enabled"
                 render={ ({ field, }) => (
-                  <FormItem>
-                    <div className="flex items-center justify-between gap-2">
-                      <Label htmlFor="max-capacity" className="text-sm font-medium text-foreground">
-                        Maximum capacity
-                      </Label>
-                      <span className="text-[11px] font-medium text-muted-foreground">Required</span>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-foreground">Allow automatic booking</p>
+                      <p className="text-xs text-muted-foreground">
+                        Default off. When disabled, all bookings require manual approval by the partner.
+                      </p>
                     </div>
-                    <FormControl>
-                      <Input
-                        id="max-capacity"
-                        type="number"
-                        min={ 1 }
-                        placeholder="12"
-                        value={ field.value ?? '' }
-                        onChange={ (event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value)) }
-                        aria-label="Maximum automatic booking capacity"
-                      />
-                    </FormControl>
-                    <FormDescription>Auto-approve bookings until this limit is reached.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
+                    <Switch
+                      id="automatic-booking"
+                      checked={ Boolean(field.value) }
+                      onCheckedChange={ (checked) => {
+                        field.onChange(checked);
+                        if (!checked) {
+                          form.setValue('request_approval_at_capacity', false, FORM_SET_OPTIONS);
+                        }
+                      } }
+                      aria-label="Allow automatic booking"
+                    />
+                  </div>
                 ) }
               />
-              <div className="rounded-lg border border-border/70 bg-background/70 p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="request-approval-capacity" className="text-sm font-medium text-foreground">
-                      Request approval when maximum capacity is reached
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Keep accepting requests but require approvals after the limit.
-                    </p>
-                  </div>
-                  <Switch
-                    id="request-approval-capacity"
-                    checked={ requireApprovalAtCapacity }
-                    onCheckedChange={ setRequireApprovalAtCapacity }
-                    aria-label="Request approval when maximum capacity is reached"
+              { automaticBookingEnabled ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={ form.control }
+                    name="max_capacity"
+                    render={ ({ field, }) => (
+                      <FormItem>
+                        <div className="flex items-center justify-between gap-2">
+                          <Label htmlFor="max-capacity" className="text-sm font-medium text-foreground">
+                            Maximum capacity
+                          </Label>
+                          <span className="text-[11px] font-medium text-muted-foreground">Required</span>
+                        </div>
+                        <FormControl>
+                          <Input
+                            id="max-capacity"
+                            type="number"
+                            min={ 1 }
+                            placeholder="12"
+                            value={ field.value ?? '' }
+                            onChange={ (event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value)) }
+                            aria-label="Maximum automatic booking capacity"
+                          />
+                        </FormControl>
+                        <FormDescription>Auto-approve bookings until this limit is reached.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    ) }
+                  />
+                  <FormField
+                    control={ form.control }
+                    name="request_approval_at_capacity"
+                    render={ ({ field, }) => (
+                      <FormItem className="rounded-lg border border-border/70 bg-background/70 p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <Label htmlFor="request-approval-capacity" className="text-sm font-medium text-foreground">
+                              Request approval when maximum capacity is reached
+                            </Label>
+                            <p className="text-xs text-muted-foreground">
+                              Keep accepting requests but require approvals after the limit.
+                            </p>
+                          </div>
+                          <Switch
+                            id="request-approval-capacity"
+                            checked={ Boolean(field.value) }
+                            onCheckedChange={ field.onChange }
+                            aria-label="Request approval when maximum capacity is reached"
+                          />
+                        </div>
+                        <FormDescription className="mt-1">
+                          { field.value
+                            ? 'After the cap, bookings stay open but revert to manual approvals.'
+                            : 'Turn off to stop accepting bookings entirely once capacity is full.' }
+                        </FormDescription>
+                      </FormItem>
+                    ) }
                   />
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  { requireApprovalAtCapacity
-                    ? 'After the cap, bookings stay open but revert to manual approvals.'
-                    : 'Turn off to stop accepting bookings entirely once capacity is full.' }
-                </p>
+              ) : (
+                <div className="rounded-md border border-dashed border-border/60 bg-background/60 p-3 text-xs text-muted-foreground">
+                  Maximum capacity and approval fallbacks appear once automatic booking is enabled.
+                </div>
+              ) }
+              <div className="rounded-md border border-dashed border-border/60 bg-background/60 p-3 text-xs text-muted-foreground">
+                <p className="mb-2 text-[13px] font-semibold text-foreground">Booking approval logic</p>
+                <ul className="space-y-1 pl-4 list-disc">
+                  <li>Automatic booking off (default): all bookings require manual approval; capacity settings stay hidden.</li>
+                  <li>Automatic booking on + request approval at capacity: bookings auto-approve until the limit, then revert to manual approvals.</li>
+                  <li>Automatic booking on + request approval off: bookings auto-approve until the limit, then new bookings are blocked as fully booked.</li>
+                </ul>
               </div>
             </div>
-          ) : (
-            <div className="rounded-md border border-dashed border-border/60 bg-background/60 p-3 text-xs text-muted-foreground">
-              Maximum capacity and approval fallbacks appear once automatic booking is enabled.
-            </div>
-          ) }
-          <div className="rounded-md border border-dashed border-border/60 bg-background/60 p-3 text-xs text-muted-foreground">
-            <p className="mb-2 text-[13px] font-semibold text-foreground">Booking approval logic</p>
-            <ul className="space-y-1 pl-4 list-disc">
-              <li>Automatic booking off (default): all bookings require manual approval; capacity settings stay hidden.</li>
-              <li>Automatic booking on + request approval at capacity: bookings auto-approve until the limit, then revert to manual approvals.</li>
-              <li>Automatic booking on + request approval off: bookings auto-approve until the limit, then new bookings are blocked as fully booked.</li>
-            </ul>
-          </div>
-        </div>
 
         <FormField
           control={ form.control }
@@ -2195,46 +2256,74 @@ export function AreaDialog({
             <AccordionTrigger className="text-sm font-semibold">Advanced options</AccordionTrigger>
             <AccordionContent className="space-y-4 pt-2">
               <div className="space-y-3 rounded-lg border border-border/70 bg-background/70 p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-foreground">Allow advance booking</p>
-                    <p className="text-xs text-muted-foreground">
-                      Default: customers can only book hours in advance (same-day).
-                    </p>
-                  </div>
-                  <Switch
-                    id="advance-booking"
-                    checked={ advanceBookingEnabled }
-                    onCheckedChange={ setAdvanceBookingEnabled }
-                    aria-label="Allow advance booking"
-                  />
-                </div>
+                <FormField
+                  control={ form.control }
+                  name="advance_booking_enabled"
+                  render={ ({ field, }) => (
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-foreground">Allow advance booking</p>
+                        <p className="text-xs text-muted-foreground">
+                          Default: customers can only book hours in advance (same-day).
+                        </p>
+                      </div>
+                      <Switch
+                        id="advance-booking"
+                        checked={ Boolean(field.value) }
+                        onCheckedChange={ field.onChange }
+                        aria-label="Allow advance booking"
+                      />
+                    </div>
+                  ) }
+                />
                 { advanceBookingEnabled ? (
                   <div className="flex flex-wrap items-center gap-3 rounded-md bg-muted/20 p-3">
                     <p className="text-sm text-foreground">Allow bookings up to</p>
-                    <Input
-                      id="advance-booking-window"
-                      type="number"
-                      min={ 1 }
-                      aria-label="Advance booking window"
-                      className="w-24"
-                      placeholder="30"
-                      value={ advanceBookingWindow }
-                      onChange={ (event) => setAdvanceBookingWindow(event.target.value) }
+                    <FormField
+                      control={ form.control }
+                      name="advance_booking_value"
+                      render={ ({ field, }) => (
+                        <FormItem className="mb-0">
+                          <FormControl>
+                            <Input
+                              id="advance-booking-window"
+                              type="number"
+                              min={ 1 }
+                              aria-label="Advance booking window"
+                              className="w-24"
+                              placeholder="30"
+                              value={ field.value ?? '' }
+                              onChange={ (event) => field.onChange(event.target.value === '' ? null : Number(event.target.value)) }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      ) }
                     />
-                    <Select
-                      value={ advanceBookingUnit }
-                      onValueChange={ (value: AdvanceBookingUnit) => setAdvanceBookingUnit(value) }
-                    >
-                      <SelectTrigger id="advance-booking-unit" aria-label="Advance booking unit">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="days">Days</SelectItem>
-                        <SelectItem value="weeks">Weeks</SelectItem>
-                        <SelectItem value="months">Months</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormField
+                      control={ form.control }
+                      name="advance_booking_unit"
+                      render={ ({ field, }) => (
+                        <FormItem className="mb-0">
+                          <FormControl>
+                            <Select
+                              value={ field.value ?? 'days' }
+                              onValueChange={ (value: AdvanceBookingUnit) => field.onChange(value) }
+                            >
+                              <SelectTrigger id="advance-booking-unit" aria-label="Advance booking unit">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="days">Days</SelectItem>
+                                <SelectItem value="weeks">Weeks</SelectItem>
+                                <SelectItem value="months">Months</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      ) }
+                    />
                     <p className="text-sm text-foreground">in advance</p>
                   </div>
                 ) : (
@@ -2245,27 +2334,44 @@ export function AreaDialog({
               </div>
 
               <div className="space-y-3 rounded-lg border border-border/70 bg-background/70 p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-foreground">Enable booking notes</p>
-                    <p className="text-xs text-muted-foreground">
-                      Share arrival instructions or expectations; notes will appear in the customer booking interface.
-                    </p>
-                  </div>
-                  <Switch
-                    id="booking-notes"
-                    checked={ bookingNotesEnabled }
-                    onCheckedChange={ setBookingNotesEnabled }
-                    aria-label="Enable booking notes"
-                  />
-                </div>
+                <FormField
+                  control={ form.control }
+                  name="booking_notes_enabled"
+                  render={ ({ field, }) => (
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-foreground">Enable booking notes</p>
+                        <p className="text-xs text-muted-foreground">
+                          Share arrival instructions or expectations; notes will appear in the customer booking interface.
+                        </p>
+                      </div>
+                      <Switch
+                        id="booking-notes"
+                        checked={ Boolean(field.value) }
+                        onCheckedChange={ field.onChange }
+                        aria-label="Enable booking notes"
+                      />
+                    </div>
+                  ) }
+                />
                 { bookingNotesEnabled ? (
-                  <Textarea
-                    aria-label="Booking notes for customers"
-                    placeholder="Example: Please check in at the front desk and present your ID."
-                    value={ bookingNotes }
-                    onChange={ (event) => setBookingNotes(event.target.value) }
-                    rows={ 4 }
+                  <FormField
+                    control={ form.control }
+                    name="booking_notes"
+                    render={ ({ field, }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Textarea
+                            aria-label="Booking notes for customers"
+                            placeholder="Example: Please check in at the front desk and present your ID."
+                            value={ field.value ?? '' }
+                            onChange={ field.onChange }
+                            rows={ 4 }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    ) }
                   />
                 ) : (
                   <p className="text-xs text-muted-foreground">

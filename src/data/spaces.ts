@@ -63,8 +63,13 @@ export type AreaInput = {
   name: string;
   min_capacity: number;
   max_capacity: number;
-  rate_time_unit: 'hour' | 'day' | 'week';
-  rate_amount: number;
+  automatic_booking_enabled: boolean;
+  request_approval_at_capacity: boolean;
+  advance_booking_enabled: boolean;
+  advance_booking_value: number | null;
+  advance_booking_unit: 'days' | 'weeks' | 'months' | null;
+  booking_notes_enabled: boolean;
+  booking_notes: string | null;
   price_rule_id?: string | null;
 };
 
@@ -113,8 +118,13 @@ export const AREA_INPUT_DEFAULT: AreaInput = {
   name: '',
   min_capacity: 1,
   max_capacity: 10,
-  rate_time_unit: 'hour',
-  rate_amount: 100,
+  automatic_booking_enabled: false,
+  request_approval_at_capacity: false,
+  advance_booking_enabled: false,
+  advance_booking_value: null,
+  advance_booking_unit: null,
+  booking_notes_enabled: false,
+  booking_notes: null,
 };
 
 export const INITIAL_SPACES: SpaceRecord[] = [
@@ -144,8 +154,13 @@ export const INITIAL_SPACES: SpaceRecord[] = [
         name: 'Sky Boardroom',
         min_capacity: 4,
         max_capacity: 14,
-        rate_time_unit: 'hour',
-        rate_amount: 185,
+        automatic_booking_enabled: false,
+        request_approval_at_capacity: false,
+        advance_booking_enabled: false,
+        advance_booking_value: null,
+        advance_booking_unit: null,
+        booking_notes_enabled: false,
+        booking_notes: null,
         created_at: '2025-02-11T09:00:00.000Z',
         price_rule: null,
       }
@@ -177,8 +192,13 @@ export const INITIAL_SPACES: SpaceRecord[] = [
         name: 'Maker Lab',
         min_capacity: 6,
         max_capacity: 24,
-        rate_time_unit: 'hour',
-        rate_amount: 145,
+        automatic_booking_enabled: false,
+        request_approval_at_capacity: false,
+        advance_booking_enabled: false,
+        advance_booking_value: null,
+        advance_booking_unit: null,
+        booking_notes_enabled: false,
+        booking_notes: null,
         created_at: '2025-03-02T08:00:00.000Z',
         price_rule: null,
       },
@@ -187,8 +207,13 @@ export const INITIAL_SPACES: SpaceRecord[] = [
         name: 'Podcast Booth',
         min_capacity: 2,
         max_capacity: 4,
-        rate_time_unit: 'hour',
-        rate_amount: 95,
+        automatic_booking_enabled: false,
+        request_approval_at_capacity: false,
+        advance_booking_enabled: false,
+        advance_booking_value: null,
+        advance_booking_unit: null,
+        booking_notes_enabled: false,
+        booking_notes: null,
         created_at: '2025-03-02T08:30:00.000Z',
         price_rule: null,
       }
