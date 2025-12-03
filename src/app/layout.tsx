@@ -6,6 +6,7 @@ import { AuthProfileSync } from '@/components/auth/AuthProfileSync';
 import { SessionProvider } from '@/components/auth/SessionProvider';
 import { ServiceWorkerRegistration } from '@/components/common/ServiceWorkerRegistration';
 import { QueryProvider } from '@/components/providers/QueryProvider';
+import { NavigationProgressBar } from '@/components/ui/navigation-progress-bar';
 import { Toaster } from '@/components/ui/sonner';
 
 export const metadata: Metadata = {
@@ -55,6 +56,7 @@ export default function RootLayout({ children, }: Readonly<{
               defaultTheme="light"
               disableTransitionOnChange
             >
+              <NavigationProgressBar />
               <AuthProfileSync />
               { children }
               <Toaster />
