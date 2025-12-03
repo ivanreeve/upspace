@@ -176,6 +176,7 @@ export default function SpacePhotos({
             sizes="(min-width: 1280px) 55vw, (min-width: 1024px) 65vw, 100vw"
             className={ `object-cover ${figureRoundedClass}` }
             style={ figureRoundedStyle }
+            priority
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
