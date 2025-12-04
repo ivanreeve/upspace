@@ -190,6 +190,10 @@ export async function POST(req: NextRequest) {
       ? Math.round(parsed.data.price * BOOKING_PRICE_MINOR_FACTOR)
       : null;
 
+  const bookingExpiresAt = new Date(
+    Date.now() + parsed.data.bookingHours * 60 * 60 * 1000
+  );
+
   const bookingRow = await prisma.booking.create({
     data: {
       id: randomUUID(),
@@ -204,6 +208,7 @@ export async function POST(req: NextRequest) {
       user_auth_id: authData.user.id,
       partner_auth_id: partnerAuthId,
       area_max_capacity: areaMaxCapacity,
+      expires_at: bookingExpiresAt,
     },
   });
 
