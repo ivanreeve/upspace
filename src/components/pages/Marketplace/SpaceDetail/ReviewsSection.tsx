@@ -415,11 +415,6 @@ export default function ReviewsSection({
           </form>
         </DialogContent>
       </Dialog>
-        { !canReview && (
-          <p className="text-xs text-muted-foreground">
-            Book this space to share feedback with the community.
-          </p>
-        ) }
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(240px,0.9fr)_minmax(0,1.4fr)]">

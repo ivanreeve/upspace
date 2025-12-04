@@ -481,6 +481,15 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     return PRICE_FORMATTER.format(priceEvaluation.price);
   })();
 
+  const bookingButtonContent = (
+    <>
+      { createBooking.isPending && (
+        <CgSpinner className="h-4 w-4 animate-spin" aria-hidden="true" />
+      ) }
+      { primaryActionLabel }
+    </>
+  );
+
   const canConfirmBooking = Boolean(
     selectedAreaId &&
     !isPricingLoading &&
@@ -687,7 +696,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
             onClick={ handleConfirmBooking }
             disabled={ !canConfirmBooking }
           >
-            { primaryActionLabel }
+            { bookingButtonContent }
           </Button>
           <Button
             type="button"
@@ -716,7 +725,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
             onClick={ handleConfirmBooking }
             disabled={ !canConfirmBooking }
           >
-            { primaryActionLabel }
+            { bookingButtonContent }
           </Button>
           <Button
             type="button"
