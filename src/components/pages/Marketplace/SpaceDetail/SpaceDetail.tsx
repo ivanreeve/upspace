@@ -17,6 +17,7 @@ import {
   FiPlus
 } from 'react-icons/fi';
 import { CgSpinner } from 'react-icons/cg';
+import { toast } from 'sonner';
 
 import SpaceHeader from './SpaceHeader';
 import SpacePhotos from './SpacePhotos';
@@ -54,6 +55,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { PriceRuleOperand, PriceRuleRecord } from '@/lib/pricing-rules';
 import { evaluatePriceRule, type PriceRuleEvaluationResult } from '@/lib/pricing-rules-evaluator';
+import { useUserBookingsQuery, useCreateBookingMutation } from '@/hooks/api/useBookings';
 
 const DESCRIPTION_COLLAPSED_HEIGHT = 360; // px
 const MIN_BOOKING_HOURS = 1;
@@ -71,7 +73,22 @@ type SpaceDetailProps = {
 export default function SpaceDetail({ space, }: SpaceDetailProps) {
   const { session, } = useSession();
   const isGuest = !session;
-  const canMessageHost = !isGuest;
+  const {
+    data: userBookings = [],
+    isLoading: isBookingsLoading,
+  } = useUserBookingsQuery({ enabled: !isGuest, });
+  const hasConfirmedBooking = useMemo(
+    () => userBookings.some((booking) => booking.spaceId === space.id && booking.status === 'confirmed'),
+    [space.id, userBookings]
+  );
+  const canMessageHost = !isGuest && hasConfirmedBooking;
+  const canLeaveReview = hasConfirmedBooking;
+  const messagingDisabledReason = useMemo(() => {
+    if (isGuest) return 'Sign in to message the host';
+    if (isBookingsLoading) return 'Checking booking access...';
+    if (!hasConfirmedBooking) return 'Book this space to message the host';
+    return undefined;
+  }, [hasConfirmedBooking, isBookingsLoading, isGuest]);
 
   const locationParts = [space.city, space.region, space.countryCode].filter(Boolean);
   const location = locationParts.length > 0 ? locationParts.join(', ') : 'Global City, Taguig';
@@ -91,6 +108,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const handleOpenChat = useCallback(() => setIsChatOpen(true), []);
   const handleCloseChat = useCallback(() => setIsChatOpen(false), []);
+  const createBooking = useCreateBookingMutation();
   const messageHostButtonRef = useRef<HTMLButtonElement | null>(null);
   const scrollToMessageHostButton = useCallback(() => {
     const button = messageHostButtonRef.current;
@@ -137,10 +155,35 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     resetBookingState();
     setIsBookingOpen(false);
   }, [resetBookingState]);
-  const handleConfirmBooking = useCallback(() => {
-    resetBookingState();
-    setIsBookingOpen(false);
-  }, [resetBookingState]);
+  const handleConfirmBooking = useCallback(async () => {
+    if (!selectedArea || !canConfirmBooking || !session) {
+      return;
+    }
+
+    try {
+      await createBooking.mutateAsync({
+        spaceId: space.id,
+        areaId: selectedArea.id,
+        bookingHours,
+        price: priceEvaluation?.price ?? null,
+      });
+      toast.success('Booking confirmed. You can now message the host and leave a review.');
+      resetBookingState();
+      setIsBookingOpen(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to place booking.';
+      toast.error(message);
+    }
+  }, [
+    bookingHours,
+    canConfirmBooking,
+    createBooking,
+    priceEvaluation?.price,
+    resetBookingState,
+    selectedArea,
+    session,
+    space.id
+  ]);
   const increaseBookingHours = useCallback(() => {
     setBookingHours((prev) => Math.min(prev + 1, MAX_BOOKING_HOURS));
   }, []);
@@ -245,6 +288,12 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
       resetBookingState();
     }
   }, [isBookingOpen, resetBookingState]);
+
+  useEffect(() => {
+    if (!canMessageHost && isChatOpen) {
+      setIsChatOpen(false);
+    }
+  }, [canMessageHost, isChatOpen]);
 
   const scrollToBottomOfDescription = () => {
     const section = descriptionSectionRef.current;
@@ -446,6 +495,9 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     if (!selectedAreaId) {
       return 'Select an area';
     }
+    if (createBooking.isPending) {
+      return 'Booking...';
+    }
     if (isPricingLoading) {
       return 'Computing price...';
     }
@@ -463,7 +515,9 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     !isPricingLoading &&
     activePriceRule &&
     priceEvaluation &&
-    priceEvaluation.price !== null
+    priceEvaluation.price !== null &&
+    !isGuest &&
+    !createBooking.isPending
   );
 
   return (
@@ -500,6 +554,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
           avatarUrl={ space.heroImageUrl ?? space.hostAvatarUrl }
           onMessageHost={ canMessageHost ? handleOpenChat : undefined }
           isMessagingDisabled={ !canMessageHost }
+          messagingDisabledReason={ messagingDisabledReason }
           messageButtonRef={ messageHostButtonRef }
         />
 
@@ -607,7 +662,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
 
         <AreasWithRates areas={ space.areas } />
 
-        <ReviewsSection spaceId={ space.id } />
+        <ReviewsSection spaceId={ space.id } canReview={ canLeaveReview } />
 
         <WhereYoullBe city={ space.city } region={ space.region } country={ space.countryCode } />
       </div>

@@ -10,6 +10,7 @@ type HostInfoProps = {
   spaceName?: string | null;
   onMessageHost?: () => void;
   isMessagingDisabled?: boolean;
+  messagingDisabledReason?: string;
 };
 
 export default function HostInfo({
@@ -19,6 +20,7 @@ export default function HostInfo({
   onMessageHost,
   isMessagingDisabled,
   messageButtonRef,
+  messagingDisabledReason,
 }: {
   hostName?: string | null;
   avatarUrl?: string | null;
@@ -26,6 +28,7 @@ export default function HostInfo({
   onMessageHost?: () => void;
   isMessagingDisabled?: boolean;
   messageButtonRef?: RefObject<HTMLButtonElement>;
+  messagingDisabledReason?: string;
 }) {
   const resolvedName = spaceName?.trim() || hostName?.trim() || 'Your host';
   const fallbackLabel = (spaceName ?? hostName ?? 'US').slice(0, 2).toUpperCase();
@@ -34,7 +37,9 @@ export default function HostInfo({
     : hostName?.trim()
       ? `${hostName.trim()}'s avatar`
       : 'Host avatar';
-  const disabledReason = isMessagingDisabled ? 'Sign in to message the host' : undefined;
+  const disabledReason = isMessagingDisabled
+    ? messagingDisabledReason ?? 'Sign in to message the host'
+    : undefined;
 
   return (
     <section className="flex flex-wrap items-center justify-between gap-4 rounded-xs border px-6 py-5 shadow-sm md:flex-row md:items-center md:justify-between">
@@ -61,6 +66,11 @@ export default function HostInfo({
         <FiMessageSquare className="size-4" aria-hidden="true" />
         <span className="hidden sm:inline">Message Now</span>
       </Button>
+      { disabledReason ? (
+        <p className="w-full text-xs text-muted-foreground sm:w-auto sm:text-right">
+          { disabledReason }
+        </p>
+      ) : null }
     </section>
   );
 }

@@ -30,24 +30,46 @@ model amenity_choice {
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model app_notification {
+  id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_auth_id String            @db.Uuid
+  title        String
+  body         String
+  href         String
+  type         notification_type @default(system)
+  created_at   DateTime          @default(now()) @db.Timestamptz(6)
+  read_at      DateTime?         @db.Timestamptz(6)
+  booking_id   String?           @db.Uuid
+  space_id     String?           @db.Uuid
+  area_id      String?           @db.Uuid
+  area         area?             @relation(fields: [area_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "app_notification_area_fk")
+  space        space?            @relation(fields: [space_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "app_notification_space_fk")
+
+  @@index([booking_id], map: "idx_app_notification_booking")
+  @@index([user_auth_id, created_at(sort: Desc)], map: "idx_app_notification_user_created")
+  @@index([user_auth_id, read_at], map: "idx_app_notification_user_read")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model area {
   name                         String
-  min_capacity                 BigInt
-  created_at                   DateTime    @default(now()) @db.Timestamptz(6)
-  updated_at                   DateTime?   @default(now()) @db.Timestamptz(6)
+  created_at                   DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at                   DateTime?          @default(now()) @db.Timestamptz(6)
   max_capacity                 BigInt?
-  id                           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  space_id                     String      @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  price_rule_id                String?     @db.Uuid
-  automatic_booking_enabled    Boolean     @default(false)
-  request_approval_at_capacity Boolean     @default(false)
-  advance_booking_enabled      Boolean     @default(false)
+  id                           String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  space_id                     String             @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  price_rule_id                String?            @db.Uuid
+  automatic_booking_enabled    Boolean            @default(false)
+  request_approval_at_capacity Boolean            @default(false)
+  advance_booking_enabled      Boolean            @default(false)
   advance_booking_value        Int?
   advance_booking_unit         String?
-  booking_notes_enabled        Boolean     @default(false)
+  booking_notes_enabled        Boolean            @default(false)
   booking_notes                String?
-  price_rule                   price_rule? @relation(fields: [price_rule_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  space                        space       @relation(fields: [space_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  app_notification             app_notification[]
+  price_rule                   price_rule?        @relation(fields: [price_rule_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  space                        space              @relation(fields: [space_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  booking                      booking[]
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -70,25 +92,28 @@ model audit_event {
   user          user?       @relation(fields: [actor_user_id], references: [user_id], onDelete: Restrict)
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model booking {
-  booking_id      BigInt         @id @unique @default(autoincrement())
-  user_id         BigInt
-  space_id        BigInt
-  expires_at      DateTime       @db.Timestamptz(6)
-  booking_type    booking_type   @default(instant)
-  status_code     booking_status @default(pending)
-  created_at      DateTime       @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime?      @default(now()) @db.Timestamptz(6)
-  area_id         BigInt
-  idempotency_key String         @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  arrival_time    DateTime?      @db.Timestamptz(6)
-  from            DateTime?      @db.Timestamptz(6)
-  to              DateTime?      @db.Timestamptz(6)
-  guest_count     BigInt
-  user            user           @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
-  transaction     transaction[]
+  id                String         @id(map: "booking_pkey1") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  space_id          String         @db.Uuid
+  space_name        String
+  area_id           String         @db.Uuid
+  area_name         String
+  booking_hours     BigInt
+  price_minor       BigInt?
+  currency          String         @default("PHP") @db.Char(3)
+  status            booking_status @default(confirmed)
+  created_at        DateTime       @default(now()) @db.Timestamptz(6)
+  user_auth_id      String         @db.Uuid
+  partner_auth_id   String?        @db.Uuid
+  area_max_capacity BigInt?
+  area              area           @relation(fields: [area_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "booking_area_fk")
+  space             space          @relation(fields: [space_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "booking_space_fk")
+  transaction       transaction[]
+
+  @@index([partner_auth_id, created_at(sort: Desc)], map: "idx_booking_partner_created")
+  @@index([space_id, created_at(sort: Desc)], map: "idx_booking_space_created")
+  @@index([user_auth_id, created_at(sort: Desc)], map: "idx_booking_user_created")
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -101,6 +126,7 @@ model bookmark {
   user        user     @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model chat_message {
   id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   room_id     String           @db.Uuid
@@ -114,6 +140,7 @@ model chat_message {
   @@index([room_id, created_at])
 }
 
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model chat_room {
   id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   space_id     String         @db.Uuid
@@ -192,7 +219,9 @@ model space {
   id                 String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   location           Unsupported("geography")?
   amenity            amenity[]
+  app_notification   app_notification[]
   area               area[]
+  booking            booking[]
   bookmark           bookmark[]
   chat_room          chat_room[]
   price_rule         price_rule[]
@@ -234,7 +263,7 @@ model space_image {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model transaction {
   transaction_id  BigInt    @id @unique @default(autoincrement())
-  booking_id      BigInt
+  booking_id      String    @db.Uuid
   is_live         Boolean   @default(false)
   created_at      DateTime  @default(now()) @db.Timestamptz(6)
   idempotency_key String    @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -244,7 +273,7 @@ model transaction {
   currency_iso3   String    @default("PHP") @db.Char(3)
   amount_minor    BigInt?
   fee_minor       BigInt?
-  booking         booking   @relation(fields: [booking_id], references: [booking_id], onDelete: NoAction, onUpdate: NoAction)
+  booking         booking   @relation(fields: [booking_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -263,7 +292,6 @@ model user {
   is_onboard   Boolean        @default(false)
   auth_user_id String         @unique @db.Uuid
   audit_event  audit_event[]
-  booking      booking[]
   bookmark     bookmark[]
   chat_message chat_message[]
   chat_room    chat_room[]
@@ -383,6 +411,13 @@ enum common_comment {
 
 enum gateway {
   paymongo
+}
+
+enum notification_type {
+  booking_confirmed
+  booking_received
+  message
+  system
 }
 
 enum user_role {

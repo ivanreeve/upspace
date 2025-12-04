@@ -41,6 +41,7 @@ const reviewDateFormatter = new Intl.DateTimeFormat('en-PH', {
 
 type ReviewsSectionProps = {
   spaceId: string;
+  canReview?: boolean;
 };
 
 function StarRatingSelector({
@@ -159,7 +160,10 @@ function ReviewCard({ review, }: { review: SpaceReview }) {
   );
 }
 
-export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
+export default function ReviewsSection({
+  spaceId,
+  canReview = true,
+}: ReviewsSectionProps) {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const {
@@ -187,6 +191,20 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isReviewsModalOpen, setIsReviewsModalOpen] = React.useState(false);
   const [selectedRatingFilter, setSelectedRatingFilter] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    if (!canReview) {
+      setIsDialogOpen(false);
+    }
+  }, [canReview]);
+
+  const handleDialogOpenChange = (open: boolean) => {
+    if (!canReview) {
+      setIsDialogOpen(false);
+      return;
+    }
+    setIsDialogOpen(open);
+  };
 
   React.useEffect(() => {
     if (!reviewTags) return;
@@ -218,6 +236,11 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormError(null);
+
+    if (!canReview) {
+      setFormError('Complete a booking before leaving a review.');
+      return;
+    }
 
     if (!rating) {
       setFormError('Please select a rating.');
@@ -313,9 +336,14 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
             </span>
           ) }
         </div>
-        <Dialog open={ isDialogOpen } onOpenChange={ setIsDialogOpen }>
+        <Dialog open={ isDialogOpen } onOpenChange={ handleDialogOpenChange }>
           <DialogTrigger asChild>
-            <Button type="button" variant="outline">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={ !canReview }
+              title={ !canReview ? 'Book this space to write a review' : undefined }
+            >
               <RiEditBoxLine className="size-4" aria-hidden="true" />
               Write a review
             </Button>
@@ -383,10 +411,15 @@ export default function ReviewsSection({ spaceId, }: ReviewsSectionProps) {
                 >
                   { createReviewMutation.isPending ? 'Submitting...' : 'Submit review' }
                 </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+        { !canReview && (
+          <p className="text-xs text-muted-foreground">
+            Book this space to share feedback with the community.
+          </p>
+        ) }
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(240px,0.9fr)_minmax(0,1.4fr)]">

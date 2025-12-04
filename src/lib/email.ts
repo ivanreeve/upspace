@@ -55,6 +55,15 @@ export type SendOtpEmailOptions = {
   validForMinutes?: number;
 };
 
+export type SendBookingEmailOptions = {
+  to: string;
+  spaceName: string;
+  areaName: string;
+  bookingHours: number;
+  price?: number | null;
+  link?: string | null;
+};
+
 export async function sendOtpEmail({
   to,
   otp,
@@ -142,6 +151,71 @@ export async function sendOtpEmail({
     from,
     to,
     subject: subject ?? `${brand} verification code`,
+    text,
+    html,
+  });
+}
+
+const BOOKING_PRICE_FORMATTER = new Intl.NumberFormat('en-PH', {
+  style: 'currency',
+  currency: 'PHP',
+  maximumFractionDigits: 0,
+});
+
+export async function sendBookingNotificationEmail({
+  to,
+  spaceName,
+  areaName,
+  bookingHours,
+  price,
+  link,
+}: SendBookingEmailOptions) {
+  if (!DEFAULT_FROM) {
+    throw new Error('EMAIL_FROM or EMAIL_SMTP_USER must be defined to send emails.');
+  }
+
+  const transporter = getTransporter();
+  const from = EMAIL_FROM_NAME ? `${EMAIL_FROM_NAME} <${DEFAULT_FROM}>` : DEFAULT_FROM;
+  const priceLabel =
+    typeof price === 'number'
+      ? `Total: ${BOOKING_PRICE_FORMATTER.format(price)}`
+      : 'Pricing confirmed';
+  const durationLabel = `Duration: ${bookingHours} hour${bookingHours === 1 ? '' : 's'}`;
+  const subject = `Booking confirmed for ${spaceName}`;
+  const ctaLink = link ?? `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/marketplace`;
+
+  const text = [
+    `Your booking at ${spaceName} is confirmed.`,
+    `Area: ${areaName}`,
+    durationLabel,
+    priceLabel,
+    `View booking: ${ctaLink}`
+  ].join('\n');
+
+  const html = `
+    <div style="font-family:'Inter','Segoe UI',system-ui,sans-serif;background-color:#f8f9fb;padding:24px;color:#111827;">
+      <div style="max-width:620px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+        <div style="background:#111827;color:#fff;padding:16px 20px;">
+          <h2 style="margin:0;font-size:18px;font-weight:700;">Booking confirmed</h2>
+        </div>
+        <div style="padding:20px;">
+          <p style="margin:0 0 8px;">Hi there,</p>
+          <p style="margin:0 0 16px;">Your booking at <strong>${spaceName}</strong> is confirmed.</p>
+          <div style="margin:0 0 12px;padding:12px 14px;border:1px solid #e5e7eb;border-radius:10px;background:#f9fafb;">
+            <p style="margin:0 0 6px;"><strong>Area:</strong> ${areaName}</p>
+            <p style="margin:0 0 6px;"><strong>${durationLabel}</strong></p>
+            <p style="margin:0;">${priceLabel}</p>
+          </div>
+          <a href="${ctaLink}" style="display:inline-block;margin-top:8px;padding:12px 16px;background:#2563eb;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;">View space</a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from,
+    to,
+    subject,
     text,
     html,
   });
