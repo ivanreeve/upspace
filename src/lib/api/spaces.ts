@@ -25,6 +25,7 @@ export type Space = {
   min_rate_price?: number | null;
   max_rate_price?: number | null;
   rate_time_unit?: string | null;
+  starting_price?: number | null;
   availability?: SpaceAvailabilitySlot[];
   lat?: number;
   long?: number;

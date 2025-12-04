@@ -74,7 +74,9 @@ export function SpaceCard({
     setIsSaved(Boolean(space.isBookmarked));
   }, [space.isBookmarked]);
 
-  const priceLabel = 'Pricing via rules';
+  const priceLabel = space.starting_price === null || space.starting_price === undefined
+    ? 'No Price'
+    : `From ${peso.format(space.starting_price)}`;
 
   const handleToggleSave = useCallback(async () => {
     if (isSaving) {

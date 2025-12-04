@@ -4,6 +4,8 @@ import { z } from 'zod';
 
 import { WEEKDAY_ORDER, type WeekdayName } from '@/data/spaces';
 import { prisma } from '@/lib/prisma';
+import type { PriceRuleDefinition } from '@/lib/pricing-rules';
+import { evaluatePriceRule } from '@/lib/pricing-rules-evaluator';
 import { updateSpaceLocationPoint } from '@/lib/spaces/location';
 import { richTextPlainTextLength, sanitizeRichText } from '@/lib/rich-text';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -182,6 +184,48 @@ const serializeAvailabilitySlots = (
   opens_at: formatTime(new Date(slot.opening)),
   closes_at: formatTime(new Date(slot.closing)),
 }));
+
+const STARTING_PRICE_DEFAULT_BOOKING_HOURS = 1;
+
+type AreaPricingRulePayload = {
+  price_rule: {
+    definition: PriceRuleDefinition | null;
+  } | null;
+};
+
+const computeStartingPriceFromAreas = (areas: AreaPricingRulePayload[]) => {
+  const prices: number[] = [];
+
+  for (const area of areas) {
+    const definition = area.price_rule?.definition as PriceRuleDefinition | null;
+    if (!definition) {
+      continue;
+    }
+
+    try {
+      const result = evaluatePriceRule(definition, { bookingHours: STARTING_PRICE_DEFAULT_BOOKING_HOURS, });
+      const price = result.price;
+      if (price === null) {
+        continue;
+      }
+
+      const numericPrice = Number(price);
+      if (!Number.isFinite(numericPrice) || numericPrice < 0) {
+        continue;
+      }
+
+      prices.push(numericPrice);
+    } catch {
+      // Ignore invalid pricing rule definitions
+    }
+  }
+
+  if (!prices.length) {
+    return null;
+  }
+
+  return Math.min(...prices);
+};
 
 const normalizeAvailability = (availability: SpaceCreateInput['availability']): AvailabilitySlot[] => {
   const slots: AvailabilitySlot[] = [];
@@ -596,6 +640,7 @@ mode: 'insensitive' as const,
           },
           orderBy: { day_of_week: 'asc' as const, },
         },
+        area: { select: { price_rule: { select: { definition: true, }, }, }, },
       },
     });
 
@@ -624,6 +669,12 @@ mode: 'insensitive' as const,
         average_rating: avg === null ? 0 : Number(avg),
         total_reviews: count,
       });
+    }
+
+    const startingPriceMap = new Map<string, number | null>();
+    for (const space of items) {
+      const startingPrice = computeStartingPriceFromAreas(space.area ?? []);
+      startingPriceMap.set(space.id, startingPrice);
     }
 
     let bookmarkLookupUserId: bigint | null = null;
@@ -683,6 +734,7 @@ mode: 'insensitive' as const,
         min_rate_price: null,
         max_rate_price: null,
         rate_time_unit: null,
+        starting_price: startingPriceMap.get(space.id) ?? null,
         availability: serializeAvailabilitySlots(space.space_availability),
         isBookmarked: bookmarkedSpaceIds?.has(space.id) ?? false,
         average_rating: ratingSummary.average_rating,
