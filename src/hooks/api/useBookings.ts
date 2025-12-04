@@ -128,3 +128,35 @@ export function useCreateBookingMutation() {
     },
   });
 }
+
+export function useBulkUpdateBookingStatusMutation() {
+  const authFetch = useAuthenticatedFetch();
+  const queryClient = useQueryClient();
+
+  return useMutation<BookingRecord[], Error, BulkUpdateBookingStatusInput>({
+    mutationFn: async (payload) => {
+      const response = await authFetch('/api/v1/bookings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+      }
+
+      const data = await response.json();
+      return (data?.data ?? []) as BookingRecord[];
+    },
+    onSuccess: (updatedBookings) => {
+      queryClient.setQueryData<BookingRecord[]>(
+        bookingKeys.partner(),
+        (existing) => mergeUpdatedBookings(existing, updatedBookings)
+      );
+      queryClient.setQueryData<BookingRecord[]>(
+        bookingKeys.user(),
+        (existing) => mergeUpdatedBookings(existing, updatedBookings)
+      );
+    },
+  });
+}

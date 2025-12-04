@@ -26,7 +26,7 @@ const bulkUpdateSchema = z.object({
     'checkedin',
     'checkedout',
     'completed',
-    'noshow',
+    'noshow'
   ] satisfies readonly BookingStatus[]),
 });
 
@@ -109,7 +109,7 @@ async function mapBookingsWithProfiles(rows: BookingRow[]): Promise<BookingRecor
 
   const customers = customerAuthIds.length
     ? await prisma.user.findMany({
-        where: { auth_user_id: { in: customerAuthIds }, },
+        where: { auth_user_id: { in: customerAuthIds, }, },
         select: {
           auth_user_id: true,
           first_name: true,
@@ -195,9 +195,7 @@ export async function PATCH(req: NextRequest) {
 
   const dbUser = await prisma.user.findFirst({
     where: { auth_user_id: authData.user.id, },
-    select: {
-      role: true,
-    },
+    select: { role: true, },
   });
 
   if (!dbUser || (dbUser.role !== 'partner' && dbUser.role !== 'admin')) {
