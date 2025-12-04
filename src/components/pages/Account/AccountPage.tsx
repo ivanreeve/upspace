@@ -117,9 +117,6 @@ export default function AccountPage() {
                 <p className="text-sm text-muted-foreground">
                   Disabling your account locks your profile and removes it from public search until you reactivate.
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  This is different from deleting your account—deactivation is temporary and reversible, while deletion permanently removes your data.
-                </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <Button
@@ -131,9 +128,6 @@ export default function AccountPage() {
                 >
                   { isDeactivating ? 'Deactivating...' : 'Deactivate account' }
                 </Button>
-                <p className="text-xs text-muted-foreground">
-                  Reactivate instantly by signing back in.
-                </p>
               </div>
             </CardContent>
           </Card>
