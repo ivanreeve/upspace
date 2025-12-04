@@ -228,9 +228,14 @@
   --ai-search-gradient: linear-gradient(
     120deg,
     var(--secondary) 0%,
-    #28a745 35%,
-    #ffc107 60%,
-    #ff8c00 85%,
+    var(--secondary) 10%,
+    #2fbf60 22%,
+    #28a745 32%,
+    #f9c642 48%,
+    #ffc107 58%,
+    #ff9a2f 72%,
+    #ff8c00 82%,
+    #ff7d1a 92%,
     #ff6f00 100%
   );
 }
@@ -275,8 +280,8 @@
   position: absolute;
   inset: 0;
   background-image: var(--ai-search-gradient);
-  background-size: 250% 100%;
-  background-position: calc(-150% + 4px) 0;
+  background-size: 300% 120%;
+  background-position: calc(-200% + 4px) 0;
   background-repeat: no-repeat;
   mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%20fill%3D'none'%20stroke%3D'white'%20stroke-width%3D'2'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D'M11.017%202.814a1%201%200%200%201%201.966%200l1.051%205.558a2%202%200%200%200%201.594%201.594l5.558%201.051a1%201%200%200%201%200%201.966l-5.558%201.051a2%202%200%200%200-1.594%201.594l-1.051%205.558a1%201%200%200%201-1.966%200l-1.051-5.558a2%202%200%200%200-1.594-1.594l-5.558-1.051a1%201%200%200%201%200-1.966l5.558-1.051a2%202%200%200%200%201.594-1.594z'%2F%3E%3Cpath%20d%3D'M20%202v4'%2F%3E%3Cpath%20d%3D'M22%204h-4'%2F%3E%3Ccircle%20cx%3D'4'%20cy%3D'20'%20r%3D'2'%2F%3E%3C%2Fsvg%3E");
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%20fill%3D'none'%20stroke%3D'white'%20stroke-width%3D'2'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D'M11.017%202.814a1%201%200%200%201%201.966%200l1.051%205.558a2%202%200%200%200%201.594%201.594l5.558%201.051a1%201%200%200%201%200%201.966l-5.558%201.051a2%202%200%200%200-1.594%201.594l-1.051%205.558a1%201%200%200%201-1.966%200l-1.051-5.558a2%202%200%200%200-1.594-1.594l-5.558-1.051a1%201%200%200%201%200-1.966l5.558-1.051a2%202%200%200%200%201.594-1.594z'%2F%3E%3Cpath%20d%3D'M20%202v4'%2F%3E%3Cpath%20d%3D'M22%204h-4'%2F%3E%3Ccircle%20cx%3D'4'%20cy%3D'20'%20r%3D'2'%2F%3E%3C%2Fsvg%3E");
@@ -286,7 +291,7 @@
   -webkit-mask-repeat: no-repeat;
   mask-position: center;
   -webkit-mask-position: center;
-  animation: aiSearchIconShimmer 1.25s ease-out 1 forwards;
+  animation: aiSearchIconShimmer 1.35s ease-in-out 3 forwards;
   pointer-events: none;
   z-index: 1;
 }
@@ -300,13 +305,13 @@
 
 @keyframes aiSearchIconShimmer {
   0% {
-    background-position: calc(-150% + 4px) 0;
+    background-position: calc(-200% + 4px) 0;
   }
-  70% {
-    background-position: calc(110% + 4px) 0;
+  50% {
+    background-position: calc(0% + 4px) 0;
   }
   100% {
-    background-position: calc(110% + 4px) 0;
+    background-position: calc(200% + 4px) 0;
   }
 }
 
