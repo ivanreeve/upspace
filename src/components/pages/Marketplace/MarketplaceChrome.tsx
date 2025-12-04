@@ -332,6 +332,7 @@ type SidebarLinkItemProps = {
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
   tooltip?: string
   iconProps?: React.SVGProps<SVGSVGElement>
+  className?: string
 };
 
 function SidebarLinkItem({
@@ -340,12 +341,24 @@ function SidebarLinkItem({
   icon: Icon,
   tooltip,
   iconProps,
+  className,
 }: SidebarLinkItemProps) {
+  const {
+    className: iconClassName,
+    ...restIconProps
+  } = iconProps ?? {};
+
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild tooltip={ tooltip }>
+      <SidebarMenuButton asChild tooltip={ tooltip } className={ className }>
         <Link href={ href }>
-          <Icon className="size-4" aria-hidden="true" { ...iconProps } />
+          <span className="sidebar-link-icon" aria-hidden="true">
+            <Icon
+              className={ cn('size-4', iconClassName) }
+              aria-hidden="true"
+              { ...restIconProps }
+            />
+          </span>
           <span data-sidebar-label>{ label }</span>
         </Link>
       </SidebarMenuButton>
@@ -697,6 +710,7 @@ export function MarketplaceChrome({
   const isCustomerRole = effectiveRole === 'customer';
   const isPartnerRole = effectiveRole === 'partner';
   const isAdminRole = effectiveRole === 'admin';
+  const shouldShowAiSearch = isCustomerRole || isPartnerRole || isAdminRole;
   const shouldShowNotifications = isCustomerRole || isPartnerRole;
   const resolvedMessageHref = messageHref ?? '/messages';
   const pathname = usePathname();
@@ -771,7 +785,7 @@ icon: FiBookmark,
 });
         actions.push({
  label: 'AI Search',
-href: '/ai-search',
+href: '/marketplace/ai-search',
 icon: LuSparkles, 
 });
       } else {
@@ -870,12 +884,13 @@ icon: FiMessageSquare,
                         ) : null }
                       </SidebarMenuButton>
                     </SidebarMenuItem>
-                    { isCustomerRole && (
+                    { shouldShowAiSearch && (
                       <SidebarLinkItem
-                        href="/ai-search"
+                        href="/marketplace/ai-search"
                         label="AI Search"
                         icon={ LuSparkles }
                         tooltip="AI Search"
+                        className="ai-search-shimmer"
                       />
                     ) }
                     { isCustomerRole && (

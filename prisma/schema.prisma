@@ -104,6 +104,7 @@ model booking {
   currency          String         @default("PHP") @db.Char(3)
   status            booking_status @default(confirmed)
   created_at        DateTime       @default(now()) @db.Timestamptz(6)
+  expires_at        DateTime?      @db.Timestamptz(6)
   user_auth_id      String         @db.Uuid
   partner_auth_id   String?        @db.Uuid
   area_max_capacity BigInt?

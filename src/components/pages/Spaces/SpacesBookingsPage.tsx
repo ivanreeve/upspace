@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useId, useMemo } from 'react';
 import { FiAlertCircle, FiArrowUpRight } from 'react-icons/fi';
 
 import { usePartnerBookingsQuery } from '@/hooks/api/useBookings';
@@ -19,6 +19,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableCaption,
   TableHead,
   TableHeader,
   TableRow
@@ -43,6 +44,8 @@ export function SpacesBookingsPage() {
     isError,
     error,
   } = usePartnerBookingsQuery();
+  const headingId = useId();
+  const descriptionId = useId();
 
   const areaBookingCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -214,8 +217,10 @@ export function SpacesBookingsPage() {
       <Card className="rounded-3xl border">
         <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <CardTitle>Area capacity overview</CardTitle>
-            <CardDescription>Live bookings with per-area capacity signals.</CardDescription>
+            <CardTitle id={ headingId }>Area capacity overview</CardTitle>
+            <CardDescription id={ descriptionId }>
+              Live bookings with per-area capacity signals.
+            </CardDescription>
           </div>
           <Button
             type="button"
@@ -231,7 +236,10 @@ export function SpacesBookingsPage() {
           </Button>
         </CardHeader>
         <CardContent className="overflow-x-auto">
-          <Table>
+          <Table aria-labelledby={ headingId } aria-describedby={ descriptionId }>
+            <TableCaption className="sr-only">
+              Area capacity overview data table
+            </TableCaption>
             <TableHeader>
               <TableRow>
                 <TableHead>Space / Area</TableHead>

@@ -44,6 +44,17 @@ export async function GET(req: NextRequest, { params, }: Params) {
   const limit = limitParam ? Number.parseInt(limitParam, 10) : 50;
   const safeLimit = Number.isFinite(limit) && limit > 0 && limit <= 100 ? limit : 50;
 
+  const supabase = await createSupabaseServerClient();
+  const { data: authData, } = await supabase.auth.getUser();
+  const viewerAuthUserId = authData?.user?.id ?? null;
+  const viewerUserRecord = viewerAuthUserId
+    ? await prisma.user.findFirst({
+        where: { auth_user_id: viewerAuthUserId, },
+        select: { user_id: true, },
+      })
+    : null;
+  const viewerUserId = viewerUserRecord?.user_id ?? null;
+
   const [reviewSummary, ratingBreakdown, reviews] = await prisma.$transaction([
     prisma.review.aggregate({
       where: { space_id, },
@@ -145,6 +156,18 @@ export async function GET(req: NextRequest, { params, }: Params) {
     return 'Guest';
   };
 
+  const viewerHasReviewed = viewerUserId
+    ? Boolean(
+      await prisma.review.findFirst({
+        where: {
+          space_id,
+          user_id: viewerUserId,
+        },
+        select: { id: true, },
+      })
+    )
+    : false;
+
   const payload = {
     summary: {
       average_rating: averageRating,
@@ -168,6 +191,7 @@ export async function GET(req: NextRequest, { params, }: Params) {
         avatar: review.user?.avatar ?? null,
       },
     })),
+    viewer_reviewed: viewerHasReviewed,
   };
 
   return NextResponse.json({ data: payload, });

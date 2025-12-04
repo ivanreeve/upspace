@@ -192,14 +192,17 @@ export default function ReviewsSection({
   const [isReviewsModalOpen, setIsReviewsModalOpen] = React.useState(false);
   const [selectedRatingFilter, setSelectedRatingFilter] = React.useState<number | null>(null);
 
+  const viewerHasReviewed = data?.viewer_reviewed ?? false;
+  const canSubmitReview = canReview && !viewerHasReviewed;
+
   React.useEffect(() => {
-    if (!canReview) {
+    if (!canSubmitReview) {
       setIsDialogOpen(false);
     }
-  }, [canReview]);
+  }, [canSubmitReview]);
 
   const handleDialogOpenChange = (open: boolean) => {
-    if (!canReview) {
+    if (!canSubmitReview) {
       setIsDialogOpen(false);
       return;
     }
@@ -239,6 +242,11 @@ export default function ReviewsSection({
 
     if (!canReview) {
       setFormError('Complete a booking before leaving a review.');
+      return;
+    }
+
+    if (viewerHasReviewed) {
+      setFormError('You can only leave one review per space.');
       return;
     }
 
@@ -336,82 +344,88 @@ export default function ReviewsSection({
             </span>
           ) }
         </div>
-        { canReview && (
-          <Dialog open={ isDialogOpen } onOpenChange={ handleDialogOpenChange }>
-            <DialogTrigger asChild>
-              <Button type="button" variant="outline">
-                <RiEditBoxLine className="size-4" aria-hidden="true" />
-                Write a review
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>Write a review</DialogTitle>
-                <DialogDescription>
-                  Share your experience to help others decide if this space is right for them.
-                </DialogDescription>
-              </DialogHeader>
-              <form className="space-y-4" onSubmit={ handleSubmit }>
-                <div className="mt-4 flex flex-col items-center space-y-3">
-                  <p className="text-xl font-semibold text-foreground font-sf">Your rating</p>
-                  <StarRatingSelector value={ rating } onChange={ setRating } />
-                </div>
+        <div className="flex flex-col gap-1">
+          { canSubmitReview ? (
+            <Dialog open={ isDialogOpen } onOpenChange={ handleDialogOpenChange }>
+              <DialogTrigger asChild>
+                <Button type="button" variant="outline">
+                  <RiEditBoxLine className="size-4" aria-hidden="true" />
+                  Write a review
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Write a review</DialogTitle>
+                  <DialogDescription>
+                    Share your experience to help others decide if this space is right for them.
+                  </DialogDescription>
+                </DialogHeader>
+                <form className="space-y-4" onSubmit={ handleSubmit }>
+                  <div className="mt-4 flex flex-col items-center space-y-3">
+                    <p className="text-xl font-semibold text-foreground font-sf">Your rating</p>
+                    <StarRatingSelector value={ rating } onChange={ setRating } />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="description-modal">Your experience</Label>
-                  <Textarea
-                    id="description-modal"
-                    value={ description }
-                    onChange={ (event) => setDescription(event.target.value) }
-                    placeholder="Share what you liked, what could be improved, or any tips for others."
-                    aria-label="Review description"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="mb-4 block">Quick tags (optional)</Label>
-                  { isLoadingReviewTags ? (
-                    <div className="flex flex-wrap gap-2">
-                      { Array.from({ length: 6, }).map((_, index) => (
-                        <Skeleton key={ index } className="h-8 w-24 rounded-full" />
-                      )) }
-                    </div>
-                  ) : isReviewTagsError ? (
-                    <p className="text-sm text-muted-foreground">
-                      Quick tags are unavailable right now.
-                    </p>
-                  ) : availableTags.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No quick tags available.
-                    </p>
-                  ) : (
-                    <ReviewTagsSelector
-                      tags={ availableTags }
-                      selected={ selectedTags }
-                      onChange={ setSelectedTags }
+                  <div className="space-y-2">
+                    <Label htmlFor="description-modal">Your experience</Label>
+                    <Textarea
+                      id="description-modal"
+                      value={ description }
+                      onChange={ (event) => setDescription(event.target.value) }
+                      placeholder="Share what you liked, what could be improved, or any tips for others."
+                      aria-label="Review description"
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="mb-4 block">Quick tags (optional)</Label>
+                    { isLoadingReviewTags ? (
+                      <div className="flex flex-wrap gap-2">
+                        { Array.from({ length: 6, }).map((_, index) => (
+                          <Skeleton key={ index } className="h-8 w-24 rounded-full" />
+                        )) }
+                      </div>
+                    ) : isReviewTagsError ? (
+                      <p className="text-sm text-muted-foreground">
+                        Quick tags are unavailable right now.
+                      </p>
+                    ) : availableTags.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        No quick tags available.
+                      </p>
+                    ) : (
+                      <ReviewTagsSelector
+                        tags={ availableTags }
+                        selected={ selectedTags }
+                        onChange={ setSelectedTags }
+                      />
+                    ) }
+                  </div>
+
+                  { formError && (
+                    <p className="text-sm text-destructive" role="alert">
+                      { formError }
+                    </p>
                   ) }
-                </div>
 
-                { formError && (
-                  <p className="text-sm text-destructive" role="alert">
-                    { formError }
-                  </p>
-                ) }
-
-                <DialogFooter>
-                  <Button
-                    type="submit"
-                    disabled={ createReviewMutation.isPending }
-                    aria-label="Submit review"
-                  >
-                    { createReviewMutation.isPending ? 'Submitting...' : 'Submit review' }
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        ) }
+                  <DialogFooter>
+                    <Button
+                      type="submit"
+                      disabled={ createReviewMutation.isPending }
+                      aria-label="Submit review"
+                    >
+                      { createReviewMutation.isPending ? 'Submitting...' : 'Submit review' }
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          ) : viewerHasReviewed ? (
+            <p className="text-sm text-muted-foreground">
+              You&apos;ve already shared a review for this space.
+            </p>
+          ) : null }
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(240px,0.9fr)_minmax(0,1.4fr)]">

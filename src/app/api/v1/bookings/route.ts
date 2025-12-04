@@ -35,11 +35,11 @@ const notFoundResponse = NextResponse.json(
   { status: 404, }
 );
 
-function normalizeCapacity(value: bigint | number | null | undefined): number | null {
+function normalizeNumeric(value: bigint | number | null | undefined): number | null {
   if (value === null || typeof value === 'undefined') {
     return null;
   }
-  const numeric = Number(value);
+  const numeric = typeof value === 'bigint' ? Number(value) : value;
   return Number.isFinite(numeric) ? numeric : null;
 }
 
@@ -51,27 +51,30 @@ const mapBookingRecord = (row: {
   space_name: string;
   area_id: string;
   area_name: string;
-  booking_hours: number;
-  price_minor: number | null;
+  booking_hours: bigint | number;
+  price_minor: bigint | number | null;
   currency: string;
   status: BookingRecord['status'];
   created_at: Date;
   user_auth_id: string;
   partner_auth_id: string | null;
-  area_max_capacity: number | null;
+  area_max_capacity: bigint | number | null;
 }): BookingRecord => ({
   id: row.id,
   spaceId: row.space_id,
   spaceName: row.space_name,
   areaId: row.area_id,
   areaName: row.area_name,
-  bookingHours: row.booking_hours,
-  price: typeof row.price_minor === 'number' ? row.price_minor / BOOKING_PRICE_MINOR_FACTOR : null,
+  bookingHours: normalizeNumeric(row.booking_hours) ?? 0,
+  price: (() => {
+    const priceMinor = normalizeNumeric(row.price_minor);
+    return typeof priceMinor === 'number' ? priceMinor / BOOKING_PRICE_MINOR_FACTOR : null;
+  })(),
   status: row.status,
   createdAt: row.created_at.toISOString(),
   customerAuthId: row.user_auth_id,
   partnerAuthId: row.partner_auth_id,
-  areaMaxCapacity: row.area_max_capacity,
+  areaMaxCapacity: normalizeNumeric(row.area_max_capacity),
 });
 
 export async function GET() {
@@ -184,7 +187,7 @@ export async function POST(req: NextRequest) {
   }
 
   const partnerAuthId = area.space.user?.auth_user_id ?? null;
-  const areaMaxCapacity = normalizeCapacity(area.max_capacity);
+  const areaMaxCapacity = normalizeNumeric(area.max_capacity);
   const priceMinor =
     typeof parsed.data.price === 'number'
       ? Math.round(parsed.data.price * BOOKING_PRICE_MINOR_FACTOR)

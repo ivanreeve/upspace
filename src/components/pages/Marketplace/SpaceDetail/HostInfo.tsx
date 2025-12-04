@@ -37,9 +37,6 @@ export default function HostInfo({
     : hostName?.trim()
       ? `${hostName.trim()}'s avatar`
       : 'Host avatar';
-  const disabledReason = isMessagingDisabled
-    ? messagingDisabledReason ?? 'Sign in to message the host'
-    : undefined;
 
   return (
     <section className="flex flex-wrap items-center justify-between gap-4 rounded-xs border px-6 py-5 shadow-sm md:flex-row md:items-center md:justify-between">
@@ -59,18 +56,12 @@ export default function HostInfo({
         type="button"
         onClick={ () => onMessageHost?.() }
         disabled={ isMessagingDisabled }
-        title={ disabledReason }
         aria-label="Message host"
         className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground shrink-0"
       >
         <FiMessageSquare className="size-4" aria-hidden="true" />
         <span className="hidden sm:inline">Message Now</span>
       </Button>
-      { disabledReason ? (
-        <p className="w-full text-xs text-muted-foreground sm:w-auto sm:text-right">
-          { disabledReason }
-        </p>
-      ) : null }
     </section>
   );
 }

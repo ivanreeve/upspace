@@ -23,6 +23,7 @@ export type SpaceReviewSummary = {
 export type SpaceReviewsResponse = {
   summary: SpaceReviewSummary;
   reviews: SpaceReview[];
+  viewer_reviewed: boolean;
 };
 
 export type CreateSpaceReviewPayload = {

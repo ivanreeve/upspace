@@ -83,12 +83,6 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
   );
   const canMessageHost = !isGuest && hasConfirmedBooking;
   const canLeaveReview = hasConfirmedBooking;
-  const messagingDisabledReason = useMemo(() => {
-    if (isGuest) return 'Sign in to message the host';
-    if (isBookingsLoading) return 'Checking booking access...';
-    if (!hasConfirmedBooking) return 'Book this space to message the host';
-    return undefined;
-  }, [hasConfirmedBooking, isBookingsLoading, isGuest]);
 
   const locationParts = [space.city, space.region, space.countryCode].filter(Boolean);
   const location = locationParts.length > 0 ? locationParts.join(', ') : 'Global City, Taguig';
@@ -378,10 +372,9 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
         isPricingLoading ? (
           <div className="flex items-center justify-center gap-3 rounded-lg border border-dashed border-border/70 bg-muted/40 px-4 py-6">
             <CgSpinner className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />
-            <div className="space-y-1 text-center">
-              <p className="text-sm font-semibold text-foreground">Computing pricing data...</p>
-              <p className="text-xs text-muted-foreground">Applying { selectedArea?.pricingRuleName ?? 'pricing rules' }.</p>
-            </div>
+          <div className="space-y-1 text-center">
+            <p className="text-sm font-semibold text-foreground">Computing pricing data...</p>
+          </div>
           </div>
         ) : activePriceRule ? (
           <div className="space-y-5">
@@ -564,7 +557,6 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
           avatarUrl={ space.heroImageUrl ?? space.hostAvatarUrl }
           onMessageHost={ canMessageHost ? handleOpenChat : undefined }
           isMessagingDisabled={ !canMessageHost }
-          messagingDisabledReason={ messagingDisabledReason }
           messageButtonRef={ messageHostButtonRef }
         />
 
