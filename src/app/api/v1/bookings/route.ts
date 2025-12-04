@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { sendBookingNotificationEmail } from '@/lib/email';
-import type { BookingRecord } from '@/lib/bookings/types';
+import type { BookingRecord, BookingStatus } from '@/lib/bookings/types';
 import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -13,6 +13,21 @@ const createBookingSchema = z.object({
   areaId: z.string().uuid(),
   bookingHours: z.number().int().min(1).max(24),
   price: z.number().nonnegative().nullable().optional(),
+});
+
+const bulkUpdateSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1),
+  status: z.enum([
+    'confirmed',
+    'pending',
+    'cancelled',
+    'rejected',
+    'expired',
+    'checkedin',
+    'checkedout',
+    'completed',
+    'noshow',
+  ] satisfies readonly BookingStatus[]),
 });
 
 const unauthorizedResponse = NextResponse.json(
@@ -77,6 +92,47 @@ const mapBookingRecord = (row: {
   areaMaxCapacity: normalizeNumeric(row.area_max_capacity),
 });
 
+type BookingRow = Parameters<typeof mapBookingRecord>[0];
+
+const formatFullName = (values: { first_name: string | null; last_name: string | null } | undefined) => {
+  const name = [values?.first_name, values?.last_name].filter(Boolean).join(' ').trim();
+  return name.length > 0 ? name : null;
+};
+
+async function mapBookingsWithProfiles(rows: BookingRow[]): Promise<BookingRecord[]> {
+  if (rows.length === 0) {
+    return [];
+  }
+
+  const baseBookings = rows.map(mapBookingRecord);
+  const customerAuthIds = Array.from(new Set(rows.map((row) => row.user_auth_id)));
+
+  const customers = customerAuthIds.length
+    ? await prisma.user.findMany({
+        where: { auth_user_id: { in: customerAuthIds }, },
+        select: {
+          auth_user_id: true,
+          first_name: true,
+          last_name: true,
+          handle: true,
+        },
+      })
+    : [];
+
+  const customerLookup = new Map(
+    customers.map((customer) => [customer.auth_user_id, customer])
+  );
+
+  return baseBookings.map((booking) => {
+    const profile = customerLookup.get(booking.customerAuthId);
+    return {
+      ...booking,
+      customerHandle: profile?.handle ?? null,
+      customerName: formatFullName(profile),
+    };
+  });
+}
+
 export async function GET() {
   const supabase = await createSupabaseServerClient();
   const {
@@ -115,7 +171,77 @@ export async function GET() {
     orderBy: { created_at: 'desc', },
   });
 
-  const bookings = rows.map(mapBookingRecord);
+  const bookings = await mapBookingsWithProfiles(rows);
+  return NextResponse.json({ data: bookings, });
+}
+
+export async function PATCH(req: NextRequest) {
+  const body = await req.json().catch(() => null);
+  const parsed = bulkUpdateSchema.safeParse(body ?? {});
+
+  if (!parsed.success) {
+    return invalidPayloadResponse;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: authData,
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !authData?.user) {
+    return unauthorizedResponse;
+  }
+
+  const dbUser = await prisma.user.findFirst({
+    where: { auth_user_id: authData.user.id, },
+    select: {
+      role: true,
+    },
+  });
+
+  if (!dbUser || (dbUser.role !== 'partner' && dbUser.role !== 'admin')) {
+    return forbiddenResponse;
+  }
+
+  const partnerFilter =
+    dbUser.role === 'partner'
+      ? { partner_auth_id: authData.user.id, }
+      : {};
+
+  const rows = await prisma.booking.findMany({
+    where: {
+      id: { in: parsed.data.ids, },
+      ...partnerFilter,
+    },
+  });
+
+  if (!rows.length) {
+    return NextResponse.json(
+      { error: 'No bookings found to update.', },
+      { status: 404, }
+    );
+  }
+
+  const targetIds = rows.map((row) => row.id);
+
+  await prisma.booking.updateMany({
+    where: {
+      id: { in: targetIds, },
+      ...partnerFilter,
+    },
+    data: { status: parsed.data.status, },
+  });
+
+  const updatedRows = await prisma.booking.findMany({
+    where: {
+      id: { in: targetIds, },
+      ...partnerFilter,
+    },
+    orderBy: { created_at: 'desc', },
+  });
+
+  const bookings = await mapBookingsWithProfiles(updatedRows);
   return NextResponse.json({ data: bookings, });
 }
 
@@ -215,7 +341,14 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  const booking = mapBookingRecord(bookingRow);
+  const booking = {
+    ...mapBookingRecord(bookingRow),
+    customerHandle: dbUser.handle ?? null,
+    customerName: formatFullName({
+      first_name: dbUser.first_name ?? null,
+      last_name: dbUser.last_name ?? null,
+    }),
+  };
   const bookingHref = `/marketplace/${booking.spaceId}`;
 
   await prisma.app_notification.create({

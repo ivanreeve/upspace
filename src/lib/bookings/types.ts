@@ -22,4 +22,6 @@ export type BookingRecord = {
   customerAuthId: string;
   partnerAuthId: string | null;
   areaMaxCapacity: number | null;
+  customerHandle: string | null;
+  customerName: string | null;
 };

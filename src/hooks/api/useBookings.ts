@@ -7,7 +7,7 @@ import {
   type UseQueryOptions
 } from '@tanstack/react-query';
 
-import type { BookingRecord } from '@/lib/bookings/types';
+import type { BookingRecord, BookingStatus } from '@/lib/bookings/types';
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
 
 const bookingKeys = {
@@ -29,6 +29,18 @@ const parseErrorMessage = async (response: Response) => {
     // ignore
   }
   return 'Something went wrong. Please try again.';
+};
+
+const mergeUpdatedBookings = (
+  existing: BookingRecord[] | undefined,
+  updates: BookingRecord[]
+) => {
+  if (!existing) {
+    return existing;
+  }
+
+  const updateLookup = new Map(updates.map((booking) => [booking.id, booking]));
+  return existing.map((booking) => updateLookup.get(booking.id) ?? booking);
 };
 
 async function fetchBookings(authFetch: ReturnType<typeof useAuthenticatedFetch>): Promise<BookingRecord[]> {
@@ -70,6 +82,11 @@ type CreateBookingInput = {
   areaId: string;
   bookingHours: number;
   price?: number | null;
+};
+
+type BulkUpdateBookingStatusInput = {
+  ids: string[];
+  status: BookingStatus;
 };
 
 export function useCreateBookingMutation() {
