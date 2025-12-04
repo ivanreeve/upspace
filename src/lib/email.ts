@@ -220,3 +220,59 @@ export async function sendBookingNotificationEmail({
     html,
   });
 }
+
+export type SendDeactivationRejectionEmailOptions = {
+  to: string;
+  reason: string;
+  name?: string;
+};
+
+export async function sendDeactivationRejectionEmail({
+  to,
+  reason,
+  name,
+}: SendDeactivationRejectionEmailOptions) {
+  if (!DEFAULT_FROM) {
+    throw new Error('EMAIL_FROM or EMAIL_SMTP_USER must be defined to send emails.');
+  }
+
+  const transporter = getTransporter();
+  const from = EMAIL_FROM_NAME ? `${EMAIL_FROM_NAME} <${DEFAULT_FROM}>` : DEFAULT_FROM;
+  const brand = process.env.NEXT_PUBLIC_APP_NAME ?? 'UpSpace';
+  const safeName = (name && name.trim()) || 'UpSpace member';
+  const validatedReason = reason.trim() || 'The request could not be granted.';
+
+  const subject = `${brand} deactivation request update`;
+  const text = `Hi ${safeName},\n\nThanks for reaching out about deactivating your account. After reviewing your request, we are unable to process it at this time for the following reason:\n\n${validatedReason}\n\nIf you have other questions, feel free to contact support.\n\n— The ${brand} team`;
+  const html = `
+    <div style="font-family:'Inter','Segoe UI',system-ui,sans-serif;background-color:#f8f9fb;padding:24px;color:#111827;">
+      <div style="max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+        <div style="background:#111827;color:#fff;padding:16px 20px;">
+          <h2 style="margin:0;font-size:20px;font-weight:700;">Deactivation request update</h2>
+        </div>
+        <div style="padding:20px 24px 28px;">
+          <p style="margin:0 0 1rem;">Hi ${safeName},</p>
+          <p style="margin:0 0 1rem;">
+            We reviewed your deactivation request and were unable to process it at this time for the following reason:
+          </p>
+          <p style="margin:0 0 1rem;font-weight:600;color:#dc2626;">${validatedReason}</p>
+          <p style="margin:0 0 1rem;">
+            If you believe this is an error or would like to share more context, please contact support.
+          </p>
+          <p style="margin:0;">Thanks for being part of ${brand}.</p>
+        </div>
+        <div style="background:#f3f4f6;padding:16px 20px;color:#6b7280;font-size:12px;text-align:center;">
+          © ${new Date().getFullYear()} ${brand}. All rights reserved.
+        </div>
+      </div>
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from,
+    to,
+    subject,
+    text,
+    html,
+  });
+}

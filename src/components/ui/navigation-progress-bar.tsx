@@ -158,7 +158,7 @@ export function NavigationProgressBar() {
         <div
           role="status"
           aria-live="polite"
-          className="h-full bg-secondary shadow-[0_0_10px_rgba(15,23,42,0.35)] transition-[width] duration-200 ease-out"
+          className="h-full shadow-[0_0_10px_rgba(15,23,42,0.35)] transition-[width] duration-200 ease-out shimmer-progress-bar"
           style={ progressStyle }
         />
       </div>

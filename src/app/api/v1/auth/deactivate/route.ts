@@ -1,11 +1,25 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 const DEACTIVATION_METADATA_KEY = 'deactivation_requested_at';
 
-export async function POST() {
+const deactivationReasonSchema = z.enum([
+  'not_using',
+  'pricing',
+  'privacy',
+  'switching',
+  'other'
+]);
+
+const requestBodySchema = z.object({
+  reason_category: deactivationReasonSchema,
+  custom_reason: z.string().max(1000).optional(),
+});
+
+export async function POST(req: NextRequest) {
   try {
     const supabase = await createSupabaseServerClient();
     const {
@@ -42,9 +56,58 @@ export async function POST() {
       );
     }
 
-    await prisma.user.update({
-      where: { auth_user_id: authUser.id, },
-      data: { is_disabled: true, },
+    const payload = await req.json().catch(() => ({}));
+    const parsed = requestBodySchema.safeParse(payload);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { message: 'Please select a reason for deactivating your account.', },
+        { status: 400, }
+      );
+    }
+
+    const {
+ reason_category, custom_reason, 
+} = parsed.data;
+    const trimmedReason = custom_reason?.trim() ?? null;
+
+    if (reason_category === 'other' && !trimmedReason) {
+      return NextResponse.json(
+        { message: 'Please share a little more about why you are leaving.', },
+        { status: 400, }
+      );
+    }
+
+    const email = authUser.email;
+    if (!email) {
+      return NextResponse.json(
+        { message: 'Unable to retrieve your email address.', },
+        { status: 400, }
+      );
+    }
+
+    const hasPendingRequest = await prisma.deactivation_request.findFirst({
+      where: {
+        auth_user_id: authUser.id,
+        status: 'pending',
+      },
+    });
+
+    if (hasPendingRequest) {
+      return NextResponse.json(
+        { message: 'You already have a pending deactivation request in review.', },
+        { status: 400, }
+      );
+    }
+
+    await prisma.deactivation_request.create({
+      data: {
+        user_id: existingUser.user_id,
+        auth_user_id: authUser.id,
+        email,
+        reason_category,
+        custom_reason: trimmedReason,
+      },
     });
 
     const metadataPayload = JSON.stringify({ [DEACTIVATION_METADATA_KEY]: new Date().toISOString(), });
@@ -55,7 +118,7 @@ export async function POST() {
       WHERE id = ${authUser.id}::uuid
     `;
 
-    return NextResponse.json({ status: 'deactivated', });
+    return NextResponse.json({ status: 'requested', });
   } catch (error) {
     console.error('Failed to deactivate account', error);
     return NextResponse.json(

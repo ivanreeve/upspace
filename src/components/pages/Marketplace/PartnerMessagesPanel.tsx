@@ -180,7 +180,7 @@ export function PartnerMessagesPanel() {
     }
 
     return (
-      <ScrollArea className="h-[60vh] min-h-[50vh] sm:flex-1 sm:h-full sm:min-h-0 rounded-2xl border border-border/60 bg-background/80">
+      <ScrollArea className="h-full min-h-0 rounded-2xl border border-border/60 bg-background/80">
         <div className="space-y-3 px-4 py-3">
           { messages.map((message) => {
             const isCustomerMessage = message.senderRole === 'customer';
@@ -327,14 +327,14 @@ export function PartnerMessagesPanel() {
               <Badge variant="outline">Live</Badge>
             </div>
           </CardHeader>
-          <CardContent className="flex flex-1 min-h-0 flex-col gap-4 overflow-hidden">
-            <div className="flex-1 min-h-0">
-              { renderMessages() }
-            </div>
-            { activeRoom ? (
-              <form className="space-y-3" onSubmit={ handleSend } noValidate>
-                <Textarea
-                  value={ draft }
+        <CardContent className="flex flex-1 min-h-0 flex-col gap-4 overflow-hidden">
+          <div className="flex-1 min-h-0">
+            { renderMessages() }
+          </div>
+          { activeRoom ? (
+            <form className="space-y-3 mt-auto" onSubmit={ handleSend } noValidate>
+              <Textarea
+                value={ draft }
                   onChange={ (event) => setDraft(event.target.value) }
                   placeholder="Reply to the customer…"
                   aria-label="Reply to conversation"
@@ -351,13 +351,13 @@ export function PartnerMessagesPanel() {
                     <span>{ sendMessage.isPending ? 'Sending…' : 'Send reply' }</span>
                   </Button>
                 </div>
-              </form>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Start by selecting a conversation from the list.
-              </p>
-            ) }
-          </CardContent>
+            </form>
+          ) : (
+            <p className="text-sm text-muted-foreground mt-auto">
+              Start by selecting a conversation from the list.
+            </p>
+          ) }
+        </CardContent>
         </Card>
       </div>
     </section>

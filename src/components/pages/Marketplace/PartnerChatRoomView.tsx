@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { usePartnerChatRooms, useChatMessages, useSendChatMessage } from '@/hooks/api/useChat';
 import { useChatRoomsSubscription, useChatSubscription } from '@/hooks/use-chat-subscription';
@@ -208,9 +209,34 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
     });
   }, [normalizedQuery, sortedRooms]);
 
+  const ChatsListSkeleton = () => (
+    <div className="space-y-3 py-4 px-2">
+      { [1, 2, 3].map((item) => (
+        <div
+          key={ item }
+          className="flex items-start gap-3 rounded-2xl border border-border/40 bg-background/60 px-3 py-2"
+        >
+          <Skeleton className="h-10 w-10 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <Skeleton className="h-3 w-32 rounded-full" />
+              <Skeleton className="h-2 w-12 rounded-full" />
+            </div>
+            <Skeleton className="h-2 w-36 rounded-full" />
+            <Skeleton className="h-2 w-full rounded-full" />
+          </div>
+        </div>
+      )) }
+    </div>
+  );
+
   const renderList = () => {
     if (roomsLoading) {
-      return <p className="text-sm text-muted-foreground">Loading conversations…</p>;
+      return (
+        <div className="flex flex-1 items-center justify-center">
+          <ChatsListSkeleton />
+        </div>
+      );
     }
 
     if (roomsError) {
@@ -295,10 +321,45 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
     );
   };
 
+  const MessageBubbleSkeleton = ({ align, }: { align: 'start' | 'end' }) => (
+    <div className={ `flex ${align === 'end' ? 'justify-end' : 'justify-start'}` }>
+      <div className="max-w-full sm:max-w-[520px] space-y-2">
+        <Skeleton className="h-9 w-32 rounded-2xl" />
+        <Skeleton className="h-3 w-24 rounded-full" />
+      </div>
+    </div>
+  );
+
+  const ConversationLoadingSkeleton = () => (
+    <div className="flex h-full min-h-full flex-col">
+      <div className="flex items-center gap-3 border-b px-3 py-3">
+        <Skeleton className="h-11 w-11 rounded-full" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-4 w-32 rounded-full" />
+          <Skeleton className="h-3 w-48 rounded-full" />
+        </div>
+      </div>
+      <div className="flex flex-1 flex-col overflow-hidden px-5 py-4">
+        <div className="flex h-full flex-col justify-center gap-4">
+          <MessageBubbleSkeleton align="start" />
+          <MessageBubbleSkeleton align="end" />
+          <MessageBubbleSkeleton align="start" />
+          <MessageBubbleSkeleton align="end" />
+        </div>
+      </div>
+      <div className="border-t px-3 py-3">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-10 flex-1 rounded-2xl" />
+          <Skeleton className="h-10 w-10 rounded-full" />
+        </div>
+      </div>
+    </div>
+  );
+
   const renderMessages = () => {
     if (!activeRoom) {
       if (roomsLoading) {
-        return <p className="text-sm text-muted-foreground">Loading conversation…</p>;
+        return <ConversationLoadingSkeleton />;
       }
       if (roomsError) {
         return <p className="text-sm text-destructive">Unable to load conversation.</p>;
@@ -311,9 +372,7 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
     }
 
     if (messagesLoading && messages.length === 0) {
-      return (
-        <p className="text-sm text-muted-foreground">Loading conversation…</p>
-      );
+      return <ConversationLoadingSkeleton />;
     }
 
     if (messages.length === 0) {

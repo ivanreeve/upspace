@@ -15,6 +15,7 @@ import {
   FiSearch,
   FiSettings,
   FiUser,
+  FiUserX,
   FiChevronRight
 } from 'react-icons/fi';
 import { PiMoneyWavyBold } from 'react-icons/pi';
@@ -742,6 +743,11 @@ href: '/admin',
 icon: HiOutlineDocumentText, 
 },
           {
+            label: 'Deactivation requests',
+            href: '/admin/deactivation-requests',
+            icon: FiUserX,
+          },
+          {
  label: 'Observe',
 href: '/observability',
 icon: MdFormatListBulleted, 
@@ -946,6 +952,15 @@ icon: FiMessageSquare,
                         label="Verification Queue"
                         icon={ HiOutlineDocumentText }
                         tooltip="Verification queue"
+                        iconProps={ { strokeWidth: 2, } }
+                      />
+                    ) }
+                    { isAdminRole && (
+                      <SidebarLinkItem
+                        href="/admin/deactivation-requests"
+                        label="Deactivation requests"
+                        icon={ FiUserX }
+                        tooltip="Deactivation requests"
                         iconProps={ { strokeWidth: 2, } }
                       />
                     ) }

@@ -77,6 +77,7 @@ export function SpaceCard({
   const priceLabel = space.starting_price === null || space.starting_price === undefined
     ? 'No Price'
     : `From ${peso.format(space.starting_price)}`;
+  const hasPrice = space.starting_price !== null && space.starting_price !== undefined;
 
   const handleToggleSave = useCallback(async () => {
     if (isSaving) {
@@ -163,7 +164,12 @@ export function SpaceCard({
           </span>
         </Link>
         <div className="flex items-center gap-1.5 text-sm">
-          <span className="font-medium text-foreground">{ priceLabel }</span>
+          <span className={ cn(
+            'font-medium',
+            hasPrice ? 'text-foreground' : 'text-muted-foreground'
+          ) }>
+            { priceLabel }
+          </span>
           <span className="text-muted-foreground">•</span>
           <div className="flex items-center gap-1">
             <FaStar

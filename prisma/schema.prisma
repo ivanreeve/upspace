@@ -298,6 +298,28 @@ model user {
   review       review[]
   space        space[]
   verification verification[]
+  deactivation_requests            deactivation_request[] @relation("UserDeactivationRequests")
+  processed_deactivation_requests  deactivation_request[] @relation("DeactivationRequestProcessor")
+}
+
+model deactivation_request {
+  id                   String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id              BigInt
+  auth_user_id         String                        @db.Uuid
+  email                String
+  reason_category      deactivation_reason_category
+  custom_reason        String?
+  status               deactivation_request_status    @default(pending)
+  rejection_reason     String?
+  created_at           DateTime                      @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime                      @default(now()) @db.Timestamptz(6)
+  processed_at         DateTime?                     @db.Timestamptz(6)
+  processed_by_user_id BigInt?
+  user                 user                          @relation("UserDeactivationRequests", fields: [user_id], references: [user_id])
+  processed_by         user?                         @relation("DeactivationRequestProcessor", fields: [processed_by_user_id], references: [user_id])
+
+  @@index([auth_user_id], map: "idx_deactivation_request_auth_user")
+  @@index([status, created_at], map: "idx_deactivation_request_status_created")
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -424,6 +446,20 @@ enum user_role {
   customer
   partner
   admin
+}
+
+enum deactivation_reason_category {
+  not_using
+  pricing
+  privacy
+  switching
+  other
+}
+
+enum deactivation_request_status {
+  pending
+  approved
+  rejected
 }
 
 enum verification_document_status {

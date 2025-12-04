@@ -200,6 +200,29 @@
   scrollbar-width: none;
 }
 
+@keyframes shimmerLoading {
+  0% {
+    background-position: -150% 0;
+  }
+  100% {
+    background-position: 150% 0;
+  }
+}
+
+.shimmer-progress-bar {
+  background-color: var(--secondary);
+  background-image: linear-gradient(
+    120deg,
+    var(--secondary) 0%,
+    #28a745 35%,
+    #ffc107 60%,
+    #ff8c00 85%,
+    #ff6f00 100%
+  );
+  background-size: 250% 100%;
+  animation: shimmerLoading 1.3s linear infinite;
+}
+
 .scrollbar-hidden::-webkit-scrollbar {
   display: none;
 }

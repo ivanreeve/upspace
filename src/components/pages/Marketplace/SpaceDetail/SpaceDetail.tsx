@@ -155,35 +155,6 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     resetBookingState();
     setIsBookingOpen(false);
   }, [resetBookingState]);
-  const handleConfirmBooking = useCallback(async () => {
-    if (!selectedArea || !canConfirmBooking || !session) {
-      return;
-    }
-
-    try {
-      await createBooking.mutateAsync({
-        spaceId: space.id,
-        areaId: selectedArea.id,
-        bookingHours,
-        price: priceEvaluation?.price ?? null,
-      });
-      toast.success('Booking confirmed. You can now message the host and leave a review.');
-      resetBookingState();
-      setIsBookingOpen(false);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to place booking.';
-      toast.error(message);
-    }
-  }, [
-    bookingHours,
-    canConfirmBooking,
-    createBooking,
-    priceEvaluation?.price,
-    resetBookingState,
-    selectedArea,
-    session,
-    space.id
-  ]);
   const increaseBookingHours = useCallback(() => {
     setBookingHours((prev) => Math.min(prev + 1, MAX_BOOKING_HOURS));
   }, []);
@@ -519,6 +490,36 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     !isGuest &&
     !createBooking.isPending
   );
+
+  const handleConfirmBooking = useCallback(async () => {
+    if (!selectedArea || !canConfirmBooking || !session) {
+      return;
+    }
+
+    try {
+      await createBooking.mutateAsync({
+        spaceId: space.id,
+        areaId: selectedArea.id,
+        bookingHours,
+        price: priceEvaluation?.price ?? null,
+      });
+      toast.success('Booking confirmed. You can now message the host and leave a review.');
+      resetBookingState();
+      setIsBookingOpen(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to place booking.';
+      toast.error(message);
+    }
+  }, [
+    bookingHours,
+    canConfirmBooking,
+    createBooking,
+    priceEvaluation?.price,
+    resetBookingState,
+    selectedArea,
+    session,
+    space.id
+  ]);
 
   return (
     <>
