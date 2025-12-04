@@ -1,19 +1,12 @@
 'use client';
 
 import React from 'react';
-import {
-  FiLoader,
-  FiMic,
-  FiSend
-} from 'react-icons/fi';
+import { FiLoader, FiMic, FiSend } from 'react-icons/fi';
 import { LuSparkles } from 'react-icons/lu';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent
-} from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 
 export function AiSearch() {
