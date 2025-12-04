@@ -61,7 +61,6 @@ export type SpaceInput = {
 
 export type AreaInput = {
   name: string;
-  min_capacity: number;
   max_capacity: number;
   automatic_booking_enabled: boolean;
   request_approval_at_capacity: boolean;
@@ -116,7 +115,6 @@ export const SPACE_INPUT_DEFAULT: SpaceInput = {
 
 export const AREA_INPUT_DEFAULT: AreaInput = {
   name: '',
-  min_capacity: 1,
   max_capacity: 10,
   automatic_booking_enabled: false,
   request_approval_at_capacity: false,
@@ -152,7 +150,6 @@ export const INITIAL_SPACES: SpaceRecord[] = [
       {
         id: 'atlas-loft-boardroom',
         name: 'Sky Boardroom',
-        min_capacity: 4,
         max_capacity: 14,
         automatic_booking_enabled: false,
         request_approval_at_capacity: false,
@@ -190,7 +187,6 @@ export const INITIAL_SPACES: SpaceRecord[] = [
       {
         id: 'beacon-maker-lab',
         name: 'Maker Lab',
-        min_capacity: 6,
         max_capacity: 24,
         automatic_booking_enabled: false,
         request_approval_at_capacity: false,
@@ -205,7 +201,6 @@ export const INITIAL_SPACES: SpaceRecord[] = [
       {
         id: 'beacon-podcast',
         name: 'Podcast Booth',
-        min_capacity: 2,
         max_capacity: 4,
         automatic_booking_enabled: false,
         request_approval_at_capacity: false,

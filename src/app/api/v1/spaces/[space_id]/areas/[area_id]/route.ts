@@ -32,11 +32,10 @@ export async function PUT(req: NextRequest, { params, }: Params) {
   }
 
   try {
-    const data: { name?: string; min_capacity?: bigint; max_capacity?: bigint } = {};
+    const data: { name?: string; max_capacity?: bigint } = {};
     if (parsed.data.name !== undefined) data.name = parsed.data.name;
     if (parsed.data.capacity !== undefined) {
       const capacityValue = BigInt(parsed.data.capacity);
-      data.min_capacity = capacityValue;
       data.max_capacity = capacityValue;
     }
 
@@ -59,7 +58,6 @@ export async function PUT(req: NextRequest, { params, }: Params) {
         id: true,
         space_id: true,
         name: true,
-        min_capacity: true,
         max_capacity: true,
       },
     });
@@ -73,7 +71,6 @@ export async function PUT(req: NextRequest, { params, }: Params) {
         area_id: updated.id,
         space_id: updated.space_id,
         name: updated.name,
-        min_capacity: updated.min_capacity.toString(),
         max_capacity: updated.max_capacity?.toString() ?? null,
       },
     }, { status: 200, });

@@ -35,7 +35,6 @@ const marketplaceSpaceInclude = {
     select: {
       id: true,
       name: true,
-      min_capacity: true,
       max_capacity: true,
       price_rule: {
         select: {
@@ -192,7 +191,6 @@ const buildAreaSummaries = (areas: MarketplaceSpaceRow['area']): SpaceAreaWithRa
   areas.map((area) => ({
     id: area.id,
     name: area.name,
-    minCapacity: Number(area.min_capacity),
     maxCapacity: area.max_capacity === null ? null : Number(area.max_capacity),
     pricingRuleName: area.price_rule?.name ?? null,
     pricingRuleId: area.price_rule?.id ?? null,

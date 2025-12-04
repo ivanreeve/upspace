@@ -58,7 +58,6 @@ const mapBookingRecord = (row: {
   created_at: Date;
   user_auth_id: string;
   partner_auth_id: string | null;
-  area_min_capacity: number;
   area_max_capacity: number | null;
 }): BookingRecord => ({
   id: row.id,
@@ -73,7 +72,6 @@ const mapBookingRecord = (row: {
   customerAuthId: row.user_auth_id,
   partnerAuthId: row.partner_auth_id,
   areaMaxCapacity: row.area_max_capacity,
-  areaMinCapacity: row.area_min_capacity,
 });
 
 export async function GET() {
@@ -162,7 +160,6 @@ export async function POST(req: NextRequest) {
     select: {
       id: true,
       name: true,
-      min_capacity: true,
       max_capacity: true,
       space_id: true,
       space: {
@@ -188,7 +185,6 @@ export async function POST(req: NextRequest) {
 
   const partnerAuthId = area.space.user?.auth_user_id ?? null;
   const areaMaxCapacity = normalizeCapacity(area.max_capacity);
-  const areaMinCapacity = normalizeCapacity(area.min_capacity) ?? 1;
   const priceMinor =
     typeof parsed.data.price === 'number'
       ? Math.round(parsed.data.price * BOOKING_PRICE_MINOR_FACTOR)
@@ -208,7 +204,6 @@ export async function POST(req: NextRequest) {
       user_auth_id: authData.user.id,
       partner_auth_id: partnerAuthId,
       area_max_capacity: areaMaxCapacity,
-      area_min_capacity: areaMinCapacity,
     },
   });
 

@@ -79,7 +79,6 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
     const result = await prisma.$transaction(async (tx): Promise<PartnerSpaceRow['area'][number]> => {
       const updatePayload: Parameters<typeof tx.area.update>[0]['data'] = {
         name: parsed.data.name.trim(),
-        min_capacity: BigInt(parsed.data.min_capacity),
         max_capacity: BigInt(parsed.data.max_capacity),
         automatic_booking_enabled: parsed.data.automatic_booking_enabled,
         request_approval_at_capacity: parsed.data.request_approval_at_capacity,

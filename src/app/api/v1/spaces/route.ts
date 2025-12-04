@@ -285,7 +285,6 @@ export async function GET(req: NextRequest) {
       amenities: z.string().optional(), // comma-separated list of names
       amenities_mode: z.enum(['all', 'any']).optional(),
       amenities_negate: z.coerce.boolean().optional().default(false),
-      min_capacity: z.coerce.number().int().min(0).optional(),
       bookmark_user_id: z.string().regex(/^\d+$/).optional(),
       available_days: z.string().optional(), // comma-separated day_of_week
       available_from: z.string().regex(TIME_24H_PATTERN).optional(),
@@ -316,7 +315,6 @@ export async function GET(req: NextRequest) {
       amenities: searchParams.get('amenities') ?? undefined,
       amenities_mode: searchParams.get('amenities_mode') ?? undefined,
       amenities_negate: searchParams.get('amenities_negate') ?? undefined,
-      min_capacity: searchParams.get('min_capacity') ?? undefined,
       bookmark_user_id: searchParams.get('bookmark_user_id') ?? undefined,
       available_days: searchParams.get('available_days') ?? undefined,
       available_from: searchParams.get('available_from') ?? undefined,
@@ -349,7 +347,6 @@ export async function GET(req: NextRequest) {
       amenities,
       amenities_mode,
       amenities_negate,
-      min_capacity,
       bookmark_user_id,
       available_days,
       available_from,
@@ -519,10 +516,6 @@ mode: 'insensitive' as const,
     }
 
     // Minimum capacity via related areas
-    if (typeof min_capacity === 'number') {
-      and.push({ area: { some: { min_capacity: { gte: BigInt(min_capacity), }, }, }, });
-    }
-
     // Bookmarked by a specific user
     if (bookmark_user_id) {
       and.push({ bookmark: { some: { user_id: BigInt(bookmark_user_id), }, }, });

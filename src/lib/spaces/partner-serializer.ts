@@ -143,7 +143,6 @@ export const serializeArea = (
   return {
     id: area.id,
     name: area.name,
-    min_capacity: Number(area.min_capacity),
     max_capacity: Number(area.max_capacity ?? AREA_INPUT_DEFAULT.max_capacity),
     automatic_booking_enabled: Boolean(area.automatic_booking_enabled),
     request_approval_at_capacity: Boolean(area.request_approval_at_capacity),

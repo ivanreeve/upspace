@@ -291,7 +291,6 @@ export const spaceRecordToFormValues = (space: SpaceRecord): SpaceFormValues => 
 
 export const areaRecordToFormValues = (area: AreaRecord): AreaFormValues => ({
   name: area.name,
-  min_capacity: area.min_capacity,
   max_capacity: area.max_capacity,
   automatic_booking_enabled: area.automatic_booking_enabled ?? false,
   request_approval_at_capacity: area.request_approval_at_capacity ?? false,

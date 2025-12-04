@@ -68,7 +68,6 @@ export async function POST(req: NextRequest, { params, }: RouteParams) {
         data: {
           space_id: spaceIdParam,
           name: parsed.data.name.trim(),
-          min_capacity: BigInt(parsed.data.min_capacity),
           max_capacity: BigInt(parsed.data.max_capacity),
           automatic_booking_enabled: parsed.data.automatic_booking_enabled,
           request_approval_at_capacity: parsed.data.request_approval_at_capacity,

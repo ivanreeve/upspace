@@ -134,11 +134,6 @@ export const spaceDetailsSchema = spaceSchema.pick({
 export const areaSchema = z
   .object({
     name: z.string().min(1, 'Area name is required.'),
-    min_capacity: z
-      .coerce
-      .number({ message: 'Provide the minimum capacity.', })
-      .int()
-      .min(1, 'Minimum capacity must be at least 1 seat.'),
     max_capacity: z
       .coerce
       .number({ message: 'Provide the maximum capacity.', })
@@ -167,10 +162,6 @@ export const areaSchema = z
       .uuid()
       .optional()
       .nullable(),
-  })
-  .refine((values) => values.max_capacity >= values.min_capacity, {
-    path: ['max_capacity'],
-    message: 'Max capacity must be greater than or equal to min capacity.',
   })
   .refine(
     (values) => !values.advance_booking_enabled || (values.advance_booking_value && values.advance_booking_unit),
