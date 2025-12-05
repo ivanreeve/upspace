@@ -34,6 +34,7 @@ pnpm dlx shadcn@latest add <component>
 ```
 
 **Accessibility requirements**: Label all inputs with `aria-*` attributes, maintain visible focus states, and use semantic HTML.
+**Consistent rounded-md**: always prefer rounded-md for components that have rounded corners.
 
 ### Icons
 

@@ -76,6 +76,7 @@ type SidebarFooterContentProps = {
   onLogout: () => Promise<void> | void
   isGuest: boolean
   isSidebarLoading: boolean
+  showNotifications?: boolean
 };
 
 function SidebarToggleMenuItem() {
@@ -158,6 +159,7 @@ function SidebarFooterContent({
   onLogout,
   isGuest,
   isSidebarLoading,
+  showNotifications = true,
 }: SidebarFooterContentProps) {
   const {
  state, isMobile, 
@@ -281,10 +283,12 @@ function SidebarFooterContent({
                   <FiSettings className="size-4" aria-hidden="true" />
                   <span>Settings</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={ () => onNavigate('/notifications') }>
-                  <FiBell className="size-4" aria-hidden="true" />
-                  <span>Notifications</span>
-                </DropdownMenuItem>
+                { showNotifications && (
+                  <DropdownMenuItem onSelect={ () => onNavigate('/notifications') }>
+                    <FiBell className="size-4" aria-hidden="true" />
+                    <span>Notifications</span>
+                  </DropdownMenuItem>
+                ) }
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
                   className="text-destructive focus-visible:text-destructive"
@@ -1008,6 +1012,7 @@ icon: FiMessageSquare,
             onLogout={ navData.onLogout }
             isGuest={ navData.isGuest }
             isSidebarLoading={ navData.isSidebarLoading }
+            showNotifications={ shouldShowNotifications }
           />
           </SidebarFooter>
           <SidebarRail />
