@@ -77,6 +77,7 @@ type SidebarFooterContentProps = {
   isGuest: boolean
   isSidebarLoading: boolean
   showNotifications?: boolean
+  showAccount?: boolean
 };
 
 function SidebarToggleMenuItem() {
@@ -160,6 +161,7 @@ function SidebarFooterContent({
   isGuest,
   isSidebarLoading,
   showNotifications = true,
+  showAccount = true,
 }: SidebarFooterContentProps) {
   const {
  state, isMobile, 
@@ -273,12 +275,14 @@ function SidebarFooterContent({
                   </div>
                 </div>
                 <DropdownMenuSeparator className="my-1" />
-                <DropdownMenuItem
-                  onSelect={ () => onNavigate('/account') }
-                >
-                  <FiUser className="size-4" aria-hidden="true" />
-                  <span>Account</span>
-                </DropdownMenuItem>
+                { showAccount && (
+                  <DropdownMenuItem
+                    onSelect={ () => onNavigate('/account') }
+                  >
+                    <FiUser className="size-4" aria-hidden="true" />
+                    <span>Account</span>
+                  </DropdownMenuItem>
+                ) }
                 <DropdownMenuItem onSelect={ () => onNavigate('/settings') }>
                   <FiSettings className="size-4" aria-hidden="true" />
                   <span>Settings</span>
@@ -1013,6 +1017,7 @@ icon: FiMessageSquare,
             isGuest={ navData.isGuest }
             isSidebarLoading={ navData.isSidebarLoading }
             showNotifications={ shouldShowNotifications }
+            showAccount={ !isAdminRole }
           />
           </SidebarFooter>
           <SidebarRail />
