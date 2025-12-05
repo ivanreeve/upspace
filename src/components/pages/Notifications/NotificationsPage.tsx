@@ -11,8 +11,8 @@ import {
 } from 'react-icons/fi';
 
 import { useMarkAllNotificationsRead, useMarkNotificationRead, useNotificationsQuery } from '@/hooks/api/useNotifications';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -81,9 +81,6 @@ export function NotificationsPage() {
             ) }
             <span className="text-xs font-medium">Mark all as read</span>
           </Button>
-          <Badge variant="secondary" className="text-xs">
-            { unreadCount } unread
-          </Badge>
         </div>
       </div>
 
