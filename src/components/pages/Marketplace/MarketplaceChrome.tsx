@@ -598,6 +598,7 @@ function useMarketplaceNavData() {
   const {
     data: userProfile,
     isLoading: isProfileLoading,
+    isError: isProfileError,
   } = useUserProfile();
   const router = useRouter();
 
@@ -645,6 +646,7 @@ function useMarketplaceNavData() {
   const shouldShowSidebarLoading = isSessionLoading || (
     !isGuest && !metadataRole && isProfileLoading
   );
+  const shouldFallbackToGuestSidebar = !isGuest && isProfileError;
 
   return React.useMemo(
     () => ({
@@ -658,6 +660,7 @@ function useMarketplaceNavData() {
       role: resolvedRole,
       isGuest,
       isSidebarLoading: shouldShowSidebarLoading,
+      shouldFallbackToGuestSidebar,
     }),
     [
       avatarDisplayName,
@@ -669,6 +672,7 @@ function useMarketplaceNavData() {
       resolvedHandleLabel,
       resolvedRole,
       shouldShowSidebarLoading,
+      shouldFallbackToGuestSidebar,
       userEmail
     ]
   );
@@ -690,9 +694,10 @@ export function MarketplaceChrome({
     role,
     isGuest,
     isSidebarLoading,
+    shouldFallbackToGuestSidebar,
   } = navData;
   const effectiveRole = React.useMemo<SidebarRole>(() => {
-    if (isGuest) {
+    if (isGuest || shouldFallbackToGuestSidebar) {
       return 'guest';
     }
 
@@ -705,7 +710,7 @@ export function MarketplaceChrome({
     }
 
     return 'customer';
-  }, [isGuest, role]);
+  }, [isGuest, role, shouldFallbackToGuestSidebar]);
 
   const isCustomerRole = effectiveRole === 'customer';
   const isPartnerRole = effectiveRole === 'partner';
