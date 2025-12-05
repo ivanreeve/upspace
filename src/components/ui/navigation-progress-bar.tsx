@@ -105,15 +105,19 @@ export function NavigationProgressBar() {
 
     router.push = (...args) => {
       startProgress();
-      const promise = originalPush.apply(router, args);
-      promise.finally(finishProgress);
-      return promise;
+      const result = originalPush.apply(router, args);
+      if (result && typeof result.finally === 'function') {
+        result.finally(finishProgress);
+      }
+      return result;
     };
     router.replace = (...args) => {
       startProgress();
-      const promise = originalReplace.apply(router, args);
-      promise.finally(finishProgress);
-      return promise;
+      const result = originalReplace.apply(router, args);
+      if (result && typeof result.finally === 'function') {
+        result.finally(finishProgress);
+      }
+      return result;
     };
     router.back = () => {
       startProgress();
