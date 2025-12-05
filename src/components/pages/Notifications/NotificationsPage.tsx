@@ -57,7 +57,7 @@ export function NotificationsPage() {
   const isMarkingAll = markAllNotificationsRead.isPending;
 
   return (
-    <div className="space-y-6 px-4 pb-10 sm:px-6 lg:px-10">
+    <div className="mt-6 space-y-6 px-4 pb-10 sm:mt-8 sm:px-6 lg:px-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold text-foreground">Notifications</h1>
