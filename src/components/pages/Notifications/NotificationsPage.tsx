@@ -9,6 +9,7 @@ import {
   FiInbox,
   FiLoader
 } from 'react-icons/fi';
+import { toast } from 'sonner';
 
 import { useMarkAllNotificationsRead, useMarkNotificationRead, useNotificationsQuery } from '@/hooks/api/useNotifications';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +28,7 @@ export function NotificationsPage() {
     isLoading,
     isError,
     error,
+    refetch,
   } = useNotificationsQuery();
   const markNotificationRead = useMarkNotificationRead();
   const markAllNotificationsRead = useMarkAllNotificationsRead();
@@ -44,14 +46,31 @@ export function NotificationsPage() {
   );
 
   const handleClick = (notificationId: string, isRead: boolean) => {
-    markNotificationRead.mutate({
-      notificationId,
-      read: isRead,
-    });
+    markNotificationRead.mutate(
+      {
+        notificationId,
+        read: isRead,
+      },
+      {
+        onError: (mutationError) => {
+          const message = mutationError instanceof Error
+            ? mutationError.message
+            : 'Unable to update notification.';
+          toast.error(message);
+        },
+      }
+    );
   };
 
   const handleMarkAllRead = () => {
-    markAllNotificationsRead.mutate();
+    markAllNotificationsRead.mutate(undefined, {
+      onError: (mutationError) => {
+        const message = mutationError instanceof Error
+          ? mutationError.message
+          : 'Unable to mark all notifications read.';
+        toast.error(message);
+      },
+    });
   };
   const hasUnread = unreadCount > 0;
   const isMarkingAll = markAllNotificationsRead.isPending;
@@ -71,8 +90,8 @@ export function NotificationsPage() {
             size="sm"
             variant="outline"
             onClick={ handleMarkAllRead }
-            disabled={ !hasUnread || isMarkingAll || isLoading }
-            aria-disabled={ !hasUnread || isMarkingAll || isLoading }
+            disabled={ !hasUnread || isMarkingAll || isLoading || isError }
+            aria-disabled={ !hasUnread || isMarkingAll || isLoading || isError }
           >
             { isMarkingAll ? (
               <FiLoader className="mr-2 size-4 animate-spin" aria-hidden="true" />
@@ -92,9 +111,19 @@ export function NotificationsPage() {
             )) }
           </div>
         ) : isError ? (
-          <div className="flex items-center gap-2 text-sm text-destructive">
+          <div className="flex flex-wrap items-center gap-3 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
             <FiBell className="size-4" aria-hidden="true" />
-            <span>{ error instanceof Error ? error.message : 'Failed to load notifications.' }</span>
+            <span className="flex-1 min-w-[220px]">
+              { error instanceof Error ? error.message : 'Failed to load notifications.' }
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={ () => { void refetch(); } }
+            >
+              Retry
+            </Button>
           </div>
         ) : sortedNotifications.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">

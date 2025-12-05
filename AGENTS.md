@@ -71,6 +71,7 @@ export function SearchBar() {
 - **Secrets & tokens**: Never hardcode. Use environment variables only.
 - **Input handling**: Treat all user input as untrusted. Sanitize and validate using Zod.
 - **Dangerous functions**: Avoid `eval`, dynamic `Function` constructors, and unsafe regex patterns.
+- **Error handling**: Always handle errors gracefully and log them securely, make sure to handle error UI states as well to provide a good user experience.
 
 ## Performance
 
