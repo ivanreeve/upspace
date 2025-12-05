@@ -18,7 +18,7 @@ export const ROLE_REDIRECT_MAP: Record<string, string> = {
 };
 
 export const ROLE_ACCESS_MAP: Record<string, string[]> = {
-  customer: ['/marketplace', '/messages', '/account', '/bookmarks'],
-  partner: ['/spaces', '/marketplace', '/account'],
+  customer: ['/marketplace', '/messages', '/account', '/bookmarks', '/notifications'],
+  partner: ['/spaces', '/marketplace', '/account', '/notifications'],
   admin: ['/marketplace', '/admin', '/account'],
 };

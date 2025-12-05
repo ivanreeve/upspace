@@ -237,41 +237,28 @@
 }
 
 .ai-search-shimmer span[data-sidebar-label] {
+  position: relative;
   background-image: var(--ai-search-gradient);
   background-size: 100% 100%;
   background-position: 0 0;
   background-repeat: no-repeat;
   -webkit-background-clip: text;
   background-clip: text;
-  color: #fff;
-  -webkit-text-fill-color: #fff;
-  animation: aiSearchTextShimmer var(--ai-search-shimmer-duration) ease-in-out 1 forwards;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: aiSearchTextFade var(--ai-search-shimmer-duration) ease forwards;
 }
 
-@keyframes aiSearchTextShimmer {
+@keyframes aiSearchTextFade {
   0% {
     background-image: var(--ai-search-gradient);
     -webkit-text-fill-color: transparent;
     color: transparent;
-    background-position: 0 0;
-  }
-  70% {
-    background-image: var(--ai-search-gradient);
-    background-position: 0 0;
-    -webkit-text-fill-color: transparent;
-    color: transparent;
-  }
-  90% {
-    background-image: var(--ai-search-gradient);
-    background-position: 0 0;
-    -webkit-text-fill-color: rgba(255, 255, 255, 0.35);
-    color: rgba(255, 255, 255, 0.35);
   }
   100% {
     background-image: none;
-    -webkit-text-fill-color: #fff;
-    color: #fff;
-    background-position: 0 0;
+    -webkit-text-fill-color: currentColor;
+    color: currentColor;
   }
 }
 
@@ -280,7 +267,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: currentColor;
 }
 
 .ai-search-shimmer .sidebar-link-icon::after {
@@ -302,43 +289,36 @@
   opacity: 1;
   pointer-events: none;
   z-index: 1;
+  animation: aiSearchIconFade var(--ai-search-shimmer-duration) ease forwards;
 }
 
 .ai-search-shimmer .sidebar-link-icon svg {
   position: relative;
   z-index: 0;
-  color: #fff;
+  color: currentColor;
   stroke: currentColor;
 }
 
-@keyframes aiSearchIconShimmer {
+@keyframes aiSearchIconFade {
   0% {
-    opacity: 0;
-    background-position: -180% 0;
-  }
-  14% {
     opacity: 1;
-    background-position: -160% 0;
   }
   100% {
-    opacity: 1;
-    background-position: 200% 0;
+    opacity: 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .ai-search-shimmer span[data-sidebar-label] {
     animation: none;
-    background-position: 0 0;
     background-image: none;
-    color: #fff;
-    -webkit-text-fill-color: #fff;
+    color: currentColor;
+    -webkit-text-fill-color: currentColor;
   }
   .ai-search-shimmer .sidebar-link-icon::after {
     animation: none;
-    background-image: var(--ai-search-gradient);
-    background-position: 0 0;
-    opacity: 1;
+    background-image: none;
+    opacity: 0;
   }
 }
 
