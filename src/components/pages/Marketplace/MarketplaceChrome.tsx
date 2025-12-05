@@ -881,22 +881,20 @@ icon: FiMessageSquare,
                       iconProps={ { strokeWidth: 2, } }
                     />
                     <SidebarMenuItem>
-                      <SidebarMenuButton
-                        tooltip="Search"
-                        className="justify-start gap-2 group-data-[collapsible=icon]:justify-center"
-                        type="button"
-                        onClick={ handleSearch }
-                      >
-                        <FiSearch className="size-4" strokeWidth={ 2 } />
-                        <span data-sidebar-label>Search</span>
-                        { onSearchOpen ? (
-                          <Kbd className="ml-auto hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden">
-                            <FiCommand className="size-3" aria-hidden="true" />
-                            <span> + K</span>
-                          </Kbd>
-                        ) : null }
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
+                    <SidebarMenuButton
+                      tooltip="Search"
+                      className="justify-start gap-2 group-data-[collapsible=icon]:justify-center"
+                      type="button"
+                      onClick={ handleSearch }
+                    >
+                      <FiSearch className="size-4" strokeWidth={ 2 } />
+                      <span data-sidebar-label>Search</span>
+                      <Kbd className="ml-auto hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden">
+                        <FiCommand className="size-3" aria-hidden="true" />
+                        <span> + K</span>
+                      </Kbd>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                     { shouldShowAiSearch && (
                       <SidebarLinkItem
                         href="/marketplace/ai-search"
