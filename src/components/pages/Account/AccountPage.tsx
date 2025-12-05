@@ -7,7 +7,6 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -30,8 +29,6 @@ export default function AccountPage() {
   const [selectedReason, setSelectedReason] = useState<DeactivationReasonCategory>('not_using');
   const [customReason, setCustomReason] = useState('');
   const [isDeactivating, setIsDeactivating] = useState(false);
-  const [deletionDeadline, setDeletionDeadline] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleSignOut = async () => {
     const supabase = getSupabaseBrowserClient();
@@ -94,41 +91,6 @@ export default function AccountPage() {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    if (!window.confirm('Requesting deletion will permanently remove your data after 30 days unless you sign in again. Proceed?')) {
-      return;
-    }
-
-    setIsDeleting(true);
-    try {
-      const response = await fetch('/api/v1/auth/delete', { method: 'POST', });
-      const payload = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(payload?.message ?? 'Unable to schedule deletion right now.');
-      }
-
-      toast.success('Account deletion scheduled. Log in within 30 days to cancel the request.');
-      setDeletionDeadline(payload?.reactivationDeadline ?? null);
-      await handleSignOut();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to delete your account.';
-      toast.error(message);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const formattedDeletionDeadline = deletionDeadline
-    ? new Date(deletionDeadline).toLocaleDateString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    : null;
-
-  const isAdminRole = profile?.role === 'admin';
-
   return (
     <>
       <main className="flex-1 overflow-y-auto bg-background px-4 pb-10 sm:py-12">
@@ -172,40 +134,6 @@ export default function AccountPage() {
                   </Button>
             </div>
           </section>
-          { isAdminRole && (
-            <Card className="border border-border/60 bg-card/80 shadow-sm shadow-slate-900/5">
-              <CardContent className="p-6 sm:p-10 space-y-6">
-                <div className="space-y-2">
-                  <h2 className="text-xl font-semibold text-foreground">Delete account</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Deletion permanently removes your profile, bookings, and usage data. This cannot be undone.
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Submitting a deletion request schedules permanent removal in 30 days unless you log back in.
-                  </p>
-                  { formattedDeletionDeadline ? (
-                    <p className="text-xs text-muted-foreground">
-                      Your deletion window ends on { formattedDeletionDeadline }.
-                    </p>
-                  ) : null }
-                </div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    className="w-full sm:w-auto"
-                    onClick={ handleDeleteAccount }
-                    disabled={ isDeleting }
-                  >
-                    { isDeleting ? 'Scheduling deletion...' : 'Schedule deletion' }
-                  </Button>
-                  <p className="text-xs text-muted-foreground">
-                    Need details? <Link href="/data-deletion" className="underline">Review the deletion guide</Link>.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ) }
         </div>
       </main>
       <Dialog open={ isDialogOpen } onOpenChange={ handleDialogOpenChange }>
