@@ -88,7 +88,7 @@ export function NotificationsPage() {
         { isLoading ? (
           <div className="space-y-2">
             { Array.from({ length: 4, }).map((_, index) => (
-              <Skeleton key={ `notification-skeleton-${index}` } className="h-14 w-full rounded-2xl" />
+              <Skeleton key={ `notification-skeleton-${index}` } className="h-14 w-full rounded-md" />
             )) }
           </div>
         ) : isError ? (
@@ -109,7 +109,7 @@ export function NotificationsPage() {
                   href={ notification.href }
                   onClick={ () => handleClick(notification.id, true) }
                   className={ cn(
-                    'flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 transition-colors hover:border-primary',
+                    'flex items-start justify-between gap-3 rounded-md border px-4 py-3 transition-colors hover:border-primary',
                     notification.read ? 'bg-muted/40 text-muted-foreground' : 'bg-background text-foreground'
                   ) }
                 >
