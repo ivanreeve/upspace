@@ -13,13 +13,6 @@ import {
 import { useMarkAllNotificationsRead, useMarkNotificationRead, useNotificationsQuery } from '@/hooks/api/useNotifications';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -94,66 +87,54 @@ export function NotificationsPage() {
         </div>
       </div>
 
-      <Card className="rounded-3xl border">
-        <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <CardTitle>Activity feed</CardTitle>
-            <CardDescription>Tap a notification to open its space or task.</CardDescription>
+      <div className="space-y-3">
+        { isLoading ? (
+          <div className="space-y-2">
+            { Array.from({ length: 4, }).map((_, index) => (
+              <Skeleton key={ `notification-skeleton-${index}` } className="h-14 w-full rounded-2xl" />
+            )) }
           </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        ) : isError ? (
+          <div className="flex items-center gap-2 text-sm text-destructive">
             <FiBell className="size-4" aria-hidden="true" />
-            <span>Live booking confirmations</span>
+            <span>{ error instanceof Error ? error.message : 'Failed to load notifications.' }</span>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          { isLoading ? (
-            <div className="space-y-2">
-              { Array.from({ length: 4, }).map((_, index) => (
-                <Skeleton key={ `notification-skeleton-${index}` } className="h-14 w-full rounded-2xl" />
-              )) }
-            </div>
-          ) : isError ? (
-            <div className="flex items-center gap-2 text-sm text-destructive">
-              <FiBell className="size-4" aria-hidden="true" />
-              <span>{ error instanceof Error ? error.message : 'Failed to load notifications.' }</span>
-            </div>
-          ) : sortedNotifications.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
-              <FiInbox className="size-5" aria-hidden="true" />
-              <p>No notifications yet. Confirmed bookings will appear here.</p>
-            </div>
-          ) : (
-            <ul className="space-y-2">
-              { sortedNotifications.map((notification) => (
-                <li key={ notification.id }>
-                  <Link
-                    href={ notification.href }
-                    onClick={ () => handleClick(notification.id, true) }
-                    className={ cn(
-                      'flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 transition-colors hover:border-primary',
-                      notification.read ? 'bg-muted/40 text-muted-foreground' : 'bg-background text-foreground'
-                    ) }
-                  >
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold leading-tight">{ notification.title }</p>
-                      <p className="text-sm text-muted-foreground">{ notification.body }</p>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <FiClock className="size-3.5" aria-hidden="true" />
-                        <span>{ notificationDateFormatter.format(new Date(notification.createdAt)) }</span>
-                      </div>
+        ) : sortedNotifications.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
+            <FiInbox className="size-5" aria-hidden="true" />
+            <p>No notifications yet. Confirmed bookings will appear here.</p>
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            { sortedNotifications.map((notification) => (
+              <li key={ notification.id }>
+                <Link
+                  href={ notification.href }
+                  onClick={ () => handleClick(notification.id, true) }
+                  className={ cn(
+                    'flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 transition-colors hover:border-primary',
+                    notification.read ? 'bg-muted/40 text-muted-foreground' : 'bg-background text-foreground'
+                  ) }
+                >
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold leading-tight">{ notification.title }</p>
+                    <p className="text-sm text-muted-foreground">{ notification.body }</p>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <FiClock className="size-3.5" aria-hidden="true" />
+                      <span>{ notificationDateFormatter.format(new Date(notification.createdAt)) }</span>
                     </div>
-                    { notification.read ? null : (
-                      <Badge variant="default" className="mt-1 text-[10px] uppercase tracking-wide">
-                        New
-                      </Badge>
-                    ) }
-                  </Link>
-                </li>
-              )) }
-            </ul>
-          ) }
-        </CardContent>
-      </Card>
+                  </div>
+                  { notification.read ? null : (
+                    <Badge variant="default" className="mt-1 text-[10px] uppercase tracking-wide">
+                      New
+                    </Badge>
+                  ) }
+                </Link>
+              </li>
+            )) }
+          </ul>
+        ) }
+      </div>
     </div>
   );
 }
