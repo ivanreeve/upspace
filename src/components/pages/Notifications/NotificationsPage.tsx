@@ -2,9 +2,16 @@
 
 import Link from 'next/link';
 import { useMemo } from 'react';
-import { FiBell, FiClock, FiInbox } from 'react-icons/fi';
+import {
+  FiBell,
+  FiCheck,
+  FiClock,
+  FiInbox,
+  FiLoader
+} from 'react-icons/fi';
 
-import { useMarkNotificationRead, useNotificationsQuery } from '@/hooks/api/useNotifications';
+import { useMarkAllNotificationsRead, useMarkNotificationRead, useNotificationsQuery } from '@/hooks/api/useNotifications';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -29,6 +36,7 @@ export function NotificationsPage() {
     error,
   } = useNotificationsQuery();
   const markNotificationRead = useMarkNotificationRead();
+  const markAllNotificationsRead = useMarkAllNotificationsRead();
 
   const sortedNotifications = useMemo(
     () =>
@@ -49,6 +57,12 @@ export function NotificationsPage() {
     });
   };
 
+  const handleMarkAllRead = () => {
+    markAllNotificationsRead.mutate();
+  };
+  const hasUnread = unreadCount > 0;
+  const isMarkingAll = markAllNotificationsRead.isPending;
+
   return (
     <div className="space-y-6 px-4 pb-10 sm:px-6 lg:px-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -58,9 +72,26 @@ export function NotificationsPage() {
             Booking updates and partner alerts appear here.
           </p>
         </div>
-        <Badge variant="secondary" className="text-xs">
-          { unreadCount } unread
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={ handleMarkAllRead }
+            disabled={ !hasUnread || isMarkingAll || isLoading }
+            aria-disabled={ !hasUnread || isMarkingAll || isLoading }
+          >
+            { isMarkingAll ? (
+              <FiLoader className="mr-2 size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <FiCheck className="mr-2 size-4" aria-hidden="true" />
+            ) }
+            <span className="text-xs font-medium">Mark all as read</span>
+          </Button>
+          <Badge variant="secondary" className="text-xs">
+            { unreadCount } unread
+          </Badge>
+        </div>
       </div>
 
       <Card className="rounded-3xl border">

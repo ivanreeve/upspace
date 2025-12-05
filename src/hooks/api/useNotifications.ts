@@ -76,3 +76,24 @@ export function useMarkNotificationRead() {
     },
   });
 }
+
+export function useMarkAllNotificationsRead() {
+  const authFetch = useAuthenticatedFetch();
+  const queryClient = useQueryClient();
+
+  return useMutation<{ updatedCount: number }, Error, void>({
+    mutationFn: async () => {
+      const response = await authFetch('/api/v1/notifications/mark-all', { method: 'PATCH', });
+
+      if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+      }
+
+      const payload = await response.json();
+      return (payload?.data ?? { updatedCount: 0, }) as { updatedCount: number };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all, });
+    },
+  });
+}

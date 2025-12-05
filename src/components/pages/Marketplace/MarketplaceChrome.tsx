@@ -895,7 +895,6 @@ icon: FiMessageSquare,
                         label="AI Search"
                         icon={ LuSparkles }
                         tooltip="AI Search"
-                        className="ai-search-shimmer"
                       />
                     ) }
                     { isCustomerRole && (
