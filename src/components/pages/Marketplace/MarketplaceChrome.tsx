@@ -21,7 +21,7 @@ import {
 } from 'react-icons/fi';
 import { PiMoneyWavyBold } from 'react-icons/pi';
 import { HiOutlineDocumentText } from 'react-icons/hi';
-import { LuSparkles, LuTicket } from 'react-icons/lu';
+import { LuTicket } from 'react-icons/lu';
 import { MdFormatListBulleted, MdOutlineSpaceDashboard, MdWorkOutline } from 'react-icons/md';
 import { TbLayoutSidebarFilled } from 'react-icons/tb';
 
@@ -81,6 +81,52 @@ type SidebarFooterContentProps = {
   showNotifications?: boolean
   showAccount?: boolean
 };
+
+function GradientSparklesIcon({
+  className,
+  ...props
+}: React.SVGProps<SVGSVGElement>) {
+  const gradientId = React.useId();
+  const stroke = `url(#${gradientId})`;
+
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      strokeWidth={ 2 }
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={ cn('size-4', className) }
+      aria-hidden={ props['aria-label'] ? undefined : 'true' }
+      { ...props }
+    >
+      <defs>
+        <linearGradient
+          id={ gradientId }
+          x1="0%"
+          y1="0%"
+          x2="100%"
+          y2="0%"
+          gradientTransform="rotate(120 0.5 0.5)"
+        >
+          <stop offset="0%" stopColor="var(--secondary)" />
+          <stop offset="35%" stopColor="#28a745" />
+          <stop offset="60%" stopColor="#ffc107" />
+          <stop offset="85%" stopColor="#ff8c00" />
+          <stop offset="100%" stopColor="#ff6f00" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"
+        stroke={ stroke }
+      />
+      <path d="M20 3v4" stroke={ stroke } />
+      <path d="M22 5h-4" stroke={ stroke } />
+      <path d="M4 17v2" stroke={ stroke } />
+      <path d="M5 18H3" stroke={ stroke } />
+    </svg>
+  );
+}
 
 function SidebarToggleMenuItem() {
   const {
@@ -814,7 +860,7 @@ icon: FiBookmark,
         actions.push({
  label: 'AI Search',
 href: '/marketplace/ai-search',
-icon: LuSparkles, 
+icon: GradientSparklesIcon, 
 });
       } else {
         actions.push({
@@ -914,7 +960,7 @@ icon: FiMessageSquare,
                       <SidebarLinkItem
                         href="/marketplace/ai-search"
                         label="AI Search"
-                        icon={ LuSparkles }
+                        icon={ GradientSparklesIcon }
                         tooltip="AI Search"
                         labelBadge={ (
                           <Badge
