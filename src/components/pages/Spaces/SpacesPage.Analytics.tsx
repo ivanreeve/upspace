@@ -390,7 +390,6 @@ export function SpacesAnalyticsPanel() {
   const [customEnd, setCustomEnd] = useState(() => formatInputDate(new Date()));
 
   const summary = SUMMARY_DATA[dateRange];
-  const chartData = TIME_SERIES_DATA[dateRange];
   const multiplier = RANGE_MULTIPLIERS[dateRange];
   const {
     data: partnerBookings = [],
@@ -473,6 +472,67 @@ export function SpacesAnalyticsPanel() {
     });
     return base;
   }, [partnerBookings]);
+
+  const chartSeries = useMemo(() => {
+    const points = 7;
+    const now = new Date();
+
+    const [rangeStart, rangeEnd] = (() => {
+      if (dateRange === 'today') {
+        const start = new Date(now);
+        start.setHours(0, 0, 0, 0);
+        return [start, now] as const;
+      }
+      if (dateRange === '7d') {
+        const start = subDays(now, 6);
+        start.setHours(0, 0, 0, 0);
+        return [start, now] as const;
+      }
+      if (dateRange === '30d') {
+        const start = subDays(now, 29);
+        start.setHours(0, 0, 0, 0);
+        return [start, now] as const;
+      }
+      const start = customStart ? new Date(customStart) : subDays(now, 6);
+      const end = customEnd ? new Date(customEnd) : now;
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return [start, end] as const;
+    })();
+
+    const bucketDuration =
+      (rangeEnd.getTime() - rangeStart.getTime()) / points || 1;
+
+    const bookingsBuckets = Array.from({ length: points, }, () => 0);
+    const revenueBuckets = Array.from({ length: points, }, () => 0);
+
+    partnerBookings.forEach((booking) => {
+      const created = new Date(booking.createdAt).getTime();
+      if (created < rangeStart.getTime() || created > rangeEnd.getTime()) {
+        return;
+      }
+      const index = Math.min(
+        points - 1,
+        Math.floor((created - rangeStart.getTime()) / bucketDuration)
+      );
+      bookingsBuckets[index] += 1;
+      revenueBuckets[index] += booking.price ?? 0;
+    });
+
+    const fallback = TIME_SERIES_DATA[dateRange] ?? TIME_SERIES_DATA['7d'];
+
+    return {
+      bookings: bookingsBuckets,
+      revenue: revenueBuckets,
+      views: fallback.views,
+      saves: fallback.saves,
+    };
+  }, [
+    customEnd,
+    customStart,
+    dateRange,
+    partnerBookings
+  ]);
 
   const funnelSteps = useMemo(() => {
     const messageCount = dashboardFeed.filter(
@@ -922,12 +982,12 @@ hourLabel: '—',
               )) }
             </div>
             <MiniLineChart
-              values={ chartData.bookings }
+              values={ chartSeries.bookings }
               color="#0ea5e9"
               label="Bookings"
             />
             <MiniLineChart
-              values={ chartData.revenue }
+              values={ chartSeries.revenue }
               color="#fb923c"
               label="Revenue"
             />
@@ -942,12 +1002,12 @@ hourLabel: '—',
           </CardHeader>
           <CardContent className="space-y-5 px-0">
             <MiniLineChart
-              values={ chartData.views }
+              values={ chartSeries.views }
               color="#22c55e"
               label="Views"
             />
             <MiniLineChart
-              values={ chartData.saves }
+              values={ chartSeries.saves }
               color="#a855f7"
               label="Saves"
             />
