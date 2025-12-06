@@ -157,8 +157,8 @@ export function AiSearch() {
     <div className="relative mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-10 sm:py-14 md:py-16">
       <div className="pointer-events-none absolute inset-x-0 top-6 -z-10 h-48 bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.08),_transparent_65%)]" />
 
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <div className="flex flex-wrap items-center justify-center gap-2">
           <Badge variant="secondary" className="rounded-md">
             <LuSparkles className="mr-1 size-4" aria-hidden="true" />
             Gemini
@@ -166,19 +166,10 @@ export function AiSearch() {
           <Badge variant="outline" className="rounded-md text-muted-foreground">
             Beta
           </Badge>
-          <span className="text-sm text-muted-foreground">
-            Ask for the space you need and Gemini will translate it into
-            filters.
-          </span>
         </div>
         <h1 className="text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
           AI Search for coworking spaces
         </h1>
-        <p className="text-sm text-muted-foreground max-w-3xl">
-          Describe your ideal space in everyday language. Gemini will suggest
-          matching spaces, amenities, and availability filters you can apply in
-          the marketplace.
-        </p>
       </div>
 
       <Card className="border-none">
