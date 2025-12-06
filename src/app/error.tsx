@@ -13,7 +13,9 @@ type GlobalErrorProps = {
   reset: () => void;
 };
 
-export default function GlobalError({ error, reset, }: GlobalErrorProps) {
+export default function GlobalError({
+ error, reset, 
+}: GlobalErrorProps) {
   useEffect(() => {
     console.error('Global application error', error);
   }, [error]);

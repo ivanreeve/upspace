@@ -6,7 +6,7 @@ import { PartnerSessionError, requirePartnerSession } from '@/lib/auth/require-p
 import { prisma } from '@/lib/prisma';
 import type { DashboardFeedItem } from '@/types/dashboard-feed';
 
-const querySchema = z.object({ limit: z.coerce.number().min(5).max(50).default(25), });
+const querySchema = z.object({ limit: z.coerce.number().min(5).max(200).default(25), });
 
 export async function GET(req: NextRequest) {
   try {

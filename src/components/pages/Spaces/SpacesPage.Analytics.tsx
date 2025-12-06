@@ -32,17 +32,19 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
+import { usePartnerBookingsQuery } from '@/hooks/api/useBookings';
+import { usePartnerDashboardFeedQuery } from '@/hooks/api/usePartnerDashboardFeed';
+import { usePartnerSpacesQuery } from '@/hooks/api/usePartnerSpaces';
+import type { BookingStatus } from '@/lib/bookings/types';
 
 type DateRangeKey = 'today' | '7d' | '30d' | 'custom';
 type BookingTypeKey = 'all' | 'hourly' | 'daily';
 type SortKey =
-  | 'views'
-  | 'saves'
-  | 'inquiries'
   | 'bookings'
   | 'revenue'
-  | 'conversion'
-  | 'cancellation';
+  | 'cancellationRate'
+  | 'lastUpdated';
 
 const DATE_RANGE_PRESETS: {
   label: string;
@@ -50,20 +52,20 @@ const DATE_RANGE_PRESETS: {
   description: string;
 }[] = [
   {
- label: 'Today',
-value: 'today',
-description: 'Closed deals posted today', 
-},
+    label: 'Today',
+    value: 'today',
+    description: 'Closed deals posted today',
+  },
   {
- label: 'Last 7 days',
-value: '7d',
-description: 'Weekly momentum', 
-},
+    label: 'Last 7 days',
+    value: '7d',
+    description: 'Weekly momentum',
+  },
   {
- label: 'Last 30 days',
-value: '30d',
-description: 'Monthly performance', 
-},
+    label: 'Last 30 days',
+    value: '30d',
+    description: 'Monthly performance',
+  },
   {
     label: 'Custom range',
     value: 'custom',
@@ -221,107 +223,30 @@ const BOOKING_STATUS_BREAKDOWN: Record<
   { pending: number; confirmed: number; completed: number; cancelled: number }
 > = {
   today: {
- pending: 5,
-confirmed: 9,
-completed: 12,
-cancelled: 2, 
-},
+    pending: 5,
+    confirmed: 9,
+    completed: 12,
+    cancelled: 2,
+  },
   '7d': {
- pending: 17,
-confirmed: 28,
-completed: 41,
-cancelled: 6, 
-},
+    pending: 17,
+    confirmed: 28,
+    completed: 41,
+    cancelled: 6,
+  },
   '30d': {
- pending: 48,
-confirmed: 82,
-completed: 118,
-cancelled: 12, 
-},
+    pending: 48,
+    confirmed: 82,
+    completed: 118,
+    cancelled: 12,
+  },
   custom: {
- pending: 30,
-confirmed: 52,
-completed: 70,
-cancelled: 8, 
-},
+    pending: 30,
+    confirmed: 52,
+    completed: 70,
+    cancelled: 8,
+  },
 };
-
-const PEAK_TIMES = {
-  days: 'Tue–Thu',
-  hours: '9 AM–1 PM',
-};
-
-const UPCOMING_BOOKINGS = [
-  {
- listing: 'Atlas Loft',
-date: 'Apr 11 · 10:00',
-type: 'Boardroom',
-status: 'Confirmed', 
-},
-  {
-    listing: 'Beacon Collective',
-    date: 'Apr 12 · 15:00',
-    type: 'Maker Lab',
-    status: 'Pending approval',
-  },
-  {
- listing: 'Harbor Commons',
-date: 'Apr 15 · 09:00',
-type: 'Studio',
-status: 'Confirmed', 
-}
-];
-
-const BASE_LISTINGS = [
-  {
-    id: 'atlas-loft',
-    name: 'Atlas Loft',
-    created: '2025-01-10',
-    status: 'Published',
-    views: 1_400,
-    saves: 130,
-    inquiries: 52,
-    bookings: 21,
-    revenue: 420_000,
-    rating: 4.8,
-    reviews: 18,
-    cancellations: 3,
-    lastUpdated: '2025-04-01',
-    bookingTypes: ['hourly', 'daily'],
-  },
-  {
-    id: 'beacon-collective',
-    name: 'Beacon Collective',
-    created: '2025-02-14',
-    status: 'Published',
-    views: 980,
-    saves: 90,
-    inquiries: 34,
-    bookings: 14,
-    revenue: 260_000,
-    rating: 4.5,
-    reviews: 12,
-    cancellations: 1,
-    lastUpdated: '2025-03-28',
-    bookingTypes: ['hourly'],
-  },
-  {
-    id: 'harbor-commons',
-    name: 'Harbor Commons',
-    created: '2025-03-05',
-    status: 'Draft',
-    views: 520,
-    saves: 40,
-    inquiries: 18,
-    bookings: 6,
-    revenue: 60_000,
-    rating: 4.2,
-    reviews: 6,
-    cancellations: 0,
-    lastUpdated: '2025-03-30',
-    bookingTypes: ['daily'],
-  }
-];
 
 const RANGE_MULTIPLIERS: Record<DateRangeKey, number> = {
   today: 0.15,
@@ -349,14 +274,20 @@ function MiniLineChart({
     return `${x},${y}`;
   });
   const linePath = points.join(' ');
-  const areaPath = `${ linePath } 100,100 0,100`;
+  const areaPath = `${linePath} 100,100 0,100`;
   const normalizedId = label.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
   return (
-    <div className="w-full" aria-label={ `Chart for ${ label }` }>
+    <div className="w-full" aria-label={ `Chart for ${label}` }>
       <svg viewBox="0 0 100 100" className="h-28 w-full">
         <defs>
-          <linearGradient id={ `${ normalizedId }-gradient` } x1="0" x2="0" y1="0" y2="1">
+          <linearGradient
+            id={ `${normalizedId}-gradient` }
+            x1="0"
+            x2="0"
+            y1="0"
+            y2="1"
+          >
             <stop offset="0%" stopColor={ color } stopOpacity="0.4" />
             <stop offset="100%" stopColor={ color } stopOpacity="0" />
           </linearGradient>
@@ -364,7 +295,7 @@ function MiniLineChart({
         <g className="text-muted-foreground/40">
           { Array.from({ length: 4, }).map((_, rowIndex) => (
             <line
-              key={ `grid-${ rowIndex }-${ normalizedId }` }
+              key={ `grid-${rowIndex}-${normalizedId}` }
               x1="0"
               x2="100"
               y1={ (rowIndex * 25).toString() }
@@ -375,7 +306,7 @@ function MiniLineChart({
             />
           )) }
         </g>
-        <polygon points={ areaPath } fill={ `url(#${ normalizedId }-gradient)` } />
+        <polygon points={ areaPath } fill={ `url(#${normalizedId}-gradient)` } />
         <polyline
           points={ linePath }
           fill="none"
@@ -387,7 +318,13 @@ function MiniLineChart({
         { points.map((point, index) => {
           const [x, y] = point.split(',').map(Number);
           return (
-            <circle key={ `${ normalizedId }-dot-${ index }` } cx={ x } cy={ y } r="1.5" fill={ color } />
+            <circle
+              key={ `${normalizedId}-dot-${index}` }
+              cx={ x }
+              cy={ y }
+              r="1.5"
+              fill={ color }
+            />
           );
         }) }
       </svg>
@@ -401,10 +338,10 @@ function ChangeBadge({ delta, }: { delta: number }) {
   return (
     <Badge
       variant="outline"
-      className={ `flex items-center gap-1 text-xs font-semibold ${ isPositive ? 'text-emerald-500 border-emerald-500/40' : 'text-destructive border-destructive/40' }` }
+      className={ `flex items-center gap-1 text-xs font-semibold ${isPositive ? 'text-emerald-500 border-emerald-500/40' : 'text-destructive border-destructive/40'}` }
     >
       <Icon className="size-3" aria-hidden="true" />
-      { isPositive ? `+${ delta }%` : `${ delta }%` }
+      { isPositive ? `+${delta}%` : `${delta}%` }
     </Badge>
   );
 }
@@ -424,12 +361,14 @@ function FunnelBar({
     <div className="space-y-1">
       <div className="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
         <span>{ label }</span>
-        <span className="text-foreground font-semibold">{ value.toLocaleString() }</span>
+        <span className="text-foreground font-semibold">
+          { value.toLocaleString() }
+        </span>
       </div>
       <div className="h-2 rounded-full bg-border/60">
         <div
-          className={ `h-full rounded-full ${ accent }` }
-          style={ { width: `${ Math.min(100, percent) }%`, } }
+          className={ `h-full rounded-full ${accent}` }
+          style={ { width: `${Math.min(100, percent)}%`, } }
         />
       </div>
     </div>
@@ -445,18 +384,198 @@ export function SpacesAnalyticsPanel() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const formatInputDate = (date: Date) => date.toISOString().split('T')[0];
-  const [customStart, setCustomStart] = useState(() => formatInputDate(subDays(new Date(), 7)));
+  const [customStart, setCustomStart] = useState(() =>
+    formatInputDate(subDays(new Date(), 7))
+  );
   const [customEnd, setCustomEnd] = useState(() => formatInputDate(new Date()));
 
   const summary = SUMMARY_DATA[dateRange];
   const chartData = TIME_SERIES_DATA[dateRange];
-  const funnel = FUNNEL_DATA[dateRange];
-  const bookingStatus = BOOKING_STATUS_BREAKDOWN[dateRange];
   const multiplier = RANGE_MULTIPLIERS[dateRange];
+  const {
+    data: partnerBookings = [],
+    isLoading: bookingsLoading,
+    isError: bookingsError,
+    error: bookingsErrorObj,
+  } = usePartnerBookingsQuery();
+  const {
+    data: dashboardFeed = [],
+    isLoading: feedLoading,
+    isError: feedError,
+  } = usePartnerDashboardFeedQuery(200);
+  const {
+    data: partnerSpaces = [],
+    isLoading: spacesLoading,
+    isError: spacesError,
+  } = usePartnerSpacesQuery();
+  const resolveStatusVariant = (status: BookingStatus) => {
+    switch (status) {
+      case 'confirmed':
+      case 'checkedin':
+        return 'success' as const;
+      case 'pending':
+      case 'checkedout':
+      case 'completed':
+        return 'secondary' as const;
+      default:
+        return 'destructive' as const;
+    }
+  };
+
+  const liveListingSource = useMemo(() => {
+    return partnerSpaces.map((space) => {
+      const spaceBookings = partnerBookings.filter(
+        (booking) => booking.spaceId === space.id
+      );
+      const revenue = spaceBookings.reduce(
+        (sum, booking) => sum + (booking.price ?? 0),
+        0
+      );
+      const bookings = spaceBookings.length;
+      const cancellations = spaceBookings.filter((booking) =>
+        ['cancelled', 'rejected', 'expired', 'noshow'].includes(booking.status)
+      ).length;
+      const lastUpdated =
+        spaceBookings[0]?.createdAt ?? space.created_at ?? new Date().toISOString();
+
+      return {
+        id: space.id,
+        name: space.name,
+        status: space.status,
+        views: 0,
+        saves: 0,
+        inquiries: 0,
+        bookings,
+        revenue,
+        rating: 0,
+        reviews: 0,
+        cancellations,
+        lastUpdated,
+        bookingTypes: ['hourly', 'daily'],
+      };
+    });
+  }, [partnerBookings, partnerSpaces]);
+
+  const bookingStatusCounts = useMemo(() => {
+    const base: Record<BookingStatus, number> = {
+      confirmed: 0,
+      pending: 0,
+      cancelled: 0,
+      rejected: 0,
+      expired: 0,
+      checkedin: 0,
+      checkedout: 0,
+      completed: 0,
+      noshow: 0,
+    };
+    partnerBookings.forEach((booking) => {
+      base[booking.status] += 1;
+    });
+    return base;
+  }, [partnerBookings]);
+
+  const funnelSteps = useMemo(() => {
+    const messageCount = dashboardFeed.filter(
+      (item) => item.type === 'notification' && item.notificationType === 'message'
+    ).length;
+    const completedCount = partnerBookings.filter((booking) =>
+      ['completed', 'checkedout'].includes(booking.status)
+    ).length;
+    const base = Math.max(
+      dashboardFeed.length,
+      messageCount,
+      partnerBookings.length,
+      completedCount,
+      1
+    );
+
+    return [
+      {
+        label: 'Activity items',
+        value: dashboardFeed.length,
+        accent: 'bg-cyan-500',
+        percent: (dashboardFeed.length / base) * 100,
+      },
+      {
+        label: 'Messages',
+        value: messageCount,
+        accent: 'bg-amber-500',
+        percent: (messageCount / base) * 100,
+      },
+      {
+        label: 'Bookings',
+        value: partnerBookings.length,
+        accent: 'bg-sky-500',
+        percent: (partnerBookings.length / base) * 100,
+      },
+      {
+        label: 'Completed',
+        value: completedCount,
+        accent: 'bg-emerald-500',
+        percent: (completedCount / base) * 100,
+      }
+    ];
+  }, [dashboardFeed, partnerBookings]);
+
+  const recentBookings = useMemo(() => {
+    return [...partnerBookings]
+      .filter((booking) =>
+        ['confirmed', 'pending', 'checkedin'].includes(booking.status)
+      )
+      .sort(
+        (first, second) =>
+          new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()
+      )
+      .slice(0, 3);
+  }, [partnerBookings]);
+
+  const peakDemand = useMemo(() => {
+    if (!partnerBookings.length) {
+      return {
+ dayLabel: '—',
+hourLabel: '—', 
+};
+    }
+
+    const dayCounts = Array.from({ length: 7, }, () => 0);
+    const hourCounts = Array.from({ length: 24, }, () => 0);
+
+    partnerBookings.forEach((booking) => {
+      const date = new Date(booking.createdAt);
+      dayCounts[date.getDay()] += 1;
+      hourCounts[date.getHours()] += 1;
+    });
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const peakDayIndex = dayCounts.reduce(
+      (bestIndex, value, index) => (value > dayCounts[bestIndex] ? index : bestIndex),
+      0
+    );
+    const peakHourIndex = hourCounts.reduce(
+      (bestIndex, value, index) =>
+        value > hourCounts[bestIndex] ? index : bestIndex,
+      0
+    );
+
+    const formatHourLabel = (hour: number) => {
+      const toLabel = (value: number) =>
+        new Date(Date.UTC(2024, 0, 1, value, 0)).toLocaleTimeString([], { hour: 'numeric', });
+      const endHour = (hour + 1) % 24;
+      return `${toLabel(hour)}–${toLabel(endHour)}`;
+    };
+
+    return {
+      dayLabel: dayNames[peakDayIndex] ?? '—',
+      hourLabel: formatHourLabel(peakHourIndex),
+    };
+  }, [partnerBookings]);
 
   const filteredListings = useMemo(() => {
-    return BASE_LISTINGS.filter((listing) => {
-      if (bookingType !== 'all' && !listing.bookingTypes.includes(bookingType)) {
+    return liveListingSource.filter((listing) => {
+      if (
+        bookingType !== 'all' &&
+        !listing.bookingTypes.includes(bookingType)
+      ) {
         return false;
       }
       if (listingFilter !== 'all' && listing.id !== listingFilter) {
@@ -467,16 +586,20 @@ export function SpacesAnalyticsPanel() {
       }
       return listing.name.toLowerCase().includes(searchTerm.toLowerCase());
     });
-  }, [bookingType, listingFilter, searchTerm]);
+  }, [bookingType, listingFilter, liveListingSource, searchTerm]);
 
   const sortedListings = useMemo(() => {
     const rows = filteredListings.map((listing) => {
-      const computedViews = Math.round(listing.views * multiplier);
-      const computedBookings = Math.max(1, Math.round(listing.bookings * multiplier));
-      const computedRevenue = Math.round(listing.revenue * multiplier);
-      const conversion = computedViews ? (computedBookings / computedViews) * 100 : 0;
-      const cancellations = Math.min(listing.cancellations, computedBookings);
-      const cancellationRate = (cancellations / computedBookings) * 100;
+      const computedViews = listing.views ?? 0;
+      const computedBookings = listing.bookings;
+      const computedRevenue = listing.revenue;
+      const conversion = computedViews
+        ? (computedBookings / computedViews) * 100
+        : 0;
+      const cancellations = Math.min(listing.cancellations, Math.max(computedBookings, 1));
+      const cancellationRate = computedBookings
+        ? (cancellations / computedBookings) * 100
+        : 0;
       return {
         ...listing,
         views: computedViews,
@@ -487,7 +610,7 @@ export function SpacesAnalyticsPanel() {
       };
     });
 
-    const comparator = (a: typeof rows[number], b: typeof rows[number]) => {
+    const comparator = (a: (typeof rows)[number], b: (typeof rows)[number]) => {
       const direction = sortDirection === 'asc' ? 1 : -1;
       const valueA = a[sortKey] ?? 0;
       const valueB = b[sortKey] ?? 0;
@@ -495,17 +618,13 @@ export function SpacesAnalyticsPanel() {
     };
 
     return [...rows].sort(comparator);
-  }, [filteredListings, multiplier, sortDirection, sortKey]);
+  }, [filteredListings, sortDirection, sortKey]);
 
   const exportCsv = useCallback(() => {
     const headers = [
       'Listing',
       'Status',
-      'Views',
-      'Saves',
-      'Inquiries',
       'Bookings',
-      'Conversion %',
       'Revenue',
       'Rating',
       'Reviews',
@@ -515,11 +634,7 @@ export function SpacesAnalyticsPanel() {
     const rows = sortedListings.map((listing) => [
       listing.name,
       listing.status,
-      listing.views.toString(),
-      listing.saves.toString(),
-      listing.inquiries.toString(),
       listing.bookings.toString(),
-      listing.conversion.toFixed(1),
       listing.revenue.toString(),
       listing.rating.toString(),
       listing.reviews.toString(),
@@ -527,7 +642,9 @@ export function SpacesAnalyticsPanel() {
       listing.lastUpdated
     ]);
 
-    const csvContent = [headers, ...rows].map((row) => row.join(',')).join('\n');
+    const csvContent = [headers, ...rows]
+      .map((row) => row.join(','))
+      .join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv', });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
@@ -552,82 +669,65 @@ export function SpacesAnalyticsPanel() {
   const summaryMetrics = [
     {
       label: 'Total revenue (₱)',
-      value: `₱${ summary.revenue.toLocaleString('en-US') }`,
-      helper: 'Bookings + add-ons',
-      change: summary.revenueChange,
+      value: `₱${partnerBookings
+        .reduce((sum, booking) => sum + (booking.price ?? 0), 0)
+        .toLocaleString('en-US')}`,
+      helper: 'All partner bookings',
+      change: 0,
       accent: 'from-emerald-500/60 via-emerald-500/10 to-transparent',
     },
     {
       label: 'Bookings',
-      value: summary.bookings.toString(),
-      helper: 'Confirmed + completed',
-      change: summary.bookingsChange,
+      value: partnerBookings.length.toString(),
+      helper: 'All partner bookings',
+      change: 0,
       accent: 'from-sky-500/60 via-sky-500/10 to-transparent',
     },
     {
-      label: 'Conversion rate',
-      value: `${ summary.conversion.toFixed(1) }%`,
-      helper: 'Bookings ÷ listing views',
-      change: summary.conversionChange,
+      label: 'Messages',
+      value: dashboardFeed.filter(
+        (item) => item.type === 'notification' && item.notificationType === 'message'
+      ).length.toString(),
+      helper: 'Recent partner messages',
+      change: 0,
       accent: 'from-indigo-500/60 via-indigo-500/10 to-transparent',
     },
     {
-      label: 'Listing views',
-      value: summary.views.toLocaleString('en-US'),
-      helper: `${ summary.saves } saves · ${ summary.inquiries } inquiries`,
-      change: Math.round((summary.views / 1_000) * 100) / 100,
+      label: 'Active listings',
+      value: partnerSpaces.length.toString(),
+      helper: 'Your spaces in UpSpace',
+      change: 0,
       accent: 'from-amber-500/60 via-amber-500/10 to-transparent',
     }
   ];
 
-  const funnelSteps = useMemo(() => {
-    const steps = [
-      {
- label: 'Views',
-value: funnel.views,
-accent: 'bg-cyan-500', 
-},
-      {
- label: 'Saves',
-value: funnel.saves,
-accent: 'bg-amber-500', 
-},
-      {
- label: 'Inquiries',
-value: funnel.inquiries,
-accent: 'bg-sky-500', 
-},
-      {
- label: 'Bookings',
-value: funnel.bookings,
-accent: 'bg-emerald-500', 
-}
-    ];
-    const base = funnel.views || 1;
-    return steps.map((step) => ({
-      ...step,
-      percent: (step.value / base) * 100,
-    }));
-  }, [funnel]);
-
-  const rangeLabel = DATE_RANGE_PRESETS.find((range) => range.value === dateRange)?.label ?? 'Last 7 days';
+  const rangeLabel =
+    DATE_RANGE_PRESETS.find((range) => range.value === dateRange)?.label ??
+    'Last 7 days';
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 mt-8">
       <Card className="rounded-3xl border bg-gradient-to-br from-primary/20 to-primary/5">
         <CardHeader className="items-start gap-4">
           <div>
-            <CardTitle className="text-lg font-semibold">Partner dashboard</CardTitle>
+            <CardTitle className="text-lg font-semibold">
+              Partner dashboard
+            </CardTitle>
             <CardDescription>
-              Space performance for the selected timeframe. Use the filters to slice and export
-              the data you rely on most.
+              Space performance for the selected timeframe. Use the filters to
+              slice and export the data you rely on most.
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-[11px] uppercase tracking-wide">
+            <Badge
+              variant="outline"
+              className="text-[11px] uppercase tracking-wide"
+            >
               { rangeLabel }
             </Badge>
-            <Badge className="text-[11px] uppercase tracking-wide">Live data</Badge>
+            <Badge className="text-[11px] uppercase tracking-wide">
+              Live data
+            </Badge>
           </div>
         </CardHeader>
         <CardContent className="px-0 pb-6">
@@ -641,16 +741,24 @@ accent: 'bg-emerald-500',
         <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center">
           <div>
             <CardTitle>Filters & controls</CardTitle>
-            <CardDescription>Slice the dashboard by date range, listing, or booking type.</CardDescription>
+            <CardDescription>
+              Slice the dashboard by date range, listing, or booking type.
+            </CardDescription>
           </div>
         </CardHeader>
         <CardContent className="space-y-4 pt-0">
           <div className="flex flex-wrap gap-4">
             <div className="flex flex-col">
-              <Label htmlFor="date-range" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <Label
+                htmlFor="date-range"
+                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              >
                 Date range
               </Label>
-              <Select value={ dateRange } onValueChange={ (value) => setDateRange(value as DateRangeKey) }>
+              <Select
+                value={ dateRange }
+                onValueChange={ (value) => setDateRange(value as DateRangeKey) }
+              >
                 <SelectTrigger id="date-range" className="w-44">
                   <SelectValue />
                 </SelectTrigger>
@@ -664,16 +772,22 @@ accent: 'bg-emerald-500',
               </Select>
             </div>
             <div className="flex flex-col">
-              <Label htmlFor="listing-filter" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <Label
+                htmlFor="listing-filter"
+                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              >
                 Listing
               </Label>
-              <Select value={ listingFilter } onValueChange={ (value) => setListingFilter(value) }>
+              <Select
+                value={ listingFilter }
+                onValueChange={ (value) => setListingFilter(value) }
+              >
                 <SelectTrigger id="listing-filter" className="w-48">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All listings</SelectItem>
-                  { BASE_LISTINGS.map((listing) => (
+                  { liveListingSource.map((listing) => (
                     <SelectItem key={ listing.id } value={ listing.id }>
                       { listing.name }
                     </SelectItem>
@@ -682,10 +796,18 @@ accent: 'bg-emerald-500',
               </Select>
             </div>
             <div className="flex flex-col">
-              <Label htmlFor="booking-type" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <Label
+                htmlFor="booking-type"
+                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              >
                 Booking type
               </Label>
-              <Select value={ bookingType } onValueChange={ (value) => setBookingType(value as BookingTypeKey) }>
+              <Select
+                value={ bookingType }
+                onValueChange={ (value) =>
+                  setBookingType(value as BookingTypeKey)
+                }
+              >
                 <SelectTrigger id="booking-type" className="w-36">
                   <SelectValue />
                 </SelectTrigger>
@@ -707,14 +829,14 @@ accent: 'bg-emerald-500',
             <Button variant="outline" onClick={ exportCsv }>
               Export CSV
             </Button>
-            <Badge variant="secondary" className="text-xs uppercase tracking-wide">
-              Listing conversion = bookings ÷ views
-            </Badge>
           </div>
           { dateRange === 'custom' && (
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex flex-col">
-                <Label htmlFor="custom-start" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <Label
+                  htmlFor="custom-start"
+                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                >
                   From
                 </Label>
                 <Input
@@ -726,7 +848,10 @@ accent: 'bg-emerald-500',
                 />
               </div>
               <div className="flex flex-col">
-                <Label htmlFor="custom-end" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <Label
+                  htmlFor="custom-end"
+                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                >
                   To
                 </Label>
                 <Input
@@ -740,7 +865,7 @@ accent: 'bg-emerald-500',
               </div>
               <p className="text-xs text-muted-foreground">
                 { customStart && customEnd
-                  ? `${ format(new Date(customStart), 'MMM dd')} – ${ format(new Date(customEnd), 'MMM dd')}`
+                  ? `${format(new Date(customStart), 'MMM dd')} – ${format(new Date(customEnd), 'MMM dd')}`
                   : 'Choose a date span' }
               </p>
             </div>
@@ -761,10 +886,12 @@ accent: 'bg-emerald-500',
                 </p>
                 <ChangeBadge delta={ metric.change } />
               </div>
-              <p className="text-3xl font-semibold text-foreground">{ metric.value }</p>
+              <p className="text-3xl font-semibold text-foreground">
+                { metric.value }
+              </p>
               <p className="text-xs text-muted-foreground">{ metric.helper }</p>
               <div
-                className={ `h-1 rounded-full ${ metric.accent } mt-2` }
+                className={ `h-1 rounded-full ${metric.accent} mt-2` }
                 aria-hidden="true"
               />
             </CardContent>
@@ -777,9 +904,14 @@ accent: 'bg-emerald-500',
           <CardHeader className="flex items-center justify-between gap-2">
             <div>
               <CardTitle>Bookings & revenue over time</CardTitle>
-              <CardDescription>Tracks the same range as your filters.</CardDescription>
+              <CardDescription>
+                Tracks the same range as your filters.
+              </CardDescription>
             </div>
-            <Badge variant="outline" className="text-xs uppercase tracking-wide">
+            <Badge
+              variant="outline"
+              className="text-xs uppercase tracking-wide"
+            >
               Trend
             </Badge>
           </CardHeader>
@@ -789,8 +921,16 @@ accent: 'bg-emerald-500',
                 <span key={ tick }>{ tick }</span>
               )) }
             </div>
-            <MiniLineChart values={ chartData.bookings } color="#0ea5e9" label="Bookings" />
-            <MiniLineChart values={ chartData.revenue } color="#fb923c" label="Revenue" />
+            <MiniLineChart
+              values={ chartData.bookings }
+              color="#0ea5e9"
+              label="Bookings"
+            />
+            <MiniLineChart
+              values={ chartData.revenue }
+              color="#fb923c"
+              label="Revenue"
+            />
           </CardContent>
         </Card>
         <Card className="rounded-3xl border">
@@ -801,8 +941,16 @@ accent: 'bg-emerald-500',
             </div>
           </CardHeader>
           <CardContent className="space-y-5 px-0">
-            <MiniLineChart values={ chartData.views } color="#22c55e" label="Views" />
-            <MiniLineChart values={ chartData.saves } color="#a855f7" label="Saves" />
+            <MiniLineChart
+              values={ chartData.views }
+              color="#22c55e"
+              label="Views"
+            />
+            <MiniLineChart
+              values={ chartData.saves }
+              color="#a855f7"
+              label="Saves"
+            />
           </CardContent>
         </Card>
       </div>
@@ -811,35 +959,66 @@ accent: 'bg-emerald-500',
         <CardHeader className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle>Funnel & engagement</CardTitle>
-            <CardDescription>Track every step from views to bookings.</CardDescription>
+            <CardDescription>
+              Live activity from bookings and partner messages.
+            </CardDescription>
           </div>
-          <Badge variant="secondary" className="text-xs uppercase tracking-wide">
-            Inquiry response { funnel.responseRate }%
-          </Badge>
         </CardHeader>
         <CardContent className="space-y-6 px-0">
-          <div className="grid gap-4 md:grid-cols-2">
-            { funnelSteps.map((step) => (
-              <FunnelBar
-                key={ step.label }
-                label={ step.label }
-                value={ step.value }
-                percent={ step.percent }
-                accent={ step.accent }
-              />
-            )) }
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-1 rounded-2xl border border-border/60 p-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Median first response</p>
-              <p className="text-2xl font-semibold">{ funnel.medianResponseMinutes } min</p>
+          { (bookingsLoading && feedLoading) ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              { Array.from({ length: 4, }).map((_, index) => (
+                <div
+                  key={ `funnel-skeleton-${index}` }
+                  className="space-y-2 rounded-2xl border border-border/60 p-4"
+                >
+                  <Skeleton className="h-4 w-24 rounded-md" />
+                  <Skeleton className="h-3 w-20 rounded-md" />
+                  <Skeleton className="h-2 w-full rounded-md" />
+                </div>
+              )) }
             </div>
-            <div className="space-y-1 rounded-2xl border border-border/60 p-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Average rating</p>
-              <p className="text-2xl font-semibold">{ summary.rating.toFixed(1) }★</p>
-              <p className="text-xs text-muted-foreground">{ summary.reviews } reviews</p>
-            </div>
-          </div>
+          ) : feedError || bookingsError ? (
+            <p className="text-sm text-destructive px-4">
+              Unable to load engagement data.
+            </p>
+          ) : (
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+                { funnelSteps.map((step) => (
+                  <FunnelBar
+                    key={ step.label }
+                    label={ step.label }
+                    value={ step.value }
+                    percent={ step.percent }
+                    accent={ step.accent }
+                  />
+                )) }
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-1 rounded-2xl border border-border/60 p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Total bookings
+                  </p>
+                  <p className="text-2xl font-semibold">
+                    { partnerBookings.length }
+                  </p>
+                </div>
+                <div className="space-y-1 rounded-2xl border border-border/60 p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Messages (last feed)
+                  </p>
+                  <p className="text-2xl font-semibold">
+                    { dashboardFeed.filter(
+                      (item) =>
+                        item.type === 'notification' &&
+                        item.notificationType === 'message'
+                    ).length }
+                  </p>
+                </div>
+              </div>
+            </>
+          ) }
         </CardContent>
       </Card>
 
@@ -847,7 +1026,9 @@ accent: 'bg-emerald-500',
         <CardHeader className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle>Listing performance</CardTitle>
-            <CardDescription>Sortable & exportable per listing metrics.</CardDescription>
+            <CardDescription>
+              Sortable & exportable per listing metrics.
+            </CardDescription>
           </div>
           <Badge variant="outline" className="text-xs uppercase tracking-wide">
             { sortedListings.length } listings
@@ -859,48 +1040,40 @@ accent: 'bg-emerald-500',
               <TableRow>
                 { [
                   {
- label: 'Listing',
-key: 'name', 
-},
+                    label: 'Listing',
+                    key: 'name',
+                  },
                   {
- label: 'Views',
-key: 'views', 
-},
+                    label: 'Bookings',
+                    key: 'bookings',
+                  },
                   {
- label: 'Saves',
-key: 'saves', 
-},
+                    label: 'Cancellation %',
+                    key: 'cancellationRate',
+                  },
                   {
- label: 'Inquiries',
-key: 'inquiries', 
-},
+                    label: 'Revenue',
+                    key: 'revenue',
+                  },
                   {
- label: 'Bookings',
-key: 'bookings', 
-},
-                  {
- label: 'Conversion %',
-key: 'conversion', 
-},
-                  {
- label: 'Revenue',
-key: 'revenue', 
-},
-                  {
- label: 'Cancellation %',
-key: 'cancellation', 
-},
-                  {
- label: 'Last updated',
-key: 'lastUpdated', 
-}
+                    label: 'Last activity',
+                    key: 'lastUpdated',
+                  }
                 ].map((column) => (
                   <TableHead key={ column.label }>
                     <button
                       type="button"
-                      aria-label={ column.key === 'name' ? undefined : `Sort by ${ column.label }` }
+                      aria-label={
+                        column.key === 'name'
+                          ? undefined
+                          : `Sort by ${column.label}`
+                      }
                       className="flex items-center gap-1 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                      onClick={ () => (column.key !== 'name' ? cycleSort(column.key as SortKey) : undefined) }
+                      onClick={ () =>
+                        column.key !== 'name'
+                          ? cycleSort(column.key as SortKey)
+                          : undefined
+                      }
                     >
                       { column.label }
                     </button>
@@ -912,17 +1085,21 @@ key: 'lastUpdated',
               { sortedListings.map((listing) => (
                 <TableRow key={ listing.id }>
                   <TableCell className="space-y-1">
-                    <p className="text-sm font-semibold text-foreground">{ listing.name }</p>
-                    <p className="text-xs text-muted-foreground">{ listing.status }</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      { listing.name }
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      { listing.status }
+                    </p>
                   </TableCell>
-                  <TableCell>{ listing.views.toLocaleString() }</TableCell>
-                  <TableCell>{ listing.saves.toLocaleString() }</TableCell>
-                  <TableCell>{ listing.inquiries.toLocaleString() }</TableCell>
                   <TableCell>{ listing.bookings.toLocaleString() }</TableCell>
-                  <TableCell>{ listing.conversion.toFixed(1) }%</TableCell>
-                  <TableCell>₱{ listing.revenue.toLocaleString('en-US') }</TableCell>
+                  <TableCell>
+                    ₱{ listing.revenue.toLocaleString('en-US') }
+                  </TableCell>
                   <TableCell>{ listing.cancellationRate.toFixed(1) }%</TableCell>
-                  <TableCell>{ format(new Date(listing.lastUpdated), 'MMM dd') }</TableCell>
+                  <TableCell>
+                    { format(new Date(listing.lastUpdated), 'MMM dd') }
+                  </TableCell>
                 </TableRow>
               )) }
             </TableBody>
@@ -939,14 +1116,23 @@ key: 'lastUpdated',
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            { Object.entries(bookingStatus).map(([status, value]) => {
-              const total = Object.values(bookingStatus).reduce((sum, current) => sum + current, 0);
+            { Object.entries(bookingStatusCounts).map(([status, value]) => {
+              const total = Object.values(bookingStatusCounts).reduce(
+                (sum, current) => sum + current,
+                0
+              );
               const percent = total ? Math.round((value / total) * 100) : 0;
               return (
-                <div key={ status } className="flex items-center justify-between text-sm">
+                <div
+                  key={ status }
+                  className="flex items-center justify-between text-sm"
+                >
                   <div className="flex items-center gap-2">
                     <span className="capitalize">{ status }</span>
-                    <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] uppercase tracking-wide"
+                    >
                       { percent }%
                     </Badge>
                   </div>
@@ -965,26 +1151,77 @@ key: 'lastUpdated',
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Upcoming bookings</p>
-              { UPCOMING_BOOKINGS.map((booking) => (
-                <div
-                  key={ `${ booking.listing }${ booking.date }` }
-                  className="flex items-center justify-between rounded-2xl border border-border/60 px-4 py-3"
-                >
-                  <div>
-                    <p className="font-semibold">{ booking.listing }</p>
-                    <p className="text-xs text-muted-foreground">
-                      { booking.date } · { booking.type }
-                    </p>
-                  </div>
-                  <Badge variant="secondary">{ booking.status }</Badge>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Recent bookings
+              </p>
+              { bookingsLoading ? (
+                <div className="space-y-2">
+                  { Array.from({ length: 3, }).map((_, index) => (
+                    <div
+                      key={ `upcoming-skeleton-${index}` }
+                      className="flex items-center justify-between rounded-2xl border border-border/60 px-4 py-3"
+                    >
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-40 rounded-md" />
+                        <Skeleton className="h-3 w-28 rounded-md" />
+                      </div>
+                      <Skeleton className="h-6 w-16 rounded-md" />
+                    </div>
+                  )) }
                 </div>
-              )) }
+              ) : bookingsError ? (
+                <p className="text-sm text-destructive">
+                  { bookingsErrorObj instanceof Error
+                    ? bookingsErrorObj.message
+                    : 'Unable to load bookings.' }
+                </p>
+              ) : recentBookings.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No recent partner bookings yet.
+                </p>
+              ) : (
+                recentBookings.map((booking) => (
+                  <div
+                    key={ booking.id }
+                    className="flex items-center justify-between rounded-2xl border border-border/60 px-4 py-3"
+                  >
+                    <div>
+                      <p className="font-semibold">{ booking.spaceName }</p>
+                      <p className="text-xs text-muted-foreground">
+                        { format(new Date(booking.createdAt), 'MMM d · h:mm a') } ·{ ' ' }
+                        { booking.areaName }
+                      </p>
+                    </div>
+                    <Badge variant={ resolveStatusVariant(booking.status) }>
+                      { booking.status }
+                    </Badge>
+                  </div>
+                ))
+              ) }
             </div>
             <div className="space-y-1 rounded-2xl border border-border/60 px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Peak performance</p>
-              <p className="text-sm font-semibold">Days: { PEAK_TIMES.days }</p>
-              <p className="text-sm font-semibold">Hours: { PEAK_TIMES.hours }</p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Peak performance
+              </p>
+              { bookingsLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-28 rounded-md" />
+                  <Skeleton className="h-4 w-32 rounded-md" />
+                </div>
+              ) : bookingsError ? (
+                <p className="text-sm text-destructive">
+                  { bookingsErrorObj instanceof Error
+                    ? bookingsErrorObj.message
+                    : 'Unable to load peak times.' }
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold">Top day: { peakDemand.dayLabel }</p>
+                  <p className="text-sm font-semibold">
+                    Top hour: { peakDemand.hourLabel }
+                  </p>
+                </>
+              ) }
             </div>
           </CardContent>
         </Card>
