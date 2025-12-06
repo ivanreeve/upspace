@@ -636,6 +636,11 @@ export function AiSearch() {
             </Button>
           </div>
         </div>
+        { voiceError && (
+          <p className="text-center text-xs text-destructive">
+            { voiceError }
+          </p>
+        ) }
       </form>
     </div>
   );
