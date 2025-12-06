@@ -229,7 +229,7 @@ function MessageBubble({
       { !isUser && (
         <div
           ref={ iconRef }
-          className="mt-0.5 flex size-12 items-center justify-center rounded-full bg-cyan-100 text-cyan-900 dark:bg-cyan-900/30 dark:text-cyan-100"
+          className="relative z-10 mt-0.5 flex size-12 items-center justify-center rounded-full bg-cyan-100 text-cyan-900 dark:bg-cyan-900/30 dark:text-cyan-100"
         >
           <GradientSparklesIcon isThinking={ isThinking } />
           <span className="sr-only">Gemini</span>
@@ -549,7 +549,7 @@ export function AiSearch() {
                     className="relative space-y-4 px-3 py-4"
                   >
                     <div
-                      className="pointer-events-none absolute left-[2.15rem] border-l-2 border-dotted border-muted opacity-80"
+                      className="pointer-events-none absolute left-[2.15rem] border-l-2 border-dotted border-muted opacity-80 z-0"
                       aria-hidden="true"
                       style={
                         linePosition
