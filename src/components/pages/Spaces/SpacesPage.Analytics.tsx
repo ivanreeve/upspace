@@ -519,13 +519,11 @@ export function SpacesAnalyticsPanel() {
       revenueBuckets[index] += booking.price ?? 0;
     });
 
-    const fallback = TIME_SERIES_DATA[dateRange] ?? TIME_SERIES_DATA['7d'];
-
     return {
       bookings: bookingsBuckets,
       revenue: revenueBuckets,
-      views: fallback.views,
-      saves: fallback.saves,
+      views: Array.from({ length: points, }, () => 0),
+      saves: Array.from({ length: points, }, () => 0),
     };
   }, [
     customEnd,
@@ -997,7 +995,7 @@ hourLabel: '—',
           <CardHeader>
             <div>
               <CardTitle>Views vs bookings</CardTitle>
-              <CardDescription>Funnel health indicator.</CardDescription>
+              <CardDescription>Live bookings; views/saves not yet tracked.</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="space-y-5 px-0">
