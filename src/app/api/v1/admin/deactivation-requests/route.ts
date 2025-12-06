@@ -46,14 +46,19 @@ export async function GET(req: NextRequest) {
       ...(cursor ? { cursor: { id: cursor, }, } : {}),
       orderBy: { created_at: 'asc', },
       include: {
-        user: {
+        user_deactivation_request_user_idTouser: {
           select: {
             first_name: true,
             last_name: true,
             handle: true,
+            status: true,
+            pending_deletion_at: true,
+            expires_at: true,
+            cancelled_at: true,
+            deleted_at: true,
           },
         },
-        processed_by: {
+        user_deactivation_request_processed_by_user_idTouser: {
           select: {
             first_name: true,
             last_name: true,
@@ -77,15 +82,24 @@ export async function GET(req: NextRequest) {
       processed_at: request.processed_at?.toISOString() ?? null,
       email: request.email,
       user: {
-        handle: request.user.handle,
-        name: formatDisplayName(request.user.first_name, request.user.last_name, request.user.handle),
+        handle: request.user_deactivation_request_user_idTouser.handle,
+        name: formatDisplayName(
+          request.user_deactivation_request_user_idTouser.first_name,
+          request.user_deactivation_request_user_idTouser.last_name,
+          request.user_deactivation_request_user_idTouser.handle
+        ),
+        status: request.user_deactivation_request_user_idTouser.status,
+        pending_deletion_at: request.user_deactivation_request_user_idTouser.pending_deletion_at?.toISOString() ?? null,
+        expires_at: request.user_deactivation_request_user_idTouser.expires_at?.toISOString() ?? null,
+        cancelled_at: request.user_deactivation_request_user_idTouser.cancelled_at?.toISOString() ?? null,
+        deleted_at: request.user_deactivation_request_user_idTouser.deleted_at?.toISOString() ?? null,
       },
-      processed_by: request.processed_by
+      processed_by: request.user_deactivation_request_processed_by_user_idTouser
         ? {
             name: formatDisplayName(
-              request.processed_by.first_name,
-              request.processed_by.last_name,
-              request.processed_by.handle
+              request.user_deactivation_request_processed_by_user_idTouser.first_name,
+              request.user_deactivation_request_processed_by_user_idTouser.last_name,
+              request.user_deactivation_request_processed_by_user_idTouser.handle
             ),
           }
         : null,

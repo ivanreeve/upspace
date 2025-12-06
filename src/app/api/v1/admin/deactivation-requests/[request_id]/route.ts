@@ -48,7 +48,7 @@ export async function PATCH(
 
     const request = await prisma.deactivation_request.findUnique({
       where: { id: parsedId.data, },
-      include: { user: { select: { user_id: true, }, }, },
+      include: { user_deactivation_request_user_idTouser: { select: { user_id: true, }, }, },
     });
 
     if (!request) {
@@ -78,7 +78,7 @@ export async function PATCH(
           },
         }),
         prisma.user.update({
-          where: { user_id: request.user.user_id, },
+          where: { user_id: request.user_deactivation_request_user_idTouser.user_id, },
           data: {
             status: user_status.deactivated,
             cancelled_at: now,

@@ -361,13 +361,6 @@ export function AiSearch() {
     };
   }, [isMobile, state]);
 
-  React.useEffect(() => {
-    scrollAnchorRef.current?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'end',
-    });
-  }, [messages, isThinking]);
-
   const assistantIds = React.useMemo(() => {
     const assistantMessageIds = messages
       .filter((message) => message.role === 'assistant')
@@ -473,15 +466,34 @@ export function AiSearch() {
       const anchor = scrollAnchorRef.current;
       if (!anchor) return;
 
-      requestAnimationFrame(() => {
+      const scrollViewport = anchor.closest(
+        '[data-slot="scroll-area-viewport"]'
+      ) as HTMLElement | null;
+
+      const performScroll = () => {
+        if (scrollViewport) {
+          const options: ScrollToOptions = { top: scrollViewport.scrollHeight, };
+          if (behavior === 'smooth') {
+            options.behavior = 'smooth';
+          }
+          scrollViewport.scrollTo(options);
+        }
+
         anchor.scrollIntoView({
           behavior,
           block: 'end',
         });
-      });
+      };
+
+      requestAnimationFrame(performScroll);
+      window.setTimeout(performScroll, 120);
     },
     []
   );
+
+  React.useEffect(() => {
+    scrollToBottom(hasMessages ? 'smooth' : 'auto');
+  }, [messages, isThinking, hasMessages, scrollToBottom]);
 
   const handleVoiceButtonClick = () => {
     if (aiSearchMutation.isPending) {
