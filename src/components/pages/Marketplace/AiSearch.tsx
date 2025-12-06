@@ -9,8 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { VoiceSearchDialog } from '@/components/ui/voice-search-dialog';
-import { type SpeechRecognitionStatus } from '@/hooks/use-speech-recognition';
+import { BottomGradientOverlay } from '@/components/ui/bottom-gradient-overlay';
+import { useSidebar } from '@/components/ui/sidebar';
+import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { cn } from '@/lib/utils';
 
@@ -18,11 +19,6 @@ type ChatMessage = {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-};
-
-type SpeechRecognitionSupportWindow = typeof window & {
-  webkitSpeechRecognition?: unknown;
-  SpeechRecognition?: unknown;
 };
 
 const makeMessageId = (role: ChatMessage['role']) =>
@@ -208,10 +204,15 @@ export function AiSearch() {
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [voiceError, setVoiceError] = React.useState<string | null>(null);
-  const [isVoiceSupported, setIsVoiceSupported] = React.useState(false);
-  const [isVoiceDialogOpen, setIsVoiceDialogOpen] = React.useState(false);
-  const [voiceStatus, setVoiceStatus] =
-    React.useState<SpeechRecognitionStatus>('idle');
+  const {
+    isSupported: isVoiceSupported,
+    status: voiceStatus,
+    transcript,
+    startListening,
+    stopListening,
+    resetTranscript,
+    errorMessage: voiceHookError,
+  } = useSpeechRecognition();
   const scrollAnchorRef = React.useRef<HTMLDivElement | null>(null);
   const lineContainerRef = React.useRef<HTMLDivElement | null>(null);
   const iconRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
@@ -221,6 +222,9 @@ export function AiSearch() {
   } | null>(null);
   const hasMessages = messages.length > 0;
   const { data: userProfile, } = useUserProfile();
+  const {
+ state, isMobile, 
+} = useSidebar();
 
   const greetingName = React.useMemo(() => {
     const firstName = userProfile?.firstName?.trim();
@@ -333,7 +337,26 @@ export function AiSearch() {
 
   const isThinking = aiSearchMutation.isPending;
   const isListening = voiceStatus === 'listening';
-  const isVoiceActive = isVoiceDialogOpen || isListening;
+  const isVoiceActive = isListening;
+  const bottomBarOffsets = React.useMemo<React.CSSProperties>(() => {
+    if (isMobile) {
+      return {
+        left: 0,
+        right: 0,
+        paddingBottom: 'calc(0.75rem + var(--safe-area-bottom, 0px))',
+      };
+    }
+
+    const sidebarOffset = state === 'collapsed'
+      ? 'var(--sidebar-width-icon)'
+      : 'var(--sidebar-width)';
+
+    return {
+      left: sidebarOffset,
+      right: 0,
+      paddingBottom: 'calc(1rem + var(--safe-area-bottom, 0px))',
+    };
+  }, [isMobile, state]);
 
   React.useEffect(() => {
     scrollAnchorRef.current?.scrollIntoView({
@@ -412,62 +435,35 @@ export function AiSearch() {
     return () => window.removeEventListener('resize', handleResize);
   }, [measureLine]);
 
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const speechWindow = window as SpeechRecognitionSupportWindow;
-    const hasSupport = Boolean(
-      speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition
-    );
-
-    setIsVoiceSupported(hasSupport);
-  }, []);
-
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (voiceStatus === 'listening') {
+      stopListening();
+    }
     submitPrompt(query);
   };
 
-  const handleVoiceDialogOpenChange = React.useCallback((open: boolean) => {
-    setIsVoiceDialogOpen(open);
-    if (!open) {
-      setVoiceStatus('idle');
+  React.useEffect(() => {
+    if (voiceHookError) {
+      setVoiceError(voiceHookError);
+    }
+  }, [voiceHookError]);
+
+  React.useEffect(() => {
+    if (voiceStatus === 'unsupported') {
+      setVoiceError('Voice input is not supported in this browser.');
+      return;
+    }
+
+    if (voiceStatus !== 'error') {
       setVoiceError(null);
     }
-  }, []);
+  }, [voiceStatus]);
 
-  const handleVoiceStatusChange = React.useCallback(
-    (status: SpeechRecognitionStatus) => {
-      setVoiceStatus(status);
-
-      if (status === 'unsupported') {
-        setVoiceError('Voice input is not supported in this browser.');
-        setIsVoiceSupported(false);
-        setIsVoiceDialogOpen(false);
-        return;
-      }
-
-      if (status !== 'error') {
-        setVoiceError(null);
-      }
-    },
-    []
-  );
-
-  const handleVoiceError = React.useCallback((message?: string) => {
-    if (message) {
-      setVoiceError(message);
-    }
-  }, []);
-
-  const handleVoiceSubmit = React.useCallback(
-    (value: string) => {
-      handleVoiceDialogOpenChange(false);
-      const combined = [query.trim(), value.trim()].filter(Boolean).join(' ');
-      submitPrompt(combined);
-    },
-    [handleVoiceDialogOpenChange, query, submitPrompt]
-  );
+  React.useEffect(() => {
+    if (!transcript) return;
+    setQuery(transcript);
+  }, [transcript]);
 
   const handleVoiceButtonClick = () => {
     if (aiSearchMutation.isPending) {
@@ -480,13 +476,23 @@ export function AiSearch() {
     }
 
     setVoiceError(null);
-    setIsVoiceDialogOpen(true);
+
+    if (voiceStatus === 'listening') {
+      stopListening();
+      if (transcript.trim()) {
+        setQuery(transcript.trim());
+      }
+      return;
+    }
+
+    resetTranscript();
+    startListening();
   };
 
   return (
     <div
       className={ cn(
-        'relative mx-auto flex h-full min-h-full w-full max-w-5xl flex-col gap-6 px-4 pt-8 pb-4 sm:pt-12 sm:pb-6 md:pt-14 md:pb-8',
+        'relative mx-auto flex h-full min-h-full w-full max-w-5xl flex-col gap-6 px-4 pt-8 pb-32 sm:pt-12 sm:pb-36 md:pt-14 md:pb-40',
         'overflow-hidden'
       ) }
     >
@@ -560,14 +566,19 @@ export function AiSearch() {
         ) }
       </div>
 
-      <form
-        onSubmit={ handleSubmit }
-        className="sticky bottom-[calc(0.75rem+var(--safe-area-bottom,0px))] z-30 mt-auto flex w-full justify-center sm:bottom-[calc(1rem+var(--safe-area-bottom,0px))]"
+      <BottomGradientOverlay className="z-20" />
+
+      <div
+        className="fixed inset-x-0 bottom-0 z-30 px-4"
+        style={ bottomBarOffsets }
       >
-        <label htmlFor="ai-search-input" className="sr-only">
-          Ask anything about coworking spaces
-        </label>
-        <div className="flex w-full max-w-4xl flex-col gap-2 rounded-md border border-border/50 bg-background/95 p-2 shadow-2xl ring-1 ring-border/40 backdrop-blur supports-[backdrop-filter]:bg-background/75 sm:flex-row sm:items-center sm:gap-3">
+        <form
+          onSubmit={ handleSubmit }
+          className="mx-auto flex w-full max-w-4xl flex-col gap-2 rounded-md border border-border/50 bg-background/95 p-2 shadow-2xl ring-1 ring-border/40 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:flex-row sm:items-center sm:gap-3"
+        >
+          <label htmlFor="ai-search-input" className="sr-only">
+            Ask anything about coworking spaces
+          </label>
           <Input
             id="ai-search-input"
             value={ query }
@@ -580,19 +591,28 @@ export function AiSearch() {
           <div className="flex items-center justify-end gap-2 sm:justify-end">
             <Button
               type="button"
-              variant="ghost"
-              size="icon"
               aria-label="Use voice input"
               aria-pressed={ isVoiceActive }
               onClick={ handleVoiceButtonClick }
               disabled={ !isVoiceSupported || aiSearchMutation.isPending }
               className={ cn(
-                'relative bg-muted text-muted-foreground transition-shadow hover:text-foreground',
-                isVoiceActive &&
-                  'ring-2 ring-cyan-400/60 bg-cyan-50 text-foreground dark:bg-cyan-900/30'
+                'relative h-10 w-10 rounded-full p-[2px] text-muted-foreground transition-shadow hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary',
+                isVoiceActive
+                  ? 'bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400 shadow-[0_0_0_3px_rgba(34,211,238,0.35)]'
+                  : 'bg-muted'
               ) }
             >
-              <MicGradientIcon className={ cn(isVoiceActive && 'animate-pulse') } />
+              <span
+                className={ cn(
+                  'flex h-full w-full items-center justify-center rounded-full bg-muted',
+                  isVoiceActive && 'bg-background text-foreground'
+                ) }
+              >
+                <MicGradientIcon className={ cn(isVoiceActive && 'animate-pulse') } />
+                <span className="sr-only">
+                  { isVoiceActive ? 'Stop voice input' : 'Start voice input' }
+                </span>
+              </span>
             </Button>
             <Button
               type="submit"
@@ -611,21 +631,11 @@ export function AiSearch() {
               ) }
             </Button>
           </div>
-        </div>
+        </form>
         { voiceError && (
-          <p className="text-center text-xs text-destructive">{ voiceError }</p>
+          <p className="mt-1 text-center text-xs text-destructive">{ voiceError }</p>
         ) }
-      </form>
-
-      <VoiceSearchDialog
-        open={ isVoiceDialogOpen }
-        onOpenChange={ handleVoiceDialogOpenChange }
-        onSubmit={ handleVoiceSubmit }
-        onStatusChange={ handleVoiceStatusChange }
-        onError={ handleVoiceError }
-        title="Voice input"
-        description="Speak your AI search request and we'll type it in for you."
-      />
+      </div>
     </div>
   );
 }
