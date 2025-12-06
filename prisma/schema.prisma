@@ -173,6 +173,7 @@ model deactivation_request {
   email                                                String
   reason_category                                      deactivation_reason_category
   custom_reason                                        String?
+  type                                                 deactivation_request_type    @default(deactivate)
   status                                               deactivation_request_status  @default(pending)
   rejection_reason                                     String?
   created_at                                           DateTime                     @default(now()) @db.Timestamptz(6)
@@ -328,9 +329,13 @@ model unpublish_request {
 model user {
   first_name                                                           String?
   birthday                                                             DateTime?              @db.Date
-  is_disabled                                                          Boolean                @default(false)
+  status                                                               user_status            @default(active)
   created_at                                                           DateTime               @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamptz(6)
   updated_at                                                           DateTime               @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamptz(6)
+  pending_deletion_at                                                  DateTime?              @db.Timestamptz(6)
+  expires_at                                                           DateTime?              @db.Timestamptz(6)
+  deleted_at                                                           DateTime?              @db.Timestamptz(6)
+  cancelled_at                                                         DateTime?              @db.Timestamptz(6)
   user_id                                                              BigInt                 @id @unique @default(autoincrement())
   role                                                                 user_role              @default(customer)
   middle_name                                                          String?
@@ -350,6 +355,9 @@ model user {
   unpublish_request_unpublish_request_processed_by_user_idTouser       unpublish_request[]    @relation("unpublish_request_processed_by_user_idTouser")
   unpublish_request_unpublish_request_user_idTouser                    unpublish_request[]    @relation("unpublish_request_user_idTouser")
   verification                                                         verification[]
+
+  @@index([status], map: "idx_user_status")
+  @@index([expires_at], map: "idx_user_expires_at")
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -475,6 +483,11 @@ enum deactivation_request_status {
   rejected
 }
 
+enum deactivation_request_type {
+  deactivate
+  delete
+}
+
 enum gateway {
   paymongo
 }
@@ -496,6 +509,13 @@ enum user_role {
   customer
   partner
   admin
+}
+
+enum user_status {
+  active
+  deactivated
+  pending_deletion
+  deleted
 }
 
 enum verification_document_status {
