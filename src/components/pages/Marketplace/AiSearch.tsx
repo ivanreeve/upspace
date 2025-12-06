@@ -338,6 +338,9 @@ export function AiSearch() {
   const isThinking = aiSearchMutation.isPending;
   const isListening = voiceStatus === 'listening';
   const isVoiceActive = isListening;
+  const containerTopPadding = hasMessages
+    ? 'pt-0 sm:pt-0 md:pt-0'
+    : 'pt-8 sm:pt-12 md:pt-14';
   const bottomBarOffsets = React.useMemo<React.CSSProperties>(() => {
     if (isMobile) {
       return {
@@ -492,7 +495,8 @@ export function AiSearch() {
   return (
     <div
       className={ cn(
-        'relative mx-auto flex h-full min-h-full w-full max-w-5xl flex-col gap-6 px-4 pt-8 pb-32 sm:pt-12 sm:pb-36 md:pt-14 md:pb-40',
+        'relative mx-auto flex h-full min-h-full w-full max-w-5xl flex-col gap-6 px-4 pb-32 sm:pb-36 md:pb-40',
+        containerTopPadding,
         'overflow-hidden'
       ) }
     >

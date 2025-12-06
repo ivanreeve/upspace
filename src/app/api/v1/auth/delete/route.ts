@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { user_status } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -48,7 +49,13 @@ export async function POST() {
 
     await prisma.user.update({
       where: { auth_user_id: authUser.id, },
-      data: { is_disabled: true, },
+      data: {
+        status: user_status.pending_deletion,
+        pending_deletion_at: now,
+        expires_at: deadline,
+        cancelled_at: null,
+        deleted_at: null,
+      },
     });
 
     const metadataPayload = JSON.stringify({ [DELETION_METADATA_KEY]: now.toISOString(), });

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { user_status } from '@prisma/client';
 import { z } from 'zod';
 
-import { prisma } from '@/lib/prisma';
 import { AdminSessionError, requireAdminSession } from '@/lib/auth/require-admin-session';
+import { prisma } from '@/lib/prisma';
 import { sendDeactivationRejectionEmail } from '@/lib/email';
 
 const DEACTIVATION_APPROVED_METADATA_KEY = 'deactivation_approved_at';
@@ -78,7 +79,13 @@ export async function PATCH(
         }),
         prisma.user.update({
           where: { user_id: request.user.user_id, },
-          data: { is_disabled: true, },
+          data: {
+            status: user_status.deactivated,
+            cancelled_at: now,
+            pending_deletion_at: null,
+            expires_at: null,
+            deleted_at: null,
+          },
         })
       ]);
 
