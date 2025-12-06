@@ -468,6 +468,21 @@ export function AiSearch() {
     setQuery(transcript);
   }, [transcript]);
 
+  const scrollToBottom = React.useCallback(
+    (behavior: ScrollBehavior = 'smooth') => {
+      const anchor = scrollAnchorRef.current;
+      if (!anchor) return;
+
+      requestAnimationFrame(() => {
+        anchor.scrollIntoView({
+          behavior,
+          block: 'end',
+        });
+      });
+    },
+    []
+  );
+
   const handleVoiceButtonClick = () => {
     if (aiSearchMutation.isPending) {
       return;
