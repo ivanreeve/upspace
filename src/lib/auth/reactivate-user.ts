@@ -1,83 +1,98 @@
-import type { Prisma } from '@prisma/client';
+import { user_status } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
 
-const ACCOUNT_DELETION_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
-const DEACTIVATION_METADATA_KEY = 'deactivation_requested_at';
-const DELETION_METADATA_KEY = 'deletion_requested_at';
+type ReactivationOutcome =
+  | { allow: true; status: user_status; updated: boolean }
+  | { allow: false; status: user_status | null; updated: boolean; reason: string };
 
-type ReactivationMetadata = {
-  key: typeof DEACTIVATION_METADATA_KEY | typeof DELETION_METADATA_KEY;
-  requestedAt: Date;
-  type: 'deactivation' | 'deletion';
-};
-
-function parseReactivationMetadata(metadata: Prisma.JsonValue | null): ReactivationMetadata | null {
-  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
-    return null;
-  }
-
-  const candidate = metadata as Record<string, unknown>;
-  const deactivationAt = candidate[DEACTIVATION_METADATA_KEY];
-  if (typeof deactivationAt === 'string') {
-    const parsed = new Date(deactivationAt);
-    if (!Number.isNaN(parsed.getTime())) {
-      return {
-        key: DEACTIVATION_METADATA_KEY,
-        requestedAt: parsed,
-        type: 'deactivation',
-      };
-    }
-  }
-
-  const deletionAt = candidate[DELETION_METADATA_KEY];
-  if (typeof deletionAt === 'string') {
-    const parsed = new Date(deletionAt);
-    if (!Number.isNaN(parsed.getTime())) {
-      return {
-        key: DELETION_METADATA_KEY,
-        requestedAt: parsed,
-        type: 'deletion',
-      };
-    }
-  }
-
-  return null;
-}
-
-export async function reactivateUserIfEligible(userId: string): Promise<boolean> {
-  const rows = await prisma.$queryRaw<
-    Array<{ user_metadata: Prisma.JsonValue | null }>
-  >`
-    SELECT raw_user_meta_data AS user_metadata
-    FROM auth.users
-    WHERE id = ${userId}::uuid
-    LIMIT 1
-  `;
-
-  const metadata = rows[0]?.user_metadata ?? null;
-  const reactivation = parseReactivationMetadata(metadata);
-  if (!reactivation) {
-    return false;
-  }
-
-  if (reactivation.type === 'deletion') {
-    const deadline = reactivation.requestedAt.getTime() + ACCOUNT_DELETION_GRACE_MS;
-    if (deadline <= Date.now()) {
-      return false;
-    }
-  }
-
-  await prisma.user.update({
-    where: { auth_user_id: userId, },
-    data: { is_disabled: false, },
+/**
+ * Resolves user status on login/profile sync:
+ * - Cancels pending deletion if within window.
+ * - Blocks login if deletion window expired or account is deleted.
+ * - Auto-reactivates deactivated users.
+ */
+export async function reactivateUserIfEligible(authUserId: string): Promise<ReactivationOutcome> {
+  const user = await prisma.user.findUnique({
+    where: { auth_user_id: authUserId, },
+    select: {
+      status: true,
+      role: true,
+      pending_deletion_at: true,
+      expires_at: true,
+    },
   });
 
-  await prisma.$executeRaw`
-    UPDATE auth.users
-    SET raw_user_meta_data = (COALESCE(raw_user_meta_data, '{}'::jsonb) - ${reactivation.key})
-    WHERE id = ${userId}::uuid
-  `;
+  if (!user) {
+    return {
+ allow: false,
+status: null,
+updated: false,
+reason: 'not_found', 
+};
+  }
 
-  return true;
+  const now = new Date();
+
+  if (user.status === user_status.deleted) {
+    return {
+ allow: false,
+status: user.status,
+updated: false,
+reason: 'deleted', 
+};
+  }
+
+  if (user.status === user_status.pending_deletion) {
+    const expiresAt = user.expires_at ? new Date(user.expires_at) : null;
+    if (expiresAt && expiresAt.getTime() <= now.getTime()) {
+      await prisma.user.update({
+        where: { auth_user_id: authUserId, },
+        data: {
+ status: user_status.deleted,
+deleted_at: now, 
+},
+      });
+      return {
+ allow: false,
+status: user_status.deleted,
+updated: true,
+reason: 'deletion_expired', 
+};
+    }
+
+    await prisma.user.update({
+      where: { auth_user_id: authUserId, },
+      data: {
+        status: user_status.active,
+        pending_deletion_at: null,
+        expires_at: null,
+        deleted_at: null,
+        cancelled_at: now,
+      },
+    });
+    return {
+ allow: true,
+status: user_status.active,
+updated: true, 
+};
+  }
+
+  if (user.status === user_status.deactivated) {
+    await prisma.user.update({
+      where: { auth_user_id: authUserId, },
+      data: { status: user_status.active, },
+    });
+    return {
+      allow: true,
+      status: user_status.active,
+      updated: true,
+    };
+  }
+
+  return {
+ allow: true,
+status: user.status,
+updated: false, 
+};
 }
