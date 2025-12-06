@@ -188,22 +188,6 @@ export function AiSearch() {
             className="flex max-h-[520px] flex-col gap-4 overflow-y-auto rounded-md border border-border/70 bg-background/60 p-4"
             aria-live="polite"
           >
-            { messages.length === 0 && (
-              <div className="flex items-center gap-3 rounded-md border border-dashed border-border/70 bg-muted/30 px-3 py-3 text-sm text-muted-foreground">
-                <LuSparkles className="size-4" aria-hidden="true" />
-                <div className="space-y-1">
-                  <p>
-                    Try: &ldquo;Find a quiet meeting room with whiteboards near
-                    BGC next Friday.&rdquo;
-                  </p>
-                  <p>
-                    Or ask: &ldquo;Show pet-friendly coworking spaces with
-                    parking in Makati.&rdquo;
-                  </p>
-                </div>
-              </div>
-            ) }
-
             { messages.map((message) => (
               <MessageBubble key={ message.id } message={ message } />
             )) }
@@ -239,7 +223,7 @@ export function AiSearch() {
                 placeholder="Find a quiet meeting room with whiteboards near BGC next Friday"
                 aria-label="AI search query"
                 disabled={ aiSearchMutation.isPending }
-                className="h-14 border-none bg-transparent text-base focus-visible:ring-0 focus-visible:ring-offset-0 sm:h-12"
+                className="h-16 border-none bg-transparent text-sm focus-visible:ring-0 focus-visible:ring-offset-0 sm:h-12 sm:text-base"
               />
               <div className="flex items-center justify-end gap-2 sm:justify-end">
                 <Button
