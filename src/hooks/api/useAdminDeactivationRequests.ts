@@ -65,6 +65,7 @@ export function useAdminDeactivationRequestsQuery({
     isLoading,
   } = useSession();
   const isSessionReady = Boolean(session && !isLoading);
+  const REFRESH_INTERVAL_MS = 15_000;
 
   return useQuery<DeactivationRequestsPage>({
     enabled: isSessionReady,
@@ -88,10 +89,14 @@ export function useAdminDeactivationRequestsQuery({
       };
 
       return {
-        data: payload.data,
+        data: [...payload.data].sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        ),
         nextCursor: payload.nextCursor ?? null,
       };
     },
+    refetchInterval: REFRESH_INTERVAL_MS,
+    refetchIntervalInBackground: true,
   });
 }
 

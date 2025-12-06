@@ -19,7 +19,7 @@ const buildDisplayName = (first?: string | null, last?: string | null, handle?: 
 
 export async function GET(req: NextRequest) {
   try {
-    await requireAdminSession();
+    await requireAdminSession(req);
 
     const { searchParams, } = new URL(req.url);
     const parsed = querySchema.safeParse({

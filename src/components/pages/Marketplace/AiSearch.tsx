@@ -2,8 +2,7 @@
 
 import React from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { FiAlertCircle, FiSend } from 'react-icons/fi';
-import { CgSpinner } from 'react-icons/cg';
+import { FiAlertCircle, FiLoader, FiSend } from 'react-icons/fi';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -251,9 +250,8 @@ export function AiSearch() {
         headers: { 'Content-Type': 'application/json', },
         body: JSON.stringify({
           messages: history.map(({
-            role,
-            content,
-          }) => ({
+ role, content, 
+}) => ({
             role,
             content: content.trim(),
           })),
@@ -350,9 +348,10 @@ export function AiSearch() {
       };
     }
 
-    const sidebarOffset = state === 'collapsed'
-      ? 'var(--sidebar-width-icon)'
-      : 'var(--sidebar-width)';
+    const sidebarOffset =
+      state === 'collapsed'
+        ? 'var(--sidebar-width-icon)'
+        : 'var(--sidebar-width)';
 
     return {
       left: sidebarOffset,
@@ -431,14 +430,6 @@ export function AiSearch() {
     return () => window.removeEventListener('resize', handleResize);
   }, [measureLine]);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (voiceStatus === 'listening') {
-      stopListening();
-    }
-    submitPrompt(query);
-  };
-
   React.useEffect(() => {
     if (voiceHookError) {
       setVoiceError(voiceHookError);
@@ -494,6 +485,14 @@ export function AiSearch() {
   React.useEffect(() => {
     scrollToBottom(hasMessages ? 'smooth' : 'auto');
   }, [messages, isThinking, hasMessages, scrollToBottom]);
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (voiceStatus === 'listening') {
+      stopListening();
+    }
+    submitPrompt(query);
+  };
 
   const handleVoiceButtonClick = () => {
     if (aiSearchMutation.isPending) {
@@ -555,24 +554,22 @@ export function AiSearch() {
                     <div
                       className="pointer-events-none absolute left-[2.15rem] border-l-2 border-dotted border-muted opacity-80 z-0"
                       aria-hidden="true"
-                      style={
-                        linePosition
+                      style=
+                        { linePosition
                           ? {
                               top: linePosition.top,
                               height: linePosition.height,
                             }
-                          : { display: 'none', }
-                      }
+                          : { display: 'none', } }
                     />
                     { messages.map((message) => (
                       <MessageBubble
                         key={ message.id }
                         message={ message }
-                        iconRef={
-                          message.role === 'assistant'
+                        iconRef=
+                          { message.role === 'assistant'
                             ? registerIconRef(message.id)
-                            : undefined
-                        }
+                            : undefined }
                       />
                     )) }
 
@@ -653,10 +650,7 @@ export function AiSearch() {
               className="dark:bg-cyan-400 text-background dark:hover:bg-cyan-300 bg-primary"
             >
               { aiSearchMutation.isPending ? (
-                <CgSpinner
-                  className="h-4 w-4 animate-spin text-background"
-                  aria-hidden="true"
-                />
+                <FiLoader className="size-4 animate-spin" aria-hidden="true" />
               ) : (
                 <FiSend className="size-4 text-background" aria-hidden="true" />
               ) }

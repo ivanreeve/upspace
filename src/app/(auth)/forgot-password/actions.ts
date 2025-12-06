@@ -111,7 +111,7 @@ async function findAuthUserByEmail(email: string) {
   const registeredProfile = await prisma.user.findFirst({
     where: {
       auth_user_id: authUser.id,
-      status: { in: [user_status.active, user_status.pending_deletion], },
+      status: { not: user_status.deleted, },
     },
     select: { user_id: true, },
   });
