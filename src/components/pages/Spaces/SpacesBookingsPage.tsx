@@ -19,13 +19,6 @@ import { useBulkUpdateBookingStatusMutation, usePartnerBookingsQuery } from '@/h
 import type { BookingStatus } from '@/lib/bookings/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
@@ -429,13 +422,19 @@ status,
         </Badge>
       </div>
 
-      <Card className="rounded-3xl border">
-        <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+      <section
+        aria-labelledby={ headingId }
+        aria-describedby={ descriptionId }
+        className="space-y-4"
+      >
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <CardTitle id={ headingId }>Area capacity overview</CardTitle>
-            <CardDescription id={ descriptionId }>
+            <h2 id={ headingId } className="text-lg font-semibold text-foreground">
+              Area capacity overview
+            </h2>
+            <p id={ descriptionId } className="text-sm text-muted-foreground">
               Live bookings with per-area capacity signals, search, and bulk edits.
-            </CardDescription>
+            </p>
           </div>
           <Button
             type="button"
@@ -449,8 +448,9 @@ status,
               <FiArrowUpRight className="size-4" aria-hidden="true" />
             </Link>
           </Button>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        </div>
+
+        <div className="space-y-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="w-full space-y-1.5 md:max-w-md">
               <label htmlFor="area-capacity-search" className="sr-only">
@@ -526,6 +526,7 @@ status,
               ) : null }
             </div>
           </div>
+
           { bulkUpdate.isError ? (
             <p className="text-xs text-destructive">
               { bulkUpdate.error instanceof Error
@@ -537,6 +538,7 @@ status,
               Status updated for selected bookings.
             </p>
           ) : null }
+
           <Table aria-labelledby={ headingId } aria-describedby={ descriptionId }>
             <TableCaption className="sr-only">
               Area capacity overview data table with active bookings, search, and bulk actions
@@ -561,8 +563,8 @@ status,
             </TableHeader>
             { renderBody() }
           </Table>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     </div>
   );
 }

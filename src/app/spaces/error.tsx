@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { FiArrowLeft, FiRefreshCw } from 'react-icons/fi';
+import { FiArrowLeft } from 'react-icons/fi';
 
 import { MarketplaceErrorState } from '@/components/pages/Marketplace/Marketplace.ErrorState';
 import { SpacesChrome } from '@/components/pages/Spaces/SpacesChrome';
@@ -25,13 +25,9 @@ export default function SpacesError({
   return (
     <SpacesChrome>
       <div className="bg-background">
-        <div className="mx-auto flex max-w-6xl flex-col items-center space-y-5 px-4 pb-16 pt-10 text-center">
-          <MarketplaceErrorState illustrationClassName="max-w-[140px] sm:max-w-[10px]" />
-          <div className="mt-[-32px] sm:mt-[-40px] flex flex-wrap justify-center gap-3">
-            <Button onClick={ () => reset() } aria-label="Retry loading spaces">
-              <FiRefreshCw className="size-4" aria-hidden="true" />
-              Retry
-            </Button>
+        <div className="mx-auto flex max-w-6xl flex-col items-center space-y-6 px-4 pb-16 pt-10 text-center">
+          <MarketplaceErrorState onRetry={ reset } />
+          <div className="flex flex-wrap justify-center gap-3">
             <Button asChild variant="outline" aria-label="Go back to marketplace">
               <Link href="/marketplace">
                 <FiArrowLeft className="size-4" aria-hidden="true" />

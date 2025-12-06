@@ -4,6 +4,8 @@ import { useCallback, useMemo, useState } from 'react';
 import { format, subDays } from 'date-fns';
 import { FiArrowDown, FiArrowUpRight } from 'react-icons/fi';
 
+import { PartnerDashboardFeed } from './PartnerDashboardFeed';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -628,6 +630,11 @@ accent: 'bg-emerald-500',
             <Badge className="text-[11px] uppercase tracking-wide">Live data</Badge>
           </div>
         </CardHeader>
+        <CardContent className="px-0 pb-6">
+          <div className="px-4 sm:px-6">
+            <PartnerDashboardFeed limit={ 20 } />
+          </div>
+        </CardContent>
       </Card>
 
       <Card className="rounded-3xl border">
