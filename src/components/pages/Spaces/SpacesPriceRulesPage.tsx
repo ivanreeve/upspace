@@ -338,16 +338,12 @@ export function SpacesPriceRulesPage() {
               </CardTitle>
               <CardDescription className="text-sm text-muted-foreground">
                 { selectedSpace ? (
-                  <span className="inline-flex flex-wrap items-center gap-2">
-                    <Badge variant="secondary">{ ruleCountLabel }</Badge>
-                    <Badge variant="outline">{ selectedSpace.status }</Badge>
-                    <Link
-                      href={ `/spaces/${selectedSpace.id}` }
-                      className="text-xs text-primary underline-offset-4 hover:underline"
-                    >
-                      View space
-                    </Link>
-                  </span>
+                  <Link
+                    href={ `/spaces/${selectedSpace.id}` }
+                    className="text-xs text-primary underline-offset-4 hover:underline"
+                  >
+                    View space
+                  </Link>
                 ) : (
                   'Choose a space to see its pricing rules.'
                 ) }
