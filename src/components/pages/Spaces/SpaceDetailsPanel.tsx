@@ -1,16 +1,10 @@
-'use client';
+"use client";
 
-import Image from 'next/image';
-import Link from 'next/link';
-import {
-useEffect,
-useMemo,
-useRef,
-useState,
-type ReactNode
-} from 'react';
-import { Controller, useForm } from 'react-hook-form';
-import { z } from 'zod';
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { z } from "zod";
 import {
   FiChevronLeft,
   FiChevronRight,
@@ -19,64 +13,64 @@ import {
   FiPlus,
   FiTrash2,
   FiX,
-  FiEyeOff
-} from 'react-icons/fi';
-import { FaImages } from 'react-icons/fa6';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { toast } from 'sonner';
+  FiEyeOff,
+} from "react-icons/fi";
+import { FaImages } from "react-icons/fa6";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 
 import {
   AreaDialog,
   DescriptionEditor,
   areaRecordToFormValues,
   createAreaFormDefaults,
-  spaceRecordToFormValues
-} from './SpaceForms';
-import { SPACE_DESCRIPTION_VIEWER_CLASSNAME } from './space-description-rich-text';
+  spaceRecordToFormValues,
+} from "./SpaceForms";
+import { SPACE_DESCRIPTION_VIEWER_CLASSNAME } from "./space-description-rich-text";
 
-import { SystemErrorIllustration } from '@/components/pages/Marketplace/Marketplace.ErrorState';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { AreaRecord, SpaceImageRecord } from '@/data/spaces';
+import { SystemErrorIllustration } from "@/components/pages/Marketplace/Marketplace.ErrorState";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { AreaRecord, SpaceImageRecord } from "@/data/spaces";
 import {
   useCreateAreaMutation,
   usePartnerSpaceQuery,
   useDeleteAreaMutation,
   useUpdateAreaMutation,
   useUpdatePartnerSpaceMutation,
-  useRequestUnpublishSpaceMutation
-} from '@/hooks/api/usePartnerSpaces';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+  useRequestUnpublishSpaceMutation,
+} from "@/hooks/api/usePartnerSpaces";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle
-} from '@/components/ui/card';
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Skeleton } from '@/components/ui/skeleton';
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
-} from '@/components/ui/table';
-import { richTextPlainTextLength, sanitizeRichText } from '@/lib/rich-text';
-import { cn } from '@/lib/utils';
-import type { AreaFormValues } from '@/lib/validations/spaces';
+  TableRow,
+} from "@/components/ui/table";
+import { richTextPlainTextLength, sanitizeRichText } from "@/lib/rich-text";
+import { cn } from "@/lib/utils";
+import type { AreaFormValues } from "@/lib/validations/spaces";
 
 type SpaceDetailsPanelProps = {
   spaceId: string | null;
@@ -89,18 +83,18 @@ type SpaceDetailsSkeletonProps = {
 
 const DESCRIPTION_MIN_CHARACTERS = 20;
 
-const areaCreatedDateFormatter = new Intl.DateTimeFormat('en-US', {
-  month: 'short',
-  day: 'numeric',
-  year: 'numeric',
-  timeZone: 'UTC',
+const areaCreatedDateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
 });
 
 const descriptionSchema = z.object({
   description: z
     .string()
     .superRefine((value, ctx) => {
-      const sanitized = sanitizeRichText(value ?? '');
+      const sanitized = sanitizeRichText(value ?? "");
       const plainTextLength = richTextPlainTextLength(sanitized);
 
       if (plainTextLength < DESCRIPTION_MIN_CHARACTERS) {
@@ -110,7 +104,7 @@ const descriptionSchema = z.object({
         });
       }
     })
-    .transform((value) => sanitizeRichText(value ?? '')),
+    .transform((value) => sanitizeRichText(value ?? "")),
 });
 
 type DescriptionFormValues = z.infer<typeof descriptionSchema>;
@@ -119,10 +113,10 @@ export function SpaceDetailsPanel({
   spaceId,
   className,
 }: SpaceDetailsPanelProps) {
-  const normalizedSpaceId = spaceId ?? '';
+  const normalizedSpaceId = spaceId ?? "";
   const isMobile = useIsMobile();
   const supabaseUrl =
-    process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '') ?? null;
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "") ?? null;
   const getPublicImageUrl = (path?: string | null) =>
     supabaseUrl && path
       ? `${supabaseUrl}/storage/v1/object/public/${path}`
@@ -146,19 +140,19 @@ export function SpaceDetailsPanel({
     useRequestUnpublishSpaceMutation(normalizedSpaceId);
   const descriptionForm = useForm<DescriptionFormValues>({
     resolver: zodResolver(descriptionSchema),
-    defaultValues: { description: '', },
+    defaultValues: { description: "" },
   });
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [areaDialogOpen, setAreaDialogOpen] = useState(false);
   const [areaDialogValues, setAreaDialogValues] = useState<AreaFormValues>(
-    createAreaFormDefaults()
+    createAreaFormDefaults(),
   );
   const [editingAreaId, setEditingAreaId] = useState<string | null>(null);
   const [areaPendingDelete, setAreaPendingDelete] = useState<AreaRecord | null>(
-    null
+    null,
   );
   const [unpublishDialogOpen, setUnpublishDialogOpen] = useState(false);
-  const [unpublishReason, setUnpublishReason] = useState('');
+  const [unpublishReason, setUnpublishReason] = useState("");
   const getDefaultAreaFormValues = () =>
     createAreaFormDefaults(space?.pricing_rules?.[0]?.id ?? null);
 
@@ -167,31 +161,31 @@ export function SpaceDetailsPanel({
   const [carouselOpen, setCarouselOpen] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState<number | null>(null);
   const categoryRefs = useRef<Record<string, HTMLElement | null>>({});
-  const descriptionValue = descriptionForm.watch('description');
+  const descriptionValue = descriptionForm.watch("description");
   const descriptionPlainTextLength = richTextPlainTextLength(
-    sanitizeRichText(descriptionValue ?? '')
+    sanitizeRichText(descriptionValue ?? ""),
   );
   const descriptionError =
     descriptionForm.formState.errors.description?.message;
   const isDescriptionDirty = descriptionForm.formState.isDirty;
   const isDeletingArea = deleteAreaMutation.isPending;
   const isUnpublishDisabled =
-    !space || space.status === 'Unpublished' || space.pending_unpublish_request;
+    !space || space.status === "Unpublished" || space.pending_unpublish_request;
 
   const formatCategoryLabel = (category: string | null) => {
-    if (!category) return 'Uncategorized';
+    if (!category) return "Uncategorized";
     return category
       .split(/[\s_-]+/)
       .filter(Boolean)
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(' ');
+      .join(" ");
   };
 
   const slugifyCategory = (value: string) =>
     value
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)+/g, '') || 'category';
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "") || "category";
 
   const categoryGroups = useMemo(() => {
     const images = space?.images ?? [];
@@ -200,7 +194,7 @@ export function SpaceDetailsPanel({
     const groups = new Map<string, SpaceImageRecord[]>();
 
     images.forEach((image) => {
-      const categoryKey = image.category?.trim() || 'Uncategorized';
+      const categoryKey = image.category?.trim() || "Uncategorized";
       const existing = groups.get(categoryKey) ?? [];
       existing.push(image);
       groups.set(categoryKey, existing);
@@ -210,7 +204,7 @@ export function SpaceDetailsPanel({
 
     return Array.from(groups.entries()).map(([category, imgs]) => {
       const label = formatCategoryLabel(category);
-      const anchor = `photo-category-${slugifyCategory(category || 'Uncategorized')}-${index++}`;
+      const anchor = `photo-category-${slugifyCategory(category || "Uncategorized")}-${index++}`;
       return {
         category,
         label,
@@ -236,7 +230,7 @@ export function SpaceDetailsPanel({
 
   const activeCarouselCategoryLabel = activeCarouselImage
     ? formatCategoryLabel(activeCarouselImage.category ?? null)
-    : 'photo';
+    : "photo";
 
   const openCarouselFromImage = (image?: SpaceImageRecord | null) => {
     if (!image) return;
@@ -260,25 +254,27 @@ export function SpaceDetailsPanel({
   const handleSubmitUnpublish = async () => {
     if (!space) return;
     try {
-      await requestUnpublishMutation.mutateAsync({ reason: unpublishReason.trim() || undefined, });
-      toast.success('Unpublish request sent for admin review.');
+      await requestUnpublishMutation.mutateAsync({
+        reason: unpublishReason.trim() || undefined,
+      });
+      toast.success("Unpublish request sent for admin review.");
       setUnpublishDialogOpen(false);
-      setUnpublishReason('');
+      setUnpublishReason("");
       await refetch();
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Unable to submit request.';
+        err instanceof Error ? err.message : "Unable to submit request.";
       toast.error(message);
     }
   };
 
-  const handleCarouselNavigate = (direction: 'prev' | 'next') => {
+  const handleCarouselNavigate = (direction: "prev" | "next") => {
     const images = space?.images ?? [];
     setCarouselIndex((previous) => {
       if (previous === null || images.length === 0) return previous;
       const total = images.length;
       const currentIndex = Math.min(Math.max(previous, 0), total - 1);
-      const offset = direction === 'next' ? 1 : -1;
+      const offset = direction === "next" ? 1 : -1;
       const nextIndex = (currentIndex + offset + total) % total;
       return nextIndex;
     });
@@ -288,8 +284,8 @@ export function SpaceDetailsPanel({
     const target = categoryRefs.current[anchor];
     if (target) {
       target.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
+        behavior: "smooth",
+        block: "start",
       });
     }
   };
@@ -304,20 +300,26 @@ export function SpaceDetailsPanel({
     if (!space || isEditingDescription) {
       return;
     }
-    descriptionForm.reset({ description: sanitizeRichText(space.description ?? ''), });
+    descriptionForm.reset({
+      description: sanitizeRichText(space.description ?? ""),
+    });
   }, [space, descriptionForm, isEditingDescription]);
 
   const handleStartDescriptionEdit = () => {
     if (!space) return;
     setIsEditingDescription(true);
-    descriptionForm.reset({ description: sanitizeRichText(space.description ?? ''), });
+    descriptionForm.reset({
+      description: sanitizeRichText(space.description ?? ""),
+    });
     descriptionForm.clearErrors();
   };
 
   const handleCancelDescriptionEdit = () => {
     if (!space) return;
     setIsEditingDescription(false);
-    descriptionForm.reset({ description: sanitizeRichText(space.description ?? ''), });
+    descriptionForm.reset({
+      description: sanitizeRichText(space.description ?? ""),
+    });
     descriptionForm.clearErrors();
   };
 
@@ -328,13 +330,13 @@ export function SpaceDetailsPanel({
         ...spaceRecordToFormValues(space),
         description: values.description,
       });
-      toast.success('Description updated.');
+      toast.success("Description updated.");
       setIsEditingDescription(false);
     } catch (mutationError) {
       toast.error(
         mutationError instanceof Error
           ? mutationError.message
-          : 'Unable to update description.'
+          : "Unable to update description.",
       );
     }
   };
@@ -379,7 +381,7 @@ export function SpaceDetailsPanel({
       toast.error(
         mutationError instanceof Error
           ? mutationError.message
-          : 'Unable to save area.'
+          : "Unable to save area.",
       );
     }
   };
@@ -407,7 +409,7 @@ export function SpaceDetailsPanel({
       toast.error(
         mutationError instanceof Error
           ? mutationError.message
-          : 'Unable to delete area.'
+          : "Unable to delete area.",
       );
     }
   };
@@ -415,31 +417,31 @@ export function SpaceDetailsPanel({
   const renderStatusCard = (
     title: string,
     description: string,
-    action?: ReactNode
+    action?: ReactNode,
   ) => (
-    <Card className={ cn('border-border/70 bg-background/80', className) }>
+    <Card className={cn("border-border/70 bg-background/80", className)}>
       <CardHeader>
-        <CardTitle>{ title }</CardTitle>
-        <CardDescription>{ description }</CardDescription>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
-      { action ? <CardContent>{ action }</CardContent> : null }
+      {action ? <CardContent>{action}</CardContent> : null}
     </Card>
   );
 
   if (!normalizedSpaceId) {
     return renderStatusCard(
-      'Space not found',
-      'Select a valid listing to continue.'
+      "Space not found",
+      "Select a valid listing to continue.",
     );
   }
 
   if (isLoading) {
-    return <SpaceDetailsSkeleton className={ className } />;
+    return <SpaceDetailsSkeleton className={className} />;
   }
 
   if (isError) {
     return (
-      <Card className={ cn('border-none bg-transparent shadow-none', className) }>
+      <Card className={cn("border-none bg-transparent shadow-none", className)}>
         <CardContent className="flex flex-col items-center gap-6 px-6 py-10 text-center">
           <SystemErrorIllustration className="h-auto w-full max-w-[260px] md:max-w-[320px]" />
           <div className="space-y-2">
@@ -447,12 +449,12 @@ export function SpaceDetailsPanel({
               Unable to load space
             </CardTitle>
             <CardDescription className="text-sm">
-              { error instanceof Error
+              {error instanceof Error
                 ? error.message
-                : 'Please try again in a moment.' }
+                : "Please try again in a moment."}
             </CardDescription>
           </div>
-          <Button variant="outline" onClick={ () => refetch() }>
+          <Button variant="outline" onClick={() => refetch()}>
             Retry
           </Button>
         </CardContent>
@@ -462,64 +464,64 @@ export function SpaceDetailsPanel({
 
   if (!space) {
     return renderStatusCard(
-      'Space not found',
-      'The requested space does not exist.'
+      "Space not found",
+      "The requested space does not exist.",
     );
   }
 
   const primaryImage =
     space.images.find((image) => image.is_primary) ?? space.images[0] ?? null;
   const stackedImages = space.images.filter(
-    (image) => image.id !== primaryImage?.id
+    (image) => image.id !== primaryImage?.id,
   );
   const featuredImageUrl = resolveImageSrc(primaryImage);
   const remainingCount = Math.max(totalImages - 1, 0);
 
   const renderPrimaryFigure = (
     overlay?: React.ReactNode,
-    additionalFigureClass?: string
+    additionalFigureClass?: string,
   ) => {
     const isMultiDesktop = !isMobile && totalImages > 1;
-    const figureRoundedClass = isMultiDesktop ? 'rounded-l-lg' : 'rounded-lg';
+    const figureRoundedClass = isMultiDesktop ? "rounded-l-lg" : "rounded-lg";
     const figureRoundedStyle = isMultiDesktop
-      ? { borderRadius: 'var(--radius-lg) 0 0 var(--radius-lg)', }
-      : { borderRadius: 'var(--radius-lg)', };
+      ? { borderRadius: "var(--radius-lg) 0 0 var(--radius-lg)" }
+      : { borderRadius: "var(--radius-lg)" };
 
     return (
       <figure
-        className={ `group relative w-full cursor-pointer overflow-hidden ${figureRoundedClass} border border-border/60 bg-muted h-96 sm:h-[28rem] lg:h-[30rem] xl:h-[32rem] ${additionalFigureClass ?? ''}` }
-        style={ figureRoundedStyle }
+        className={`group relative w-full cursor-pointer overflow-hidden ${figureRoundedClass} border border-border/60 bg-muted h-96 sm:h-[28rem] lg:h-[30rem] xl:h-[32rem] ${additionalFigureClass ?? ""}`}
+        style={figureRoundedStyle}
       >
-        { featuredImageUrl ? (
+        {featuredImageUrl ? (
           <Image
-            src={ featuredImageUrl }
-            alt={ `${space.name} featured photo` }
+            src={featuredImageUrl}
+            alt={`${space.name} featured photo`}
             fill
             sizes="(min-width: 1280px) 55vw, (min-width: 1024px) 65vw, 100vw"
-            className={ `object-cover ${figureRoundedClass}` }
-            style={ figureRoundedStyle }
+            className={`object-cover ${figureRoundedClass}`}
+            style={figureRoundedStyle}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
             Missing public URL
           </div>
-        ) }
+        )}
         <div
-          className={ `pointer-events-none absolute inset-0 ${figureRoundedClass} bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100` }
-          style={ figureRoundedStyle }
+          className={`pointer-events-none absolute inset-0 ${figureRoundedClass} bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100`}
+          style={figureRoundedStyle}
         />
-        { overlay }
-        { primaryImage ? (
+        {overlay}
+        {primaryImage ? (
           <button
             type="button"
-            onClick={ () => setGalleryOpen(true) }
+            onClick={() => setGalleryOpen(true)}
             aria-label="Open featured photo"
-            className={ `absolute inset-0 z-10 cursor-pointer ${figureRoundedClass} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background` }
-            style={ figureRoundedStyle }
+            className={`absolute inset-0 z-10 cursor-pointer ${figureRoundedClass} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
+            style={figureRoundedStyle}
           >
             <span className="sr-only">Open featured photo</span>
           </button>
-        ) : null }
+        ) : null}
       </figure>
     );
   };
@@ -529,54 +531,54 @@ export function SpaceDetailsPanel({
     alt: string,
     tileClass?: string,
     overlay?: React.ReactNode,
-    blurBackground = false
+    blurBackground = false,
   ) => {
     const imageSrc = resolveImageSrc(image);
     return (
       <div
-        className={ `group relative h-full w-full overflow-hidden border border-border/60 bg-muted ${tileClass ?? ''}` }
+        className={`group relative h-full w-full overflow-hidden border border-border/60 bg-muted ${tileClass ?? ""}`}
       >
-        { imageSrc ? (
+        {imageSrc ? (
           <Image
-            src={ imageSrc }
-            alt={ alt }
+            src={imageSrc}
+            alt={alt}
             fill
             sizes="(min-width: 1280px) 360px, (min-width: 1024px) 300px, 100vw"
-            className={ `object-cover ${blurBackground ? 'scale-105 blur-[2px] brightness-50' : ''}` }
+            className={`object-cover ${blurBackground ? "scale-105 blur-[2px] brightness-50" : ""}`}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
             No preview
           </div>
-        ) }
+        )}
         <div className="pointer-events-none absolute inset-0 bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100" />
-        { overlay }
+        {overlay}
         <button
           type="button"
-          onClick={ () => setGalleryOpen(true) }
-          aria-label={ alt }
+          onClick={() => setGalleryOpen(true)}
+          aria-label={alt}
           className="absolute inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
-          <span className="sr-only">{ alt }</span>
+          <span className="sr-only">{alt}</span>
         </button>
       </div>
     );
   };
 
   const renderSeeMoreTile = (
-    previewImage: SpaceImageRecord | null | undefined
+    previewImage: SpaceImageRecord | null | undefined,
   ) => {
     return renderPhotoTile(
       previewImage,
-      'Open full image gallery',
-      'rounded-br-lg',
+      "Open full image gallery",
+      "rounded-br-lg",
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50 text-white backdrop-blur-md">
         <span className="text-base font-semibold">See all photos</span>
         <span className="text-xs text-white/80">
-          { totalImages } photo{ totalImages === 1 ? '' : 's' }
+          {totalImages} photo{totalImages === 1 ? "" : "s"}
         </span>
       </div>,
-      true
+      true,
     );
   };
 
@@ -589,15 +591,15 @@ export function SpaceDetailsPanel({
           <div className="pointer-events-none absolute inset-0 flex items-end justify-end p-4">
             <button
               type="button"
-              onClick={ () => setGalleryOpen(true) }
-              aria-label={ `View ${remainingCount} more photo${remainingCount === 1 ? '' : 's'}` }
+              onClick={() => setGalleryOpen(true)}
+              aria-label={`View ${remainingCount} more photo${remainingCount === 1 ? "" : "s"}`}
               className="pointer-events-auto flex items-center gap-1 rounded-sm border border-white/10 bg-black/80 px-4 py-2 text-sm font-semibold text-white backdrop-blur-lg min-w-[72px] whitespace-nowrap"
             >
-              +{ remainingCount } <FaImages className="size-4" />
+              +{remainingCount} <FaImages className="size-4" />
             </button>
           </div>
         );
-        return renderPrimaryFigure(overlay, 'h-[320px]');
+        return renderPrimaryFigure(overlay, "h-[320px]");
       }
 
       return primaryFigure;
@@ -611,12 +613,12 @@ export function SpaceDetailsPanel({
       const secondary = stackedImages[0] ?? null;
       return (
         <div className="grid gap-2.5 md:grid-cols-2">
-          { primaryFigure }
-          { renderPhotoTile(
+          {primaryFigure}
+          {renderPhotoTile(
             secondary,
             `${space.name} gallery photo 2`,
-            'rounded-r-lg min-h-[16rem]'
-          ) }
+            "rounded-r-lg min-h-[16rem]",
+          )}
         </div>
       );
     }
@@ -625,18 +627,18 @@ export function SpaceDetailsPanel({
       const [topTile, bottomTile] = stackedImages;
       return (
         <div className="grid gap-2.5 md:grid-cols-2">
-          { primaryFigure }
+          {primaryFigure}
           <div className="grid h-full min-h-[22rem] grid-rows-2 gap-2.5">
-            { renderPhotoTile(
+            {renderPhotoTile(
               topTile,
               `${space.name} gallery photo 2`,
-              'rounded-tr-lg'
-            ) }
-            { renderPhotoTile(
+              "rounded-tr-lg",
+            )}
+            {renderPhotoTile(
               bottomTile,
               `${space.name} gallery photo 3`,
-              'rounded-br-lg'
-            ) }
+              "rounded-br-lg",
+            )}
           </div>
         </div>
       );
@@ -649,21 +651,21 @@ export function SpaceDetailsPanel({
 
     return (
       <div className="grid gap-2.5 md:grid-cols-2">
-        { primaryFigure }
+        {primaryFigure}
         <div className="grid h-full min-h-[24rem] grid-rows-[1fr_3fr] gap-2.5">
           <div className="grid grid-cols-2 gap-2.5">
-            { renderPhotoTile(
+            {renderPhotoTile(
               topLeftTile,
               `${space.name} gallery photo 2`,
-              'rounded-none'
-            ) }
-            { renderPhotoTile(
+              "rounded-none",
+            )}
+            {renderPhotoTile(
               topRightTile,
               `${space.name} gallery photo 3`,
-              'rounded-tr-lg'
-            ) }
+              "rounded-tr-lg",
+            )}
           </div>
-          { renderSeeMoreTile(previewTile) }
+          {renderSeeMoreTile(previewTile)}
         </div>
       </div>
     );
@@ -671,7 +673,7 @@ export function SpaceDetailsPanel({
 
   return (
     <>
-      <div className={ cn('space-y-6', className) }>
+      <div className={cn("space-y-6", className)}>
         <Card className="border-border/70 bg-background/80">
           <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1">
@@ -684,17 +686,17 @@ export function SpaceDetailsPanel({
             </div>
           </CardHeader>
           <CardContent>
-            { space.images.length === 0 ? (
+            {space.images.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No photos uploaded yet.
               </p>
             ) : (
               photoLayout
-            ) }
+            )}
           </CardContent>
         </Card>
 
-        { /* Details and Areas Cards */ }
+        {/* Details and Areas Cards */}
         <div className="grid gap-4 md:gap-6 lg:grid-cols-[3fr,2fr]">
           <div className="space-y-4 md:space-y-6">
             <Card className="border-border/70 bg-background/80">
@@ -704,50 +706,50 @@ export function SpaceDetailsPanel({
                     Description
                   </CardTitle>
                 </div>
-                { !isEditingDescription ? (
+                {!isEditingDescription ? (
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={ handleStartDescriptionEdit }
+                    onClick={handleStartDescriptionEdit}
                     className="inline-flex w-full items-center gap-2 sm:w-auto md:size-auto py-2"
                   >
                     <FiEdit className="size-4" aria-hidden="true" />
                     <span className="md:inline">Edit description</span>
                   </Button>
-                ) : null }
+                ) : null}
               </CardHeader>
               <CardContent>
-                { isEditingDescription ? (
+                {isEditingDescription ? (
                   <form
                     className="space-y-4"
-                    onSubmit={ descriptionForm.handleSubmit(
-                      handleDescriptionSubmit
-                    ) }
+                    onSubmit={descriptionForm.handleSubmit(
+                      handleDescriptionSubmit,
+                    )}
                   >
                     <Controller
-                      control={ descriptionForm.control }
+                      control={descriptionForm.control}
                       name="description"
-                      render={ ({ field, }) => (
-                        <DescriptionEditor field={ field } />
-                      ) }
+                      render={({ field }) => (
+                        <DescriptionEditor field={field} />
+                      )}
                     />
                     <div className="flex flex-col gap-1">
                       <p className="text-xs text-muted-foreground">
-                        { descriptionPlainTextLength } characters
+                        {descriptionPlainTextLength} characters
                       </p>
-                      { descriptionError ? (
+                      {descriptionError ? (
                         <p className="text-sm text-destructive">
-                          { descriptionError }
+                          {descriptionError}
                         </p>
-                      ) : null }
+                      ) : null}
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                       <Button
                         type="button"
                         variant="ghost"
-                        onClick={ handleCancelDescriptionEdit }
-                        disabled={ updateSpaceMutation.isPending }
+                        onClick={handleCancelDescriptionEdit}
+                        disabled={updateSpaceMutation.isPending}
                       >
                         Cancel
                       </Button>
@@ -757,25 +759,27 @@ export function SpaceDetailsPanel({
                           updateSpaceMutation.isPending || !isDescriptionDirty
                         }
                       >
-                        { updateSpaceMutation.isPending
-                          ? 'Saving...'
-                          : 'Save description' }
+                        {updateSpaceMutation.isPending
+                          ? "Saving..."
+                          : "Save description"}
                       </Button>
                     </div>
                   </form>
                 ) : space.description ? (
                   <div
-                    className={ cn(
+                    className={cn(
                       SPACE_DESCRIPTION_VIEWER_CLASSNAME,
-                      '[&_p]:my-3 [&_p:first-of-type]:mt-0 [&_p:last-of-type]:mb-0'
-                    ) }
-                    dangerouslySetInnerHTML={ { __html: sanitizeRichText(space.description), } }
+                      "[&_p]:my-3 [&_p:first-of-type]:mt-0 [&_p:last-of-type]:mb-0",
+                    )}
+                    dangerouslySetInnerHTML={{
+                      __html: sanitizeRichText(space.description),
+                    }}
                   />
                 ) : (
                   <p className="text-sm text-muted-foreground">
                     No description yet.
                   </p>
-                ) }
+                )}
               </CardContent>
             </Card>
 
@@ -783,20 +787,20 @@ export function SpaceDetailsPanel({
               <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between md:gap-4">
                 <div className="space-y-1">
                   <CardTitle className="text-xl md:text-2xl">
-                    { space.name }&apos;s Address
+                    {space.name}&apos;s Address
                   </CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="grid gap-3 sm:grid-cols-2 md:gap-6">
-                { renderField('Unit / suite', space.unit_number) }
-                { renderField('Address subunit', space.address_subunit) }
-                { renderField('Street', space.street) }
-                { renderField('City', space.city) }
-                { renderField('Region / state', space.region) }
-                { renderField('Postal code', space.postal_code) }
-                { renderField('Country', space.country_code) }
-                { renderField('Latitude', space.lat.toString()) }
-                { renderField('Longitude', space.long.toString()) }
+                {renderField("Unit / suite", space.unit_number)}
+                {renderField("Address subunit", space.address_subunit)}
+                {renderField("Street", space.street)}
+                {renderField("City", space.city)}
+                {renderField("Region / state", space.region)}
+                {renderField("Postal code", space.postal_code)}
+                {renderField("Country", space.country_code)}
+                {renderField("Latitude", space.lat.toString())}
+                {renderField("Longitude", space.long.toString())}
               </CardContent>
             </Card>
           </div>
@@ -812,7 +816,7 @@ export function SpaceDetailsPanel({
               </div>
             </CardHeader>
             <CardContent className="space-y-3 md:space-y-4">
-              { space.areas.length === 0 ? (
+              {space.areas.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-border/60 p-3 text-xs text-muted-foreground md:p-4 md:text-sm">
                   No areas yet. Use &quot;Add area&quot; to create one.
                 </div>
@@ -832,34 +836,34 @@ export function SpaceDetailsPanel({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      { space.areas.map((area) => (
-                        <TableRow key={ area.id }>
+                      {space.areas.map((area) => (
+                        <TableRow key={area.id}>
                           <TableCell className="align-top">
                             <div className="space-y-1">
                               <div className="text-sm font-semibold md:text-base">
-                                { area.name }
+                                {area.name}
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                Added{ ' ' }
-                                { areaCreatedDateFormatter.format(
-                                  new Date(area.created_at)
-                                ) }
+                                Added{" "}
+                                {areaCreatedDateFormatter.format(
+                                  new Date(area.created_at),
+                                )}
                               </p>
                             </div>
                           </TableCell>
                           <TableCell className="align-top text-sm text-foreground">
-                            Up to { area.max_capacity } people
+                            Up to {area.max_capacity} people
                           </TableCell>
                           <TableCell className="align-top text-sm text-foreground">
-                            { area.price_rule ? (
+                            {area.price_rule ? (
                               <Badge variant="outline" className="text-xs">
-                                { area.price_rule.name }
+                                {area.price_rule.name}
                               </Badge>
                             ) : (
                               <span className="text-muted-foreground">
                                 Pricing rule not set
                               </span>
-                            ) }
+                            )}
                           </TableCell>
                           <TableCell className="align-top">
                             <div className="flex justify-end gap-2">
@@ -867,19 +871,19 @@ export function SpaceDetailsPanel({
                                 type="button"
                                 size="sm"
                                 variant="outline"
-                                onClick={ () => handleEditArea(area) }
+                                onClick={() => handleEditArea(area)}
                                 className="h-8 px-2"
                               >
                                 <FiEdit className="size-4" aria-hidden="true" />
                                 <span className="sr-only">
-                                  Edit { area.name }
+                                  Edit {area.name}
                                 </span>
                               </Button>
                               <Button
                                 type="button"
                                 size="sm"
                                 variant="ghost"
-                                onClick={ () => handleRequestDeleteArea(area) }
+                                onClick={() => handleRequestDeleteArea(area)}
                                 className="h-8 px-2 text-destructive hover:text-destructive"
                               >
                                 <FiTrash2
@@ -887,17 +891,17 @@ export function SpaceDetailsPanel({
                                   aria-hidden="true"
                                 />
                                 <span className="sr-only">
-                                  Delete { area.name }
+                                  Delete {area.name}
                                 </span>
                               </Button>
                             </div>
                           </TableCell>
                         </TableRow>
-                      )) }
+                      ))}
                     </TableBody>
                   </Table>
                 </div>
-              ) }
+              )}
             </CardContent>
             <CardFooter className="flex flex-col gap-2">
               <div className="w-full">
@@ -905,7 +909,7 @@ export function SpaceDetailsPanel({
                   type="button"
                   variant="outline"
                   className="inline-flex w-full items-center justify-center gap-2"
-                  onClick={ handleAddArea }
+                  onClick={handleAddArea}
                 >
                   <FiPlus className="size-4" aria-hidden="true" />
                   Add area
@@ -916,33 +920,33 @@ export function SpaceDetailsPanel({
         </div>
       </div>
 
-      { /* Area Form */ }
+      {/* Area Form */}
       <AreaDialog
-        open={ areaDialogOpen }
-        mode={ editingAreaId ? 'edit' : 'create' }
-        initialValues={ areaDialogValues }
-        onOpenChange={ handleAreaDialogOpenChange }
-        onSubmit={ handleAreaSubmit }
+        open={areaDialogOpen}
+        mode={editingAreaId ? "edit" : "create"}
+        initialValues={areaDialogValues}
+        onOpenChange={handleAreaDialogOpenChange}
+        onSubmit={handleAreaSubmit}
         isSubmitting={
           editingAreaId
             ? updateAreaMutation.isPending
             : createAreaMutation.isPending
         }
-        pricingRules={ space.pricing_rules ?? [] }
+        pricingRules={space.pricing_rules ?? []}
       />
 
       <Dialog
-        open={ Boolean(areaPendingDelete) }
-        onOpenChange={ handleDeleteDialogOpenChange }
+        open={Boolean(areaPendingDelete)}
+        onOpenChange={handleDeleteDialogOpenChange}
       >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete area</DialogTitle>
             <DialogDescription>
-              This will permanently remove{ ' ' }
-              { areaPendingDelete?.name
+              This will permanently remove{" "}
+              {areaPendingDelete?.name
                 ? `"${areaPendingDelete.name}"`
-                : 'this area' }{ ' ' }
+                : "this area"}{" "}
               and its pricing details. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
@@ -950,32 +954,32 @@ export function SpaceDetailsPanel({
             <Button
               type="button"
               variant="ghost"
-              onClick={ () => handleDeleteDialogOpenChange(false) }
-              disabled={ isDeletingArea }
+              onClick={() => handleDeleteDialogOpenChange(false)}
+              disabled={isDeletingArea}
             >
               Cancel
             </Button>
             <Button
               type="button"
               variant="destructive"
-              onClick={ handleConfirmAreaDelete }
-              disabled={ isDeletingArea }
+              onClick={handleConfirmAreaDelete}
+              disabled={isDeletingArea}
             >
-              { isDeletingArea ? 'Deleting...' : 'Delete area' }
+              {isDeletingArea ? "Deleting..." : "Delete area"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      { /* Full Gallery Dialog */ }
-      <Dialog open={ galleryOpen } onOpenChange={ setGalleryOpen }>
+      {/* Full Gallery Dialog */}
+      <Dialog open={galleryOpen} onOpenChange={setGalleryOpen}>
         <DialogContent className="flex h-screen w-screen max-w-[100vw] flex-col p-0 sm:max-w-[100vw]">
           <DialogHeader className="border-b border-border/50 px-6 py-4">
             <DialogTitle>Photo Tour</DialogTitle>
           </DialogHeader>
           <ScrollArea className="flex-1">
             <div className="space-y-8 px-6 py-6">
-              { categoryGroups.length === 0 ? (
+              {categoryGroups.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No photos uploaded yet.
                 </p>
@@ -987,26 +991,26 @@ export function SpaceDetailsPanel({
                         Browse by category
                       </h3>
                       <span className="text-xs text-muted-foreground">
-                        { totalImages } photo{ totalImages === 1 ? '' : 's' }
+                        {totalImages} photo{totalImages === 1 ? "" : "s"}
                       </span>
                     </div>
                     <div className="flex gap-3 overflow-x-auto pb-1">
-                      { categoryGroups.map((group) => {
+                      {categoryGroups.map((group) => {
                         const preview = group.images[0];
                         const previewSrc = resolveImageSrc(preview);
                         return (
                           <button
-                            key={ group.anchor }
+                            key={group.anchor}
                             type="button"
-                            onClick={ () => handleCategoryClick(group.anchor) }
-                            aria-label={ `Jump to ${group.label} photos` }
+                            onClick={() => handleCategoryClick(group.anchor)}
+                            aria-label={`Jump to ${group.label} photos`}
                             className="group relative inline-flex w-44 min-w-[176px] flex-col text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                           >
                             <div className="relative h-28 w-full overflow-hidden bg-muted">
-                              { previewSrc ? (
+                              {previewSrc ? (
                                 <Image
-                                  src={ previewSrc }
-                                  alt={ `${group.label} preview photo` }
+                                  src={previewSrc}
+                                  alt={`${group.label} preview photo`}
                                   fill
                                   sizes="176px"
                                   className="object-cover"
@@ -1015,54 +1019,54 @@ export function SpaceDetailsPanel({
                                 <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
                                   No preview
                                 </div>
-                              ) }
+                              )}
                               <div className="pointer-events-none absolute inset-0 bg-black/40 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
                               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
                             </div>
                             <div className="flex items-center justify-between py-2">
                               <span className="truncate text-sm font-medium text-foreground">
-                                { group.label }
+                                {group.label}
                               </span>
                             </div>
                           </button>
                         );
-                      }) }
+                      })}
                     </div>
                   </section>
 
-                  { categoryGroups.map((group) => (
+                  {categoryGroups.map((group) => (
                     <section
-                      key={ group.anchor }
-                      ref={ (node) => {
+                      key={group.anchor}
+                      ref={(node) => {
                         categoryRefs.current[group.anchor] = node;
-                      } }
+                      }}
                       className="space-y-3 scroll-m-16"
-                      id={ group.anchor }
+                      id={group.anchor}
                     >
                       <div className="flex items-center gap-2 border-b border-border/30 pb-2">
                         <h3 className="font-semibold text-foreground">
-                          { group.label }
+                          {group.label}
                         </h3>
                         <span className="text-xs text-muted-foreground">
-                          { group.images.length } photo
-                          { group.images.length === 1 ? '' : 's' }
+                          {group.images.length} photo
+                          {group.images.length === 1 ? "" : "s"}
                         </span>
                       </div>
                       <div className="grid grid-cols-1 gap-6 pb-3 pt-3 sm:grid-cols-2 lg:grid-cols-3">
-                        { group.images.map((image, index) => {
+                        {group.images.map((image, index) => {
                           const src = resolveImageSrc(image);
                           return (
                             <button
-                              key={ `dialog-gallery-${group.anchor}-${image.id}` }
+                              key={`dialog-gallery-${group.anchor}-${image.id}`}
                               type="button"
-                              onClick={ () => openCarouselFromImage(image) }
-                              aria-label={ `Open carousel for ${group.label} photo ${index + 1}` }
+                              onClick={() => openCarouselFromImage(image)}
+                              aria-label={`Open carousel for ${group.label} photo ${index + 1}`}
                               className="group relative block w-full cursor-pointer overflow-hidden border border-border/60 bg-muted shadow-sm aspect-[3/2] min-h-[220px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                             >
-                              { src ? (
+                              {src ? (
                                 <Image
-                                  src={ src }
-                                  alt={ `${space.name} ${group.label} photo ${index + 1}` }
+                                  src={src}
+                                  alt={`${space.name} ${group.label} photo ${index + 1}`}
                                   fill
                                   sizes="(min-width: 1280px) 360px, (min-width: 1024px) 300px, 100vw"
                                   className="object-cover transition-transform cursor-pointer"
@@ -1071,47 +1075,47 @@ export function SpaceDetailsPanel({
                                 <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
                                   No Image
                                 </div>
-                              ) }
+                              )}
                               <div className="pointer-events-none absolute inset-0 bg-black/40 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
                             </button>
                           );
-                        }) }
+                        })}
                       </div>
                     </section>
-                  )) }
+                  ))}
                 </>
-              ) }
+              )}
             </div>
           </ScrollArea>
         </DialogContent>
       </Dialog>
 
-      { /* Carousel Dialog */ }
+      {/* Carousel Dialog */}
       <Dialog
-        open={ isCarouselOpen }
-        onOpenChange={ (open) =>
+        open={isCarouselOpen}
+        onOpenChange={(open) =>
           open ? setCarouselOpen(true) : closeCarousel()
         }
       >
         <DialogContent
-          showCloseButton={ false }
+          showCloseButton={false}
           className="flex h-screen w-screen max-w-[100vw] flex-col gap-0 border-none bg-black p-0 text-white sm:max-w-[100vw] sm:rounded-none"
         >
           <DialogHeader className="flex flex-row items-center justify-between border-b border-white/10 px-4 py-3">
             <DialogTitle className="text-sm font-semibold text-white">
-              { activeCarouselImage
+              {activeCarouselImage
                 ? `${formatCategoryLabel(activeCarouselImage.category ?? null)} photos`
-                : 'Photo carousel' }
+                : "Photo carousel"}
             </DialogTitle>
             <div className="flex items-center gap-3 text-xs text-white/70">
-              { activeCarouselIndex !== null ? (
+              {activeCarouselIndex !== null ? (
                 <span className="tabular-nums">
-                  { activeCarouselIndex + 1 } / { totalImages }
+                  {activeCarouselIndex + 1} / {totalImages}
                 </span>
-              ) : null }
+              ) : null}
               <button
                 type="button"
-                onClick={ closeCarousel }
+                onClick={closeCarousel}
                 aria-label="Close carousel"
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
               >
@@ -1120,11 +1124,11 @@ export function SpaceDetailsPanel({
             </div>
           </DialogHeader>
           <div className="relative flex flex-1 items-center justify-center overflow-hidden">
-            { activeCarouselImage ? (
+            {activeCarouselImage ? (
               <div className="relative h-full w-full max-h-[85vh] max-w-6xl">
                 <Image
-                  src={ resolveImageSrc(activeCarouselImage) ?? '' }
-                  alt={ `${space.name} ${activeCarouselCategoryLabel} ${(activeCarouselIndex ?? 0) + 1}` }
+                  src={resolveImageSrc(activeCarouselImage) ?? ""}
+                  alt={`${space.name} ${activeCarouselCategoryLabel} ${(activeCarouselIndex ?? 0) + 1}`}
                   fill
                   sizes="100vw"
                   className="object-contain"
@@ -1132,13 +1136,13 @@ export function SpaceDetailsPanel({
               </div>
             ) : (
               <p className="text-sm text-white/70">No image selected.</p>
-            ) }
+            )}
 
-            { totalImages > 1 ? (
+            {totalImages > 1 ? (
               <>
                 <button
                   type="button"
-                  onClick={ () => handleCarouselNavigate('prev') }
+                  onClick={() => handleCarouselNavigate("prev")}
                   aria-label="Previous photo"
                   className="absolute left-4 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                 >
@@ -1146,20 +1150,20 @@ export function SpaceDetailsPanel({
                 </button>
                 <button
                   type="button"
-                  onClick={ () => handleCarouselNavigate('next') }
+                  onClick={() => handleCarouselNavigate("next")}
                   aria-label="Next photo"
                   className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                 >
                   <FiChevronRight className="size-6" aria-hidden="true" />
                 </button>
               </>
-            ) : null }
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>
 
-      { /* Unpublish CTA */ }
-      { space ? (
+      {/* Unpublish CTA */}
+      {space ? (
         <Card className="border-border/70 bg-background/80">
           <CardHeader className="space-y-2">
             <CardTitle className="text-2xl">Unpublish this listing</CardTitle>
@@ -1176,18 +1180,18 @@ export function SpaceDetailsPanel({
               disabled={
                 isUnpublishDisabled || requestUnpublishMutation.isPending
               }
-              onClick={ () => setUnpublishDialogOpen(true) }
+              onClick={() => setUnpublishDialogOpen(true)}
             >
               <FiEyeOff className="size-4" aria-hidden="true" />
-              { space.pending_unpublish_request
-                ? 'Request sent'
-                : 'Request unpublish' }
+              {space.pending_unpublish_request
+                ? "Request sent"
+                : "Request unpublish"}
             </Button>
           </CardFooter>
         </Card>
-      ) : null }
+      ) : null}
 
-      <Dialog open={ unpublishDialogOpen } onOpenChange={ setUnpublishDialogOpen }>
+      <Dialog open={unpublishDialogOpen} onOpenChange={setUnpublishDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Request to unpublish</DialogTitle>
@@ -1199,31 +1203,31 @@ export function SpaceDetailsPanel({
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">Reason (optional)</p>
             <Textarea
-              value={ unpublishReason }
-              onChange={ (e) => setUnpublishReason(e.target.value) }
-              maxLength={ 500 }
+              value={unpublishReason}
+              onChange={(e) => setUnpublishReason(e.target.value)}
+              maxLength={500}
               aria-label="Reason for unpublishing"
               placeholder="Share context for the reviewer"
             />
             <p className="text-xs text-muted-foreground">
-              { unpublishReason.length } / 500
+              {unpublishReason.length} / 500
             </p>
           </div>
           <DialogFooter className="gap-2 sm:gap-3">
             <Button
               type="button"
               variant="outline"
-              onClick={ () => setUnpublishDialogOpen(false) }
-              disabled={ requestUnpublishMutation.isPending }
+              onClick={() => setUnpublishDialogOpen(false)}
+              disabled={requestUnpublishMutation.isPending}
             >
               Cancel
             </Button>
             <Button
               type="button"
-              onClick={ handleSubmitUnpublish }
-              disabled={ requestUnpublishMutation.isPending }
+              onClick={handleSubmitUnpublish}
+              disabled={requestUnpublishMutation.isPending}
             >
-              { requestUnpublishMutation.isPending ? 'Sending…' : 'Send request' }
+              {requestUnpublishMutation.isPending ? "Sending…" : "Send request"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1236,16 +1240,16 @@ function renderField(label: string, value: string) {
   return (
     <div className="space-y-1 rounded-md border border-border/50 bg-muted/20 p-3">
       <span className="text-xs uppercase tracking-wide text-muted-foreground">
-        { label }
+        {label}
       </span>
-      <p className="text-base font-semibold text-foreground">{ value || '—' }</p>
+      <p className="text-base font-semibold text-foreground">{value || "—"}</p>
     </div>
   );
 }
 
-function SpaceDetailsSkeleton({ className, }: SpaceDetailsSkeletonProps) {
+function SpaceDetailsSkeleton({ className }: SpaceDetailsSkeletonProps) {
   return (
-    <div className={ cn('space-y-6', className) }>
+    <div className={cn("space-y-6", className)}>
       <Card className="border-border/70 bg-background/80">
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">
@@ -1300,15 +1304,15 @@ function SpaceDetailsSkeleton({ className, }: SpaceDetailsSkeletonProps) {
               <Skeleton className="h-6 w-52" />
             </CardHeader>
             <CardContent className="grid gap-6 sm:grid-cols-2">
-              { Array.from({ length: 9, }).map((_, index) => (
+              {Array.from({ length: 9 }).map((_, index) => (
                 <div
-                  key={ `field-skeleton-${index}` }
+                  key={`field-skeleton-${index}`}
                   className="space-y-2 rounded-md border border-border/50 bg-muted/20 p-3"
                 >
                   <Skeleton className="h-3 w-20" />
                   <Skeleton className="h-5 w-28" />
                 </div>
-              )) }
+              ))}
             </CardContent>
           </Card>
         </div>
@@ -1322,9 +1326,9 @@ function SpaceDetailsSkeleton({ className, }: SpaceDetailsSkeletonProps) {
             <Skeleton className="h-10 w-full sm:w-32" />
           </CardHeader>
           <CardContent className="space-y-4">
-            { Array.from({ length: 2, }).map((_, index) => (
+            {Array.from({ length: 2 }).map((_, index) => (
               <div
-                key={ `area-skeleton-${index}` }
+                key={`area-skeleton-${index}`}
                 className="space-y-3 rounded-md border border-border/60 p-4"
               >
                 <div className="flex items-center justify-between gap-4">
@@ -1345,7 +1349,7 @@ function SpaceDetailsSkeleton({ className, }: SpaceDetailsSkeletonProps) {
                   </div>
                 </div>
               </div>
-            )) }
+            ))}
           </CardContent>
         </Card>
       </div>
