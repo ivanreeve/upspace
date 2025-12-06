@@ -340,7 +340,7 @@ export function SpacesPriceRulesPage() {
                 { selectedSpace ? (
                   <Link
                     href={ `/spaces/${selectedSpace.id}` }
-                    className="text-xs text-primary underline-offset-4 hover:underline"
+                    className="text-xs text-secondary underline-offset-4 hover:underline"
                   >
                     View space
                   </Link>
