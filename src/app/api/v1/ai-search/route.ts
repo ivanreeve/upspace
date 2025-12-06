@@ -21,50 +21,48 @@ const requestSchema = z.object({
     .max(2000, 'Keep your question under 2,000 characters.')
     .optional(),
   messages: z.array(messageSchema).min(1).optional(),
-});
+}).refine(
+  (data) => Boolean(data.query?.length) || Boolean(data.messages?.length),
+  'Provide a question or conversation to continue.'
+);
 
 export async function POST(request: NextRequest) {
-  const jsonBody = await request.json().catch(() => null);
-  const rawText = jsonBody === null ? await request.text().catch(() => '') : '';
-  const queryFromSearch = request.nextUrl.searchParams.get('q');
+  try {
+    const jsonBody = await request.json().catch(() => null);
+    const rawText = jsonBody === null ? await request.text().catch(() => '') : '';
+    const queryFromSearch = request.nextUrl.searchParams.get('q');
 
-  const parsed = requestSchema.safeParse({
-    query:
+    const queryCandidate =
       typeof jsonBody === 'string'
         ? jsonBody
         : typeof jsonBody?.prompt === 'string'
           ? jsonBody.prompt
           : typeof jsonBody?.query === 'string'
             ? jsonBody.query
-            : rawText || queryFromSearch,
-    messages: Array.isArray(jsonBody?.messages) ? jsonBody.messages : undefined,
-  });
+            : rawText || queryFromSearch || undefined;
 
-  if (!parsed.success || (!parsed.data.messages && !parsed.data.query)) {
-    return NextResponse.json(
-      {
-        error:
-          'Enter a question (or conversation) with messages under 2,000 characters each.',
-      },
-      { status: 400, }
-    );
-  }
+    const parsed = requestSchema.parse({
+      query:
+        typeof queryCandidate === 'string' && queryCandidate.trim().length > 0
+          ? queryCandidate
+          : undefined,
+      messages: Array.isArray(jsonBody?.messages) ? jsonBody.messages : undefined,
+    });
 
-  const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: 'AI search is unavailable. Missing API key.', },
-      { status: 500, }
-    );
-  }
-
-  const ai = new GoogleGenAI({ apiKey, });
-
-  try {
     const {
       messages,
       query,
-    } = parsed.data;
+    } = parsed;
+
+    const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'AI search is unavailable. Missing API key.', },
+        { status: 500, }
+      );
+    }
+
+    const ai = new GoogleGenAI({ apiKey, });
 
     const normalizedMessages =
       messages?.map((message) => ({
@@ -95,6 +93,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ reply, }, { status: 200, });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid request.', issues: error.errors, },
+        { status: 400, }
+      );
+    }
+
     const message =
       error instanceof Error
         ? error.message
