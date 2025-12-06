@@ -3,11 +3,11 @@
 import React from "react";
 import { useMutation } from "@tanstack/react-query";
 import { FiAlertCircle, FiLoader, FiMic, FiSend } from "react-icons/fi";
-import { LuSparkles } from "react-icons/lu";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +24,52 @@ const makeMessageId = (role: ChatMessage["role"]) =>
       : Date.now().toString(36)
   }`;
 
+function GradientSparklesIcon({
+  className,
+  ...props
+}: React.SVGProps<SVGSVGElement>) {
+  const gradientId = React.useId();
+  const stroke = `url(#${gradientId})`;
+
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cn("size-4", className)}
+      aria-hidden={props["aria-label"] ? undefined : "true"}
+      {...props}
+    >
+      <defs>
+        <linearGradient
+          id={gradientId}
+          x1="0%"
+          y1="0%"
+          x2="100%"
+          y2="0%"
+          gradientTransform="rotate(120 0.5 0.5)"
+        >
+          <stop offset="0%" stopColor="var(--secondary)" />
+          <stop offset="35%" stopColor="#28a745" />
+          <stop offset="60%" stopColor="#ffc107" />
+          <stop offset="85%" stopColor="#ff8c00" />
+          <stop offset="100%" stopColor="#ff6f00" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"
+        stroke={stroke}
+      />
+      <path d="M20 3v4" stroke={stroke} />
+      <path d="M22 5h-4" stroke={stroke} />
+      <path d="M4 17v2" stroke={stroke} />
+      <path d="M5 18H3" stroke={stroke} />
+    </svg>
+  );
+}
+
 function MessageBubble({
   message,
   isThinking = false,
@@ -37,7 +83,7 @@ function MessageBubble({
     <div className={cn("flex gap-3", isUser ? "justify-end" : "justify-start")}>
       {!isUser && (
         <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-md bg-cyan-100 text-cyan-900 dark:bg-cyan-900/30 dark:text-cyan-100">
-          <LuSparkles className="size-4" aria-hidden="true" />
+          <GradientSparklesIcon />
           <span className="sr-only">Gemini</span>
         </div>
       )}
@@ -66,7 +112,8 @@ export function AiSearch() {
   const [query, setQuery] = React.useState("");
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
-  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const scrollAnchorRef = React.useRef<HTMLDivElement | null>(null);
+  const hasMessages = messages.length > 0;
   const { data: userProfile } = useUserProfile();
 
   const greetingName = React.useMemo(() => {
@@ -80,13 +127,8 @@ export function AiSearch() {
       return handle;
     }
 
-    return "there";
+    return "UpSpace User";
   }, [userProfile]);
-
-  React.useEffect(() => {
-    if (!scrollRef.current) return;
-    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages]);
 
   const aiSearchMutation = useMutation<string, Error, string>({
     mutationFn: async (prompt: string) => {
@@ -117,6 +159,15 @@ export function AiSearch() {
       return data.reply.trim();
     },
   });
+
+  const isThinking = aiSearchMutation.isPending;
+
+  React.useEffect(() => {
+    scrollAnchorRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "end",
+    });
+  }, [messages, isThinking]);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -164,74 +215,98 @@ export function AiSearch() {
   };
 
   return (
-    <div className="relative mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-10 sm:py-14 md:py-16 top-[25%]">
+    <div
+      className={cn(
+        "relative mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-10 sm:py-14 md:py-16",
+        hasMessages ? "top-[25%]" : "",
+      )}
+    >
       <div className="flex flex-col items-center gap-3 text-center">
         <h1 className="text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
           Hi, {greetingName}
         </h1>
       </div>
 
-      <Card className="border-none">
-        <CardContent className="space-y-6 p-6 sm:p-8">
-          {errorMessage && (
-            <div className="inline-flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              <FiAlertCircle className="size-4" aria-hidden="true" />
-              <span>{errorMessage}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <label htmlFor="ai-search-input" className="sr-only">
-              Ask anything about coworking spaces
-            </label>
-            <div className="flex flex-col gap-2 rounded-md border border-border/60 bg-background/70 p-2 shadow-sm sm:flex-row sm:items-center sm:gap-3">
-              <Input
-                id="ai-search-input"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Find a quiet meeting room with whiteboards near BGC next Friday"
-                aria-label="AI search query"
-                disabled={aiSearchMutation.isPending}
-                className="h-16 border-none bg-transparent text-sm focus-visible:ring-0 focus-visible:ring-offset-0 sm:h-12 sm:text-base"
-              />
-              <div className="flex items-center justify-end gap-2 sm:justify-end">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Use voice input"
-                  className="text-muted-foreground hover:text-foreground"
-                  disabled
-                >
-                  <FiMic className="size-5" aria-hidden="true" />
-                </Button>
-                <Button
-                  type="submit"
-                  size="icon"
-                  aria-label="Send AI search"
-                  disabled={
-                    aiSearchMutation.isPending || query.trim().length === 0
-                  }
-                  className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
-                >
-                  {aiSearchMutation.isPending ? (
-                    <FiLoader
-                      className="size-4 animate-spin"
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <FiSend className="size-4" aria-hidden="true" />
-                  )}
-                </Button>
+      {hasMessages && (
+        <Card className="border-none">
+          <CardContent className="space-y-6 p-6 sm:p-8">
+            {errorMessage && (
+              <div className="inline-flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <FiAlertCircle className="size-4" aria-hidden="true" />
+                <span>{errorMessage}</span>
               </div>
+            )}
+
+            <div className="rounded-md border-none bg-background/60">
+              <ScrollArea className="h-[360px] w-full">
+                <div className="space-y-4 px-3 py-4">
+                  {messages.map((message) => (
+                    <MessageBubble key={message.id} message={message} />
+                  ))}
+
+                  {isThinking ? (
+                    <MessageBubble
+                      message={{
+                        id: "assistant-thinking",
+                        role: "assistant",
+                        content: "Thinking…",
+                      }}
+                      isThinking
+                    />
+                  ) : null}
+
+                  <div ref={scrollAnchorRef} />
+                </div>
+              </ScrollArea>
             </div>
-            <p className="text-xs text-muted-foreground">
-              AI responses may be inaccurate. Please verify details before
-              booking.
-            </p>
-          </form>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <label htmlFor="ai-search-input" className="sr-only">
+          Ask anything about coworking spaces
+        </label>
+        <div className="flex flex-col gap-2 rounded-md border border-border/60 bg-background/70 p-2 shadow-sm sm:flex-row sm:items-center sm:gap-3">
+          <Input
+            id="ai-search-input"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Find a quiet meeting room with whiteboards near BGC next Friday"
+            aria-label="AI search query"
+            disabled={aiSearchMutation.isPending}
+            className="h-16 border-none bg-transparent text-sm focus-visible:ring-0 focus-visible:ring-offset-0 sm:h-12 sm:text-base"
+          />
+          <div className="flex items-center justify-end gap-2 sm:justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Use voice input"
+              className="text-muted-foreground hover:text-foreground"
+              disabled
+            >
+              <FiMic className="size-5" aria-hidden="true" />
+            </Button>
+            <Button
+              type="submit"
+              size="icon"
+              aria-label="Send AI search"
+              disabled={aiSearchMutation.isPending || query.trim().length === 0}
+              className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+            >
+              {aiSearchMutation.isPending ? (
+                <FiLoader className="size-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <FiSend className="size-4" aria-hidden="true" />
+              )}
+            </Button>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          AI responses may be inaccurate. Please verify details before booking.
+        </p>
+      </form>
     </div>
   );
 }
