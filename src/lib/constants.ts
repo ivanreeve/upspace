@@ -1,5 +1,6 @@
 export const PUBLIC_PATHS = new Set<string>([
   '/',
+  '/signin',
   '/signup',
   '/forgot-password',
   '/docs',
