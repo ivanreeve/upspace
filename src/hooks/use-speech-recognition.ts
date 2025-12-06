@@ -65,8 +65,15 @@ export function useSpeechRecognition(
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       const message = event.error || 'Speech recognition error';
+      shouldResumeRef.current = false;
       setErrorMessage(message);
       setStatus('error');
+      // Stop immediately so we do not bounce between listening/error states.
+      try {
+        recognition.stop();
+      } catch {
+        // ignore stop failures
+      }
     };
 
     recognition.onend = () => {
@@ -80,9 +87,9 @@ export function useSpeechRecognition(
         setStatus('listening');
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unable to restart voice search';
+        shouldResumeRef.current = false;
         setErrorMessage(message);
         setStatus('error');
-        shouldResumeRef.current = false;
       }
     };
 
@@ -106,6 +113,7 @@ export function useSpeechRecognition(
       setStatus('listening');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to start voice search';
+      shouldResumeRef.current = false;
       setErrorMessage(message);
       setStatus('error');
     }
