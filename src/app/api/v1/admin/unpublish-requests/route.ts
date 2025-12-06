@@ -32,7 +32,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: parsed.error.flatten(), }, { status: 400, });
     }
 
-    const { status, limit, cursor, } = parsed.data;
+    const {
+ status, limit, cursor, 
+} = parsed.data;
 
     const requests = await prisma.unpublish_request.findMany({
       where: { status, },
@@ -89,9 +91,7 @@ export async function GET(req: NextRequest) {
         is_published: req.space.is_published,
         owner_name: buildDisplayName(req.space.user?.first_name, req.space.user?.last_name, req.space.user?.handle),
       },
-      requester: {
-        name: buildDisplayName(req.user?.first_name, req.user?.last_name, req.user?.handle),
-      },
+      requester: { name: buildDisplayName(req.user?.first_name, req.user?.last_name, req.user?.handle), },
       processed_by: req.processed_by
         ? {
             name: buildDisplayName(
@@ -103,7 +103,10 @@ export async function GET(req: NextRequest) {
         : null,
     }));
 
-    return NextResponse.json({ data: payload, nextCursor, });
+    return NextResponse.json({
+ data: payload,
+nextCursor, 
+});
   } catch (error) {
     if (error instanceof AdminSessionError) {
       return NextResponse.json({ error: error.message, }, { status: error.status, });

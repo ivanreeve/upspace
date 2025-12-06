@@ -40,9 +40,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const REQUEST_TABS = [
-  { label: 'Pending', value: 'pending', description: 'Awaiting admin review.', },
-  { label: 'Approved', value: 'approved', description: 'Spaces already unpublished.', },
-  { label: 'Rejected', value: 'rejected', description: 'Requests declined with feedback.', },
+  {
+ label: 'Pending',
+value: 'pending',
+description: 'Awaiting admin review.', 
+},
+  {
+ label: 'Approved',
+value: 'approved',
+description: 'Spaces already unpublished.', 
+},
+  {
+ label: 'Rejected',
+value: 'rejected',
+description: 'Requests declined with feedback.', 
+}
 ] as const;
 
 type RequestTab = (typeof REQUEST_TABS)[number]['value'];
@@ -65,7 +77,12 @@ export function AdminUnpublishRequestsPage() {
   const [rejectingRequest, setRejectingRequest] = useState<UnpublishRequest | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
 
-  const { data, isLoading, isError, error, refetch, isFetching, } = useAdminUnpublishRequestsQuery({ status: activeTab, limit: 20, });
+  const {
+ data, isLoading, isError, error, refetch, isFetching, 
+} = useAdminUnpublishRequestsQuery({
+ status: activeTab,
+limit: 20, 
+});
   const approveMutation = useApproveUnpublishRequestMutation();
   const rejectMutation = useRejectUnpublishRequestMutation();
 
@@ -92,7 +109,10 @@ export function AdminUnpublishRequestsPage() {
       return;
     }
     try {
-      await rejectMutation.mutateAsync({ requestId: rejectingRequest.id, reason: rejectionReason.trim(), });
+      await rejectMutation.mutateAsync({
+ requestId: rejectingRequest.id,
+reason: rejectionReason.trim(), 
+});
       toast.success('Request rejected and requester notified.');
       setRejectingRequest(null);
       setRejectionReason('');
@@ -111,7 +131,7 @@ export function AdminUnpublishRequestsPage() {
         <CardContent>
           <Skeleton className="h-10 w-full" />
           <div className="mt-4 space-y-2">
-            { Array.from({ length: 4 }).map((_, idx) => (
+            { Array.from({ length: 4, }).map((_, idx) => (
               <Skeleton key={ idx } className="h-12 w-full" />
             )) }
           </div>

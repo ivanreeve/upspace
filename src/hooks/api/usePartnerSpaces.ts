@@ -286,7 +286,7 @@ export function useRequestUnpublishSpaceMutation(spaceId: string) {
       const response = await authFetch(`/api/v1/partner/spaces/${spaceId}/unpublish-request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', },
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({ reason, }),
       });
 
       if (!response.ok) {

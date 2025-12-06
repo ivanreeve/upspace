@@ -39,8 +39,13 @@ export async function PATCH(
     const request = await prisma.unpublish_request.findUnique({
       where: { id: parsedId.data, },
       include: {
-        space: { select: { id: true, is_published: true, }, },
-      },
+ space: {
+ select: {
+ id: true,
+is_published: true, 
+}, 
+}, 
+},
     });
 
     if (!request) {
@@ -72,7 +77,7 @@ export async function PATCH(
             unpublished_by_admin: false,
             updated_at: now,
           },
-        }),
+        })
       ]);
 
       return NextResponse.json({ status: 'approved', });

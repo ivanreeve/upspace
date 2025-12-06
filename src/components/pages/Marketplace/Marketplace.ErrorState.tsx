@@ -1,9 +1,10 @@
 'use client';
 
+import { FiRefreshCcw } from 'react-icons/fi';
+
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FiRefreshCcw } from 'react-icons/fi';
 
 type MarketplaceErrorStateProps = {
   onRetry?: () => void;

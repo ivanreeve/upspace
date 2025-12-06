@@ -65,7 +65,10 @@ export function useAdminUnpublishRequestsQuery({
   return useQuery<UnpublishRequestsPage>({
     queryKey: adminUnpublishRequestKeys.list(status, limit, cursor),
     queryFn: async () => {
-      const searchParams = new URLSearchParams({ status, limit: String(limit), });
+      const searchParams = new URLSearchParams({
+ status,
+limit: String(limit), 
+});
       if (cursor) {
         searchParams.set('cursor', cursor);
       }
@@ -111,7 +114,9 @@ export function useRejectUnpublishRequestMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ requestId, reason, }: { requestId: string; reason: string; }) => {
+    mutationFn: async ({
+ requestId, reason, 
+}: { requestId: string; reason: string; }) => {
       const response = await authFetch(`/api/v1/admin/unpublish-requests/${requestId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', },
