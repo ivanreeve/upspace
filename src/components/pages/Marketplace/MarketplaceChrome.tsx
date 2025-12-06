@@ -26,6 +26,7 @@ import { MdFormatListBulleted, MdOutlineSpaceDashboard, MdWorkOutline } from 're
 import { TbLayoutSidebarFilled } from 'react-icons/tb';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { LogoSymbolic } from '@/components/ui/logo-symbolic';
 import {
@@ -342,6 +343,7 @@ type SidebarLinkItemProps = {
   tooltip?: string
   iconProps?: React.SVGProps<SVGSVGElement>
   className?: string
+  labelBadge?: React.ReactNode
 };
 
 function SidebarLinkItem({
@@ -351,6 +353,7 @@ function SidebarLinkItem({
   tooltip,
   iconProps,
   className,
+  labelBadge,
 }: SidebarLinkItemProps) {
   const {
     className: iconClassName,
@@ -368,7 +371,13 @@ function SidebarLinkItem({
               { ...restIconProps }
             />
           </span>
-          <span data-sidebar-label>{ label }</span>
+          <span
+            data-sidebar-label
+            className="inline-flex items-center gap-1.5"
+          >
+            <span>{ label }</span>
+            { labelBadge }
+          </span>
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
@@ -907,6 +916,14 @@ icon: FiMessageSquare,
                         label="AI Search"
                         icon={ LuSparkles }
                         tooltip="AI Search"
+                        labelBadge={ (
+                          <Badge
+                            variant="outline"
+                            className="px-2 py-0.5 text-[10px] leading-none"
+                          >
+                            Beta
+                          </Badge>
+                        ) }
                       />
                     ) }
                     { isCustomerRole && (
