@@ -2,28 +2,21 @@
 
 import { AuthApiError, type Session } from '@supabase/supabase-js';
 import { z } from 'zod';
+import { user_status } from '@prisma/client';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { ROLE_REDIRECT_MAP } from '@/lib/constants';
 import { prisma } from '@/lib/prisma';
-import { reactivateUserIfEligible } from '@/lib/auth/reactivate-user';
 
 type SupabaseSessionPayload = {
   access_token: string;
   refresh_token: string;
 };
 
-const schema = z
-  .object({
-    email: z.string().email('Provide a valid email.'),
-    password: z
-      .string()
-      .min(8, 'Minimum 8 characters.')
-      .regex(/[A-Z]/, 'Include at least one uppercase letter.')
-      .regex(/[a-z]/, 'Include at least one lowercase letter.')
-      .regex(/[0-9]/, 'Include at least one number.')
-      .regex(/[^A-Za-z0-9]/, 'Include at least one symbol.'),
-  });
+const schema = z.object({
+  email: z.string().email('Provide a valid email.'),
+  password: z.string().min(8, 'Minimum 8 characters.'),
+});
 
 export type LoginState = {
   ok: boolean;
@@ -111,29 +104,39 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     }
 
     const {
- data: profile, error: profileError, 
-} = await supabase
+      data: profile,
+      error: profileError,
+    } = await supabase
       .from('user')
-      .select('is_onboard, role, is_disabled')
+      .select('is_onboard, role, status, pending_deletion_at, expires_at')
       .eq('auth_user_id', authedUser.id)
       .maybeSingle();
 
-    if (profile?.is_disabled) {
-      const reactivated = await reactivateUserIfEligible(authedUser.id).catch((error) => {
-        console.error('Failed to attempt reactivation', error);
-        return false;
-      });
+    const now = new Date();
+    if (profile?.status === user_status.deleted) {
+      await supabase.auth.signOut();
+      return {
+        ok: false,
+        message: 'Your account has been deleted.',
+      };
+    }
 
-      if (!reactivated) {
+    if (profile?.status === user_status.pending_deletion && profile.expires_at) {
+      const expiresAt = new Date(profile.expires_at);
+      if (expiresAt.getTime() <= now.getTime()) {
+        await prisma.user.update({
+          where: { auth_user_id: authedUser.id, },
+          data: {
+            status: user_status.deleted,
+            deleted_at: now,
+          },
+        });
         await supabase.auth.signOut();
-
         return {
           ok: false,
-          message: 'Your account has been disabled. Contact support for help.',
+          message: 'Your account has been deleted.',
         };
       }
-
-      profile.is_disabled = false;
     }
 
     if (profileError) {
