@@ -1,9 +1,10 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { user_status } from '@prisma/client';
 
 import { ensureUserProfile } from '@/lib/auth/user-profile';
-import { reactivateUserIfEligible } from '@/lib/auth/reactivate-user';
+import { prisma } from '@/lib/prisma';
 
 export async function POST() {
   try {
@@ -57,13 +58,35 @@ export async function POST() {
       metadata: user.user_metadata ?? {},
     });
 
-    const reactivated = await reactivateUserIfEligible(user.id).catch((error) => {
-      console.error('Failed to reactivate user during sync-profile', error);
-      return false;
+    const now = new Date();
+    const dbUser = await prisma.user.findFirst({
+      where: { auth_user_id: user.id, },
+      select: {
+        status: true,
+        expires_at: true,
+      },
     });
 
-    if (reactivated) {
-      console.info('Reactivated disabled user during profile sync', user.id);
+    if (!dbUser) {
+      return NextResponse.json({ message: 'User profile not found.', }, { status: 404, });
+    }
+
+    if (dbUser.status === user_status.deleted) {
+      return NextResponse.json({ message: 'Account deleted.', }, { status: 403, });
+    }
+
+    if (dbUser.status === user_status.pending_deletion) {
+      const expiresAt = dbUser.expires_at ? new Date(dbUser.expires_at) : null;
+      if (expiresAt && expiresAt.getTime() <= now.getTime()) {
+        await prisma.user.update({
+          where: { auth_user_id: user.id, },
+          data: {
+            status: user_status.deleted,
+            deleted_at: now,
+          },
+        });
+        return NextResponse.json({ message: 'Account deleted.', }, { status: 403, });
+      }
     }
 
     return NextResponse.json({ ok: true, });

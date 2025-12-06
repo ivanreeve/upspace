@@ -24,7 +24,7 @@ export async function PATCH(
   { params, }: { params: { request_id?: string } }
 ) {
   try {
-    const session = await requireAdminSession();
+    const session = await requireAdminSession(req);
 
     const parsedId = z.string().uuid().safeParse(params.request_id);
     if (!parsedId.success) {

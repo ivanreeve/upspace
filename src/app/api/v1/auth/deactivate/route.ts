@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import {
+deactivation_request_type,
+deactivation_request_status,
+user_role,
+user_status
+} from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-
-const DEACTIVATION_METADATA_KEY = 'deactivation_requested_at';
 
 const deactivationReasonSchema = z.enum([
   'not_using',
@@ -46,7 +50,11 @@ export async function POST(req: NextRequest) {
 
     const existingUser = await prisma.user.findUnique({
       where: { auth_user_id: authUser.id, },
-      select: { user_id: true, },
+      select: {
+ user_id: true,
+role: true,
+status: true, 
+},
     });
 
     if (!existingUser) {
@@ -86,10 +94,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (existingUser.status === user_status.deactivated) {
+      return NextResponse.json(
+        { message: 'Your account is already deactivated.', },
+        { status: 400, }
+      );
+    }
+
+    if (existingUser.status === user_status.pending_deletion || existingUser.status === user_status.deleted) {
+      return NextResponse.json(
+        { message: 'Account deletion is in progress or completed.', },
+        { status: 400, }
+      );
+    }
+
     const hasPendingRequest = await prisma.deactivation_request.findFirst({
       where: {
         auth_user_id: authUser.id,
-        status: 'pending',
+        status: deactivation_request_status.pending,
+        type: deactivation_request_type.deactivate,
       },
     });
 
@@ -100,25 +123,51 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await prisma.deactivation_request.create({
-      data: {
-        user_id: existingUser.user_id,
-        auth_user_id: authUser.id,
-        email,
-        reason_category,
-        custom_reason: trimmedReason,
-      },
-    });
+    // Partner: create pending request for admin approval.
+    if (existingUser.role === user_role.partner) {
+      await prisma.deactivation_request.create({
+        data: {
+          user_id: existingUser.user_id,
+          auth_user_id: authUser.id,
+          email,
+          reason_category,
+          custom_reason: trimmedReason,
+          type: deactivation_request_type.deactivate,
+          status: deactivation_request_status.pending,
+        },
+      });
 
-    const metadataPayload = JSON.stringify({ [DEACTIVATION_METADATA_KEY]: new Date().toISOString(), });
+      return NextResponse.json({
+ status: 'requested',
+role: existingUser.role, 
+});
+    }
 
-    await prisma.$executeRaw`
-      UPDATE auth.users
-      SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || ${metadataPayload}::jsonb
-      WHERE id = ${authUser.id}::uuid
-    `;
+    // Customer: immediate deactivate + log as approved request for auditing.
+    const now = new Date();
+    await prisma.$transaction([
+      prisma.deactivation_request.create({
+        data: {
+          user_id: existingUser.user_id,
+          auth_user_id: authUser.id,
+          email,
+          reason_category,
+          custom_reason: trimmedReason,
+          type: deactivation_request_type.deactivate,
+          status: deactivation_request_status.approved,
+          processed_at: now,
+        },
+      }),
+      prisma.user.update({
+        where: { auth_user_id: authUser.id, },
+        data: { status: user_status.deactivated, },
+      })
+    ]);
 
-    return NextResponse.json({ status: 'requested', });
+    return NextResponse.json({
+ status: 'deactivated',
+role: existingUser.role, 
+});
   } catch (error) {
     console.error('Failed to deactivate account', error);
     return NextResponse.json(
