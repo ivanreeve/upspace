@@ -14,6 +14,9 @@ export type UserProfile = {
   avatar: string | null;
   role: 'customer' | 'partner' | 'admin';
   birthday: string | null;
+  status: 'active' | 'deactivated' | 'pending_deletion' | 'deleted';
+  pendingDeletionAt: string | null;
+  expiresAt: string | null;
 };
 
 export function useUserProfile() {
