@@ -107,12 +107,6 @@ const descriptionSchema = z.object({
 
 type DescriptionFormValues = z.infer<typeof descriptionSchema>;
 
-const statusVariant = (status?: string) => {
-  if (status === 'Live') return 'success';
-  if (status === 'Unpublished') return 'destructive';
-  return 'outline';
-};
-
 export function SpaceDetailsPanel({
   spaceId,
   className,
@@ -297,36 +291,6 @@ export function SpaceDetailsPanel({
     setCarouselOpen(false);
     setCarouselIndex(null);
   }, [space?.id]);
-
-  const renderStatusBar = () => {
-    if (!space) return null;
-    return (
-      <div className="flex flex-col gap-3 rounded-md border border-border/70 bg-background/80 px-4 py-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-wrap items-center gap-3">
-          <Badge variant={ statusVariant(space.status) }>{ space.status }</Badge>
-          { space.pending_unpublish_request && (
-            <span className="text-sm font-medium text-amber-600">
-              Unpublish request pending admin review
-            </span>
-          ) }
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            disabled={ isUnpublishDisabled || requestUnpublishMutation.isPending }
-            onClick={ () => setUnpublishDialogOpen(true) }
-          >
-            <FiEyeOff className="size-4" aria-hidden="true" />
-            { space.pending_unpublish_request
-              ? 'Request sent'
-              : 'Request unpublish' }
-          </Button>
-        </div>
-      </div>
-    );
-  };
 
   useEffect(() => {
     if (!space || isEditingDescription) {
@@ -700,21 +664,6 @@ export function SpaceDetailsPanel({
   return (
     <>
       <div className={ cn('space-y-6', className) }>
-        { space ? (
-          <div className="flex flex-col gap-3 rounded-md border border-border/70 bg-background/80 px-4 py-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-wrap items-center gap-3">
-              <Badge variant={ statusVariant(space.status) }>
-                { space.status }
-              </Badge>
-              { space.pending_unpublish_request && (
-                <span className="text-sm font-medium text-amber-600">
-                  Unpublish request pending admin review
-                </span>
-              ) }
-            </div>
-          </div>
-        ) : null }
-
         <Card className="border-border/70 bg-background/80">
           <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1">
