@@ -352,38 +352,28 @@ export function SpacesPriceRulesPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             { selectedCount > 0 ? (
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/60 bg-muted/30 p-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="secondary" className="text-xs">
-                    { ruleCountLabel }
-                  </Badge>
-                  <Badge variant="default" className="text-xs">
-                    { selectedCount } selected
-                  </Badge>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-muted-foreground"
-                    onClick={ clearRuleSelection }
-                    disabled={ isAnyDeletePending }
-                  >
-                    Clear
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    className="gap-2"
-                    onClick={ () => setBulkDeleteDialogOpen(true) }
-                    disabled={ !selectedSpace || isAnyDeletePending || isLoading }
-                  >
-                    <FiTrash2 className="size-4" aria-hidden="true" />
-                    { isBulkDeleting ? 'Deleting...' : 'Delete selected' }
-                  </Button>
-                </div>
+              <div className="flex flex-wrap items-center justify-start gap-2 rounded-md border border-border/60 bg-muted/30 p-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                  onClick={ clearRuleSelection }
+                  disabled={ isAnyDeletePending }
+                >
+                  Clear
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="gap-2"
+                  onClick={ () => setBulkDeleteDialogOpen(true) }
+                  disabled={ !selectedSpace || isAnyDeletePending || isLoading }
+                >
+                  <FiTrash2 className="size-4" aria-hidden="true" />
+                  { isBulkDeleting ? 'Deleting...' : 'Delete selected' }
+                </Button>
               </div>
             ) : null }
             { isLoading ? (
