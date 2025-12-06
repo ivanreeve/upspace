@@ -34,12 +34,41 @@ const shimmerTextStyle: React.CSSProperties = {
   WebkitTextFillColor: "transparent",
 };
 
+interface GradientSparklesIconProps extends React.SVGProps<SVGSVGElement> {
+  isThinking?: boolean;
+}
+
 function GradientSparklesIcon({
   className,
+  isThinking = false,
   ...props
-}: React.SVGProps<SVGSVGElement>) {
+}: GradientSparklesIconProps) {
   const gradientId = React.useId();
+  const motionBlurId = React.useId();
   const stroke = `url(#${gradientId})`;
+  const blurAnimation = isThinking ? (
+    <animate
+      attributeName="stdDeviation"
+      values="0;0;3;0"
+      keyTimes="0;0.6;0.72;1"
+      dur="1.5s"
+      calcMode="spline"
+      keySplines="0.35 0 0.65 0;0.2 0.8 0.4 1;0.6 0 0.8 0.2"
+      repeatCount="indefinite"
+    />
+  ) : null;
+  const rotationAnimation = isThinking ? (
+    <animateTransform
+      attributeName="transform"
+      type="rotate"
+      values="0 12 12;40 12 12;360 12 12"
+      keyTimes="0;0.68;1"
+      dur="1.5s"
+      calcMode="spline"
+      keySplines="0.55 0 0.85 0.2;0.15 0.85 0.3 1"
+      repeatCount="indefinite"
+    />
+  ) : null;
 
   return (
     <svg
@@ -67,15 +96,23 @@ function GradientSparklesIcon({
           <stop offset="85%" stopColor="#ff8c00" />
           <stop offset="100%" stopColor="#ff6f00" />
         </linearGradient>
+        <filter id={motionBlurId} x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="0">
+            {blurAnimation}
+          </feGaussianBlur>
+        </filter>
       </defs>
-      <path
-        d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"
-        stroke={stroke}
-      />
-      <path d="M20 3v4" stroke={stroke} />
-      <path d="M22 5h-4" stroke={stroke} />
-      <path d="M4 17v2" stroke={stroke} />
-      <path d="M5 18H3" stroke={stroke} />
+      <g filter={isThinking ? `url(#${motionBlurId})` : undefined}>
+        {rotationAnimation}
+        <path
+          d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"
+          stroke={stroke}
+        />
+        <path d="M20 3v4" stroke={stroke} />
+        <path d="M22 5h-4" stroke={stroke} />
+        <path d="M4 17v2" stroke={stroke} />
+        <path d="M5 18H3" stroke={stroke} />
+      </g>
     </svg>
   );
 }
@@ -93,7 +130,7 @@ function MessageBubble({
     <div className={cn("flex gap-3", isUser ? "justify-end" : "justify-start")}>
       {!isUser && (
         <div className="mt-0.5 flex size-10 items-center justify-center rounded-full bg-cyan-100 text-cyan-900 dark:bg-cyan-900/30 dark:text-cyan-100">
-          <GradientSparklesIcon />
+          <GradientSparklesIcon isThinking={isThinking} />
           <span className="sr-only">Gemini</span>
         </div>
       )}
@@ -107,7 +144,6 @@ function MessageBubble({
       >
         {isThinking ? (
           <span className="inline-flex items-center gap-2 text-muted-foreground">
-            <FiLoader className="size-4 animate-spin" aria-hidden="true" />
             <span style={shimmerTextStyle}>Gemini is thinking...</span>
           </span>
         ) : (
@@ -227,8 +263,8 @@ export function AiSearch() {
   return (
     <div
       className={cn(
-        "relative mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 pt-10 pb-6 sm:pt-14 sm:pb-8 md:pt-16 md:pb-10 top-[25%]",
-        "min-h-[calc(100vh-6rem)]",
+        "relative mx-auto flex h-full min-h-full w-full max-w-5xl flex-col gap-6 px-4 pt-8 pb-4 sm:pt-12 sm:pb-6 md:pt-14 md:pb-8",
+        "overflow-hidden",
       )}
     >
       {!hasMessages && (
@@ -239,10 +275,10 @@ export function AiSearch() {
         </div>
       )}
 
-      <div className="flex flex-1 flex-col gap-6">
+      <div className="flex flex-1 flex-col gap-6 overflow-hidden">
         {hasMessages && (
-          <Card className="border-none">
-            <CardContent className="space-y-6 p-6 sm:p-8">
+          <Card className="border-none h-full">
+            <CardContent className="flex h-full flex-col space-y-6 p-6 sm:p-8">
               {errorMessage && (
                 <div className="inline-flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                   <FiAlertCircle className="size-4" aria-hidden="true" />
@@ -250,8 +286,8 @@ export function AiSearch() {
                 </div>
               )}
 
-              <div className="rounded-md border-none bg-background/60">
-                <ScrollArea className="h-[360px] max-h-[50vh] w-full sm:max-h-[60vh]">
+              <div className="flex-1 overflow-hidden rounded-md border-none bg-background/60">
+                <ScrollArea className="h-full w-full">
                   <div className="space-y-4 px-3 py-4">
                     {messages.map((message) => (
                       <MessageBubble key={message.id} message={message} />
@@ -279,12 +315,12 @@ export function AiSearch() {
 
       <form
         onSubmit={handleSubmit}
-        className="sticky bottom-[calc(0.75rem+var(--safe-area-bottom,0px))] z-20 mt-auto flex flex-col justify-center gap-4 sm:bottom-[calc(1rem+var(--safe-area-bottom,0px))]"
+        className="sticky bottom-[calc(0.75rem+var(--safe-area-bottom,0px))] z-30 mt-auto flex w-full justify-center sm:bottom-[calc(1rem+var(--safe-area-bottom,0px))]"
       >
         <label htmlFor="ai-search-input" className="sr-only">
           Ask anything about coworking spaces
         </label>
-        <div className="flex flex-col gap-2 rounded-md border border-border/60 bg-background/90 p-2 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/70 sm:flex-row sm:items-center sm:gap-3 max-w-[80%]">
+        <div className="flex w-full max-w-4xl flex-col gap-2 rounded-md border border-border/50 bg-background/95 p-2 shadow-2xl ring-1 ring-border/40 backdrop-blur supports-[backdrop-filter]:bg-background/75 sm:flex-row sm:items-center sm:gap-3">
           <Input
             id="ai-search-input"
             value={query}

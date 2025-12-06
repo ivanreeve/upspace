@@ -23,6 +23,8 @@ PostgreSQL with required extensions:
 - **Validation**: Use Zod for runtime validation of inputs and API payloads.
 - **DRY Principle**: Avoid code duplication. Extract repeated logic into reusable utilities, hooks, endpoints, or components. Maintain a single source of truth for shared behavior, constants, and business logic.
 - **State Management**: Use React Query for "business data" that changes frequently and benefits from caching and prefetching.
+- **Testing**: Write unit tests for business logic and integration tests for API endpoints. Use Vitest and Supabase Edge Functions.
+- **Documentation**: Document all public APIs, including hooks, endpoints, and components through the scalar API spec.
 
 ### UI Development
 
