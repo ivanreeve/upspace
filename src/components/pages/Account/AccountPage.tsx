@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { FiChevronLeft } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useUserProfile } from '@/hooks/use-user-profile';
@@ -22,13 +24,42 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { DEACTIVATION_REASON_OPTIONS, type DeactivationReasonCategory } from '@/lib/deactivation-requests';
 
+const PROFILE_FIELD_MAX_LENGTH = 50;
+
 export default function AccountPage() {
   const { data: profile, } = useUserProfile();
+  const queryClient = useQueryClient();
   const router = useRouter();
+
+  const [firstName, setFirstName] = useState('');
+  const [middleName, setMiddleName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [handleValue, setHandleValue] = useState('');
+  const [birthday, setBirthday] = useState('');
+  const [isProfileSaving, setIsProfileSaving] = useState(false);
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedReason, setSelectedReason] = useState<DeactivationReasonCategory>('not_using');
   const [customReason, setCustomReason] = useState('');
+  const [selectedDeleteReason, setSelectedDeleteReason] = useState<DeactivationReasonCategory>('not_using');
+  const [customDeleteReason, setCustomDeleteReason] = useState('');
   const [isDeactivating, setIsDeactivating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    if (!profile) {
+      return;
+    }
+
+    setFirstName(profile.firstName ?? '');
+    setMiddleName(profile.middleName ?? '');
+    setLastName(profile.lastName ?? '');
+    setHandleValue(profile.handle ?? '');
+    setBirthday(profile.birthday ?? '');
+  }, [profile]);
+
+  const isProfileFilled = useMemo(() => Boolean(handleValue.trim()), [handleValue]);
 
   const handleSignOut = async () => {
     const supabase = getSupabaseBrowserClient();
@@ -39,9 +70,8 @@ export default function AccountPage() {
     await router.push('/');
   };
 
-  const handleDeactivateAccount = () => {
-    setIsDialogOpen(true);
-  };
+  const handleDeactivateAccount = () => setIsDialogOpen(true);
+  const handleDeleteAccount = () => setIsDeleteDialogOpen(true);
 
   const handleDialogOpenChange = (open: boolean) => {
     if (isDeactivating) {
@@ -66,6 +96,8 @@ export default function AccountPage() {
     try {
       const response = await fetch('/api/v1/auth/deactivate', {
         method: 'POST',
+        cache: 'no-store',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', },
         body: JSON.stringify({
           reason_category: selectedReason,
@@ -76,18 +108,113 @@ export default function AccountPage() {
       const payload = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(payload?.message ?? 'Unable to send deactivation request right now.');
+        throw new Error(payload?.message ?? 'Unable to submit your deactivation request.');
       }
 
       toast.success('Deactivation request submitted. We’ll notify you once it is processed.');
       setIsDialogOpen(false);
       setSelectedReason('not_using');
       setCustomReason('');
+      await handleSignOut();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to deactivate your account.';
       toast.error(message);
     } finally {
       setIsDeactivating(false);
+    }
+  };
+
+  const handleSubmitDeletionRequest = async () => {
+    if (!selectedDeleteReason) {
+      toast.error('Please select a reason before submitting.');
+      return;
+    }
+
+    if (selectedDeleteReason === 'other' && !customDeleteReason.trim()) {
+      toast.error('Please share a bit more about your “Other” reason.');
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      const response = await fetch('/api/v1/auth/delete', {
+        method: 'POST',
+        cache: 'no-store',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify({
+          reason_category: selectedDeleteReason,
+          custom_reason: customDeleteReason.trim() || undefined,
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.message ?? 'Unable to request deletion right now.');
+      }
+
+      const statusMessage =
+        payload?.status === 'requested'
+          ? 'Deletion request submitted. We’ll notify you once it is reviewed.'
+          : 'Deletion scheduled. You can cancel by signing in within 30 days.';
+
+      toast.success(statusMessage);
+      setIsDeleteDialogOpen(false);
+      setSelectedDeleteReason('not_using');
+      setCustomDeleteReason('');
+      await handleSignOut();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to delete your account.';
+      toast.error(message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!isProfileFilled) {
+      toast.error('Please provide a handle.');
+      return;
+    }
+
+    const trimmedHandle = handleValue.trim();
+
+    const birthdayValue = birthday ? birthday.trim() : null;
+    if (birthdayValue && !/^\d{4}-\d{2}-\d{2}$/.test(birthdayValue)) {
+      toast.error('Birthday must be in YYYY-MM-DD format.');
+      return;
+    }
+
+    setIsProfileSaving(true);
+
+    try {
+      const response = await fetch('/api/v1/auth/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify({
+          handle: trimmedHandle,
+          firstName: firstName.trim() || null,
+          middleName: middleName.trim() || null,
+          lastName: lastName.trim() || null,
+          birthday: birthdayValue ?? null,
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.message ?? 'Unable to save your profile.');
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ['user-profile'], });
+      toast.success('Profile updated.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to save your profile right now.';
+      toast.error(message);
+    } finally {
+      setIsProfileSaving(false);
     }
   };
 
@@ -117,25 +244,117 @@ export default function AccountPage() {
 
           <section className="space-y-6">
             <div className="space-y-2">
+              <h2 className="text-xl font-semibold text-foreground">Profile information</h2>
+              <p className="text-sm text-muted-foreground">
+                Update your personal information and it will refresh automatically.
+              </p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Label className="flex flex-col gap-2">
+                <span>Handle</span>
+                <Input
+                  value={ handleValue }
+                  onChange={ (event) => setHandleValue(event.target.value) }
+                  maxLength={ PROFILE_FIELD_MAX_LENGTH }
+                />
+              </Label>
+              <Label className="flex flex-col gap-2">
+                <span>First name</span>
+                <Input
+                  value={ firstName }
+                  onChange={ (event) => setFirstName(event.target.value) }
+                  maxLength={ PROFILE_FIELD_MAX_LENGTH }
+                />
+              </Label>
+              <Label className="flex flex-col gap-2">
+                <span>Middle name</span>
+                <Input
+                  value={ middleName }
+                  onChange={ (event) => setMiddleName(event.target.value) }
+                  maxLength={ PROFILE_FIELD_MAX_LENGTH }
+                />
+              </Label>
+              <Label className="flex flex-col gap-2">
+                <span>Last name</span>
+                <Input
+                  value={ lastName }
+                  onChange={ (event) => setLastName(event.target.value) }
+                  maxLength={ PROFILE_FIELD_MAX_LENGTH }
+                />
+              </Label>
+              <Label className="flex flex-col gap-2">
+                <span>Birthday</span>
+                <Input
+                  type="date"
+                  value={ birthday }
+                  onChange={ (event) => setBirthday(event.target.value) }
+                />
+              </Label>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                type="button"
+                className="w-full sm:w-auto"
+                onClick={ handleSaveProfile }
+                disabled={ isProfileSaving }
+              >
+                { isProfileSaving ? 'Saving...' : 'Save changes' }
+              </Button>
+              <Button
+                variant="outline"
+                type="button"
+                className="w-full sm:w-auto"
+                onClick={ handleSignOut }
+              >
+                Sign out
+              </Button>
+            </div>
+          </section>
+
+          <section className="space-y-6">
+            <div className="space-y-2">
               <h2 className="text-xl font-semibold text-foreground">Deactivate account</h2>
               <p className="text-sm text-muted-foreground">
                 Disabling your account locks your profile and removes it from public search until you reactivate.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    className="w-full sm:w-auto"
-                    onClick={ handleDeactivateAccount }
-                    disabled={ isDeactivating }
-                  >
-                    { isDeactivating ? 'Submitting request...' : 'Deactivate account' }
-                  </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                className="w-full sm:w-auto"
+                onClick={ handleDeactivateAccount }
+                disabled={ isDeactivating }
+              >
+                { isDeactivating ? 'Submitting request...' : 'Deactivate account' }
+              </Button>
+            </div>
+          </section>
+
+          <section className="space-y-6">
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold text-foreground">Delete account</h2>
+              <p className="text-sm text-muted-foreground">
+                { profile?.role === 'partner'
+                  ? 'Submit a delete request for admin review. Approved requests enter a 30-day window.'
+                  : 'Delete your account with a 30-day grace period. Signing in during that window cancels deletion.' }
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={ handleDeleteAccount }
+                disabled={ isDeleting }
+              >
+                { isDeleting ? 'Submitting request...' : 'Delete account' }
+              </Button>
             </div>
           </section>
         </div>
       </main>
+
       <Dialog open={ isDialogOpen } onOpenChange={ handleDialogOpenChange }>
         <DialogContent fullWidth>
           <DialogHeader>
@@ -196,6 +415,71 @@ export default function AccountPage() {
               disabled={ isDeactivating }
             >
               { isDeactivating ? 'Submitting...' : 'Submit deactivation request' }
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={ isDeleteDialogOpen } onOpenChange={ setIsDeleteDialogOpen }>
+        <DialogContent fullWidth>
+          <DialogHeader>
+            <DialogTitle>Delete account</DialogTitle>
+            <DialogDescription>
+              Deletion enters a 30-day window. Signing in during that time cancels the deletion.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 grid gap-3">
+            { DEACTIVATION_REASON_OPTIONS.map((option) => {
+              const isSelected = selectedDeleteReason === option.value;
+              return (
+                <button
+                  key={ option.value }
+                  type="button"
+                  onClick={ () => setSelectedDeleteReason(option.value) }
+                  className={ cn(
+                    'flex w-full flex-col gap-1 rounded-lg border px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                    isSelected
+                      ? 'border-primary/80 bg-primary/5'
+                      : 'border-border/60 hover:border-foreground/60 focus-visible:border-primary'
+                  ) }
+                >
+                  <span className="text-sm font-semibold text-foreground">{ option.label }</span>
+                  <span className="text-xs text-muted-foreground">{ option.description }</span>
+                </button>
+              );
+            }) }
+          </div>
+          { selectedDeleteReason === 'other' && (
+            <div className="mt-6 space-y-2">
+              <Label htmlFor="deletion-other-reason">Tell us more</Label>
+              <Textarea
+                id="deletion-other-reason"
+                value={ customDeleteReason }
+                onChange={ (event) => setCustomDeleteReason(event.target.value) }
+                placeholder="Describe why you want to delete your account."
+                rows={ 4 }
+                maxLength={ 350 }
+                aria-label="Additional reason for deletion"
+              />
+              <p className="text-xs text-muted-foreground">
+                { customDeleteReason.length } / 350 characters
+              </p>
+            </div>
+          ) }
+          <DialogFooter className="mt-6">
+            <Button
+              variant="outline"
+              onClick={ () => setIsDeleteDialogOpen(false) }
+              disabled={ isDeleting }
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={ handleSubmitDeletionRequest }
+              disabled={ isDeleting }
+            >
+              { isDeleting ? 'Submitting...' : 'Request deletion' }
             </Button>
           </DialogFooter>
         </DialogContent>
