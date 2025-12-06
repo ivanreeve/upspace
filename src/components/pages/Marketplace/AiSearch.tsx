@@ -246,7 +246,10 @@ export function AiSearch() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', },
         body: JSON.stringify({
-          messages: history.map(({ role, content }) => ({
+          messages: history.map(({
+            role,
+            content,
+          }) => ({
             role,
             content: content.trim(),
           })),

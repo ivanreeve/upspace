@@ -25,6 +25,8 @@ PostgreSQL with required extensions:
 - **State Management**: Use React Query for "business data" that changes frequently and benefits from caching and prefetching.
 - **Testing**: Write unit tests for business logic and integration tests for API endpoints. Use Vitest and Supabase Edge Functions.
 - **Documentation**: Document all public APIs, including hooks, endpoints, and components through the scalar API spec.
+- **Security**: Keep flagging any new prisma.$queryRaw/$executeRaw usage during reviews; require Zod (or similar) validation before values reach the template literal so Prisma can continue to bind parameters safely.
+- **Raw SQL**: When adding raw SQL in the future, favor multi-line template strings over building SQL strings yourself, and document the validation steps so code reviewers can see why the query is safe.
 
 ### UI Development
 

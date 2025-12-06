@@ -75,8 +75,7 @@ export async function POST(request: NextRequest) {
         {
           role: 'user',
           parts: [{ text: query?.trim() ?? '', }],
-        },
-      })) ??
+        }
       ];
 
     const response = await ai.models.generateContent({
