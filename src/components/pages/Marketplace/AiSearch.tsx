@@ -239,7 +239,7 @@ export function AiSearch() {
                 placeholder="Find a quiet meeting room with whiteboards near BGC next Friday"
                 aria-label="AI search query"
                 disabled={ aiSearchMutation.isPending }
-                className="border-none bg-transparent text-base focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="h-14 border-none bg-transparent text-base focus-visible:ring-0 focus-visible:ring-offset-0 sm:h-12"
               />
               <div className="flex items-center justify-end gap-2 sm:justify-end">
                 <Button
