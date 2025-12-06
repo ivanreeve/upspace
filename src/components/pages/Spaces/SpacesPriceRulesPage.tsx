@@ -398,7 +398,6 @@ export function SpacesPriceRulesPage() {
                         <Skeleton className="h-4 w-4 rounded-sm" />
                       </TableHead>
                       <TableHead>Name &amp; description</TableHead>
-                      <TableHead>Variables</TableHead>
                       <TableHead>Conditions</TableHead>
                       <TableHead>Updated</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -415,9 +414,6 @@ export function SpacesPriceRulesPage() {
                             <Skeleton className="h-4 w-48" />
                             <Skeleton className="h-3 w-64" />
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <Skeleton className="h-6 w-14 rounded-full" />
                         </TableCell>
                         <TableCell>
                           <Skeleton className="h-6 w-16 rounded-full" />
@@ -461,7 +457,6 @@ export function SpacesPriceRulesPage() {
                         />
                       </TableHead>
                       <TableHead>Name &amp; description</TableHead>
-                      <TableHead>Variables</TableHead>
                       <TableHead>Conditions</TableHead>
                       <TableHead>Updated</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -494,14 +489,6 @@ export function SpacesPriceRulesPage() {
                                   : 'No description provided.' }
                               </p>
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className="gap-1">
-                              { rule.definition.variables.length }
-                              <span className="text-[11px] uppercase text-muted-foreground">
-                                vars
-                              </span>
-                            </Badge>
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline" className="gap-1">
