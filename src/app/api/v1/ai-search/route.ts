@@ -4,12 +4,23 @@ import { z } from 'zod';
 
 export const runtime = 'nodejs';
 
+const messageSchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  content: z
+    .string()
+    .trim()
+    .min(1, 'Please enter a question.')
+    .max(2000, 'Keep each message under 2,000 characters.'),
+});
+
 const requestSchema = z.object({
   query: z
     .string()
     .trim()
     .min(1, 'Please enter a question.')
-    .max(2000, 'Keep your question under 2,000 characters.'),
+    .max(2000, 'Keep your question under 2,000 characters.')
+    .optional(),
+  messages: z.array(messageSchema).min(1).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -26,11 +37,15 @@ export async function POST(request: NextRequest) {
           : typeof jsonBody?.query === 'string'
             ? jsonBody.query
             : rawText || queryFromSearch,
+    messages: Array.isArray(jsonBody?.messages) ? jsonBody.messages : undefined,
   });
 
-  if (!parsed.success) {
+  if (!parsed.success || (!parsed.data.messages && !parsed.data.query)) {
     return NextResponse.json(
-      { error: 'Enter a question between 4 and 1,200 characters.', },
+      {
+        error:
+          'Enter a question (or conversation) with messages under 2,000 characters each.',
+      },
       { status: 400, }
     );
   }
@@ -46,14 +61,27 @@ export async function POST(request: NextRequest) {
   const ai = new GoogleGenAI({ apiKey, });
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest',
-      contents: [
+    const {
+      messages,
+      query,
+    } = parsed.data;
+
+    const normalizedMessages =
+      messages?.map((message) => ({
+        role: message.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: message.content.trim(), }],
+      })) ??
+      [
         {
           role: 'user',
-          parts: [{ text: parsed.data.query, }],
-        }
-      ],
+          parts: [{ text: query?.trim() ?? '', }],
+        },
+      })) ??
+      ];
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-flash-latest',
+      contents: normalizedMessages,
     });
 
     const reply =

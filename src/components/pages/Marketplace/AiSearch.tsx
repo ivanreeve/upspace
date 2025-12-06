@@ -236,12 +236,21 @@ export function AiSearch() {
     return 'UpSpace User';
   }, [userProfile]);
 
-  const aiSearchMutation = useMutation<string, Error, string>({
-    mutationFn: async (prompt: string) => {
+  const aiSearchMutation = useMutation<string, Error, ChatMessage[]>({
+    mutationFn: async (history: ChatMessage[]) => {
+      if (!history.length) {
+        throw new Error('Please enter a question.');
+      }
+
       const response = await fetch('/api/v1/ai-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', },
-        body: JSON.stringify({ query: prompt, }),
+        body: JSON.stringify({
+          messages: history.map(({ role, content }) => ({
+            role,
+            content: content.trim(),
+          })),
+        }),
         cache: 'no-store',
       });
 
@@ -281,34 +290,39 @@ export function AiSearch() {
         content: trimmed,
       };
 
-      setMessages((prev) => [...prev, userMessage]);
       setQuery('');
       setErrorMessage(null);
       setVoiceError(null);
 
-      aiSearchMutation.mutate(trimmed, {
-        onSuccess: (reply) => {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: makeMessageId('assistant'),
-              role: 'assistant',
-              content: reply,
-            }
-          ]);
-        },
-        onError: (mutationError) => {
-          const fallback = mutationError.message || 'Gemini could not reply.';
-          setErrorMessage(fallback);
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: makeMessageId('assistant'),
-              role: 'assistant',
-              content: `Sorry, I could not complete that request: ${fallback}`,
-            }
-          ]);
-        },
+      setMessages((previous) => {
+        const history = [...previous, userMessage];
+
+        aiSearchMutation.mutate(history, {
+          onSuccess: (reply) => {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: makeMessageId('assistant'),
+                role: 'assistant',
+                content: reply,
+              }
+            ]);
+          },
+          onError: (mutationError) => {
+            const fallback = mutationError.message || 'Gemini could not reply.';
+            setErrorMessage(fallback);
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: makeMessageId('assistant'),
+                role: 'assistant',
+                content: `Sorry, I could not complete that request: ${fallback}`,
+              }
+            ]);
+          },
+        });
+
+        return history;
       });
     },
     [aiSearchMutation]
