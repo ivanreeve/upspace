@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 
-type SpeechRecognitionStatus = 'idle' | 'listening' | 'error' | 'unsupported';
+export type SpeechRecognitionStatus = 'idle' | 'listening' | 'error' | 'unsupported';
 
 type UseSpeechRecognitionOptions = {
   lang?: string;

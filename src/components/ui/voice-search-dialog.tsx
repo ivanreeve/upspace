@@ -8,23 +8,32 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
-import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
+import { useSpeechRecognition, type SpeechRecognitionStatus } from '@/hooks/use-speech-recognition';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 type VoiceSearchDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (value: string) => void;
+  title?: string;
+  description?: string;
+  autoSubmitDelayMs?: number;
+  onStatusChange?: (status: SpeechRecognitionStatus) => void;
+  onError?: (message?: string) => void;
 };
 
 export function VoiceSearchDialog({
   open,
   onOpenChange,
   onSubmit,
+  title,
+  description,
+  autoSubmitDelayMs = 5000,
+  onStatusChange,
+  onError,
 }: VoiceSearchDialogProps) {
   const isMobile = useIsMobile();
   const {
@@ -34,6 +43,7 @@ export function VoiceSearchDialog({
     startListening,
     stopListening,
     resetTranscript,
+    errorMessage,
   } = useSpeechRecognition();
   const silenceTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -53,6 +63,21 @@ export function VoiceSearchDialog({
       ? '0 0 0 12px color-mix(in oklab, var(--secondary) 22%, transparent)'
       : undefined,
   };
+  const resolvedTitle = title ?? 'Voice search';
+  const resolvedDescription = description ?? 'Hold the mic, speak, and we’ll type it out.';
+  const placeholderMessage = status === 'unsupported'
+    ? 'Voice input is not available in this browser.'
+    : 'Speak now and your words will appear here…';
+
+  React.useEffect(() => {
+    onStatusChange?.(status);
+  }, [onStatusChange, status]);
+
+  React.useEffect(() => {
+    if (!errorMessage) return;
+
+    onError?.(errorMessage);
+  }, [errorMessage, onError]);
 
   const handleSubmit = React.useCallback(() => {
     const value = transcript.trim();
@@ -112,12 +137,12 @@ export function VoiceSearchDialog({
     }
 
     silenceTimerRef.current && clearTimeout(silenceTimerRef.current);
-    silenceTimerRef.current = setTimeout(() => handleAutoSubmit(), 5000);
+    silenceTimerRef.current = setTimeout(() => handleAutoSubmit(), autoSubmitDelayMs);
 
     return () => {
       silenceTimerRef.current && clearTimeout(silenceTimerRef.current);
     };
-  }, [transcript, handleAutoSubmit]);
+  }, [autoSubmitDelayMs, handleAutoSubmit, transcript]);
 
   return (
     <Dialog open={ open } onOpenChange={ onOpenChange }>
@@ -129,8 +154,8 @@ export function VoiceSearchDialog({
       >
         <div className="flex h-full flex-col gap-6">
           <DialogHeader className="px-0 text-center">
-            <DialogTitle>Voice search</DialogTitle>
-            <DialogDescription>Hold the mic, speak, and we’ll type it out.</DialogDescription>
+            <DialogTitle>{ resolvedTitle }</DialogTitle>
+            <DialogDescription>{ resolvedDescription }</DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4">
@@ -146,9 +171,14 @@ export function VoiceSearchDialog({
               { transcript ? (
                 <p className="whitespace-pre-wrap text-foreground">{ transcript }</p>
               ) : (
-                <p>Speak now and your words will appear here…</p>
+                <p>{ placeholderMessage }</p>
               ) }
             </div>
+            { errorMessage && (
+              <p className="text-center text-xs text-destructive" role="status">
+                { errorMessage }
+              </p>
+            ) }
           </div>
 
           <div className="flex w-full items-center justify-center gap-2">
