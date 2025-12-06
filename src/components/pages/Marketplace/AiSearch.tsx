@@ -288,7 +288,11 @@ export function AiSearch() {
 
               <div className="flex-1 overflow-hidden rounded-md border-none bg-background/60">
                 <ScrollArea className="h-full w-full">
-                  <div className="space-y-4 px-3 py-4">
+                  <div className="relative space-y-4 px-3 py-4">
+                    <div
+                      className="pointer-events-none absolute left-[2.15rem] top-0 h-full border-l-2 border-dotted border-muted opacity-80"
+                      aria-hidden="true"
+                    />
                     {messages.map((message) => (
                       <MessageBubble key={message.id} message={message} />
                     ))}
