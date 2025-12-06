@@ -92,7 +92,7 @@ function MessageBubble({
   return (
     <div className={cn("flex gap-3", isUser ? "justify-end" : "justify-start")}>
       {!isUser && (
-        <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-md bg-cyan-100 text-cyan-900 dark:bg-cyan-900/30 dark:text-cyan-100">
+        <div className="mt-0.5 flex size-10 items-center justify-center rounded-full bg-cyan-100 text-cyan-900 dark:bg-cyan-900/30 dark:text-cyan-100">
           <GradientSparklesIcon />
           <span className="sr-only">Gemini</span>
         </div>
@@ -227,7 +227,7 @@ export function AiSearch() {
   return (
     <div
       className={cn(
-        "relative mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-10 sm:py-14 md:py-16",
+        "relative mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 pt-10 pb-6 sm:pt-14 sm:pb-8 md:pt-16 md:pb-10",
         "min-h-[calc(100vh-6rem)]",
       )}
     >
@@ -279,7 +279,7 @@ export function AiSearch() {
 
       <form
         onSubmit={handleSubmit}
-        className="sticky bottom-[calc(1rem+var(--safe-area-bottom,0px))] z-20 mt-auto flex flex-col gap-4 sm:bottom-[calc(1.5rem+var(--safe-area-bottom,0px))]"
+        className="sticky bottom-[calc(0.75rem+var(--safe-area-bottom,0px))] z-20 mt-auto flex flex-col gap-4 sm:bottom-[calc(1rem+var(--safe-area-bottom,0px))]"
       >
         <label htmlFor="ai-search-input" className="sr-only">
           Ask anything about coworking spaces
