@@ -220,7 +220,12 @@ function MessageBubble({
   const isUser = message.role === 'user';
 
   return (
-    <div className={ cn('flex gap-3', isUser ? 'justify-end' : 'justify-start') }>
+    <div
+      className={ cn(
+        'flex gap-3 items-center',
+        isUser ? 'justify-end' : 'justify-start'
+      ) }
+    >
       { !isUser && (
         <div
           ref={ iconRef }
