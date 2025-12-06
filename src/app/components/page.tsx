@@ -1,12 +1,12 @@
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ThemeSwitcher } from "@/components/ui/theme-switcher";
-import { SemanticSearchIcon } from "@/components/pages/LandingPage/LandingPage.Feature.SemanticSearchIcon";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ThemeSwitcher } from '@/components/ui/theme-switcher';
+import { SemanticSearchIcon } from '@/components/pages/LandingPage/LandingPage.Feature.SemanticSearchIcon';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 export default function Home() {
   return (
@@ -15,7 +15,7 @@ export default function Home() {
       <Button>Button</Button>
 
       <h2>Slider</h2>
-      <Slider defaultValue={[50]} max={100} step={1} className="w-[300px]" />
+      <Slider defaultValue={ [50] } max={ 100 } step={ 1 } className="w-[300px]" />
 
       <h2>Switch</h2>
       <div className="flex flex-row space-x-2 items-center">

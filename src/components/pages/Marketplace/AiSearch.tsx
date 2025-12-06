@@ -227,7 +227,7 @@ export function AiSearch() {
   return (
     <div
       className={cn(
-        "relative mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 pt-10 pb-6 sm:pt-14 sm:pb-8 md:pt-16 md:pb-10",
+        "relative mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 pt-10 pb-6 sm:pt-14 sm:pb-8 md:pt-16 md:pb-10 top-[25%]",
         "min-h-[calc(100vh-6rem)]",
       )}
     >
@@ -279,12 +279,12 @@ export function AiSearch() {
 
       <form
         onSubmit={handleSubmit}
-        className="sticky bottom-[calc(0.75rem+var(--safe-area-bottom,0px))] z-20 mt-auto flex flex-col gap-4 sm:bottom-[calc(1rem+var(--safe-area-bottom,0px))]"
+        className="sticky bottom-[calc(0.75rem+var(--safe-area-bottom,0px))] z-20 mt-auto flex flex-col justify-center gap-4 sm:bottom-[calc(1rem+var(--safe-area-bottom,0px))]"
       >
         <label htmlFor="ai-search-input" className="sr-only">
           Ask anything about coworking spaces
         </label>
-        <div className="flex flex-col gap-2 rounded-md border border-border/60 bg-background/90 p-2 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/70 sm:flex-row sm:items-center sm:gap-3">
+        <div className="flex flex-col gap-2 rounded-md border border-border/60 bg-background/90 p-2 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/70 sm:flex-row sm:items-center sm:gap-3 max-w-[80%]">
           <Input
             id="ai-search-input"
             value={query}
