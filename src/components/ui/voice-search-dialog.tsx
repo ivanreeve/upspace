@@ -163,20 +163,21 @@ export function VoiceSearchDialog({
               className="flex h-[108px] w-[108px] items-center justify-center rounded-full bg-secondary/20 transition-all duration-300 mt-6 mb-6"
               style={ circleStyle }
             >
-              <div
-                className="mesh-gradient-circle flex h-[90px] w-[90px] items-center justify-center rounded-full text-background shadow-md"
-                style={ {
-                  backgroundColor: 'var(--secondary)',
-                  backgroundImage: [
-                    'radial-gradient(circle at 20% 25%, #22d3ee 0%, rgba(34, 211, 238, 0) 40%)',
-                    'radial-gradient(circle at 80% 20%, #34d399 0%, rgba(52, 211, 153, 0) 38%)',
-                    'radial-gradient(circle at 35% 75%, #f59e0b 0%, rgba(245, 158, 11, 0) 40%)',
-                    'radial-gradient(circle at 75% 70%, var(--secondary) 0%, rgba(99, 102, 241, 0) 42%)',
-                    'linear-gradient(135deg, #0ea5e9 0%, #22d3ee 30%, #34d399 65%, #f59e0b 100%)'
-                  ].join(','),
-                } }
-              >
-                <FaMicrophone className="size-5" aria-hidden="true" />
+              <div className="relative flex h-[90px] w-[90px] items-center justify-center overflow-hidden rounded-full shadow-md text-background">
+                <div
+                  className="mesh-gradient-layer absolute inset-0 rounded-full"
+                  style={ {
+                    backgroundColor: 'var(--secondary)',
+                    backgroundImage: [
+                      'radial-gradient(circle at 20% 25%, #22d3ee 0%, rgba(34, 211, 238, 0) 40%)',
+                      'radial-gradient(circle at 80% 20%, #34d399 0%, rgba(52, 211, 153, 0) 38%)',
+                      'radial-gradient(circle at 35% 75%, #f59e0b 0%, rgba(245, 158, 11, 0) 40%)',
+                      'radial-gradient(circle at 75% 70%, var(--secondary) 0%, rgba(99, 102, 241, 0) 42%)',
+                      'linear-gradient(135deg, #0ea5e9 0%, #22d3ee 30%, #34d399 65%, #f59e0b 100%)'
+                    ].join(','),
+                  } }
+                />
+                <FaMicrophone className="relative z-10 size-5" aria-hidden="true" />
               </div>
             </div>
             <div className="min-h-[3rem] text-center text-sm text-muted-foreground">
@@ -230,7 +231,7 @@ export function VoiceSearchDialog({
             }
           }
 
-          .mesh-gradient-circle {
+          .mesh-gradient-layer {
             background-size: 180% 180%;
             animation: meshSpin 14s ease-in-out infinite;
           }

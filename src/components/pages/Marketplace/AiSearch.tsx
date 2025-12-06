@@ -475,7 +475,7 @@ export function AiSearch() {
     >
       { !hasMessages && (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-          <h1 className="text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
+          <h1 className="greeting-appear text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
             Hi, { greetingName }
           </h1>
         </div>
