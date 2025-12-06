@@ -45,6 +45,11 @@ const invalidPayloadResponse = NextResponse.json(
   { status: 400, }
 );
 
+const unavailableSpaceResponse = NextResponse.json(
+  { error: 'This space is no longer available for booking.', },
+  { status: 410, }
+);
+
 const notFoundResponse = NextResponse.json(
   { error: 'Area not found for this space.', },
   { status: 404, }
@@ -293,6 +298,7 @@ export async function POST(req: NextRequest) {
         select: {
           id: true,
           name: true,
+          is_published: true,
           user: {
             select: {
               auth_user_id: true,
@@ -308,6 +314,10 @@ export async function POST(req: NextRequest) {
 
   if (!area || area.space_id !== parsed.data.spaceId || !area.space) {
     return notFoundResponse;
+  }
+
+  if (!area.space.is_published) {
+    return unavailableSpaceResponse;
   }
 
   const partnerAuthId = area.space.user?.auth_user_id ?? null;

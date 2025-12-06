@@ -231,6 +231,7 @@ export default function Marketplace({ initialSidebarOpen, }: MarketplaceProps) {
     isLoading,
     isFetching,
     error,
+    refetch,
   } = useQuery({
     queryKey: ['marketplace-spaces', filters],
     queryFn: async () => listSpaces(buildQueryParams(filters)),
@@ -275,7 +276,10 @@ export default function Marketplace({ initialSidebarOpen, }: MarketplaceProps) {
         ) }
         { hasError ? (
           <div className="flex min-h-[70vh] w-full items-center justify-center px-4">
-            <MarketplaceErrorState />
+            <MarketplaceErrorState
+              onRetry={ () => { void refetch(); } }
+              isRetrying={ isFetching }
+            />
           </div>
         ) : (
           <div className="space-y-3">

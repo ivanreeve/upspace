@@ -43,6 +43,7 @@ export type PriceRuleRecord = {
   name: string;
   description: string | null;
   definition: PriceRuleDefinition;
+  linked_area_count: number;
   created_at: string;
   updated_at: string | null;
 };

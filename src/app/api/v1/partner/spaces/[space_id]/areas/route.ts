@@ -82,7 +82,7 @@ export async function POST(req: NextRequest, { params, }: RouteParams) {
 
       const areaWithRelations = await tx.area.findFirst({
         where: { id: createdArea.id, },
-        include: { price_rule: true, },
+        include: { price_rule: { include: { _count: { select: { area: true, }, }, }, }, },
       });
 
       if (!areaWithRelations) {

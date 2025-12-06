@@ -9,6 +9,7 @@ import {
   useState
 } from 'react';
 import { FiEdit, FiPlus, FiTrash2 } from 'react-icons/fi';
+import { GoArrowUpRight } from 'react-icons/go';
 import { toast } from 'sonner';
 
 import PriceRuleDialog from './PriceRuleDialog';
@@ -16,13 +17,7 @@ import { SpacesBreadcrumbs } from './SpacesBreadcrumbs';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -32,6 +27,13 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -71,8 +73,6 @@ export function SpacesPriceRulesPage() {
   const [priceRuleDialogOpen, setPriceRuleDialogOpen] = useState(false);
   const [editingPriceRule, setEditingPriceRule] =
     useState<PriceRuleRecord | null>(null);
-  const [priceRulePendingDelete, setPriceRulePendingDelete] =
-    useState<PriceRuleRecord | null>(null);
   const [selectedRuleIds, setSelectedRuleIds] = useState<Set<string>>(new Set());
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
@@ -93,13 +93,27 @@ export function SpacesPriceRulesPage() {
     [selectedSpace]
   );
 
+  const deletableRuleIds = useMemo(
+    () =>
+      rules
+        .filter((rule) => rule.linked_area_count === 0)
+        .map((rule) => rule.id),
+    [rules]
+  );
+  const deletableRuleCount = deletableRuleIds.length;
+  const hasInUseRules = rules.length > deletableRuleCount;
+
   useEffect(() => {
     setSelectedRuleIds((current) => {
       if (rules.length === 0) {
         return new Set();
       }
 
-      const validIds = new Set(rules.map((rule) => rule.id));
+      const validIds = new Set(
+        rules
+          .filter((rule) => rule.linked_area_count === 0)
+          .map((rule) => rule.id)
+      );
       return new Set(Array.from(current).filter((id) => validIds.has(id)));
     });
     setBulkDeleteDialogOpen(false);
@@ -162,63 +176,49 @@ export function SpacesPriceRulesPage() {
     ]
   );
 
-  const handleConfirmDeletePriceRule = useCallback(async () => {
-    if (!selectedSpaceId || !priceRulePendingDelete) {
-      return;
-    }
-
-    try {
-      await deletePriceRuleMutation.mutateAsync(priceRulePendingDelete.id);
-      toast.success(`${priceRulePendingDelete.name} removed.`);
-      setPriceRulePendingDelete(null);
-      setSelectedRuleIds((current) => {
-        const next = new Set(current);
-        next.delete(priceRulePendingDelete.id);
-        return next;
-      });
-    } catch (mutationError) {
-      toast.error(
-        mutationError instanceof Error
-          ? mutationError.message
-          : 'Unable to delete pricing rule.'
-      );
-    }
-  }, [deletePriceRuleMutation, priceRulePendingDelete, selectedSpaceId]);
-
-  const selectedCount = rules.filter((rule) => selectedRuleIds.has(rule.id)).length;
+  const selectedCount = rules.filter(
+    (rule) => rule.linked_area_count === 0 && selectedRuleIds.has(rule.id)
+  ).length;
   const selectionState: boolean | 'indeterminate' =
-    selectedCount === rules.length && rules.length > 0
+    deletableRuleCount > 0 && selectedCount === deletableRuleCount
       ? true
       : selectedCount > 0
         ? 'indeterminate'
         : false;
-  const ruleCountLabel = `${rules.length} rule${rules.length === 1 ? '' : 's'}`;
 
-  const handleSelectRule = useCallback((ruleId: string, checked: boolean) => {
-    setSelectedRuleIds((current) => {
-      const next = new Set(current);
-      if (checked) {
-        next.add(ruleId);
-      } else {
-        next.delete(ruleId);
+  const handleSelectRule = useCallback(
+    (ruleId: string, checked: boolean) => {
+      const rule = rules.find((entry) => entry.id === ruleId);
+      if (!rule || rule.linked_area_count > 0) {
+        return;
       }
-      return next;
-    });
-  }, []);
+
+      setSelectedRuleIds((current) => {
+        const next = new Set(current);
+        if (checked) {
+          next.add(ruleId);
+        } else {
+          next.delete(ruleId);
+        }
+        return next;
+      });
+    },
+    [rules]
+  );
 
   const handleSelectAllRules = useCallback(
     (checked: boolean) => {
       setSelectedRuleIds((current) => {
         if (!checked) {
           const next = new Set(current);
-          rules.forEach((rule) => next.delete(rule.id));
+          deletableRuleIds.forEach((id) => next.delete(id));
           return next;
         }
 
-        return new Set(rules.map((rule) => rule.id));
+        return new Set(deletableRuleIds);
       });
     },
-    [rules]
+    [deletableRuleIds]
   );
 
   const clearRuleSelection = useCallback(() => {
@@ -234,7 +234,7 @@ export function SpacesPriceRulesPage() {
     try {
       const results = await Promise.allSettled(
         rules
-          .filter((rule) => selectedRuleIds.has(rule.id))
+          .filter((rule) => selectedRuleIds.has(rule.id) && rule.linked_area_count === 0)
           .map((rule) => deletePriceRuleMutation.mutateAsync(rule.id))
       );
 
@@ -242,6 +242,9 @@ export function SpacesPriceRulesPage() {
         .filter((result): result is PromiseFulfilledResult<string> => result.status === 'fulfilled')
         .map((result) => result.value);
       const failed = results.length - succeededIds.length;
+      const firstFailureReason = results.find(
+        (result): result is PromiseRejectedResult => result.status === 'rejected'
+      )?.reason;
 
       if (succeededIds.length > 0) {
         toast.success(
@@ -255,7 +258,11 @@ export function SpacesPriceRulesPage() {
       }
 
       if (failed > 0) {
-        toast.error('Some pricing rules could not be deleted. Please try again.');
+        toast.error(
+          firstFailureReason instanceof Error
+            ? firstFailureReason.message
+            : 'Some pricing rules could not be deleted. Please try again.'
+        );
       } else {
         setBulkDeleteDialogOpen(false);
       }
@@ -329,28 +336,51 @@ export function SpacesPriceRulesPage() {
             </Button>
           </CardContent>
         </Card>
-      ) : (
-        <Card className="mt-6 border-border/70 bg-background/80">
-          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle className="text-lg font-semibold">
-                Rules for { selectedSpace ? selectedSpace.name : '—' }
-              </CardTitle>
-              <CardDescription className="text-sm text-muted-foreground">
-                { selectedSpace ? (
-                  <Link
-                    href={ `/spaces/${selectedSpace.id}` }
-                    className="text-xs text-secondary underline-offset-4 hover:underline"
-                  >
-                    View space
-                  </Link>
-                ) : (
-                  'Choose a space to see its pricing rules.'
-                ) }
-              </CardDescription>
+          ) : (
+        <div className="mt-6 space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="text-lg font-semibold">Rules for</h2>
+              { isLoading ? (
+                <Skeleton className="h-10 w-44 rounded-md" />
+              ) : spaces && spaces.length ? (
+                <Select
+                  value={ selectedSpaceId ?? undefined }
+                  onValueChange={ (value) => setSelectedSpaceId(value) }
+                >
+                  <SelectTrigger className="min-w-[14rem] text-left" aria-label="Select space">
+                    <SelectValue placeholder="Select space" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    { spaces.map((space) => (
+                      <SelectItem key={ space.id } value={ space.id }>
+                        { space.name }
+                      </SelectItem>
+                    )) }
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-sm text-muted-foreground">No spaces available. Add a space to manage pricing rules.</p>
+              ) }
             </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
+            { selectedSpace ? (
+              <Button
+                variant="link"
+                asChild
+                className="px-0 text-sm font-semibold text-secondary hover:text-secondary/80"
+              >
+                <Link
+                  href={ `/spaces/${selectedSpace.id}` }
+                  className="inline-flex items-center gap-2"
+                >
+                  View Space
+                  <GoArrowUpRight className="size-4" aria-hidden="true" />
+                </Link>
+              </Button>
+            ) : null }
+          </div>
+
+          <div className="space-y-3">
             { selectedCount > 0 ? (
               <div className="flex flex-wrap items-center justify-start gap-2 rounded-md border border-border/60 bg-muted/30 p-3">
                 <Button
@@ -375,6 +405,11 @@ export function SpacesPriceRulesPage() {
                   { isBulkDeleting ? 'Deleting...' : 'Delete selected' }
                 </Button>
               </div>
+            ) : null }
+            { hasInUseRules ? (
+              <p className="text-xs text-muted-foreground">
+                Pricing rules that are in use by areas cannot be deleted. Detach them from all areas in this space first.
+              </p>
             ) : null }
             { isLoading ? (
               <div className="rounded-md border border-border/60">
@@ -414,7 +449,6 @@ export function SpacesPriceRulesPage() {
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Skeleton className="h-8 w-16 rounded-md" />
-                            <Skeleton className="h-8 w-16 rounded-md" />
                           </div>
                         </TableCell>
                       </TableRow>
@@ -443,6 +477,7 @@ export function SpacesPriceRulesPage() {
                         <Checkbox
                           aria-label="Select all pricing rules"
                           checked={ selectionState }
+                          disabled={ deletableRuleCount === 0 || isAnyDeletePending }
                           onCheckedChange={ (checked) => handleSelectAllRules(Boolean(checked)) }
                         />
                       </TableHead>
@@ -455,6 +490,7 @@ export function SpacesPriceRulesPage() {
                   <TableBody>
                     { rules.map((rule) => {
                       const isSelected = selectedRuleIds.has(rule.id);
+                      const isDeletable = rule.linked_area_count === 0;
 
                       return (
                         <TableRow
@@ -465,6 +501,7 @@ export function SpacesPriceRulesPage() {
                             <Checkbox
                               aria-label={ `Select pricing rule ${rule.name}` }
                               checked={ isSelected }
+                              disabled={ !isDeletable || isAnyDeletePending }
                               onCheckedChange={ (checked) => handleSelectRule(rule.id, Boolean(checked)) }
                             />
                           </TableCell>
@@ -478,6 +515,11 @@ export function SpacesPriceRulesPage() {
                                   ? rule.description
                                   : 'No description provided.' }
                               </p>
+                              { rule.linked_area_count > 0 ? (
+                                <p className="text-xs text-amber-600">
+                                  In use by { rule.linked_area_count } area{ rule.linked_area_count === 1 ? '' : 's' } in this space.
+                                </p>
+                              ) : null }
                             </div>
                           </TableCell>
                           <TableCell>
@@ -503,17 +545,6 @@ export function SpacesPriceRulesPage() {
                                 <FiEdit className="size-4" aria-hidden="true" />
                                 Edit
                               </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="text-destructive hover:text-destructive"
-                                onClick={ () => setPriceRulePendingDelete(rule) }
-                                disabled={ isAnyDeletePending }
-                              >
-                                <FiTrash2 className="size-4" aria-hidden="true" />
-                                Delete
-                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -523,8 +554,8 @@ export function SpacesPriceRulesPage() {
                 </Table>
               </div>
             ) }
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) }
 
       <PriceRuleDialog
@@ -597,45 +628,6 @@ export function SpacesPriceRulesPage() {
               disabled={ isAnyDeletePending || selectedCount === 0 }
             >
               { isAnyDeletePending ? 'Deleting...' : 'Delete selected' }
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={ Boolean(priceRulePendingDelete) }
-        onOpenChange={ (open) => {
-          if (!open) {
-            setPriceRulePendingDelete(null);
-          }
-        } }
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete pricing rule</DialogTitle>
-            <DialogDescription>
-              Deleting { priceRulePendingDelete?.name ?? 'this rule' } will unlink
-              it from any areas that use it.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex-col gap-2 sm:flex-row">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={ () => setPriceRulePendingDelete(null) }
-              disabled={ isAnyDeletePending }
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={ handleConfirmDeletePriceRule }
-              disabled={ isAnyDeletePending }
-            >
-              { isAnyDeletePending
-                ? 'Deleting...'
-                : 'Delete rule' }
             </Button>
           </DialogFooter>
         </DialogContent>

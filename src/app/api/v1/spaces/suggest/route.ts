@@ -73,6 +73,7 @@ export async function GET(req: NextRequest) {
           WHERE v.space_id = s.id
             AND v.status = ANY(${verificationStatuses}::verification_status[])
         )
+        AND s.is_published = true
       ORDER BY similarity DESC, s.name ASC
       LIMIT ${limit};
     `;
@@ -116,6 +117,7 @@ export async function GET(req: NextRequest) {
             WHERE v.space_id = s.id
               AND v.status = ANY(${verificationStatuses}::verification_status[])
           )
+          AND s.is_published = true
         ORDER BY s.name ASC
         LIMIT ${limit};
       `;

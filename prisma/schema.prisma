@@ -67,9 +67,12 @@ model area {
   booking_notes_enabled        Boolean            @default(false)
   booking_notes                String?
   app_notification             app_notification[]
-  price_rule                   price_rule?        @relation(fields: [price_rule_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  price_rule                   price_rule?        @relation(fields: [price_rule_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   space                        space              @relation(fields: [space_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   booking                      booking[]
+
+  @@index([price_rule_id], map: "idx_area_price_rule_id")
+  @@index([space_id, price_rule_id], map: "idx_area_space_price_rule")
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -104,7 +107,6 @@ model booking {
   currency          String         @default("PHP") @db.Char(3)
   status            booking_status @default(confirmed)
   created_at        DateTime       @default(now()) @db.Timestamptz(6)
-  expires_at        DateTime?      @db.Timestamptz(6)
   user_auth_id      String         @db.Uuid
   partner_auth_id   String?        @db.Uuid
   area_max_capacity BigInt?
@@ -163,6 +165,7 @@ model common_review {
   review     review         @relation(fields: [review_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model deactivation_request {
   id                                                   String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id                                              BigInt
@@ -222,35 +225,40 @@ model signup_otps {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model space {
-  name               String
-  unit_number        String
-  street             String
-  address_subunit    String
-  city               String
-  region             String
-  created_at         DateTime                  @db.Timestamptz(6)
-  updated_at         DateTime                  @db.Timestamptz(6)
-  postal_code        String
-  user_id            BigInt
-  description        String?
-  country_code       String                    @db.Char(2)
-  lat                Decimal                   @db.Decimal(9, 6)
-  long               Decimal                   @db.Decimal(9, 6)
-  barangay           String?
-  id                 String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  location           Unsupported("geography")?
-  amenity            amenity[]
-  app_notification   app_notification[]
-  area               area[]
-  booking            booking[]
-  bookmark           bookmark[]
-  chat_room          chat_room[]
-  price_rule         price_rule[]
-  review             review[]
-  user               user                      @relation(fields: [user_id], references: [user_id])
-  space_availability space_availability[]
-  space_image        space_image[]
-  verification       verification[]
+  name                 String
+  unit_number          String
+  street               String
+  address_subunit      String
+  city                 String
+  region               String
+  created_at           DateTime                  @db.Timestamptz(6)
+  updated_at           DateTime                  @db.Timestamptz(6)
+  postal_code          String
+  user_id              BigInt
+  description          String?
+  country_code         String                    @db.Char(2)
+  lat                  Decimal                   @db.Decimal(9, 6)
+  long                 Decimal                   @db.Decimal(9, 6)
+  barangay             String?
+  id                   String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  location             Unsupported("geography")?
+  is_published         Boolean                   @default(true)
+  unpublished_at       DateTime?                 @db.Timestamptz(6)
+  unpublished_reason   String?
+  unpublished_by_admin Boolean                   @default(false)
+  amenity              amenity[]
+  app_notification     app_notification[]
+  area                 area[]
+  booking              booking[]
+  bookmark             bookmark[]
+  chat_room            chat_room[]
+  price_rule           price_rule[]
+  review               review[]
+  user                 user                      @relation(fields: [user_id], references: [user_id])
+  space_availability   space_availability[]
+  space_image          space_image[]
+  unpublish_request    unpublish_request[]
+  verification         verification[]
 
   @@index([location], type: Gist)
 }
@@ -297,6 +305,25 @@ model transaction {
   booking         booking   @relation(fields: [booking_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
+model unpublish_request {
+  id                                                String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  space_id                                          String                   @db.Uuid
+  user_id                                           BigInt
+  status                                            unpublish_request_status @default(pending)
+  reason                                            String?
+  rejection_reason                                  String?
+  processed_by_user_id                              BigInt?
+  created_at                                        DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at                                        DateTime                 @default(now()) @db.Timestamptz(6)
+  processed_at                                      DateTime?                @db.Timestamptz(6)
+  user_unpublish_request_processed_by_user_idTouser user?                    @relation("unpublish_request_processed_by_user_idTouser", fields: [processed_by_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  space                                             space                    @relation(fields: [space_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user_unpublish_request_user_idTouser              user                     @relation("unpublish_request_user_idTouser", fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([space_id], map: "idx_unpublish_request_space")
+  @@index([status, created_at], map: "idx_unpublish_request_status_created")
+}
+
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model user {
   first_name                                                           String?
@@ -320,6 +347,8 @@ model user {
   deactivation_request_deactivation_request_user_idTouser              deactivation_request[] @relation("deactivation_request_user_idTouser")
   review                                                               review[]
   space                                                                space[]
+  unpublish_request_unpublish_request_processed_by_user_idTouser       unpublish_request[]    @relation("unpublish_request_processed_by_user_idTouser")
+  unpublish_request_unpublish_request_user_idTouser                    unpublish_request[]    @relation("unpublish_request_user_idTouser")
   verification                                                         verification[]
 }
 
@@ -455,6 +484,12 @@ enum notification_type {
   booking_received
   message
   system
+}
+
+enum unpublish_request_status {
+  pending
+  approved
+  rejected
 }
 
 enum user_role {

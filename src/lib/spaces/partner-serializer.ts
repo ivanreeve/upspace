@@ -43,9 +43,12 @@ export const partnerSpaceInclude = {
   space_availability: { orderBy: { day_of_week: 'asc' as const, }, },
   area: {
     orderBy: { created_at: 'asc' as const, },
-    include: { price_rule: true, },
+    include: { price_rule: { include: { _count: { select: { area: true, }, }, }, }, },
   },
-  price_rule: { orderBy: { created_at: 'asc' as const, }, },
+  price_rule: {
+    orderBy: { created_at: 'asc' as const, },
+    include: { _count: { select: { area: true, }, }, },
+  },
   space_image: {
     orderBy: { display_order: 'asc' as const, },
     select: {
@@ -54,6 +57,15 @@ export const partnerSpaceInclude = {
       category: true,
       is_primary: true,
       display_order: true,
+    },
+  },
+  unpublish_request: {
+    orderBy: { created_at: 'desc' as const, },
+    take: 1,
+    select: {
+      id: true,
+      status: true,
+      created_at: true,
     },
   },
   verification: {
@@ -92,6 +104,8 @@ export async function serializePartnerSpace(space: PartnerSpaceRow): Promise<Spa
     amenities: space.amenity.map((entry) => entry.amenity_choice_id),
     availability: buildAvailability(space.space_availability),
     status: deriveSpaceStatus(space),
+    is_published: Boolean(space.is_published),
+    pending_unpublish_request: Boolean(space.unpublish_request[0]?.status === 'pending'),
     created_at: space.created_at instanceof Date ? space.created_at.toISOString() : String(space.created_at),
     areas: space.area.map(serializeArea),
     images: await buildImageRecords(space.space_image),
@@ -133,6 +147,7 @@ const serializePriceRule = (
   name: rule.name,
   description: rule.description ?? null,
   definition: rule.definition as PriceRuleDefinition,
+  linked_area_count: rule._count?.area ?? 0,
   created_at: rule.created_at instanceof Date ? rule.created_at.toISOString() : String(rule.created_at),
   updated_at: rule.updated_at instanceof Date ? rule.updated_at.toISOString() : null,
 });
@@ -169,15 +184,28 @@ const serializeImage = (
 type VerificationLike =
   | {
     verification: { status: Prisma.verificationStatus | null }[];
+    is_published?: boolean;
   }
-  | Prisma.verificationStatus
-  | null
-  | undefined;
+  | (Prisma.verificationStatus | null | undefined)
+  | {
+    status: Prisma.verificationStatus | null;
+    is_published?: boolean;
+  };
 
 export const deriveSpaceStatus = (source: VerificationLike): SpaceStatus => {
+  const isPublished = typeof source === 'object' && source !== null && 'is_published' in source
+    ? Boolean((source as { is_published?: boolean }).is_published)
+    : true;
+
+  if (!isPublished) {
+    return 'Unpublished';
+  }
+
   const latest = typeof source === 'string' || source === null || source === undefined
     ? source ?? null
-    : source.verification[0]?.status ?? null;
+    : 'status' in source && typeof source.status === 'string'
+      ? source.status
+      : source.verification[0]?.status ?? null;
   if (latest === 'approved') {
     return 'Live';
   }

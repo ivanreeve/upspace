@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { Prisma } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
 import { PartnerSessionError, requirePartnerSession } from '@/lib/auth/require-partner-session';
@@ -13,13 +14,14 @@ const serializePriceRule = (rule: PrismaPriceRuleRow): PriceRuleRecord => ({
   name: rule.name,
   description: rule.description ?? null,
   definition: rule.definition as PriceRuleDefinition,
+  linked_area_count: rule._count?.area ?? 0,
   created_at: rule.created_at instanceof Date ? rule.created_at.toISOString() : String(rule.created_at),
   updated_at: rule.updated_at instanceof Date ? rule.updated_at.toISOString() : null,
 });
 
-type PrismaPriceRuleRow = NonNullable<
-  Awaited<ReturnType<typeof prisma.price_rule.findFirst>>
->;
+type PrismaPriceRuleRow = Prisma.price_ruleGetPayload<{
+  include: { _count: { select: { area: true } } };
+}>;
 
 type RouteParams = {
   params: {
@@ -51,6 +53,7 @@ export async function GET(_req: NextRequest, { params, }: RouteParams) {
     const rules = await prisma.price_rule.findMany({
       where: { space_id: spaceIdParam, },
       orderBy: { created_at: 'asc', },
+      include: { _count: { select: { area: true, }, }, },
     });
 
     return NextResponse.json({ data: rules.map((rule) => serializePriceRule(rule)), });
@@ -98,6 +101,7 @@ export async function POST(req: NextRequest, { params, }: RouteParams) {
         description: parsed.data.description?.trim() ?? null,
         definition: parsed.data.definition,
       },
+      include: { _count: { select: { area: true, }, }, },
     });
 
     return NextResponse.json({ data: serializePriceRule(createdRule), }, { status: 201, });

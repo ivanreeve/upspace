@@ -272,3 +272,32 @@ export function useUpdatePartnerSpaceMutation(spaceId: string) {
     },
   });
 }
+
+export function useRequestUnpublishSpaceMutation(spaceId: string) {
+  const authFetch = useAuthenticatedFetch();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ reason, }: { reason?: string }) => {
+      if (!spaceId) {
+        throw new Error('Space ID is required.');
+      }
+
+      const response = await authFetch(`/api/v1/partner/spaces/${spaceId}/unpublish-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify({ reason }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+      }
+
+      return response.json() as Promise<{ data: { id: string; status: string; created_at: string } }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), });
+    },
+  });
+}

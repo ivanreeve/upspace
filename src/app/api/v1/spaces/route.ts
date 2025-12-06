@@ -498,6 +498,7 @@ mode: 'insensitive' as const,
       : ['approved'];
 
     and.push({ verification: { some: { status: { in: verificationStatuses, }, }, }, });
+    and.push({ is_published: true, });
 
     // Created/updated range filters
     if (created_from || created_to) {
@@ -729,7 +730,10 @@ mode: 'insensitive' as const,
 
       return {
         ...base,
-        status: deriveSpaceStatus(space.verification[0]?.status ?? null),
+        status: deriveSpaceStatus({
+          verification: space.verification,
+          is_published: space.is_published,
+        }),
         image_url: resolvedImageUrl,
         min_rate_price: null,
         max_rate_price: null,

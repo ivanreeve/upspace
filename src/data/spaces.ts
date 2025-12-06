@@ -1,4 +1,4 @@
-export type SpaceStatus = 'Live' | 'Pending' | 'Draft';
+export type SpaceStatus = 'Live' | 'Pending' | 'Draft' | 'Unpublished';
 
 export const WEEKDAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
 export type WeekdayName = (typeof WEEKDAY_ORDER)[number];
@@ -91,6 +91,8 @@ export type SpaceRecord = SpaceInput & {
   id: string;
   status: SpaceStatus;
   created_at: string;
+  is_published: boolean;
+  pending_unpublish_request: boolean;
   areas: AreaRecord[];
   pricing_rules: PriceRuleRecord[];
   images: SpaceImageRecord[];
@@ -143,6 +145,8 @@ export const INITIAL_SPACES: SpaceRecord[] = [
     amenities: ['amenity-meeting-room', 'amenity-free-coffee'],
     availability: createDefaultWeeklyAvailability(),
     status: 'Live',
+    is_published: true,
+    pending_unpublish_request: false,
     created_at: '2025-02-10T10:00:00.000Z',
     images: [],
     pricing_rules: [],
@@ -180,6 +184,8 @@ export const INITIAL_SPACES: SpaceRecord[] = [
     amenities: ['amenity-podcast-booth', 'amenity-yoga-room'],
     availability: createDefaultWeeklyAvailability(),
     status: 'Pending',
+    is_published: true,
+    pending_unpublish_request: false,
     created_at: '2025-03-01T13:15:00.000Z',
     images: [],
     pricing_rules: [],
@@ -231,6 +237,8 @@ export const INITIAL_SPACES: SpaceRecord[] = [
     amenities: ['amenity-daylight', 'amenity-modular'],
     availability: createDefaultWeeklyAvailability(),
     status: 'Draft',
+    is_published: true,
+    pending_unpublish_request: false,
     created_at: '2025-03-05T08:45:00.000Z',
     images: [],
     pricing_rules: [],

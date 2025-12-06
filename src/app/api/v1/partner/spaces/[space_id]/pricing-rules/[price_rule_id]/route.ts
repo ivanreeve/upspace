@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
 import { PartnerSessionError, requirePartnerSession } from '@/lib/auth/require-partner-session';
@@ -13,13 +14,14 @@ const serializePriceRule = (rule: PrismaPriceRuleRow): PriceRuleRecord => ({
   name: rule.name,
   description: rule.description ?? null,
   definition: rule.definition as PriceRuleDefinition,
+  linked_area_count: rule._count?.area ?? 0,
   created_at: rule.created_at instanceof Date ? rule.created_at.toISOString() : String(rule.created_at),
   updated_at: rule.updated_at instanceof Date ? rule.updated_at.toISOString() : null,
 });
 
-type PrismaPriceRuleRow = NonNullable<
-  Awaited<ReturnType<typeof prisma.price_rule.findFirst>>
->;
+type PrismaPriceRuleRow = Prisma.price_ruleGetPayload<{
+  include: { _count: { select: { area: true } } };
+}>;
 
 type RouteParams = {
   params: {
@@ -47,9 +49,9 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
 
     const space = await prisma.space.findFirst({
       where: {
- id: spaceIdParam,
-user_id: userId, 
-},
+        id: spaceIdParam,
+        user_id: userId,
+      },
       select: { id: true, },
     });
 
@@ -58,11 +60,12 @@ user_id: userId,
     }
 
     const existingRule = await prisma.price_rule.findFirst({
- where: {
- id: priceRuleIdParam,
-space_id: spaceIdParam, 
-}, 
-});
+      where: {
+        id: priceRuleIdParam,
+        space_id: spaceIdParam,
+      },
+      select: { id: true, },
+    });
 
     if (!existingRule) {
       return NextResponse.json({ error: 'Pricing rule not found.', }, { status: 404, });
@@ -76,6 +79,7 @@ space_id: spaceIdParam,
         definition: parsed.data.definition,
         updated_at: new Date(),
       },
+      include: { _count: { select: { area: true, }, }, },
     });
 
     return NextResponse.json({ data: serializePriceRule(updatedRule), });
@@ -100,9 +104,9 @@ export async function DELETE(_req: NextRequest, { params, }: RouteParams) {
 
     const space = await prisma.space.findFirst({
       where: {
- id: spaceIdParam,
-user_id: userId, 
-},
+        id: spaceIdParam,
+        user_id: userId,
+      },
       select: { id: true, },
     });
 
@@ -111,31 +115,30 @@ user_id: userId,
     }
 
     const existingRule = await prisma.price_rule.findFirst({
- where: {
- id: priceRuleIdParam,
-space_id: spaceIdParam, 
-}, 
-});
+      where: {
+        id: priceRuleIdParam,
+        space_id: spaceIdParam,
+      },
+      include: { _count: { select: { area: true, }, }, },
+    });
 
     if (!existingRule) {
       return NextResponse.json({ error: 'Pricing rule not found.', }, { status: 404, });
     }
 
-    await prisma.$transaction([
-      prisma.area.updateMany({
-        where: {
- price_rule_id: priceRuleIdParam,
-space_id: spaceIdParam, 
-},
-        data: { price_rule_id: null, },
-      }),
-      prisma.price_rule.delete({ where: { id: priceRuleIdParam, }, })
-    ]);
+    if (existingRule._count.area > 0) {
+      return NextResponse.json({ error: 'This pricing rule is assigned to one or more areas. Remove it from all areas in this space before deleting it.', }, { status: 409, });
+    }
+
+    await prisma.price_rule.delete({ where: { id: priceRuleIdParam, }, });
 
     return new NextResponse(null, { status: 204, });
   } catch (error) {
     if (error instanceof PartnerSessionError) {
       return NextResponse.json({ error: error.message, }, { status: error.status, });
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      return NextResponse.json({ error: 'This pricing rule is assigned to one or more areas. Remove it from all areas in this space before deleting it.', }, { status: 409, });
     }
     console.error('Failed to delete pricing rule', error);
     return NextResponse.json({ error: 'Unable to delete pricing rule.', }, { status: 500, });

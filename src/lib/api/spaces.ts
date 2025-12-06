@@ -19,7 +19,7 @@ export type Space = {
   isBookmarked?: boolean;
   created_at?: string;
   updated_at?: string;
-  status?: 'Live' | 'Pending' | 'Draft';
+  status?: 'Live' | 'Pending' | 'Draft' | 'Unpublished';
   average_rating?: number;
   total_reviews?: number;
   min_rate_price?: number | null;

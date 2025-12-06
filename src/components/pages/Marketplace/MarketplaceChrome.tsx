@@ -16,6 +16,7 @@ import {
   FiSettings,
   FiUser,
   FiUserX,
+  FiEyeOff,
   FiChevronRight
 } from 'react-icons/fi';
 import { PiMoneyWavyBold } from 'react-icons/pi';
@@ -775,6 +776,11 @@ icon: HiOutlineDocumentText,
             icon: FiUserX,
           },
           {
+            label: 'Unpublish requests',
+            href: '/admin/unpublish-requests',
+            icon: FiEyeOff,
+          },
+          {
  label: 'Observe',
 href: '/observability',
 icon: MdFormatListBulleted, 
@@ -986,6 +992,15 @@ icon: FiMessageSquare,
                         label="Deactivation requests"
                         icon={ FiUserX }
                         tooltip="Deactivation requests"
+                        iconProps={ { strokeWidth: 2, } }
+                      />
+                    ) }
+                    { isAdminRole && (
+                      <SidebarLinkItem
+                        href="/admin/unpublish-requests"
+                        label="Unpublish requests"
+                        icon={ FiEyeOff }
+                        tooltip="Unpublish requests"
                         iconProps={ { strokeWidth: 2, } }
                       />
                     ) }

@@ -2,6 +2,8 @@
 
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { FiRefreshCcw } from 'react-icons/fi';
 
 type MarketplaceErrorStateProps = {
   onRetry?: () => void;
@@ -26,6 +28,22 @@ export function MarketplaceErrorState({
             Something went a little bleep-bloop. We couldn&apos;t process your request.
           </p>
         </div>
+        { onRetry ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={ onRetry }
+            disabled={ isRetrying }
+            aria-busy={ isRetrying }
+          >
+            { isRetrying ? (
+              <FiRefreshCcw className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <FiRefreshCcw className="size-4" aria-hidden="true" />
+            ) }
+            Retry
+          </Button>
+        ) : null }
       </CardContent>
     </Card>
   );
@@ -47,6 +65,22 @@ export function MarketplaceErrorStateLight({
             Something went a little bleep-bloop. We couldn&apos;t process your request.
           </p>
         </div>
+        { onRetry ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={ onRetry }
+            disabled={ isRetrying }
+            aria-busy={ isRetrying }
+          >
+            { isRetrying ? (
+              <FiRefreshCcw className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <FiRefreshCcw className="size-4" aria-hidden="true" />
+            ) }
+            Retry
+          </Button>
+        ) : null }
       </CardContent>
     </Card>
   );

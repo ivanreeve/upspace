@@ -27,6 +27,7 @@ export async function generateMetadata({ params, }: Props): Promise<Metadata> {
       where: {
         id: space_id,
         verification: { some: { status: { in: ['approved', 'in_review'], }, }, },
+        is_published: true,
       },
       select: { name: true, },
     });
