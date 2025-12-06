@@ -164,7 +164,7 @@ export function VoiceSearchDialog({
               style={ circleStyle }
             >
               <div
-                className="flex h-[90px] w-[90px] items-center justify-center rounded-full text-background shadow-md"
+                className="mesh-gradient-circle flex h-[90px] w-[90px] items-center justify-center rounded-full text-background shadow-md"
                 style={ {
                   backgroundColor: 'var(--secondary)',
                   backgroundImage: [
@@ -214,6 +214,27 @@ export function VoiceSearchDialog({
             </Button>
           </div>
         </div>
+        <style jsx>{ `
+          @keyframes meshSpin {
+            0% {
+              transform: rotate(0deg) scale(1);
+              background-position: 30% 40%, 70% 35%, 40% 70%, 75% 70%, 50% 50%;
+            }
+            50% {
+              transform: rotate(180deg) scale(1.03);
+              background-position: 25% 35%, 75% 30%, 45% 65%, 70% 75%, 55% 55%;
+            }
+            100% {
+              transform: rotate(360deg) scale(1);
+              background-position: 30% 40%, 70% 35%, 40% 70%, 75% 70%, 50% 50%;
+            }
+          }
+
+          .mesh-gradient-circle {
+            background-size: 180% 180%;
+            animation: meshSpin 14s ease-in-out infinite;
+          }
+        ` }</style>
       </DialogContent>
     </Dialog>
   );
