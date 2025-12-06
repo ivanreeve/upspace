@@ -232,8 +232,7 @@ export function AiSearch() {
   return (
     <div
       className={ cn(
-        'relative mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-10 sm:py-14 md:py-16',
-        hasMessages ? 'top-[25%]' : ''
+        'relative mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-10 sm:py-14 md:py-16'
       ) }
     >
       <div className="flex flex-col items-center gap-3 text-center">
