@@ -13,7 +13,7 @@ export default function AuthSignUp() {
           <div className="flex w-full max-w-2xl flex-col gap-8">
             <div className="flex w-full justify-start">
               <Button variant="ghost" size="sm" asChild>
-                <Link href="/" className="flex items-center gap-2">
+                <Link href="/" className="flex items-center gap-2 hover:!text-white">
                   <ArrowLeft className="size-4" />
                   Go back
                 </Link>
