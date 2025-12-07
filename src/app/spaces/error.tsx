@@ -28,7 +28,7 @@ export default function SpacesError({
         <div className="mx-auto flex max-w-6xl flex-col items-center space-y-6 px-4 pb-16 pt-10 text-center">
           <MarketplaceErrorState onRetry={ reset } />
           <div className="flex flex-wrap justify-center gap-3">
-            <Button asChild variant="outline" aria-label="Go back to marketplace">
+            <Button asChild variant="outline" aria-label="Go back to marketplace"  className="hover:!text-white hover:[&_svg]:!text-white">
               <Link href="/marketplace">
                 <FiArrowLeft className="size-4" aria-hidden="true" />
                 Go back to marketplace

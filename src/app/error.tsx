@@ -28,10 +28,10 @@ export default function GlobalError({
           className="w-full"
           illustrationClassName="max-w-[320px] sm:max-w-[380px]"
         />
-        <div className="mt-[-36px] flex justify-center">
-          <Button asChild variant="outline" aria-label="Go back home">
+        <div className="mt-[-36px] flex justify-center ">
+          <Button asChild variant="outline" aria-label="Go back home" className="hover:text-white">
             <Link href="/">
-              <FiArrowLeft className="size-4" aria-hidden="true" />
+              <FiArrowLeft className="size-4 " aria-hidden="true" />
               Go back home
             </Link>
           </Button>
