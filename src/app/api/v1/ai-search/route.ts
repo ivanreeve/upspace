@@ -314,7 +314,7 @@ const createFunctionResponseContent = (
   id: string | undefined,
   responsePayload: Record<string, unknown>
 ) => ({
-  role: 'function',
+  role: 'model',
   parts: [
     {
       functionResponse: {
@@ -403,25 +403,25 @@ content: trimmedQuery,
 
     const conversationContents = buildConversationContents(conversation);
     const contextContents = location ? [createLocationContext(location)] : [];
-    const systemPromptContent = {
-      role: 'system',
-      parts: [{ text: searchAgentSystemPromptTemplate, }],
+    const toolConfig = {
+      systemInstruction: searchAgentSystemPromptTemplate,
+      toolConfig: {
+        functionCallingConfig: {
+          mode: FunctionCallingConfigMode.AUTO,
+        },
+      },
+      tools: [
+        {
+          functionDeclarations: [
+            getUserLocationFunctionDeclaration,
+            findSpacesFunctionDeclaration,
+            keywordSearchFunctionDeclaration,
+          ],
+        },
+      ],
     };
 
-    const toolConfig = {
-      toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.AUTO, }, },
-      tools: [
-    {
-      functionDeclarations: [
-        getUserLocationFunctionDeclaration,
-        findSpacesFunctionDeclaration,
-        keywordSearchFunctionDeclaration
-      ],
-    }
-  ],
-};
-
-    const historyContents = [systemPromptContent, ...contextContents, ...conversationContents];
+    const historyContents = [...contextContents, ...conversationContents];
 
     let finalText: string | null = null;
     let toolResult: FindSpacesToolResult | null = null;
