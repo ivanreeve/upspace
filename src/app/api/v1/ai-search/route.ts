@@ -405,7 +405,7 @@ content: trimmedQuery,
     const contextContents = location ? [createLocationContext(location)] : [];
     const systemPromptContent = {
       role: 'system',
-      parts: [{ text: searchAgentSystemPromptTemplate }],
+      parts: [{ text: searchAgentSystemPromptTemplate, }],
     };
 
     const toolConfig = {

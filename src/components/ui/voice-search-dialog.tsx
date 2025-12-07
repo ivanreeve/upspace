@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { FaMicrophone, FaPlay, FaStop } from 'react-icons/fa';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -13,7 +14,6 @@ import {
 } from '@/components/ui/dialog';
 import { useSpeechRecognition, type SpeechRecognitionStatus } from '@/hooks/use-speech-recognition';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { toast } from 'sonner';
 import { getSpeechRecognitionErrorMessage } from '@/lib/voice';
 
 type VoiceSearchDialogProps = {
