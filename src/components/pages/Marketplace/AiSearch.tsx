@@ -8,7 +8,7 @@ import { IoStop } from 'react-icons/io5';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { CardsGrid } from '@/components/pages/Marketplace/Marketplace.Cards';
+import { SpaceCard } from '@/components/pages/Marketplace/Marketplace.Cards';
 import type { Space } from '@/lib/api/spaces';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { BottomGradientOverlay } from '@/components/ui/bottom-gradient-overlay';
@@ -166,6 +166,7 @@ function MessageBubble({
   iconRef?: (node: HTMLDivElement | null) => void;
 }) {
   const isUser = message.role === 'user';
+  const hasSpaceResults = Boolean(message.spaceResults?.length);
 
   return (
     <div
@@ -185,7 +186,7 @@ function MessageBubble({
       ) }
       <div
         className={ cn(
-          'max-w-[720px] whitespace-pre-wrap rounded-md border px-4 py-3 text-sm shadow-sm',
+          'max-w-[720px] rounded-md border px-4 py-3 text-sm shadow-sm',
           isUser
             ? 'bg-primary/10 border-primary/30 text-foreground'
             : 'bg-muted/60 border-border/60 text-foreground'
@@ -195,13 +196,28 @@ function MessageBubble({
           <span className="inline-flex items-center gap-2 text-muted-foreground">
             <span style={ shimmerTextStyle }>Gemini is thinking...</span>
           </span>
-        ) : (
-          message.content
+        ) : hasSpaceResults ? null : (
+          <span className="whitespace-pre-wrap">{ message.content }</span>
         ) }
       </div>
-      { message.spaceResults?.length ? (
+      { hasSpaceResults ? (
         <div className="mt-3 w-full max-w-[720px]">
-          <CardsGrid items={ message.spaceResults } />
+          { (message.spaceResults?.length ?? 0) > 1 ? (
+            <div className="relative">
+              <div className="flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory scroll-pl-4">
+                { message.spaceResults!.map((space) => (
+                  <div
+                    key={ space.space_id }
+                    className="min-w-[260px] max-w-[320px] snap-start"
+                  >
+                    <SpaceCard space={ space } />
+                  </div>
+                )) }
+              </div>
+            </div>
+          ) : (
+            <SpaceCard space={ message.spaceResults![0] } />
+          ) }
         </div>
       ) : null }
     </div>
