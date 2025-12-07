@@ -101,6 +101,7 @@ export function SpacesChrome({
               <CommandItem
                 value="search marketplace"
                 onSelect={ () => handleSearchSubmit() }
+                className="hover:!text-white"
               >
                 <FiSearch className="size-4" aria-hidden="true" />
                 <span>Search marketplace</span>
@@ -117,6 +118,7 @@ export function SpacesChrome({
                 <CommandItem
                   value="clear search"
                   onSelect={ () => setSearchValue('') }
+                  className="hover:!text-white"
                 >
                   <FiX className="size-4" aria-hidden="true" />
                   <span>Clear search</span>

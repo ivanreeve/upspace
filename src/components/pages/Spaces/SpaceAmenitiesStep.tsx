@@ -193,9 +193,9 @@ export function SpaceAmenitiesStep({ form, }: SpaceAmenitiesStepProps) {
                       <SelectValue placeholder="All categories" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All categories</SelectItem>
+                      <SelectItem value="all" className="hover:!text-white">All categories</SelectItem>
                       { categoryOptions.map((category) => (
-                        <SelectItem key={ category.value } value={ category.value }>
+                        <SelectItem key={ category.value } value={ category.value } className="hover:!text-white">
                           { category.label }
                         </SelectItem>
                       )) }

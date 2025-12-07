@@ -601,7 +601,7 @@ export function DescriptionEditor<TFieldValues extends { description: string }>(
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="gap-1 font-normal"
+                    className="gap-1 font-normal hover:text-white"
                     aria-label={ activeHeadingOption.label }
                   >
                     <span>{ activeHeadingOption.title }</span>
@@ -616,7 +616,7 @@ export function DescriptionEditor<TFieldValues extends { description: string }>(
                 <DropdownMenuItem
                   key={ option.label }
                   onSelect={ () => toggleHeading(option.level) }
-                  className="flex items-center justify-between gap-2"
+                  className="flex items-center justify-between gap-2 hover:!text-white"
                 >
                   <span>{ option.label }</span>
                   { isHeadingActive(option.level) && (
@@ -625,244 +625,251 @@ export function DescriptionEditor<TFieldValues extends { description: string }>(
                 </DropdownMenuItem>
               )) }
             </DropdownMenuContent>
-          </DropdownMenu>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                size="sm"
-                variant={ editor.isActive('bold') ? 'outline' : 'ghost' }
-                onClick={ toggleBold }
-                aria-pressed={ editor.isActive('bold') }
-                aria-label="Bold"
-              >
-                B
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Bold</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                size="sm"
-                variant={ editor.isActive('italic') ? 'outline' : 'ghost' }
-                onClick={ toggleItalic }
-                aria-pressed={ editor.isActive('italic') }
-                aria-label="Italic"
-              >
-                I
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Italic</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                size="sm"
-                variant={ editor.isActive('strike') ? 'outline' : 'ghost' }
-                onClick={ toggleStrike }
-                aria-pressed={ editor.isActive('strike') }
-                aria-label="Strikethrough"
-              >
-                S
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Strikethrough</TooltipContent>
-          </Tooltip>
-          <DropdownMenu>
+            </DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="gap-1"
-                    aria-label={ activeAlignmentOption.label }
-                  >
-                  <ActiveAlignmentIcon className="size-4" aria-hidden="true" />
-                    <FiChevronDown className="size-4" aria-hidden="true" />
-                  </Button>
-                </DropdownMenuTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Text alignment</TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent align="start" className="w-56">
-              { TEXT_ALIGNMENT_OPTIONS.map((option) => {
-                const AlignmentIcon = option.icon;
-                return (
-                  <DropdownMenuItem
-                    key={ option.value }
-                    onSelect={ () => setTextAlignment(option.value) }
-                    className="flex items-center justify-between gap-2"
-                  >
-                    <div className="flex items-center gap-2">
-                      <AlignmentIcon className="size-4" aria-hidden="true" />
-                      <span>{ option.label }</span>
-                    </div>
-                    { isAlignmentActive(option.value) && (
-                      <FiCheck className="size-4" aria-hidden="true" />
-                    ) }
-                  </DropdownMenuItem>
-                );
-              }) }
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Popover open={ linkPopoverOpen } onOpenChange={ handleLinkOpenChange }>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={ isLinkActive ? 'outline' : 'ghost' }
-                    aria-pressed={ isLinkActive }
-                    aria-label="Insert link"
-                  >
-                    <LuLink2 className="size-4" aria-hidden="true" />
-                    <span className="sr-only">Insert link</span>
-                  </Button>
-                </PopoverTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Insert link</TooltipContent>
-            </Tooltip>
-            <PopoverContent align="start" className="w-64 space-y-3">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground" htmlFor="description-link-input">
-                  Link URL
-                </label>
-                <Input
-                  id="description-link-input"
-                  value={ linkHref }
-                  onChange={ (event) => setLinkHref(event.target.value) }
-                  placeholder="https://example.com"
-                  autoComplete="url"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Button type="button" size="sm" onClick={ applyLink } disabled={ !canApplyLink }>
-                  Apply
-                </Button>
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
-                  onClick={ removeLink }
-                  disabled={ !canRemoveLink }
+                  variant={ editor.isActive('bold') ? 'outline' : 'ghost' }
+                  onClick={ toggleBold }
+                  aria-pressed={ editor.isActive('bold') }
+                  aria-label="Bold"
+                  className="hover:text-white"
                 >
-                  <LuLink2Off className="mr-2 size-4" aria-hidden="true" />
-                  Remove
+                  B
                 </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                size="sm"
-                variant={ editor.isActive('bulletList') ? 'outline' : 'ghost' }
-                onClick={ toggleBulletList }
-                aria-pressed={ editor.isActive('bulletList') }
-                aria-label="Bullet list"
-              >
-                <FiList className="size-4" aria-hidden="true" />
-                <span className="sr-only">Bullet list</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Bullet list</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                size="sm"
-                variant={ editor.isActive('orderedList') ? 'outline' : 'ghost' }
-                onClick={ toggleOrderedList }
-                aria-pressed={ editor.isActive('orderedList') }
-                aria-label="Numbered list"
-              >
-                <LuListOrdered className="size-4" aria-hidden="true" />
-                <span className="sr-only">Numbered list</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Numbered list</TooltipContent>
-          </Tooltip>
-          <DropdownMenu>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Bold</TooltipContent>
+            </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={ editor.isActive('italic') ? 'outline' : 'ghost' }
+                  onClick={ toggleItalic }
+                  aria-pressed={ editor.isActive('italic') }
+                  aria-label="Italic"
+                  className="hover:text-white"
+                >
+                  I
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Italic</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={ editor.isActive('strike') ? 'outline' : 'ghost' }
+                  onClick={ toggleStrike }
+                  aria-pressed={ editor.isActive('strike') }
+                  aria-label="Strikethrough"
+                  className="hover:text-white"
+                >
+                  S
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Strikethrough</TooltipContent>
+            </Tooltip>
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="gap-1 hover:text-white"
+                      aria-label={ activeAlignmentOption.label }
+                    >
+                      <ActiveAlignmentIcon className="size-4" aria-hidden="true" />
+                      <FiChevronDown className="size-4" aria-hidden="true" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Text alignment</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="start" className="w-56">
+                { TEXT_ALIGNMENT_OPTIONS.map((option) => {
+                  const AlignmentIcon = option.icon;
+                  return (
+                    <DropdownMenuItem
+                      key={ option.value }
+                      onSelect={ () => setTextAlignment(option.value) }
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <AlignmentIcon className="size-4" aria-hidden="true" />
+                        <span>{ option.label }</span>
+                      </div>
+                      { isAlignmentActive(option.value) && (
+                        <FiCheck className="size-4" aria-hidden="true" />
+                      ) }
+                    </DropdownMenuItem>
+                  );
+                }) }
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Popover open={ linkPopoverOpen } onOpenChange={ handleLinkOpenChange }>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={ isLinkActive ? 'outline' : 'ghost' }
+                      aria-pressed={ isLinkActive }
+                      aria-label="Insert link"
+                      className="hover:text-white"
+                    >
+                      <LuLink2 className="size-4" aria-hidden="true" />
+                      <span className="sr-only">Insert link</span>
+                    </Button>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Insert link</TooltipContent>
+              </Tooltip>
+              <PopoverContent align="start" className="w-64 space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground" htmlFor="description-link-input">
+                    Link URL
+                  </label>
+                  <Input
+                    id="description-link-input"
+                    value={ linkHref }
+                    onChange={ (event) => setLinkHref(event.target.value) }
+                    placeholder="https://example.com"
+                    autoComplete="url"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button type="button" size="sm" onClick={ applyLink } disabled={ !canApplyLink }>
+                    Apply
+                  </Button>
                   <Button
                     type="button"
                     size="sm"
-                    variant={ isTableActive ? 'outline' : 'ghost' }
-                    aria-pressed={ isTableActive }
-                    aria-label="Table tools"
+                    variant="outline"
+                    onClick={ removeLink }
+                    disabled={ !canRemoveLink }
                   >
-                    <LuTable className="size-4" aria-hidden="true" />
-                    <span className="sr-only">Table tools</span>
+                    <LuLink2Off className="mr-2 size-4" aria-hidden="true" />
+                    Remove
                   </Button>
-                </DropdownMenuTrigger>
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={ editor.isActive('bulletList') ? 'outline' : 'ghost' }
+                  onClick={ toggleBulletList }
+                  aria-pressed={ editor.isActive('bulletList') }
+                  aria-label="Bullet list"
+                  className="hover:text-white"
+                >
+                  <FiList className="size-4" aria-hidden="true" />
+                  <span className="sr-only">Bullet list</span>
+                </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Table tools</TooltipContent>
+              <TooltipContent side="bottom">Bullet list</TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="start" className="w-56">
-              <DropdownMenuItem
-                onSelect={ () => insertTable() }
-                disabled={ !canInsertTable }
-              >
-                Insert 2x2 table
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={ () => addTableRowBelow() }
-                disabled={ !canAddRowAfter }
-              >
-                Add row below
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={ () => addTableColumnAfter() }
-                disabled={ !canAddColumnAfter }
-              >
-                Add column to the right
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={ () => deleteTableRow() }
-                disabled={ !canDeleteRow }
-              >
-                Delete row
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={ () => deleteTableColumn() }
-                disabled={ !canDeleteColumn }
-              >
-                Delete column
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={ () => deleteTable() }
-                disabled={ !canDeleteTable }
-              >
-                Delete table
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="text-sm font-normal"
-                onClick={ clearFormatting }
-                aria-label="Clear formatting"
-              >
-                <FiSlash className="size-4" aria-hidden="true" />
-                <span className="sr-only">Clear formatting</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Clear formatting</TooltipContent>
-          </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={ editor.isActive('orderedList') ? 'outline' : 'ghost' }
+                  onClick={ toggleOrderedList }
+                  aria-pressed={ editor.isActive('orderedList') }
+                  aria-label="Numbered list"
+                  className="hover:text-white"
+                >
+                  <LuListOrdered className="size-4" aria-hidden="true" />
+                  <span className="sr-only">Numbered list</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Numbered list</TooltipContent>
+            </Tooltip>
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={ isTableActive ? 'outline' : 'ghost' }
+                      aria-pressed={ isTableActive }
+                      aria-label="Table tools"
+                      className="hover:text-white"
+                    >
+                      <LuTable className="size-4" aria-hidden="true" />
+                      <span className="sr-only">Table tools</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Table tools</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuItem
+                  onSelect={ () => insertTable() }
+                  disabled={ !canInsertTable }
+                >
+                  Insert 2x2 table
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={ () => addTableRowBelow() }
+                  disabled={ !canAddRowAfter }
+                >
+                  Add row below
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={ () => addTableColumnAfter() }
+                  disabled={ !canAddColumnAfter }
+                >
+                  Add column to the right
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={ () => deleteTableRow() }
+                  disabled={ !canDeleteRow }
+                >
+                  Delete row
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={ () => deleteTableColumn() }
+                  disabled={ !canDeleteColumn }
+                >
+                  Delete column
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={ () => deleteTable() }
+                  disabled={ !canDeleteTable }
+                >
+                  Delete table
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="text-sm font-normal hover:text-white"
+                  onClick={ clearFormatting }
+                  aria-label="Clear formatting"
+                >
+                  <FiSlash className="size-4" aria-hidden="true" />
+                  <span className="sr-only">Clear formatting</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Clear formatting</TooltipContent>
+            </Tooltip>
         </div>
       </div>
       <div className="bg-background px-3 py-3 w-full max-w-full min-w-0 overflow-hidden">
@@ -1651,7 +1658,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
                     </SelectTrigger>
                     <SelectContent>
                       { SUPPORTED_COUNTRIES.map((country) => (
-                        <SelectItem key={ country.code } value={ country.code }>
+                        <SelectItem key={ country.code } value={ country.code } className="hover:!text-white">
                           { country.name }
                         </SelectItem>
                       )) }
@@ -1688,7 +1695,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
                         </SelectItem>
                       ) }
                       { regionOptions.map((region) => (
-                        <SelectItem key={ region.code } value={ region.name }>
+                        <SelectItem key={ region.code } value={ region.name } className="hover:!text-white">
                           { region.name }
                         </SelectItem>
                       )) }
@@ -1726,7 +1733,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
                         </SelectItem>
                       ) }
                       { dedupedCityOptions.map((city) => (
-                        <SelectItem key={ `${city.code}-${city.name}` } value={ city.name }>
+                        <SelectItem key={ `${city.code}-${city.name}` } value={ city.name } className="hover:!text-white">
                           { city.name }
                         </SelectItem>
                       )) }
@@ -1765,12 +1772,12 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
                     </SelectTrigger>
                     <SelectContent>
                       { isBarangaysError && (
-                        <SelectItem value="barangays-error" disabled>
+                        <SelectItem value="barangays-error" disabled className="hover:!text-white">
                           Unable to load barangays
                         </SelectItem>
                       ) }
                       { dedupedBarangayOptions.map((barangay) => (
-                        <SelectItem key={ `${barangay.code}-${barangay.name}` } value={ barangay.name }>
+                        <SelectItem key={ `${barangay.code}-${barangay.name}` } value={ barangay.name } className="hover:!text-white">
                           { barangay.name }
                         </SelectItem>
                       )) }
@@ -1912,7 +1919,7 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
             ) }
           />
           <div className="flex flex-col items-end gap-2 md:col-span-1">
-            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={ () => setPinDialogOpen(true) }>
+            <Button type="button" variant="outline" className="w-full sm:w-auto hover:text-white" onClick={ () => setPinDialogOpen(true) }>
               <FiMapPin className="mr-2 size-4" aria-hidden="true" />
               Pin exact location
             </Button>
