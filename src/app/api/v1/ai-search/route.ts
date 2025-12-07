@@ -10,6 +10,7 @@ import { z } from 'zod';
 
 import { findSpacesAgent, MAX_RADIUS_METERS } from '@/lib/ai/space-agent';
 import type { FindSpacesToolInput, FindSpacesToolResult } from '@/lib/ai/space-agent';
+import { searchAgentSystemPromptTemplate } from '@/lib/search-agent';
 
 export const runtime = 'nodejs';
 
@@ -402,6 +403,10 @@ content: trimmedQuery,
 
     const conversationContents = buildConversationContents(conversation);
     const contextContents = location ? [createLocationContext(location)] : [];
+    const systemPromptContent = {
+      role: 'system',
+      parts: [{ text: searchAgentSystemPromptTemplate }],
+    };
 
     const toolConfig = {
       toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.AUTO, }, },
@@ -416,7 +421,7 @@ content: trimmedQuery,
   ],
 };
 
-    const historyContents = [...contextContents, ...conversationContents];
+    const historyContents = [systemPromptContent, ...contextContents, ...conversationContents];
 
     let finalText: string | null = null;
     let toolResult: FindSpacesToolResult | null = null;

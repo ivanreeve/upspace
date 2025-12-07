@@ -4,6 +4,7 @@ import React from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { FiAlertCircle, FiSend } from 'react-icons/fi';
 import { IoStop } from 'react-icons/io5';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,6 +18,7 @@ import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { useGeolocation } from '@/hooks/use-geolocation';
 import { cn } from '@/lib/utils';
+import { getSpeechRecognitionErrorMessage, VOICE_UNSUPPORTED_MESSAGE } from '@/lib/voice';
 
 type ChatMessage = {
   id: string;
@@ -232,7 +234,6 @@ export function AiSearch() {
   const [query, setQuery] = React.useState('');
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
-  const [voiceError, setVoiceError] = React.useState<string | null>(null);
   const {
     isSupported: isVoiceSupported,
     status: voiceStatus,
@@ -494,29 +495,18 @@ export function AiSearch() {
   }, [measureLine]);
 
   React.useEffect(() => {
-    if (voiceHookError) {
-      if (voiceHookError === 'not-allowed') {
-        setVoiceError(
-          'Microphone access was denied. Please allow microphone access in your browser settings to use voice search.'
-        );
-      } else if (voiceHookError === 'microphone-not-found') {
-        setVoiceError(
-          'No microphone was detected. Check your input device and try again.'
-        );
-      } else {
-        setVoiceError(voiceHookError);
-      }
-    }
+    if (!voiceHookError) return;
+
+    const message =
+      getSpeechRecognitionErrorMessage(voiceHookError) ??
+      'Voice recognition error occurred. Please try again.';
+
+    toast.error(message);
   }, [voiceHookError]);
 
   React.useEffect(() => {
     if (voiceStatus === 'unsupported') {
-      setVoiceError('Voice input is not supported in this browser.');
-      return;
-    }
-
-    if (voiceStatus !== 'error') {
-      setVoiceError(null);
+      toast.error(VOICE_UNSUPPORTED_MESSAGE);
     }
   }, [voiceStatus]);
 
@@ -673,9 +663,6 @@ export function AiSearch() {
         style={ placement === 'fixed' ? bottomBarOffsets : undefined }
       >
         { form }
-        { voiceError && (
-          <p className="mt-1 text-center text-xs text-destructive">{ voiceError }</p>
-        ) }
         { locationError && (
           <p className="mt-1 text-center text-xs text-muted-foreground">{ locationError }</p>
         ) }

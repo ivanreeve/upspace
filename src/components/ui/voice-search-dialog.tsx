@@ -13,6 +13,8 @@ import {
 } from '@/components/ui/dialog';
 import { useSpeechRecognition, type SpeechRecognitionStatus } from '@/hooks/use-speech-recognition';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { toast } from 'sonner';
+import { getSpeechRecognitionErrorMessage } from '@/lib/voice';
 
 type VoiceSearchDialogProps = {
   open: boolean;
