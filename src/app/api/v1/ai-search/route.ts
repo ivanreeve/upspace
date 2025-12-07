@@ -659,6 +659,11 @@ export async function POST(request: NextRequest) {
       break;
     }
 
+    if (toolError && (!finalText || finalText === toolError)) {
+      finalText =
+        'I am sorry, I could not find spaces right now. Please try again in a moment.';
+    }
+
     const reply = (finalText ?? 'Gemini did not provide a response.').trim();
 
     return NextResponse.json(
