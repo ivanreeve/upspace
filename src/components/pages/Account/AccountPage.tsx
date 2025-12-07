@@ -187,6 +187,7 @@ export default function AccountPage() {
               variant="outline"
               onClick={ () => setIsDialogOpen(false) }
               disabled={ isDeactivating }
+               className="hover:text-white"
             >
               Cancel
             </Button>
