@@ -251,7 +251,7 @@ const buildConversationContents = (messages: ConversationMessage[]) =>
   }));
 
 const createLocationContext = (location: z.infer<typeof coordinateSchema>) => ({
-  role: 'system',
+  role: 'user', // Gemini expects only 'user' or 'model'; embed context as user-provided note
   parts: [
     {
       text: `Customer is currently located at (${location.lat.toFixed(
