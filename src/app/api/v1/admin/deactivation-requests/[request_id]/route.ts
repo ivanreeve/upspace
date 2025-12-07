@@ -1,33 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { deactivation_request_type, user_status } from '@prisma/client';
 import { z } from 'zod';
 
-import { prisma } from '@/lib/prisma';
 import { AdminSessionError, requireAdminSession } from '@/lib/auth/require-admin-session';
+import { prisma } from '@/lib/prisma';
 import { sendDeactivationRejectionEmail } from '@/lib/email';
 
 const DEACTIVATION_APPROVED_METADATA_KEY = 'deactivation_approved_at';
 
-const patchSchema = z.object({
-  action: z.enum(['approve', 'reject']),
-  rejection_reason: z.string().max(1000).optional(),
-}).superRefine((data, ctx) => {
-  if (data.action === 'reject') {
-    const reason = data.rejection_reason?.trim();
-    if (!reason) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'A rejection reason is required.',
-      });
+const patchSchema = z
+  .object({
+    action: z.enum(['approve', 'reject']),
+    rejection_reason: z.string().max(1000).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.action === 'reject') {
+      const reason = data.rejection_reason?.trim();
+      if (!reason) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'A rejection reason is required.',
+        });
+      }
     }
-  }
-});
+  });
 
 export async function PATCH(
   req: NextRequest,
   { params, }: { params: { request_id: string } }
 ) {
   try {
-    const session = await requireAdminSession();
+    const session = await requireAdminSession(req);
 
     const parsedBody = patchSchema.safeParse(await req.json().catch(() => ({})));
     if (!parsedBody.success) {
@@ -47,7 +50,7 @@ export async function PATCH(
 
     const request = await prisma.deactivation_request.findUnique({
       where: { id: parsedId.data, },
-      include: { user: { select: { user_id: true, }, }, },
+      include: { user_deactivation_request_user_idTouser: { select: { user_id: true, }, }, },
     });
 
     if (!request) {
@@ -67,7 +70,7 @@ export async function PATCH(
     const now = new Date();
 
     if (parsedBody.data.action === 'approve') {
-      await prisma.$transaction([
+      const updates = [
         prisma.deactivation_request.update({
           where: { id: request.id, },
           data: {
@@ -75,20 +78,47 @@ export async function PATCH(
             processed_at: now,
             processed_by_user_id: session.userId,
           },
-        }),
-        prisma.user.update({
-          where: { user_id: request.user.user_id, },
-          data: { is_disabled: true, },
         })
-      ]);
+      ];
 
-      const metadataPayload = JSON.stringify({ [DEACTIVATION_APPROVED_METADATA_KEY]: now.toISOString(), });
+      if (request.type === deactivation_request_type.deactivate) {
+        updates.push(
+          prisma.user.update({
+            where: { user_id: request.user_deactivation_request_user_idTouser.user_id, },
+            data: {
+              status: user_status.deactivated,
+              cancelled_at: now,
+              pending_deletion_at: null,
+              expires_at: null,
+              deleted_at: null,
+            },
+          })
+        );
 
-      await prisma.$executeRaw`
-        UPDATE auth.users
-        SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || ${metadataPayload}::jsonb
-        WHERE id = ${request.auth_user_id}::uuid
-      `;
+        const metadataPayload = JSON.stringify({ [DEACTIVATION_APPROVED_METADATA_KEY]: now.toISOString(), });
+
+        await prisma.$executeRaw`
+          UPDATE auth.users
+          SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || ${metadataPayload}::jsonb
+          WHERE id = ${request.auth_user_id}::uuid
+        `;
+      } else {
+        const deadline = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        updates.push(
+          prisma.user.update({
+            where: { user_id: request.user_deactivation_request_user_idTouser.user_id, },
+            data: {
+              status: user_status.pending_deletion,
+              pending_deletion_at: now,
+              expires_at: deadline,
+              deleted_at: null,
+              cancelled_at: null,
+            },
+          })
+        );
+      }
+
+      await prisma.$transaction(updates);
 
       return NextResponse.json({ status: 'approved', });
     }

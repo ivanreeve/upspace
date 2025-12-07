@@ -18,6 +18,26 @@ type UseSpeechRecognitionReturn = {
   resetTranscript: () => void;
 };
 
+const normalizeRecognitionError = (error: unknown): string => {
+  if (typeof error === 'string') return error;
+
+  if (error instanceof DOMException) {
+    if (error.name === 'NotAllowedError' || error.name === 'SecurityError') {
+      return 'not-allowed';
+    }
+    if (error.name === 'NotFoundError') {
+      return 'microphone-not-found';
+    }
+    return error.name;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return 'Speech recognition error';
+};
+
 export function useSpeechRecognition(
   options: UseSpeechRecognitionOptions = {}
 ): UseSpeechRecognitionReturn {
@@ -54,6 +74,11 @@ export function useSpeechRecognition(
     setIsSupported(true);
     setStatus('idle');
 
+    recognition.onstart = () => {
+      setErrorMessage(undefined);
+      setStatus('listening');
+    };
+
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       const transcriptValue = Array.from(event.results)
         .map((result) => result[0]?.transcript ?? '')
@@ -64,9 +89,16 @@ export function useSpeechRecognition(
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      const message = event.error || 'Speech recognition error';
+      const message = normalizeRecognitionError(event.error || 'Speech recognition error');
+      shouldResumeRef.current = false;
       setErrorMessage(message);
       setStatus('error');
+      // Stop immediately so we do not bounce between listening/error states.
+      try {
+        recognition.stop();
+      } catch {
+        // ignore stop failures
+      }
     };
 
     recognition.onend = () => {
@@ -75,16 +107,20 @@ export function useSpeechRecognition(
         return;
       }
 
-      try {
-        recognition.start();
+    try {
+      recognition.start();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to restart voice search';
+      if (message.toLowerCase().includes('invalidstate')) {
         setStatus('listening');
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unable to restart voice search';
-        setErrorMessage(message);
-        setStatus('error');
-        shouldResumeRef.current = false;
+        setErrorMessage(undefined);
+        return;
       }
-    };
+      shouldResumeRef.current = false;
+      setErrorMessage(message);
+      setStatus('error');
+    }
+  };
 
     return () => {
       shouldResumeRef.current = false;
@@ -101,14 +137,48 @@ export function useSpeechRecognition(
     setTranscript('');
     shouldResumeRef.current = true;
 
+    const requestMicPermission = async () => {
+      // Some browsers (and OS-level settings) require an explicit media permission grant
+      // before SpeechRecognition can start. We request and immediately release the stream
+      // so we rely on the same permission prompt and errors as getUserMedia.
+      if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+        return true;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, });
+        stream.getTracks().forEach((track) => track.stop());
+        return true;
+      } catch (error) {
+        const message = normalizeRecognitionError(error);
+        shouldResumeRef.current = false;
+        setErrorMessage(message);
+        setStatus('error');
+        return false;
+      }
+    };
+
+  const start = async () => {
+    const hasPermission = await requestMicPermission();
+    if (!hasPermission) return;
+
     try {
       recognition.start();
-      setStatus('listening');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to start voice search';
+      const message = normalizeRecognitionError(error);
+      if (message.toLowerCase().includes('invalidstate')) {
+        // Already listening; treat as success.
+        setStatus('listening');
+        setErrorMessage(undefined);
+        return;
+      }
+      shouldResumeRef.current = false;
       setErrorMessage(message);
       setStatus('error');
     }
+  };
+
+    void start();
   }, [isSupported]);
 
   const stopListening = React.useCallback(() => {

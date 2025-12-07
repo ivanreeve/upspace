@@ -11,7 +11,7 @@ type RouteContext = {
 
 export async function GET(req: NextRequest, context: RouteContext) {
   try {
-    await requireAdminSession();
+    await requireAdminSession(req);
     const { verification_id, } = await context.params;
 
     const verification = await prisma.verification.findUnique({
@@ -96,7 +96,7 @@ export async function GET(req: NextRequest, context: RouteContext) {
 
 export async function PATCH(req: NextRequest, context: RouteContext) {
   try {
-    await requireAdminSession();
+    await requireAdminSession(req);
     const { verification_id, } = await context.params;
 
     const body = await req.json().catch(() => null);

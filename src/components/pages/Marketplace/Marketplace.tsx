@@ -61,7 +61,7 @@ import {
   type PhilippineRegionOption
 } from '@/lib/philippines-addresses/client';
 import { dedupeAddressOptions } from '@/lib/addresses';
-import { useSidebar } from '@/components/ui/sidebar';
+import { BottomGradientOverlay } from '@/components/ui/bottom-gradient-overlay';
 import { AMENITY_CATEGORY_DISPLAY_MAP } from '@/lib/amenity/amenity_category_display_map';
 import { AMENITY_ICON_MAPPINGS } from '@/lib/amenity/amenity_icon_mappings';
 import { cn } from '@/lib/utils';
@@ -301,7 +301,7 @@ export default function Marketplace({ initialSidebarOpen, }: MarketplaceProps) {
       </div>
 
       <BackToTopButton />
-      <MarketplaceGradientOverlay />
+      <BottomGradientOverlay />
     </section>
   );
 
@@ -325,38 +325,6 @@ export default function Marketplace({ initialSidebarOpen, }: MarketplaceProps) {
     >
       { content }
     </MarketplaceChrome>
-  );
-}
-
-function MarketplaceGradientOverlay() {
-  const {
- state, isMobile, 
-} = useSidebar();
-
-  const overlayStyles = React.useMemo<React.CSSProperties>(() => {
-    if (isMobile) {
-      return {
- left: 0,
-right: 0, 
-};
-    }
-
-    const sidebarOffset = state === 'collapsed'
-      ? 'var(--sidebar-width-icon)'
-      : 'var(--sidebar-width)';
-
-    return {
-      left: sidebarOffset,
-      right: 0,
-    };
-  }, [isMobile, state]);
-
-  return (
-    <div
-      aria-hidden="true"
-      style={ overlayStyles }
-      className="pointer-events-none fixed bottom-0 z-30 h-[20vh] bg-gradient-to-t from-background via-background/50 to-background/0"
-    />
   );
 }
 
@@ -477,11 +445,6 @@ function MarketplaceSearchDialog({
           endAdornment={ (
             <VoiceSearchButton onClick={ handleVoiceButtonClick } />
           ) }
-        />
-        <VoiceSearchDialog
-          open={ isVoiceSearchOpen }
-          onOpenChange={ setIsVoiceSearchOpen }
-          onSubmit={ handleVoiceSearchSubmit }
         />
         <CommandList className={ isMobile ? 'flex-1 max-h-full' : undefined }>
           { hasAnyFilters && (

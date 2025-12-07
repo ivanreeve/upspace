@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
+import { useSession } from '@/components/auth/SessionProvider';
 import { type DeactivationReasonCategory } from '@/lib/deactivation-requests';
 
 export type DeactivationRequest = {
@@ -59,8 +60,15 @@ export function useAdminDeactivationRequestsQuery({
   cursor?: string | null;
 } = {}) {
   const authFetch = useAuthenticatedFetch();
+  const {
+    session,
+    isLoading,
+  } = useSession();
+  const isSessionReady = Boolean(session && !isLoading);
+  const REFRESH_INTERVAL_MS = 15_000;
 
   return useQuery<DeactivationRequestsPage>({
+    enabled: isSessionReady,
     queryKey: adminDeactivationRequestKeys.list(status, limit, cursor),
     queryFn: async () => {
       const searchParams = new URLSearchParams({
@@ -81,10 +89,14 @@ export function useAdminDeactivationRequestsQuery({
       };
 
       return {
-        data: payload.data,
+        data: [...payload.data].sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        ),
         nextCursor: payload.nextCursor ?? null,
       };
     },
+    refetchInterval: REFRESH_INTERVAL_MS,
+    refetchIntervalInBackground: true,
   });
 }
 

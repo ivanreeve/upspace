@@ -3,6 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   FiBarChart2,
   FiBell,
@@ -27,6 +29,15 @@ import { TbLayoutSidebarFilled } from 'react-icons/tb';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card';
 import { Kbd } from '@/components/ui/kbd';
 import { LogoSymbolic } from '@/components/ui/logo-symbolic';
 import {
@@ -54,7 +65,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSession } from '@/components/auth/SessionProvider';
 import { useCachedAvatar } from '@/hooks/use-cached-avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useUserProfile } from '@/hooks/use-user-profile';
+import { useUserProfile, type UserProfile } from '@/hooks/use-user-profile';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 
@@ -725,6 +736,7 @@ function useMarketplaceNavData() {
       isGuest,
       isSidebarLoading: shouldShowSidebarLoading,
       shouldFallbackToGuestSidebar,
+      userProfile,
     }),
     [
       avatarDisplayName,
@@ -737,8 +749,160 @@ function useMarketplaceNavData() {
       resolvedRole,
       shouldShowSidebarLoading,
       shouldFallbackToGuestSidebar,
-      userEmail
+      userEmail,
+      userProfile
     ]
+  );
+}
+
+type AccountLockOverlayProps = {
+  profile?: UserProfile;
+};
+
+const overlayCopy = {
+  deactivated: {
+    title: 'Account deactivated',
+    description: 'Your account is currently deactivated. Reactivate to resume your UpSpace access.',
+    actionLabel: 'Reactivate account',
+  },
+  pending_deletion: {
+    title: 'Deletion pending',
+    description: 'Your account is scheduled for deletion. Cancel the request to keep your access.',
+    actionLabel: 'Cancel deletion',
+  },
+  deleted: {
+    title: 'Account deleted',
+    description: 'This account has been permanently deleted. Create a new account or contact support for help.',
+  },
+};
+
+function AccountLockOverlay({ profile, }: AccountLockOverlayProps) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [isProcessing, setIsProcessing] = React.useState(false);
+  const handleLogout = React.useCallback(async () => {
+    const supabase = getSupabaseBrowserClient();
+    const { error, } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error('Supabase sign-out failed', error);
+      return;
+    }
+
+    router.refresh();
+  }, [router]);
+
+  if (!profile || profile.status === 'active') {
+    return null;
+  }
+
+  const isPendingDeletion = profile.status === 'pending_deletion';
+  const metadata = overlayCopy[profile.status];
+
+  if (!metadata) {
+    return null;
+  }
+
+  const expiration = profile.expiresAt ? new Date(profile.expiresAt) : null;
+  const deadlineLabel = expiration
+    ? expiration.toLocaleString(undefined, {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+    : null;
+
+  const action =
+    profile.status === 'pending_deletion'
+      ? 'cancelDeletion'
+      : profile.status === 'deactivated'
+        ? 'reactivate'
+        : undefined;
+
+  const handleAction = async () => {
+    if (!action) {
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      const response = await fetch('/api/v1/auth/reactivate', {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify({ action, }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.message ?? 'Unable to update your account status right now.');
+      }
+      toast.success('Account status updated. Redirecting to home...');
+      await queryClient.invalidateQueries({ queryKey: ['user-profile'], });
+      router.push('/marketplace');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to update your account status right now.';
+      toast.error(message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const actionLabel = metadata.actionLabel ?? '';
+
+  return (
+    <div className="absolute inset-0 z-40 flex items-center justify-center">
+      <div className="absolute inset-0 bg-background/80 backdrop-blur-xl" />
+      <div className="relative w-full px-4 py-8 sm:px-6">
+        <Card
+          role="alertdialog"
+          aria-live="assertive"
+          aria-label={ metadata.title }
+          className="mx-auto w-full max-w-xl rounded-md border border-border/70 bg-background/90 shadow-2xl"
+        >
+          <CardHeader className="space-y-2">
+            <CardTitle className="text-2xl font-semibold text-foreground">
+              { metadata.title }
+            </CardTitle>
+            <CardDescription className="text-base text-muted-foreground">
+              { metadata.description }
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 pt-0">
+            { deadlineLabel && isPendingDeletion && (
+              <p className="text-sm text-muted-foreground">
+                Scheduled deletion: { deadlineLabel }
+              </p>
+            ) }
+            <p className="text-sm text-muted-foreground">
+              All navigation is suspended until you take action.
+            </p>
+          </CardContent>
+          <CardFooter className="flex flex-col gap-3 pt-4">
+            { action && (
+              <Button
+                className="w-full rounded-md px-4 py-2 text-sm"
+                onClick={ handleAction }
+                disabled={ isProcessing }
+              >
+                { isProcessing ? 'Working…' : actionLabel }
+              </Button>
+            ) }
+            { profile.status === 'deleted' && (
+              <Button
+                variant="outline"
+                className="w-full rounded-md px-4 py-2 text-sm"
+                onClick={ handleLogout }
+              >
+                Sign out
+              </Button>
+            ) }
+          </CardFooter>
+        </Card>
+      </div>
+    </div>
   );
 }
 
@@ -759,6 +923,7 @@ export function MarketplaceChrome({
     isGuest,
     isSidebarLoading,
     shouldFallbackToGuestSidebar,
+    userProfile,
   } = navData;
   const effectiveRole = React.useMemo<SidebarRole>(() => {
     if (isGuest || shouldFallbackToGuestSidebar) {
@@ -1100,13 +1265,14 @@ icon: FiMessageSquare,
         </Sidebar>
 
         <SidebarInset
-          className={ cn('flex-1 bg-background w-full pb-0 pt-0 md:pt-0', insetClassName) }
+          className={ cn('relative flex-1 bg-background w-full pb-0 pt-0 md:pt-0', insetClassName) }
           style={ mobileInsetPadding || insetStyle ? {
             ...mobileInsetPadding,
             ...insetStyle,
           } : undefined }
         >
           { children }
+          <AccountLockOverlay profile={ userProfile } />
         </SidebarInset>
       </div>
       { shouldRenderMobileBottomNav && (

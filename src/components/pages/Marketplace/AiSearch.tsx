@@ -3,26 +3,26 @@
 import React from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { FiAlertCircle, FiSend } from 'react-icons/fi';
-import { CgSpinner } from 'react-icons/cg';
+import { IoStop } from 'react-icons/io5';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { SpaceCard } from '@/components/pages/Marketplace/Marketplace.Cards';
+import type { Space } from '@/lib/api/spaces';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { VoiceSearchDialog } from '@/components/ui/voice-search-dialog';
-import { type SpeechRecognitionStatus } from '@/hooks/use-speech-recognition';
+import { BottomGradientOverlay } from '@/components/ui/bottom-gradient-overlay';
+import { useSidebar } from '@/components/ui/sidebar';
+import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { useUserProfile } from '@/hooks/use-user-profile';
+import { useGeolocation } from '@/hooks/use-geolocation';
 import { cn } from '@/lib/utils';
 
 type ChatMessage = {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-};
-
-type SpeechRecognitionSupportWindow = typeof window & {
-  webkitSpeechRecognition?: unknown;
-  SpeechRecognition?: unknown;
+  spaceResults?: Space[];
 };
 
 const makeMessageId = (role: ChatMessage['role']) =>
@@ -166,6 +166,9 @@ function MessageBubble({
   iconRef?: (node: HTMLDivElement | null) => void;
 }) {
   const isUser = message.role === 'user';
+  const hasSpaceResults = Boolean(message.spaceResults?.length);
+  const hasContent = message.content.trim().length > 0;
+  const shouldShowBubble = isThinking || (!hasSpaceResults && hasContent);
 
   return (
     <div
@@ -183,22 +186,44 @@ function MessageBubble({
           <span className="sr-only">Gemini</span>
         </div>
       ) }
-      <div
-        className={ cn(
-          'max-w-[720px] whitespace-pre-wrap rounded-md border px-4 py-3 text-sm shadow-sm',
-          isUser
-            ? 'bg-primary/10 border-primary/30 text-foreground'
-            : 'bg-muted/60 border-border/60 text-foreground'
-        ) }
-      >
-        { isThinking ? (
-          <span className="inline-flex items-center gap-2 text-muted-foreground">
-            <span style={ shimmerTextStyle }>Gemini is thinking...</span>
-          </span>
-        ) : (
-          message.content
-        ) }
-      </div>
+      { shouldShowBubble ? (
+        <div
+          className={ cn(
+            'max-w-[720px] rounded-md border px-4 py-3 text-sm shadow-sm',
+            isUser
+              ? 'bg-primary/10 border-primary/30 text-foreground'
+              : 'bg-muted/60 border-border/60 text-foreground'
+          ) }
+        >
+          { isThinking ? (
+            <span className="inline-flex items-center gap-2 text-muted-foreground">
+              <span style={ shimmerTextStyle }>Gemini is thinking...</span>
+            </span>
+          ) : (
+            <span className="whitespace-pre-wrap">{ message.content }</span>
+          ) }
+        </div>
+      ) : null }
+      { hasSpaceResults ? (
+        <div className="mt-3 w-full max-w-[720px]">
+          { (message.spaceResults?.length ?? 0) > 1 ? (
+            <div className="relative">
+              <div className="flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory touch-pan-x">
+                { message.spaceResults!.map((space) => (
+                  <div
+                    key={ space.space_id }
+                    className="min-w-[320px] max-w-[360px] snap-start"
+                  >
+                    <SpaceCard space={ space } />
+                  </div>
+                )) }
+              </div>
+            </div>
+          ) : (
+            <SpaceCard space={ message.spaceResults![0] } />
+          ) }
+        </div>
+      ) : null }
     </div>
   );
 }
@@ -208,19 +233,31 @@ export function AiSearch() {
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [voiceError, setVoiceError] = React.useState<string | null>(null);
-  const [isVoiceSupported, setIsVoiceSupported] = React.useState(false);
-  const [isVoiceDialogOpen, setIsVoiceDialogOpen] = React.useState(false);
-  const [voiceStatus, setVoiceStatus] =
-    React.useState<SpeechRecognitionStatus>('idle');
+  const {
+    isSupported: isVoiceSupported,
+    status: voiceStatus,
+    transcript,
+    startListening,
+    stopListening,
+    resetTranscript,
+    errorMessage: voiceHookError,
+  } = useSpeechRecognition();
   const scrollAnchorRef = React.useRef<HTMLDivElement | null>(null);
   const lineContainerRef = React.useRef<HTMLDivElement | null>(null);
   const iconRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
+  const abortControllerRef = React.useRef<AbortController | null>(null);
   const [linePosition, setLinePosition] = React.useState<{
     top: number;
     height: number;
   } | null>(null);
   const hasMessages = messages.length > 0;
   const { data: userProfile, } = useUserProfile();
+  const {
+ location: userLocation, error: locationError, 
+} = useGeolocation();
+  const {
+ state, isMobile, 
+} = useSidebar();
 
   const greetingName = React.useMemo(() => {
     const firstName = userProfile?.firstName?.trim();
@@ -236,25 +273,34 @@ export function AiSearch() {
     return 'UpSpace User';
   }, [userProfile]);
 
-  const aiSearchMutation = useMutation<string, Error, ChatMessage[]>({
+  const aiSearchMutation = useMutation<
+    { reply: string; spaces?: Space[] },
+    Error,
+    ChatMessage[]
+  >({
     mutationFn: async (history: ChatMessage[]) => {
       if (!history.length) {
         throw new Error('Please enter a question.');
       }
+
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
 
       const response = await fetch('/api/v1/ai-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', },
         body: JSON.stringify({
           messages: history.map(({
-            role,
-            content,
-          }) => ({
+ role, content, 
+}) => ({
             role,
             content: content.trim(),
           })),
+          ...(userLocation ? { location: userLocation, } : {}),
+          ...(userProfile?.userId ? { user_id: userProfile.userId, } : {}),
         }),
         cache: 'no-store',
+        signal: controller.signal,
       });
 
       const data = await response.json().catch(() => null);
@@ -274,7 +320,13 @@ export function AiSearch() {
         throw new Error('Unexpected response from Gemini.');
       }
 
-      return data.reply.trim();
+      return {
+        reply: data.reply.trim(),
+        spaces: Array.isArray(data.spaces) ? data.spaces : [],
+      };
+    },
+    onSettled: () => {
+      abortControllerRef.current = null;
     },
   });
 
@@ -301,18 +353,26 @@ export function AiSearch() {
         const history = [...previous, userMessage];
 
         aiSearchMutation.mutate(history, {
-          onSuccess: (reply) => {
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: makeMessageId('assistant'),
-                role: 'assistant',
-                content: reply,
-              }
-            ]);
-          },
+        onSuccess: (result) => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: makeMessageId('assistant'),
+              role: 'assistant',
+              content: result.reply,
+              spaceResults:
+                result.spaces && result.spaces.length > 0
+                  ? result.spaces
+                  : undefined,
+            }
+          ]);
+        },
           onError: (mutationError) => {
-            const fallback = mutationError.message || 'Gemini could not reply.';
+            if (mutationError.name === 'AbortError') {
+              return;
+            }
+            const fallback =
+              mutationError.message || 'UpSpace could not reply.';
             setErrorMessage(fallback);
             setMessages((prev) => [
               ...prev,
@@ -331,16 +391,39 @@ export function AiSearch() {
     [aiSearchMutation]
   );
 
+  const stopAiSearch = React.useCallback(() => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    aiSearchMutation.reset();
+    setErrorMessage(null);
+  }, [aiSearchMutation]);
+
   const isThinking = aiSearchMutation.isPending;
   const isListening = voiceStatus === 'listening';
-  const isVoiceActive = isVoiceDialogOpen || isListening;
+  const isVoiceActive = isListening;
+  const containerTopPadding = hasMessages
+    ? 'pt-0 sm:pt-0 md:pt-0'
+    : 'pt-8 sm:pt-12 md:pt-14';
+  const bottomBarOffsets = React.useMemo<React.CSSProperties>(() => {
+    if (isMobile) {
+      return {
+        left: 0,
+        right: 0,
+        paddingBottom: 'calc(0.75rem + var(--safe-area-bottom, 0px))',
+      };
+    }
 
-  React.useEffect(() => {
-    scrollAnchorRef.current?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'end',
-    });
-  }, [messages, isThinking]);
+    const sidebarOffset =
+      state === 'collapsed'
+        ? 'var(--sidebar-width-icon)'
+        : 'var(--sidebar-width)';
+
+    return {
+      left: sidebarOffset,
+      right: 0,
+      paddingBottom: 'calc(1rem + var(--safe-area-bottom, 0px))',
+    };
+  }, [isMobile, state]);
 
   const assistantIds = React.useMemo(() => {
     const assistantMessageIds = messages
@@ -413,61 +496,84 @@ export function AiSearch() {
   }, [measureLine]);
 
   React.useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (voiceHookError) {
+      if (voiceHookError === 'not-allowed') {
+        setVoiceError(
+          'Microphone access was denied. Please allow microphone access in your browser settings to use voice search.'
+        );
+      } else if (voiceHookError === 'microphone-not-found') {
+        setVoiceError(
+          'No microphone was detected. Check your input device and try again.'
+        );
+      } else {
+        setVoiceError(voiceHookError);
+      }
+    }
+  }, [voiceHookError]);
 
-    const speechWindow = window as SpeechRecognitionSupportWindow;
-    const hasSupport = Boolean(
-      speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition
-    );
+  React.useEffect(() => {
+    if (voiceStatus === 'unsupported') {
+      setVoiceError('Voice input is not supported in this browser.');
+      return;
+    }
 
-    setIsVoiceSupported(hasSupport);
-  }, []);
-
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    submitPrompt(query);
-  };
-
-  const handleVoiceDialogOpenChange = React.useCallback((open: boolean) => {
-    setIsVoiceDialogOpen(open);
-    if (!open) {
-      setVoiceStatus('idle');
+    if (voiceStatus !== 'error') {
       setVoiceError(null);
     }
-  }, []);
+  }, [voiceStatus]);
 
-  const handleVoiceStatusChange = React.useCallback(
-    (status: SpeechRecognitionStatus) => {
-      setVoiceStatus(status);
+  React.useEffect(() => {
+    if (!transcript) return;
+    setQuery(transcript);
+  }, [transcript]);
 
-      if (status === 'unsupported') {
-        setVoiceError('Voice input is not supported in this browser.');
-        setIsVoiceSupported(false);
-        setIsVoiceDialogOpen(false);
-        return;
-      }
+  const scrollToBottom = React.useCallback(
+    (behavior: ScrollBehavior = 'smooth') => {
+      const anchor = scrollAnchorRef.current;
+      if (!anchor) return;
 
-      if (status !== 'error') {
-        setVoiceError(null);
-      }
+      const scrollViewport = anchor.closest(
+        '[data-slot="scroll-area-viewport"]'
+      ) as HTMLElement | null;
+
+      const performScroll = () => {
+        if (scrollViewport) {
+          const options: ScrollToOptions = { top: scrollViewport.scrollHeight, };
+          if (behavior === 'smooth') {
+            options.behavior = 'smooth';
+          }
+          scrollViewport.scrollTo(options);
+        }
+
+        anchor.scrollIntoView({
+          behavior,
+          block: 'end',
+        });
+      };
+
+      requestAnimationFrame(performScroll);
+      window.setTimeout(performScroll, 120);
     },
     []
   );
 
-  const handleVoiceError = React.useCallback((message?: string) => {
-    if (message) {
-      setVoiceError(message);
-    }
-  }, []);
+  React.useEffect(() => {
+    scrollToBottom(hasMessages ? 'smooth' : 'auto');
+  }, [messages, isThinking, hasMessages, scrollToBottom]);
 
-  const handleVoiceSubmit = React.useCallback(
-    (value: string) => {
-      handleVoiceDialogOpenChange(false);
-      const combined = [query.trim(), value.trim()].filter(Boolean).join(' ');
-      submitPrompt(combined);
-    },
-    [handleVoiceDialogOpenChange, query, submitPrompt]
-  );
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (aiSearchMutation.isPending) {
+      stopAiSearch();
+      return;
+    }
+
+    if (voiceStatus === 'listening') {
+      stopListening();
+    }
+
+    submitPrompt(query);
+  };
 
   const handleVoiceButtonClick = () => {
     if (aiSearchMutation.isPending) {
@@ -480,19 +586,30 @@ export function AiSearch() {
     }
 
     setVoiceError(null);
-    setIsVoiceDialogOpen(true);
+
+    if (voiceStatus === 'listening') {
+      stopListening();
+      if (transcript.trim()) {
+        setQuery(transcript.trim());
+      }
+      return;
+    }
+
+    resetTranscript();
+    startListening();
   };
 
   return (
     <div
       className={ cn(
-        'relative mx-auto flex h-full min-h-full w-full max-w-5xl flex-col gap-6 px-4 pt-8 pb-4 sm:pt-12 sm:pb-6 md:pt-14 md:pb-8',
+        'relative mx-auto flex h-full min-h-full w-full max-w-5xl flex-col gap-6 px-4 pb-32 sm:pb-36 md:pb-40',
+        containerTopPadding,
         'overflow-hidden'
       ) }
     >
       { !hasMessages && (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-          <h1 className="greeting-appear text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
+          <h1 className="greeting-appear text-3xl font-semibold leading-tight bg-gradient-to-t from-primary dark:from-gray-400 to-white bg-clip-text text-transparent sm:text-4xl md:text-6xl lg:text-7xl">
             Hi, { greetingName }
           </h1>
         </div>
@@ -502,13 +619,6 @@ export function AiSearch() {
         { hasMessages && (
           <Card className="border-none h-full">
             <CardContent className="flex h-full flex-col space-y-6 p-6 sm:p-8">
-              { errorMessage && (
-                <div className="inline-flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                  <FiAlertCircle className="size-4" aria-hidden="true" />
-                  <span>{ errorMessage }</span>
-                </div>
-              ) }
-
               <div className="flex-1 overflow-hidden rounded-md border-none bg-background/60">
                 <ScrollArea className="h-full w-full">
                   <div
@@ -560,19 +670,24 @@ export function AiSearch() {
         ) }
       </div>
 
-      <form
-        onSubmit={ handleSubmit }
-        className="sticky bottom-[calc(0.75rem+var(--safe-area-bottom,0px))] z-30 mt-auto flex w-full justify-center sm:bottom-[calc(1rem+var(--safe-area-bottom,0px))]"
+      <BottomGradientOverlay className="z-20" />
+
+      <div
+        className="fixed inset-x-0 bottom-0 z-30 px-4"
+        style={ bottomBarOffsets }
       >
-        <label htmlFor="ai-search-input" className="sr-only">
-          Ask anything about coworking spaces
-        </label>
-        <div className="flex w-full max-w-4xl flex-col gap-2 rounded-md border border-border/50 bg-background/95 p-2 shadow-2xl ring-1 ring-border/40 backdrop-blur supports-[backdrop-filter]:bg-background/75 sm:flex-row sm:items-center sm:gap-3">
+        <form
+          onSubmit={ handleSubmit }
+          className="mx-auto flex w-full max-w-4xl flex-col gap-2 rounded-md border border-border/50 bg-background/95 p-2 shadow-2xl ring-1 ring-border/40 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:flex-row sm:items-center sm:gap-3"
+        >
+          <label htmlFor="ai-search-input" className="sr-only">
+            Ask anything about coworking spaces
+          </label>
           <Input
             id="ai-search-input"
             value={ query }
             onChange={ (event) => setQuery(event.target.value) }
-            placeholder="Find a quiet meeting room with whiteboards near BGC next Friday"
+            placeholder="Ask Anything"
             aria-label="AI search query"
             disabled={ aiSearchMutation.isPending }
             className="h-16 border-none bg-transparent text-sm focus-visible:ring-0 focus-visible:ring-offset-0 sm:h-12 sm:text-base"
@@ -580,52 +695,63 @@ export function AiSearch() {
           <div className="flex items-center justify-end gap-2 sm:justify-end">
             <Button
               type="button"
-              variant="ghost"
-              size="icon"
               aria-label="Use voice input"
               aria-pressed={ isVoiceActive }
               onClick={ handleVoiceButtonClick }
               disabled={ !isVoiceSupported || aiSearchMutation.isPending }
               className={ cn(
-                'relative bg-muted text-muted-foreground transition-shadow hover:text-foreground',
-                isVoiceActive &&
-                  'ring-2 ring-cyan-400/60 bg-cyan-50 text-foreground dark:bg-cyan-900/30'
+                'relative h-10 w-10 rounded-full p-[2px] text-muted-foreground transition-shadow hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary',
+                isVoiceActive
+                  ? 'bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400 shadow-[0_0_0_3px_rgba(34,211,238,0.35)]'
+                  : 'bg-muted'
               ) }
             >
-              <MicGradientIcon className={ cn(isVoiceActive && 'animate-pulse') } />
+              <span
+                className={ cn(
+                  'flex h-full w-full items-center justify-center rounded-full bg-muted',
+                  isVoiceActive && 'bg-background text-foreground'
+                ) }
+              >
+                <MicGradientIcon
+                  className={ cn(isVoiceActive && 'animate-pulse') }
+                />
+                <span className="sr-only">
+                  { isVoiceActive ? 'Stop voice input' : 'Start voice input' }
+                </span>
+              </span>
             </Button>
             <Button
               type="submit"
               size="icon"
-              aria-label="Send AI search"
-              disabled={ aiSearchMutation.isPending || query.trim().length === 0 }
+              aria-label={
+                aiSearchMutation.isPending
+                  ? 'Stop AI response'
+                  : 'Send AI search'
+              }
+              disabled={
+                !aiSearchMutation.isPending && query.trim().length === 0
+              }
               className="dark:bg-cyan-400 text-background dark:hover:bg-cyan-300 bg-primary"
             >
               { aiSearchMutation.isPending ? (
-                <CgSpinner
-                  className="h-4 w-4 animate-spin text-background"
-                  aria-hidden="true"
-                />
+                <IoStop className="size-4 text-background" aria-hidden="true" />
               ) : (
                 <FiSend className="size-4 text-background" aria-hidden="true" />
               ) }
             </Button>
           </div>
-        </div>
+        </form>
         { voiceError && (
-          <p className="text-center text-xs text-destructive">{ voiceError }</p>
+          <p className="mt-1 text-center text-xs text-destructive">
+            { voiceError }
+          </p>
         ) }
-      </form>
-
-      <VoiceSearchDialog
-        open={ isVoiceDialogOpen }
-        onOpenChange={ handleVoiceDialogOpenChange }
-        onSubmit={ handleVoiceSubmit }
-        onStatusChange={ handleVoiceStatusChange }
-        onError={ handleVoiceError }
-        title="Voice input"
-        description="Speak your AI search request and we'll type it in for you."
-      />
+        { locationError && (
+          <p className="mt-1 text-center text-xs text-muted-foreground">
+            { locationError }
+          </p>
+        ) }
+      </div>
     </div>
   );
 }

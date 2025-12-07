@@ -4,6 +4,7 @@ import { createHash, randomInt, timingSafeEqual } from 'node:crypto';
 
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
+import { user_status } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
@@ -110,7 +111,7 @@ async function findAuthUserByEmail(email: string) {
   const registeredProfile = await prisma.user.findFirst({
     where: {
       auth_user_id: authUser.id,
-      is_disabled: false,
+      status: { not: user_status.deleted, },
     },
     select: { user_id: true, },
   });
