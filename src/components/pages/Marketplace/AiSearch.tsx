@@ -167,6 +167,8 @@ function MessageBubble({
 }) {
   const isUser = message.role === 'user';
   const hasSpaceResults = Boolean(message.spaceResults?.length);
+  const hasContent = message.content.trim().length > 0;
+  const shouldShowBubble = isThinking || (!hasSpaceResults && hasContent);
 
   return (
     <div
@@ -184,22 +186,24 @@ function MessageBubble({
           <span className="sr-only">Gemini</span>
         </div>
       ) }
-      <div
-        className={ cn(
-          'max-w-[720px] rounded-md border px-4 py-3 text-sm shadow-sm',
-          isUser
-            ? 'bg-primary/10 border-primary/30 text-foreground'
-            : 'bg-muted/60 border-border/60 text-foreground'
-        ) }
-      >
-        { isThinking ? (
-          <span className="inline-flex items-center gap-2 text-muted-foreground">
-            <span style={ shimmerTextStyle }>Gemini is thinking...</span>
-          </span>
-        ) : hasSpaceResults ? null : (
-          <span className="whitespace-pre-wrap">{ message.content }</span>
-        ) }
-      </div>
+      { shouldShowBubble ? (
+        <div
+          className={ cn(
+            'max-w-[720px] rounded-md border px-4 py-3 text-sm shadow-sm',
+            isUser
+              ? 'bg-primary/10 border-primary/30 text-foreground'
+              : 'bg-muted/60 border-border/60 text-foreground'
+          ) }
+        >
+          { isThinking ? (
+            <span className="inline-flex items-center gap-2 text-muted-foreground">
+              <span style={ shimmerTextStyle }>Gemini is thinking...</span>
+            </span>
+          ) : (
+            <span className="whitespace-pre-wrap">{ message.content }</span>
+          ) }
+        </div>
+      ) : null }
       { hasSpaceResults ? (
         <div className="mt-3 w-full max-w-[720px]">
           { (message.spaceResults?.length ?? 0) > 1 ? (
