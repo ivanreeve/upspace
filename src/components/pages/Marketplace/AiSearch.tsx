@@ -8,17 +8,21 @@ import { IoStop } from 'react-icons/io5';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { CardsGrid } from '@/components/pages/Marketplace/Marketplace.Cards';
+import type { Space } from '@/lib/api/spaces';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { BottomGradientOverlay } from '@/components/ui/bottom-gradient-overlay';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { useUserProfile } from '@/hooks/use-user-profile';
+import { useGeolocation } from '@/hooks/use-geolocation';
 import { cn } from '@/lib/utils';
 
 type ChatMessage = {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  spaceResults?: Space[];
 };
 
 const makeMessageId = (role: ChatMessage['role']) =>
@@ -195,6 +199,11 @@ function MessageBubble({
           message.content
         ) }
       </div>
+      { message.spaceResults?.length ? (
+        <div className="mt-3 w-full max-w-[720px]">
+          <CardsGrid items={ message.spaceResults } />
+        </div>
+      ) : null }
     </div>
   );
 }
@@ -224,6 +233,9 @@ export function AiSearch() {
   const hasMessages = messages.length > 0;
   const { data: userProfile, } = useUserProfile();
   const {
+ location: userLocation, error: locationError, 
+} = useGeolocation();
+  const {
  state, isMobile, 
 } = useSidebar();
 
@@ -241,7 +253,11 @@ export function AiSearch() {
     return 'UpSpace User';
   }, [userProfile]);
 
-  const aiSearchMutation = useMutation<string, Error, ChatMessage[]>({
+  const aiSearchMutation = useMutation<
+    { reply: string; spaces?: Space[] },
+    Error,
+    ChatMessage[]
+  >({
     mutationFn: async (history: ChatMessage[]) => {
       if (!history.length) {
         throw new Error('Please enter a question.');
@@ -260,6 +276,8 @@ export function AiSearch() {
             role,
             content: content.trim(),
           })),
+          ...(userLocation ? { location: userLocation, } : {}),
+          ...(userProfile?.userId ? { user_id: userProfile.userId, } : {}),
         }),
         cache: 'no-store',
         signal: controller.signal,
@@ -282,7 +300,10 @@ export function AiSearch() {
         throw new Error('Unexpected response from Gemini.');
       }
 
-      return data.reply.trim();
+      return {
+        reply: data.reply.trim(),
+        spaces: Array.isArray(data.spaces) ? data.spaces : [],
+      };
     },
     onSettled: () => {
       abortControllerRef.current = null;
@@ -312,21 +333,26 @@ export function AiSearch() {
         const history = [...previous, userMessage];
 
         aiSearchMutation.mutate(history, {
-          onSuccess: (reply) => {
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: makeMessageId('assistant'),
-                role: 'assistant',
-                content: reply,
-              }
-            ]);
-          },
+        onSuccess: (result) => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: makeMessageId('assistant'),
+              role: 'assistant',
+              content: result.reply,
+              spaceResults:
+                result.spaces && result.spaces.length > 0
+                  ? result.spaces
+                  : undefined,
+            }
+          ]);
+        },
           onError: (mutationError) => {
             if (mutationError.name === 'AbortError') {
               return;
             }
-            const fallback = mutationError.message || 'Gemini could not reply.';
+            const fallback =
+              mutationError.message || 'UpSpace could not reply.';
             setErrorMessage(fallback);
             setMessages((prev) => [
               ...prev,
@@ -517,9 +543,15 @@ export function AiSearch() {
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (aiSearchMutation.isPending) {
+      stopAiSearch();
+      return;
+    }
+
     if (voiceStatus === 'listening') {
       stopListening();
     }
+
     submitPrompt(query);
   };
 
@@ -567,13 +599,6 @@ export function AiSearch() {
         { hasMessages && (
           <Card className="border-none h-full">
             <CardContent className="flex h-full flex-col space-y-6 p-6 sm:p-8">
-              { errorMessage && (
-                <div className="inline-flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                  <FiAlertCircle className="size-4" aria-hidden="true" />
-                  <span>{ errorMessage }</span>
-                </div>
-              ) }
-
               <div className="flex-1 overflow-hidden rounded-md border-none bg-background/60">
                 <ScrollArea className="h-full w-full">
                   <div
@@ -678,8 +703,14 @@ export function AiSearch() {
             <Button
               type="submit"
               size="icon"
-              aria-label="Send AI search"
-              disabled={ aiSearchMutation.isPending || query.trim().length === 0 }
+              aria-label={
+                aiSearchMutation.isPending
+                  ? 'Stop AI response'
+                  : 'Send AI search'
+              }
+              disabled={
+                !aiSearchMutation.isPending && query.trim().length === 0
+              }
               className="dark:bg-cyan-400 text-background dark:hover:bg-cyan-300 bg-primary"
             >
               { aiSearchMutation.isPending ? (
@@ -688,22 +719,16 @@ export function AiSearch() {
                 <FiSend className="size-4 text-background" aria-hidden="true" />
               ) }
             </Button>
-            { aiSearchMutation.isPending && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={ stopAiSearch }
-                aria-label="Stop AI response"
-              >
-                Stop
-              </Button>
-            ) }
           </div>
         </form>
         { voiceError && (
           <p className="mt-1 text-center text-xs text-destructive">
             { voiceError }
+          </p>
+        ) }
+        { locationError && (
+          <p className="mt-1 text-center text-xs text-muted-foreground">
+            { locationError }
           </p>
         ) }
       </div>

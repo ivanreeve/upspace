@@ -29,6 +29,7 @@ export type Space = {
   availability?: SpaceAvailabilitySlot[];
   lat?: number;
   long?: number;
+  distance_meters?: number | null;
 };
 
 export type ListSpacesParams = Partial<{

@@ -78,6 +78,12 @@ export function SpaceCard({
     ? 'No Price'
     : `From ${peso.format(space.starting_price)}`;
   const hasPrice = space.starting_price !== null && space.starting_price !== undefined;
+  const distanceLabel =
+    typeof space.distance_meters === 'number'
+      ? space.distance_meters < 1000
+        ? `${Math.round(space.distance_meters)} m away`
+        : `${(space.distance_meters / 1000).toFixed(1)} km away`
+      : null;
 
   const handleToggleSave = useCallback(async () => {
     if (isSaving) {
@@ -185,6 +191,9 @@ export function SpaceCard({
             </span>
           </div>
         </div>
+        { distanceLabel && (
+          <span className="text-xs text-muted-foreground">{ distanceLabel }</span>
+        ) }
       </CardContent>
     </Card>
   );
