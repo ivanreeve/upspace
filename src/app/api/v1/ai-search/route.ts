@@ -3,35 +3,32 @@ import {
   FunctionCall,
   FunctionCallingConfigMode,
   FunctionDeclaration,
-  GoogleGenAI,
-} from "@google/genai";
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
+  GoogleGenAI
+} from '@google/genai';
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 
-import { findSpacesAgent, MAX_RADIUS_METERS } from "@/lib/ai/space-agent";
-import type {
-  FindSpacesToolInput,
-  FindSpacesToolResult,
-} from "@/lib/ai/space-agent";
+import { findSpacesAgent, MAX_RADIUS_METERS } from '@/lib/ai/space-agent';
+import type { FindSpacesToolInput, FindSpacesToolResult } from '@/lib/ai/space-agent';
 import {
   fetchSearchReferenceData,
   fetchAmenityChoices,
   fetchRegions,
   fetchCities,
   fetchBarangays,
-  type SearchReferenceData,
-} from "@/lib/ai/search-reference-data";
-import { searchAgentSystemPromptTemplate } from "@/lib/search-agent";
+  type SearchReferenceData
+} from '@/lib/ai/search-reference-data';
+import { searchAgentSystemPromptTemplate } from '@/lib/search-agent';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 const messageSchema = z.object({
-  role: z.enum(["user", "assistant"]),
+  role: z.enum(['user', 'assistant']),
   content: z
     .string()
     .trim()
-    .min(1, "Please enter a question.")
-    .max(2000, "Keep each message under 2,000 characters."),
+    .min(1, 'Please enter a question.')
+    .max(2000, 'Keep each message under 2,000 characters.'),
 });
 
 const coordinateSchema = z.object({
@@ -44,8 +41,8 @@ const requestSchema = z
     query: z
       .string()
       .trim()
-      .min(1, "Please enter a question.")
-      .max(2000, "Keep your question under 2,000 characters.")
+      .min(1, 'Please enter a question.')
+      .max(2000, 'Keep your question under 2,000 characters.')
       .optional(),
     messages: z.array(messageSchema).min(1).optional(),
     user_id: z.string().regex(/^\d+$/).optional(),
@@ -53,94 +50,94 @@ const requestSchema = z
   })
   .refine(
     (data) => Boolean(data.query?.length) || Boolean(data.messages?.length),
-    "Provide a question or conversation to continue.",
+    'Provide a question or conversation to continue.'
   );
 
 const SPACE_SEARCH_FILTER_PROPERTIES = {
   location: {
-    type: "object",
+    type: 'object',
     properties: {
       lat: {
-        type: "number",
+        type: 'number',
         minimum: -90,
         maximum: 90,
       },
       long: {
-        type: "number",
+        type: 'number',
         minimum: -180,
         maximum: 180,
       },
     },
-    required: ["lat", "long"],
+    required: ['lat', 'long'],
   },
   radius: {
-    type: "number",
+    type: 'number',
     minimum: 0,
     maximum: MAX_RADIUS_METERS,
   },
   amenities: {
-    type: "array",
+    type: 'array',
     items: {
-      type: "string",
+      type: 'string',
       minLength: 1,
     },
     maxItems: 10,
   },
   amenities_mode: {
-    type: "string",
-    enum: ["any", "all"],
+    type: 'string',
+    enum: ['any', 'all'],
   },
-  amenities_negate: { type: "boolean" },
+  amenities_negate: { type: 'boolean', },
   min_price: {
-    type: "number",
+    type: 'number',
     minimum: 0,
   },
   max_price: {
-    type: "number",
+    type: 'number',
     minimum: 0,
   },
   min_rating: {
-    type: "number",
+    type: 'number',
     minimum: 0,
     maximum: 5,
   },
   max_rating: {
-    type: "number",
+    type: 'number',
     minimum: 0,
     maximum: 5,
   },
   sort_by: {
-    type: "string",
-    enum: ["price", "rating", "distance", "relevance"],
+    type: 'string',
+    enum: ['price', 'rating', 'distance', 'relevance'],
   },
   limit: {
-    type: "integer",
+    type: 'integer',
     minimum: 1,
     maximum: 10,
   },
-  include_pending: { type: "boolean" },
+  include_pending: { type: 'boolean', },
   user_id: {
-    type: "string",
-    pattern: "^\\d+$",
+    type: 'string',
+    pattern: '^\\d+$',
   },
 } as const;
 
 const FIND_SPACES_PARAMETERS_JSON_SCHEMA = {
-  type: "object",
+  type: 'object',
   properties: {
-    query: { type: "string" },
+    query: { type: 'string', },
     ...SPACE_SEARCH_FILTER_PROPERTIES,
   },
   additionalProperties: false,
 } as const;
 
 const KEYWORD_SEARCH_PARAMETERS_JSON_SCHEMA = {
-  type: "object",
+  type: 'object',
   properties: {
     keywords: {
-      type: "array",
+      type: 'array',
       items: {
-        type: "string",
+        type: 'string',
         minLength: 1,
       },
       minItems: 1,
@@ -148,21 +145,21 @@ const KEYWORD_SEARCH_PARAMETERS_JSON_SCHEMA = {
     },
     ...SPACE_SEARCH_FILTER_PROPERTIES,
   },
-  required: ["keywords"],
+  required: ['keywords'],
   additionalProperties: false,
 } as const;
 
 const findSpacesFunctionDeclaration: FunctionDeclaration = {
-  name: "find_spaces",
+  name: 'find_spaces',
   description:
-    "Retrieve coworking spaces that match filters such as location, amenities, price, and rating.",
+    'Retrieve coworking spaces that match filters such as location, amenities, price, and rating.',
   parametersJsonSchema: FIND_SPACES_PARAMETERS_JSON_SCHEMA,
 };
 
 const keywordSearchFunctionDeclaration: FunctionDeclaration = {
-  name: "keyword_search",
+  name: 'keyword_search',
   description:
-    "Retrieve coworking spaces whose description or location fields mention specific keywords.",
+    'Retrieve coworking spaces whose description or location fields mention specific keywords.',
   parametersJsonSchema: KEYWORD_SEARCH_PARAMETERS_JSON_SCHEMA,
 };
 
@@ -170,13 +167,13 @@ const spaceSearchFiltersBaseSchema = z.object({
   location: coordinateSchema.optional(),
   radius: z.coerce.number().min(0).max(MAX_RADIUS_METERS).optional(),
   amenities: z.array(z.string().trim().min(1)).max(10).optional(),
-  amenities_mode: z.enum(["any", "all"]).optional(),
+  amenities_mode: z.enum(['any', 'all']).optional(),
   amenities_negate: z.boolean().optional(),
   min_price: z.coerce.number().min(0).optional(),
   max_price: z.coerce.number().min(0).optional(),
   min_rating: z.coerce.number().min(0).max(5).optional(),
   max_rating: z.coerce.number().min(0).max(5).optional(),
-  sort_by: z.enum(["price", "rating", "distance", "relevance"]).optional(),
+  sort_by: z.enum(['price', 'rating', 'distance', 'relevance']).optional(),
   limit: z.coerce.number().int().min(1).max(10).optional(),
   include_pending: z.boolean().optional(),
   user_id: z.string().regex(/^\d+$/).optional(),
@@ -191,9 +188,9 @@ const withRangeRefinements = <T extends z.ZodTypeAny>(schema: T) =>
         value.min_price === undefined ||
         value.max_price >= value.min_price,
       {
-        message: "max_price must be greater than or equal to min_price.",
-        path: ["max_price"],
-      },
+        message: 'max_price must be greater than or equal to min_price.',
+        path: ['max_price'],
+      }
     )
     .refine(
       (value) =>
@@ -201,26 +198,24 @@ const withRangeRefinements = <T extends z.ZodTypeAny>(schema: T) =>
         value.min_rating === undefined ||
         value.max_rating >= value.min_rating,
       {
-        message: "max_rating must be greater than or equal to min_rating.",
-        path: ["max_rating"],
-      },
+        message: 'max_rating must be greater than or equal to min_rating.',
+        path: ['max_rating'],
+      }
     );
 
 const spaceSearchFiltersSchema = withRangeRefinements(
-  spaceSearchFiltersBaseSchema,
+  spaceSearchFiltersBaseSchema
 );
 
 const findSpacesToolInputSchema = withRangeRefinements(
-  spaceSearchFiltersBaseSchema.extend({ query: z.string().trim().optional() }),
+  spaceSearchFiltersBaseSchema.extend({ query: z.string().trim().optional(), })
 );
 
 const keywordSearchToolInputSchema = withRangeRefinements(
-  spaceSearchFiltersBaseSchema.extend({
-    keywords: z.array(z.string().trim().min(1)).min(1).max(5),
-  }),
+  spaceSearchFiltersBaseSchema.extend({ keywords: z.array(z.string().trim().min(1)).min(1).max(5), })
 );
 
-const spaceSearchFunctionNames = ["find_spaces", "keyword_search"] as const;
+const spaceSearchFunctionNames = ['find_spaces', 'keyword_search'] as const;
 type SpaceSearchFunctionName = (typeof spaceSearchFunctionNames)[number];
 
 const isSpaceSearchFunction = (name: string): name is SpaceSearchFunctionName =>
@@ -230,7 +225,7 @@ const buildSpaceSearchToolInput = (
   name: SpaceSearchFunctionName,
   args: Record<string, unknown>,
   fallbackLocation?: z.infer<typeof coordinateSchema>,
-  fallbackUserId?: string,
+  fallbackUserId?: string
 ): FindSpacesToolInput => {
   const normalizedArgs: Record<string, unknown> = {
     ...args,
@@ -238,13 +233,15 @@ const buildSpaceSearchToolInput = (
     user_id: args.user_id ?? fallbackUserId ?? undefined,
   };
 
-  if (name === "find_spaces") {
+  if (name === 'find_spaces') {
     return findSpacesToolInputSchema.parse(normalizedArgs);
   }
 
   const keywordInput = keywordSearchToolInputSchema.parse(normalizedArgs);
-  const { keywords, ...sharedFilters } = keywordInput;
-  const query = keywords.map((keyword) => keyword.trim()).join(" ");
+  const {
+ keywords, ...sharedFilters 
+} = keywordInput;
+  const query = keywords.map((keyword) => keyword.trim()).join(' ');
 
   return {
     ...sharedFilters,
@@ -253,24 +250,24 @@ const buildSpaceSearchToolInput = (
 };
 
 type ConversationMessage = {
-  role: "user" | "assistant";
+  role: 'user' | 'assistant';
   content: string;
 };
 
 const buildConversationContents = (messages: ConversationMessage[]) =>
   messages.map((message) => ({
-    role: message.role === "assistant" ? "model" : "user",
-    parts: [{ text: message.content.trim() }],
+    role: message.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: message.content.trim(), }],
   }));
 
 const createLocationContext = (location: z.infer<typeof coordinateSchema>) => ({
-  role: "user", // Gemini expects only 'user' or 'model'; embed context as user-provided note
+  role: 'user', // Gemini expects only 'user' or 'model'; embed context as user-provided note
   parts: [
     {
       text: `Customer is currently located at (${location.lat.toFixed(
-        5,
+        5
       )}, ${location.long.toFixed(5)}).`,
-    },
+    }
   ],
 });
 
@@ -285,7 +282,7 @@ const extractTextFromResponse = (response: {
   const text = candidate.content?.parts
     ?.map((part) => part.text?.trim())
     .filter(Boolean)
-    .join("\n\n");
+    .join('\n\n');
 
   if (!text) {
     return null;
@@ -295,11 +292,11 @@ const extractTextFromResponse = (response: {
 };
 
 const getUserLocationFunctionDeclaration: FunctionDeclaration = {
-  name: "get_user_location",
+  name: 'get_user_location',
   description:
     "Returns the customer's current location (latitude and longitude).",
   parametersJsonSchema: {
-    type: "object",
+    type: 'object',
     properties: {},
     additionalProperties: false,
   },
@@ -307,44 +304,46 @@ const getUserLocationFunctionDeclaration: FunctionDeclaration = {
 
 const referenceDataToolDefinitions = [
   {
-    name: "get_amenity_choices",
+    name: 'get_amenity_choices',
     description:
-      "Returns the normalized list of amenity choices available in the marketplace.",
+      'Returns the normalized list of amenity choices available in the marketplace.',
     fetcher: fetchAmenityChoices,
   },
   {
-    name: "get_regions",
+    name: 'get_regions',
     description:
-      "Returns the alphabetized list of regions that currently have listed spaces.",
+      'Returns the alphabetized list of regions that currently have listed spaces.',
     fetcher: fetchRegions,
   },
   {
-    name: "get_cities",
+    name: 'get_cities',
     description:
-      "Returns the alphabetized list of cities that currently have listed spaces.",
+      'Returns the alphabetized list of cities that currently have listed spaces.',
     fetcher: fetchCities,
   },
   {
-    name: "get_barangays",
+    name: 'get_barangays',
     description:
-      "Returns the alphabetized list of barangays that currently have listed spaces.",
+      'Returns the alphabetized list of barangays that currently have listed spaces.',
     fetcher: fetchBarangays,
-  },
+  }
 ] as const;
 
 type ReferenceDataToolName =
-  (typeof referenceDataToolDefinitions)[number]["name"];
+  (typeof referenceDataToolDefinitions)[number]['name'];
 
 const referenceDataFunctionDeclarations = referenceDataToolDefinitions.map(
-  ({ name, description }) => ({
+  ({
+ name, description, 
+}) => ({
     name,
     description,
     parametersJsonSchema: {
-      type: "object",
+      type: 'object',
       properties: {},
       additionalProperties: false,
     },
-  }),
+  })
 ) satisfies FunctionDeclaration[];
 
 const referenceToolFetchers = referenceDataToolDefinitions.reduce(
@@ -352,11 +351,11 @@ const referenceToolFetchers = referenceDataToolDefinitions.reduce(
     acc[definition.name] = definition.fetcher;
     return acc;
   },
-  {} as Record<ReferenceDataToolName, () => Promise<string[]>>,
+  {} as Record<ReferenceDataToolName, () => Promise<string[]>>
 );
 
 const referenceDataToolSet = new Set(
-  referenceDataToolDefinitions.map((tool) => tool.name),
+  referenceDataToolDefinitions.map((tool) => tool.name)
 );
 const isReferenceDataTool = (name: string): name is ReferenceDataToolName =>
   referenceDataToolSet.has(name as ReferenceDataToolName);
@@ -364,9 +363,9 @@ const isReferenceDataTool = (name: string): name is ReferenceDataToolName =>
 const createFunctionCallContent = (
   name: string,
   id?: string,
-  args?: Record<string, unknown>,
+  args?: Record<string, unknown>
 ) => ({
-  role: "model",
+  role: 'model',
   parts: [
     {
       functionCall: {
@@ -374,16 +373,16 @@ const createFunctionCallContent = (
         args,
         id,
       },
-    },
+    }
   ],
 });
 
 const createFunctionResponseContent = (
   name: string,
   id: string | undefined,
-  responsePayload: Record<string, unknown>,
+  responsePayload: Record<string, unknown>
 ) => ({
-  role: "model",
+  role: 'model',
   parts: [
     {
       functionResponse: {
@@ -391,19 +390,19 @@ const createFunctionResponseContent = (
         id,
         response: responsePayload,
       },
-    },
+    }
   ],
 });
 
-const parseFunctionCallArgs = (value?: FunctionCall["args"]) => {
+const parseFunctionCallArgs = (value?: FunctionCall['args']) => {
   if (!value) {
     return {};
   }
 
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     try {
       const parsed = JSON.parse(value);
-      if (parsed && typeof parsed === "object") {
+      if (parsed && typeof parsed === 'object') {
         return parsed as Record<string, unknown>;
       }
       return {};
@@ -422,79 +421,81 @@ const buildReferenceContents = (data: SearchReferenceData) => {
     if (!items.length) return null;
 
     const trimmed = items.slice(0, MAX_ITEMS);
-    const summary = trimmed.map((item) => `- ${item}`).join("\n");
+    const summary = trimmed.map((item) => `- ${item}`).join('\n');
     const extra =
       items.length > trimmed.length
         ? `\n- ...and ${items.length - trimmed.length} more`
-        : "";
+        : '';
 
     return {
-      role: "user" as const,
-      parts: [{ text: `${label} (${items.length}):\n${summary}${extra}` }],
+      role: 'user' as const,
+      parts: [{ text: `${label} (${items.length}):\n${summary}${extra}`, }],
     };
   };
 
   return [
-    formatList("Available amenities", data.amenities),
-    formatList("Regions with spaces", data.regions),
-    formatList("Cities with spaces", data.cities),
-    formatList("Barangays with spaces", data.barangays),
-  ].filter(Boolean) as Array<{ role: "user"; parts: [{ text: string }] }>;
+    formatList('Available amenities', data.amenities),
+    formatList('Regions with spaces', data.regions),
+    formatList('Cities with spaces', data.cities),
+    formatList('Barangays with spaces', data.barangays)
+  ].filter(Boolean) as Array<{ role: 'user'; parts: [{ text: string }] }>;
 };
 
 export async function POST(request: NextRequest) {
   try {
     const jsonBody = await request.json().catch(() => null);
     const rawText =
-      jsonBody === null ? await request.text().catch(() => "") : "";
-    const queryFromSearch = request.nextUrl.searchParams.get("q");
+      jsonBody === null ? await request.text().catch(() => '') : '';
+    const queryFromSearch = request.nextUrl.searchParams.get('q');
 
     const queryCandidate =
-      typeof jsonBody === "string"
+      typeof jsonBody === 'string'
         ? jsonBody
-        : typeof jsonBody?.prompt === "string"
+        : typeof jsonBody?.prompt === 'string'
           ? jsonBody.prompt
-          : typeof jsonBody?.query === "string"
+          : typeof jsonBody?.query === 'string'
             ? jsonBody.query
             : rawText || queryFromSearch || undefined;
 
     const payload =
-      typeof jsonBody === "object" && jsonBody !== null ? jsonBody : {};
+      typeof jsonBody === 'object' && jsonBody !== null ? jsonBody : {};
 
     const parsed = requestSchema.parse({
       query:
-        typeof queryCandidate === "string" && queryCandidate.trim().length > 0
+        typeof queryCandidate === 'string' && queryCandidate.trim().length > 0
           ? queryCandidate
           : undefined,
       messages: Array.isArray(jsonBody?.messages)
         ? jsonBody.messages
         : undefined,
       user_id:
-        typeof payload.user_id === "string" ? payload.user_id : undefined,
+        typeof payload.user_id === 'string' ? payload.user_id : undefined,
       location: payload.location,
     });
 
-    const { messages, query, user_id, location } = parsed;
+    const {
+ messages, query, user_id, location, 
+} = parsed;
     const trimmedQuery = query?.trim();
 
     const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: "AI search is unavailable. Missing API key." },
-        { status: 500 },
+        { error: 'AI search is unavailable. Missing API key.', },
+        { status: 500, }
       );
     }
 
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey, });
     const conversation =
       messages && messages.length
         ? messages
         : trimmedQuery
           ? [
               {
-                role: "user",
+                role: 'user',
                 content: trimmedQuery,
-              },
+              }
             ]
           : [];
 
@@ -504,25 +505,23 @@ export async function POST(request: NextRequest) {
     const referenceContents = buildReferenceContents(referenceData);
     const toolConfig = {
       systemInstruction: searchAgentSystemPromptTemplate,
-      toolConfig: {
-        functionCallingConfig: { mode: FunctionCallingConfigMode.AUTO },
-      },
+      toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.AUTO, }, },
       tools: [
         {
           functionDeclarations: [
             getUserLocationFunctionDeclaration,
             ...referenceDataFunctionDeclarations,
             findSpacesFunctionDeclaration,
-            keywordSearchFunctionDeclaration,
+            keywordSearchFunctionDeclaration
           ],
-        },
+        }
       ],
     };
 
     const historyContents = [
       ...contextContents,
       ...referenceContents,
-      ...conversationContents,
+      ...conversationContents
     ];
 
     let finalText: string | null = null;
@@ -532,7 +531,7 @@ export async function POST(request: NextRequest) {
     const MAX_ATTEMPTS = 5;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
       const response = await ai.models.generateContent({
-        model: "gemini-3-pro-preview",
+        model: 'gemini-3-pro-preview',
         contents: historyContents,
         config: toolConfig,
       });
@@ -542,16 +541,16 @@ export async function POST(request: NextRequest) {
 
       if (!functionCall) {
         finalText =
-          finalText ?? responseText ?? "Gemini did not provide a response.";
+          finalText ?? responseText ?? 'Gemini did not provide a response.';
         break;
       }
 
       const callArgs = parseFunctionCallArgs(functionCall.args);
       historyContents.push(
-        createFunctionCallContent(functionCall.name, functionCall.id, callArgs),
+        createFunctionCallContent(functionCall.name, functionCall.id, callArgs)
       );
 
-      if (functionCall.name === "get_user_location") {
+      if (functionCall.name === 'get_user_location') {
         const locationPayload = location
           ? {
               location: {
@@ -559,14 +558,14 @@ export async function POST(request: NextRequest) {
                 long: location.long,
               },
             }
-          : { error: "Location access was not granted." };
+          : { error: 'Location access was not granted.', };
 
         historyContents.push(
           createFunctionResponseContent(
             functionCall.name,
             functionCall.id,
-            locationPayload,
-          ),
+            locationPayload
+          )
         );
 
         continue;
@@ -580,18 +579,16 @@ export async function POST(request: NextRequest) {
             createFunctionResponseContent(functionCall.name, functionCall.id, {
               items,
               count: items.length,
-            }),
+            })
           );
         } catch (referenceToolError) {
           const message =
             referenceToolError instanceof Error
               ? referenceToolError.message
-              : "Unable to fetch reference data.";
-          console.error("Reference tool error", message);
+              : 'Unable to fetch reference data.';
+          console.error('Reference tool error', message);
           historyContents.push(
-            createFunctionResponseContent(functionCall.name, functionCall.id, {
-              error: message,
-            }),
+            createFunctionResponseContent(functionCall.name, functionCall.id, { error: message, })
           );
         }
 
@@ -609,16 +606,16 @@ export async function POST(request: NextRequest) {
           functionCall.name,
           callArgs,
           location,
-          user_id,
+          user_id
         );
       } catch (error) {
         if (error instanceof z.ZodError) {
           return NextResponse.json(
             {
-              error: "Unable to interpret the search parameters.",
+              error: 'Unable to interpret the search parameters.',
               issues: error.errors,
             },
-            { status: 400 },
+            { status: 400, }
           );
         }
         throw error;
@@ -631,24 +628,24 @@ export async function POST(request: NextRequest) {
         toolError =
           toolExecutionError instanceof Error
             ? toolExecutionError.message
-            : "Space search tool failed.";
-        console.error("Space agent error", toolError);
+            : 'Space search tool failed.';
+        console.error('Space agent error', toolError);
       }
 
       const toolResponsePayload = toolError
-        ? { error: toolError }
-        : { output: toolResult };
+        ? { error: toolError, }
+        : { output: toolResult, };
 
       historyContents.push(
         createFunctionResponseContent(
           functionCall.name,
           functionCall.id,
-          toolResponsePayload,
-        ),
+          toolResponsePayload
+        )
       );
 
       const finalResponse = await ai.models.generateContent({
-        model: "gemini-flash-latest",
+        model: 'gemini-flash-latest',
         contents: historyContents,
         config: toolConfig,
       });
@@ -657,12 +654,12 @@ export async function POST(request: NextRequest) {
         extractTextFromResponse(finalResponse) ??
         responseText ??
         toolError ??
-        "Gemini did not provide a response.";
+        'Gemini did not provide a response.';
 
       break;
     }
 
-    const reply = (finalText ?? "Gemini did not provide a response.").trim();
+    const reply = (finalText ?? 'Gemini did not provide a response.').trim();
 
     return NextResponse.json(
       {
@@ -670,43 +667,43 @@ export async function POST(request: NextRequest) {
         spaces: toolResult?.spaces ?? [],
         filters: toolResult?.filters,
       },
-      { status: 200 },
+      { status: 200, }
     );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         {
-          error: "Invalid request.",
+          error: 'Invalid request.',
           issues: error.errors,
         },
-        { status: 400 },
+        { status: 400, }
       );
     }
 
     if (error instanceof ApiError && error.status === 429) {
-      console.error("Gemini AI search rate limited", error.message);
+      console.error('Gemini AI search rate limited', error.message);
       return NextResponse.json(
         {
           error:
-            "UpSpace is handling a lot of requests right now. Please try again in a minute.",
+            'UpSpace is handling a lot of requests right now. Please try again in a minute.',
         },
-        { status: 429 },
+        { status: 429, }
       );
     }
 
     const message =
       error instanceof Error
         ? error.message
-        : typeof error === "string"
+        : typeof error === 'string'
           ? error
-          : "Unknown Gemini error";
-    console.error("Gemini AI search error", message);
+          : 'Unknown Gemini error';
+    console.error('Gemini AI search error', message);
     return NextResponse.json(
       {
-        error: "Gemini could not generate a response. Please try again.",
+        error: 'Gemini could not generate a response. Please try again.',
         detail: message,
       },
-      { status: 502 },
+      { status: 502, }
     );
   }
 }
