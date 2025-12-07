@@ -210,7 +210,10 @@ export function useAdminSpaceVisibilityMutation() {
       const response = await authFetch(`/api/v1/admin/spaces/${spaceId}/visibility`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', },
-        body: JSON.stringify({ action, reason, }),
+        body: JSON.stringify({
+          action,
+          reason,
+        }),
       });
 
       if (!response.ok) {

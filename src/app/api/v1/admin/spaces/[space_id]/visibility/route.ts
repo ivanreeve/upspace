@@ -51,7 +51,9 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     }
 
     const now = new Date();
-    const { action, reason, } = parsedBody.data;
+    const {
+ action, reason, 
+} = parsedBody.data;
 
     const updateData = action === 'hide'
       ? {

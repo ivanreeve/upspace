@@ -15,7 +15,12 @@ import { CardsGrid, SkeletonGrid, SpaceCard } from './Marketplace.Cards';
 import { MarketplaceErrorState } from './Marketplace.ErrorState';
 import { MarketplaceChrome } from './MarketplaceChrome';
 
-import { listSpaces, suggestSpaces, type Space, type SpaceSuggestion } from '@/lib/api/spaces';
+import {
+listSpaces,
+suggestSpaces,
+type Space,
+type SpaceSuggestion
+} from '@/lib/api/spaces';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import BackToTopButton from '@/components/ui/back-to-top';
 import { Badge } from '@/components/ui/badge';
@@ -746,7 +751,11 @@ type MarketplaceHeroProps = {
   onSearchOpen: () => void;
 };
 
-function MarketplaceHero({ stats, reviewLabel, onSearchOpen }: MarketplaceHeroProps) {
+function MarketplaceHero({
+  stats,
+  reviewLabel,
+  onSearchOpen,
+}: MarketplaceHeroProps) {
   return (
     <section className="overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-slate-950/90 via-slate-900/80 to-slate-900/60 p-6 shadow-[0_25px_45px_rgba(15,15,15,0.15)]">
       <div className="space-y-3 text-white">

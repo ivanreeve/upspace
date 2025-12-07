@@ -26,7 +26,13 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useAdminSpaceVisibilityMutation, useApproveVerificationMutation, useRejectVerificationMutation, type PendingVerification, type SpaceVisibilityPayload } from '@/hooks/api/useAdminVerifications';
+import {
+  useAdminSpaceVisibilityMutation,
+  useApproveVerificationMutation,
+  useRejectVerificationMutation,
+  type PendingVerification,
+  type SpaceVisibilityPayload
+} from '@/hooks/api/useAdminVerifications';
 import { useCachedAvatar } from '@/hooks/use-cached-avatar';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
@@ -131,7 +137,7 @@ export function VerificationDetailDialog({
     verification?.space.is_published,
     verification?.space.unpublished_at,
     verification?.space.unpublished_reason,
-    verification?.space.unpublished_by_admin,
+    verification?.space.unpublished_by_admin
   ]);
   const partnerAvatarUrl = useCachedAvatar(verification?.space.partner.avatar_url ?? null);
   const partnerInitials = getInitials(
@@ -172,6 +178,7 @@ export function VerificationDetailDialog({
         reason: reason || undefined,
       });
       updateSpaceVisibility(result);
+      setVisibilityReason('');
       toast.success('Space hidden from the marketplace.');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Unable to hide this space.');

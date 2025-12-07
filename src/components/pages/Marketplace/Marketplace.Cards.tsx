@@ -26,12 +26,12 @@ export function SkeletonGrid({ count = 12, }: { count?: number }) {
       { Array.from({ length: count, }).map((_, i) => (
         <Card
           key={ i }
-          className="w-full rounded-sm group flex flex-col overflow-hidden text-card-foreground border-none bg-transparent shadow-none py-0 !gap-3"
+          className="w-full rounded-md group flex flex-col overflow-hidden text-card-foreground border-none bg-transparent shadow-none py-0 !gap-3"
         >
-          <div className="relative aspect-[16/9] w-full overflow-hidden rounded-sm">
-            <Skeleton className="absolute inset-0 h-full w-full rounded-sm" />
+          <div className="relative aspect-[16/9] w-full overflow-hidden rounded-md">
+            <Skeleton className="absolute inset-0 h-full w-full rounded-md" />
             <Skeleton className="absolute right-3 top-3 h-9 w-9 rounded-full" />
-            <div className="pointer-events-none absolute inset-0 rounded-sm bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
+            <div className="pointer-events-none absolute inset-0 rounded-md bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
           </div>
           <CardContent className="flex flex-1 flex-col gap-2 p-0">
             <Skeleton className="h-5 w-3/4" />
@@ -119,18 +119,18 @@ export function SpaceCard({
   }, [isSaved, isSaving, onBookmarkChange, space.space_id]);
 
   return (
-    <Card className="w-full rounded-sm group flex flex-col overflow-hidden text-card-foreground border-none bg-transparent shadow-none py-0 !gap-3">
-      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-sm">
+    <Card className="w-full rounded-md group flex flex-col overflow-hidden text-card-foreground border-none bg-transparent shadow-none py-0 !gap-3">
+      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-md">
         { space.image_url ? (
           <Image
             src={ space.image_url }
             alt={ space.name }
             fill
             sizes="(min-width: 1280px) 20vw, (min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-            className="object-cover transition-transform duration-500 rounded-sm"
+            className="object-cover transition-transform duration-500 rounded-md"
           />
         ) : (
-          <div className="h-full w-full rounded-sm bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/20" />
+          <div className="h-full w-full rounded-md bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/20" />
         ) }
         { !isGuest && (
           <button
@@ -157,7 +157,7 @@ export function SpaceCard({
             <span className="sr-only">{ isSaved ? 'Remove from saved spaces' : 'Save this space' }</span>
           </button>
         ) }
-        <div className="pointer-events-none absolute inset-0 rounded-sm bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
+        <div className="pointer-events-none absolute inset-0 rounded-md bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
       </div>
 
       <CardContent className="flex flex-1 flex-col gap-1 p-0">

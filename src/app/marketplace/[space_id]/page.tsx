@@ -56,11 +56,17 @@ export default async function SpaceDetailPage({ params, }: Props) {
     : null;
 
   let space: Awaited<ReturnType<typeof getSpaceDetail>> = null;
+  let spaceLoadFailed = false;
 
   try {
     space = await getSpaceDetail(space_id, { bookmarkUserId: bookmarkUser?.user_id, });
   } catch (error) {
+    spaceLoadFailed = true;
     console.error('Failed to fetch marketplace space detail', error);
+  }
+
+  if (!space && !spaceLoadFailed) {
+    notFound();
   }
 
   if (!space) {

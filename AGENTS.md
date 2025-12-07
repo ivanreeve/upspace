@@ -28,6 +28,7 @@ PostgreSQL with required extensions:
 - **Security**: Keep flagging any new prisma.$queryRaw/$executeRaw usage during reviews; require Zod (or similar) validation before values reach the template literal so Prisma can continue to bind parameters safely.
 - **Raw SQL**: When adding raw SQL in the future, favor multi-line template strings over building SQL strings yourself, and document the validation steps so code reviewers can see why the query is safe.
 - **DialogTitle**: DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.
+- **Error Handling**: Always display meaningful error messages to users in the form of a sonner component.
 
 ### UI Development
 
