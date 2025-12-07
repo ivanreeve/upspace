@@ -83,7 +83,7 @@ export default function AmenitiesList({
 
       <div className="space-y-6">
         { features.length > 0 ? (
-          <ul className="grid gap-3.5 text-sm text-foreground/80">
+          <ul className="grid gap-3.5 text-sm">
             { features.map((feature) => (
               <li
                 key={ feature.name }
@@ -100,8 +100,8 @@ export default function AmenitiesList({
             const Icon = amenity.Icon;
             return (
               <li key={ amenity.id } className="flex items-center gap-3.5">
-                <Icon className="size-4 text-muted-foreground" aria-hidden="true" />
-                <span>{ amenity.name }</span>
+                <Icon className="size-4 text-foreground" aria-hidden="true" />
+                <span className="text-foreground">{ amenity.name }</span>
               </li>
             );
           }) }
@@ -109,7 +109,7 @@ export default function AmenitiesList({
 
         <Dialog>
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm" aria-label="Show all amenities">
+            <Button variant="outline" size="sm" aria-label="Show all amenities" className="hover:text-white hover:[&_svg]:text-white">
               Show all amenities
             </Button>
           </DialogTrigger>

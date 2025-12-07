@@ -106,7 +106,7 @@ function ReviewTagsSelector({
             onClick={ () => toggleTag(tag.value) }
             className={ cn(
               badgeVariants({ variant: isActive ? 'default' : 'outline', }),
-              'cursor-pointer select-none'
+              'cursor-pointer select-none', isActive && 'text-white'
             ) }
             aria-pressed={ isActive }
           >
@@ -130,7 +130,7 @@ function ReviewCard({ review, }: { review: SpaceReview }) {
             { review.reviewer.avatar ? (
               <AvatarImage src={ review.reviewer.avatar } alt={ review.reviewer.name } />
             ) : null }
-            <AvatarFallback>
+            <AvatarFallback className="text-white">
               { review.reviewer.name.charAt(0).toUpperCase() }
             </AvatarFallback>
           </Avatar>
@@ -348,7 +348,7 @@ export default function ReviewsSection({
           { canSubmitReview ? (
             <Dialog open={ isDialogOpen } onOpenChange={ handleDialogOpenChange }>
               <DialogTrigger asChild>
-                <Button type="button" variant="outline">
+                <Button type="button" variant="outline" className="hover:bg-accent hover:text-white transition-colors">
                   <RiEditBoxLine className="size-4" aria-hidden="true" />
                   Write a review
                 </Button>
