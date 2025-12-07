@@ -401,9 +401,7 @@ export function AiSearch() {
   const isThinking = aiSearchMutation.isPending;
   const isListening = voiceStatus === 'listening';
   const isVoiceActive = isListening;
-  const containerTopPadding = hasMessages
-    ? 'pt-0 sm:pt-0 md:pt-0'
-    : 'pt-8 sm:pt-12 md:pt-14';
+  const containerTopPadding = 'pt-0 sm:pt-0 md:pt-0';
   const bottomBarOffsets = React.useMemo<React.CSSProperties>(() => {
     if (isMobile) {
       return {
@@ -599,6 +597,92 @@ export function AiSearch() {
     startListening();
   };
 
+  const renderPromptForm = (placement: 'fixed' | 'inline') => {
+    const form = (
+      <form
+        onSubmit={ handleSubmit }
+        className={ cn(
+          'mx-auto flex w-full max-w-4xl flex-col gap-2 rounded-md border border-border/50 bg-background/95 p-2 shadow-2xl ring-1 ring-border/40 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:flex-row sm:items-center sm:gap-3',
+          placement === 'inline' && 'mt-6 bg-background/80'
+        ) }
+      >
+        <label htmlFor="ai-search-input" className="sr-only">
+          Ask anything about coworking spaces
+        </label>
+        <Input
+          id="ai-search-input"
+          value={ query }
+          onChange={ (event) => setQuery(event.target.value) }
+          placeholder="Ask Anything"
+          aria-label="AI search query"
+          disabled={ aiSearchMutation.isPending }
+          className="h-16 border-none bg-transparent text-sm focus-visible:ring-0 focus-visible:ring-offset-0 sm:h-12 sm:text-base"
+        />
+        <div className="flex items-center justify-end gap-2 sm:justify-end">
+          <Button
+            type="button"
+            aria-label="Use voice input"
+            aria-pressed={ isVoiceActive }
+            onClick={ handleVoiceButtonClick }
+            disabled={ !isVoiceSupported || aiSearchMutation.isPending }
+            className={ cn(
+              'relative h-10 w-10 rounded-full p-[2px] text-muted-foreground transition-shadow hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary',
+              isVoiceActive
+                ? 'bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400 shadow-[0_0_0_3px_rgba(34,211,238,0.35)]'
+                : 'bg-muted'
+            ) }
+          >
+            <span
+              className={ cn(
+                'flex h-full w-full items-center justify-center rounded-full bg-muted',
+                isVoiceActive && 'bg-background text-foreground'
+              ) }
+            >
+              <MicGradientIcon className={ cn(isVoiceActive && 'animate-pulse') } />
+              <span className="sr-only">
+                { isVoiceActive ? 'Stop voice input' : 'Start voice input' }
+              </span>
+            </span>
+          </Button>
+          <Button
+            type="submit"
+            size="icon"
+            aria-label={
+              aiSearchMutation.isPending ? 'Stop AI response' : 'Send AI search'
+            }
+            disabled={ !aiSearchMutation.isPending && query.trim().length === 0 }
+            className="dark:bg-cyan-400 text-background dark:hover:bg-cyan-300 bg-primary"
+          >
+            { aiSearchMutation.isPending ? (
+              <IoStop className="size-4 text-background" aria-hidden="true" />
+            ) : (
+              <FiSend className="size-4 text-background" aria-hidden="true" />
+            ) }
+          </Button>
+        </div>
+      </form>
+    );
+
+    return (
+      <div
+        className={
+          placement === 'fixed'
+            ? 'fixed inset-x-0 bottom-0 z-30 px-4'
+            : 'w-full max-w-4xl px-4'
+        }
+        style={ placement === 'fixed' ? bottomBarOffsets : undefined }
+      >
+        { form }
+        { voiceError && (
+          <p className="mt-1 text-center text-xs text-destructive">{ voiceError }</p>
+        ) }
+        { locationError && (
+          <p className="mt-1 text-center text-xs text-muted-foreground">{ locationError }</p>
+        ) }
+      </div>
+    );
+  };
+
   return (
     <div
       className={ cn(
@@ -608,10 +692,11 @@ export function AiSearch() {
       ) }
     >
       { !hasMessages && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
           <h1 className="greeting-appear text-3xl font-semibold leading-tight bg-gradient-to-t from-primary dark:from-gray-400 to-white bg-clip-text text-transparent sm:text-4xl md:text-6xl lg:text-7xl">
             Hi, { greetingName }
           </h1>
+          { renderPromptForm('inline') }
         </div>
       ) }
 
@@ -670,88 +755,9 @@ export function AiSearch() {
         ) }
       </div>
 
-      <BottomGradientOverlay className="z-20" />
+      { hasMessages && <BottomGradientOverlay className="z-20" /> }
 
-      <div
-        className="fixed inset-x-0 bottom-0 z-30 px-4"
-        style={ bottomBarOffsets }
-      >
-        <form
-          onSubmit={ handleSubmit }
-          className="mx-auto flex w-full max-w-4xl flex-col gap-2 rounded-md border border-border/50 bg-background/95 p-2 shadow-2xl ring-1 ring-border/40 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:flex-row sm:items-center sm:gap-3"
-        >
-          <label htmlFor="ai-search-input" className="sr-only">
-            Ask anything about coworking spaces
-          </label>
-          <Input
-            id="ai-search-input"
-            value={ query }
-            onChange={ (event) => setQuery(event.target.value) }
-            placeholder="Ask Anything"
-            aria-label="AI search query"
-            disabled={ aiSearchMutation.isPending }
-            className="h-16 border-none bg-transparent text-sm focus-visible:ring-0 focus-visible:ring-offset-0 sm:h-12 sm:text-base"
-          />
-          <div className="flex items-center justify-end gap-2 sm:justify-end">
-            <Button
-              type="button"
-              aria-label="Use voice input"
-              aria-pressed={ isVoiceActive }
-              onClick={ handleVoiceButtonClick }
-              disabled={ !isVoiceSupported || aiSearchMutation.isPending }
-              className={ cn(
-                'relative h-10 w-10 rounded-full p-[2px] text-muted-foreground transition-shadow hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary',
-                isVoiceActive
-                  ? 'bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400 shadow-[0_0_0_3px_rgba(34,211,238,0.35)]'
-                  : 'bg-muted'
-              ) }
-            >
-              <span
-                className={ cn(
-                  'flex h-full w-full items-center justify-center rounded-full bg-muted',
-                  isVoiceActive && 'bg-background text-foreground'
-                ) }
-              >
-                <MicGradientIcon
-                  className={ cn(isVoiceActive && 'animate-pulse') }
-                />
-                <span className="sr-only">
-                  { isVoiceActive ? 'Stop voice input' : 'Start voice input' }
-                </span>
-              </span>
-            </Button>
-            <Button
-              type="submit"
-              size="icon"
-              aria-label={
-                aiSearchMutation.isPending
-                  ? 'Stop AI response'
-                  : 'Send AI search'
-              }
-              disabled={
-                !aiSearchMutation.isPending && query.trim().length === 0
-              }
-              className="dark:bg-cyan-400 text-background dark:hover:bg-cyan-300 bg-primary"
-            >
-              { aiSearchMutation.isPending ? (
-                <IoStop className="size-4 text-background" aria-hidden="true" />
-              ) : (
-                <FiSend className="size-4 text-background" aria-hidden="true" />
-              ) }
-            </Button>
-          </div>
-        </form>
-        { voiceError && (
-          <p className="mt-1 text-center text-xs text-destructive">
-            { voiceError }
-          </p>
-        ) }
-        { locationError && (
-          <p className="mt-1 text-center text-xs text-muted-foreground">
-            { locationError }
-          </p>
-        ) }
-      </div>
+      { hasMessages && renderPromptForm('fixed') }
     </div>
   );
 }
