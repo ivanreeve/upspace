@@ -27,6 +27,7 @@ PostgreSQL with required extensions:
 - **Documentation**: Document all public APIs, including hooks, endpoints, and components through the scalar API spec.
 - **Security**: Keep flagging any new prisma.$queryRaw/$executeRaw usage during reviews; require Zod (or similar) validation before values reach the template literal so Prisma can continue to bind parameters safely.
 - **Raw SQL**: When adding raw SQL in the future, favor multi-line template strings over building SQL strings yourself, and document the validation steps so code reviewers can see why the query is safe.
+- **DialogTitle**: DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.
 
 ### UI Development
 
