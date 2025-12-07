@@ -50,9 +50,6 @@ export function VoiceSearchDialog({
   const silenceTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
-  const [displayError, setDisplayError] = React.useState<string | undefined>(
-    undefined
-  );
 
   const isListening = status === 'listening';
   const hasTranscript = Boolean(transcript.trim());
@@ -84,23 +81,13 @@ export function VoiceSearchDialog({
   }, [onStatusChange, status]);
 
   React.useEffect(() => {
-    if (!errorMessage) {
-      setDisplayError(undefined);
-      return;
-    }
+    if (!errorMessage) return;
 
-    if (errorMessage === 'not-allowed') {
-      setDisplayError(
-        'Microphone access was denied. Please allow microphone access in your browser settings to use voice search.'
-      );
-    } else if (errorMessage === 'microphone-not-found') {
-      setDisplayError(
-        'No microphone was detected. Please check your input device.'
-      );
-    } else {
-      setDisplayError(errorMessage);
-    }
+    const message =
+      getSpeechRecognitionErrorMessage(errorMessage) ??
+      'Voice recognition error occurred. Please try again.';
 
+    toast.error(message);
     onError?.(errorMessage);
   }, [errorMessage, onError]);
 
@@ -238,11 +225,6 @@ export function VoiceSearchDialog({
                 <p>{ placeholderMessage }</p>
               ) }
             </div>
-            { displayError && (
-              <p className="text-center text-xs text-destructive" role="status">
-                { displayError }
-              </p>
-            ) }
           </div>
 
           <div className="flex w-full items-center justify-center gap-2">
