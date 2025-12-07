@@ -320,12 +320,14 @@ const referenceDataToolDefinitions = [
     name: 'get_barangays',
     description: 'Returns the alphabetized list of barangays that currently have listed spaces.',
     fetcher: fetchBarangays,
-  },
+  }
 ] as const;
 
 type ReferenceDataToolName = (typeof referenceDataToolDefinitions)[number]['name'];
 
-const referenceDataFunctionDeclarations = referenceDataToolDefinitions.map(({ name, description }) => ({
+const referenceDataFunctionDeclarations = referenceDataToolDefinitions.map(({
+ name, description, 
+}) => ({
   name,
   description,
   parametersJsonSchema: {
@@ -458,7 +460,9 @@ export async function POST(request: NextRequest) {
       location: payload.location,
     });
 
-    const { messages, query, user_id, location } = parsed;
+    const {
+ messages, query, user_id, location, 
+} = parsed;
     const trimmedQuery = query?.trim();
 
     const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
@@ -478,7 +482,7 @@ export async function POST(request: NextRequest) {
             {
               role: 'user',
               content: trimmedQuery,
-            },
+            }
           ]
           : [];
 
@@ -569,9 +573,7 @@ export async function POST(request: NextRequest) {
               : 'Unable to fetch reference data.';
           console.error('Reference tool error', message);
           historyContents.push(
-            createFunctionResponseContent(functionCall.name, functionCall.id, {
-              error: message,
-            })
+            createFunctionResponseContent(functionCall.name, functionCall.id, { error: message, })
           );
         }
 
