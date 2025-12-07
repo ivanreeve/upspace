@@ -532,7 +532,7 @@ export async function POST(request: NextRequest) {
     const MAX_ATTEMPTS = 5;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
       const response = await ai.models.generateContent({
-        model: "gemini-3-pro",
+        model: "gemini-3-pro-preview",
         contents: historyContents,
         config: toolConfig,
       });
