@@ -315,6 +315,7 @@ export function SpacesPriceRulesPage() {
             variant="outline"
             onClick={ () => router.push('/spaces/pricing-rules/new') }
             disabled={ !selectedSpaceId }
+            className="hover:text-white"
           >
             <FiPlus className="size-4" aria-hidden="true" />
             New rule
