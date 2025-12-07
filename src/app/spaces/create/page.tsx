@@ -1201,11 +1201,12 @@ export default function SpaceCreateRoute() {
                             type="button"
                             variant="outline"
                             onClick={ () => featuredImageInputRef.current?.click() }
+                            className="hover:text-white"
                           >
                             { featuredImage ? 'Replace featured image' : 'Upload featured image' }
                           </Button>
                           { featuredImage && (
-                            <Button type="button" variant="ghost" onClick={ handleRemoveFeaturedImage }>
+                            <Button type="button" variant="ghost" onClick={ handleRemoveFeaturedImage }  className="hover:text-white">
                               Remove
                             </Button>
                           ) }
@@ -1250,6 +1251,7 @@ export default function SpaceCreateRoute() {
                                         type="button"
                                         variant="ghost"
                                         onClick={ () => handleRemoveCategory(category.id) }
+                                        className="hover:text-white"
                                       >
                                         <FiTrash className="mr-1 size-4" aria-hidden="true" />
                                         Remove
@@ -1313,6 +1315,7 @@ export default function SpaceCreateRoute() {
                                       variant="outline"
                                       onClick={ () => handleTriggerCategoryPicker(category.id) }
                                       disabled={ !canAddMore }
+                                      className="hover:text-white"
                                     >
                                       Upload photos
                                     </Button>
@@ -1325,7 +1328,7 @@ export default function SpaceCreateRoute() {
                               );
                             })
                           ) }
-                          <Button type="button" variant="outline" onClick={ handleAddCategory }>
+                          <Button type="button" variant="outline" onClick={ handleAddCategory } className="hover:text-white">
                             <FiPlus className="mr-2 size-4" aria-hidden="true" />
                             Add another category
                           </Button>
@@ -1388,6 +1391,7 @@ export default function SpaceCreateRoute() {
                         resetVerificationRequirements();
                         router.push('/spaces');
                       } }
+                      className="hover:text-white"
                     >
                       Cancel
                     </Button>
@@ -1396,6 +1400,7 @@ export default function SpaceCreateRoute() {
                       variant="secondary"
                       disabled={ isSubmitting }
                       onClick={ handleSaveDraft }
+                      className="bg-[#0A5057] text-white hover:bg-[#4a5f6b]"
                     >
                       <FiSave className="size-4" aria-hidden="true" />
                       Save as draft
@@ -1414,6 +1419,7 @@ export default function SpaceCreateRoute() {
                           type="button"
                           variant="outline"
                           onClick={ () => navigateToStep(1) }
+                          className="hover:text-white"
                         >
                           <FiArrowLeft className="size-4" aria-hidden="true" />
                           Back
@@ -1430,6 +1436,7 @@ export default function SpaceCreateRoute() {
                           type="button"
                           variant="outline"
                           onClick={ () => navigateToStep(2) }
+                          className="hover:text-white"
                         >
                           <FiArrowLeft className="size-4" aria-hidden="true" />
                           Back
@@ -1446,6 +1453,7 @@ export default function SpaceCreateRoute() {
                           type="button"
                           variant="outline"
                           onClick={ () => navigateToStep(3) }
+                          className="hover:text-white"
                         >
                           <FiArrowLeft className="size-4" aria-hidden="true" />
                           Back
@@ -1462,6 +1470,7 @@ export default function SpaceCreateRoute() {
                           type="button"
                           variant="outline"
                           onClick={ () => navigateToStep(4) }
+                          className="hover:text-white"
                         >
                           <FiArrowLeft className="size-4" aria-hidden="true" />
                           Back
@@ -1479,6 +1488,7 @@ export default function SpaceCreateRoute() {
                           variant="outline"
                           disabled={ isSubmitting }
                           onClick={ () => navigateToStep(5) }
+                          className="hover:text-white"
                         >
                           <FiArrowLeft className="size-4" aria-hidden="true" />
                           Back

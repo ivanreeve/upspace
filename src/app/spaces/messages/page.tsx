@@ -84,7 +84,7 @@ export default async function SpacesMessagesPage() {
             Customers will land here as soon as they send a message about your spaces.
             Keep your listings updated to spark new conversations.
           </p>
-          <Button asChild variant="secondary" className="mt-2">
+          <Button asChild variant="secondary" className="mt-2 text-white hover:bg-[#0A5057]">
             <Link href="/spaces">
               View your spaces
             </Link>
