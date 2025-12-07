@@ -44,72 +44,99 @@ const requestSchema = z
     'Provide a question or conversation to continue.'
   );
 
+const SPACE_SEARCH_FILTER_PROPERTIES = {
+  location: {
+    type: 'object',
+    properties: {
+      lat: {
+        type: 'number',
+        minimum: -90,
+        maximum: 90,
+      },
+      long: {
+        type: 'number',
+        minimum: -180,
+        maximum: 180,
+      },
+    },
+    required: ['lat', 'long'],
+  },
+  radius: {
+    type: 'number',
+    minimum: 0,
+    maximum: MAX_RADIUS_METERS,
+  },
+  amenities: {
+    type: 'array',
+    items: {
+      type: 'string',
+      minLength: 1,
+    },
+    maxItems: 10,
+  },
+  amenities_mode: {
+    type: 'string',
+    enum: ['any', 'all'],
+  },
+  amenities_negate: { type: 'boolean', },
+  min_price: {
+    type: 'number',
+    minimum: 0,
+  },
+  max_price: {
+    type: 'number',
+    minimum: 0,
+  },
+  min_rating: {
+    type: 'number',
+    minimum: 0,
+    maximum: 5,
+  },
+  max_rating: {
+    type: 'number',
+    minimum: 0,
+    maximum: 5,
+  },
+  sort_by: {
+    type: 'string',
+    enum: ['price', 'rating', 'distance', 'relevance'],
+  },
+  limit: {
+    type: 'integer',
+    minimum: 1,
+    maximum: 10,
+  },
+  include_pending: { type: 'boolean', },
+  user_id: {
+    type: 'string',
+    pattern: '^\\d+$',
+  },
+} as const;
+
 const FIND_SPACES_PARAMETERS_JSON_SCHEMA = {
   type: 'object',
   properties: {
     query: { type: 'string', },
-    location: {
-      type: 'object',
-      properties: {
-        lat: {
- type: 'number',
-minimum: -90,
-maximum: 90, 
-},
-        long: {
- type: 'number',
-minimum: -180,
-maximum: 180, 
-},
-      },
-      required: ['lat', 'long'],
-    },
-    radius: {
- type: 'number',
-minimum: 0,
-maximum: MAX_RADIUS_METERS, 
-},
-    amenities: {
+    ...SPACE_SEARCH_FILTER_PROPERTIES,
+  },
+  additionalProperties: false,
+} as const;
+
+const KEYWORD_SEARCH_PARAMETERS_JSON_SCHEMA = {
+  type: 'object',
+  properties: {
+    keywords: {
       type: 'array',
       items: {
- type: 'string',
-minLength: 1, 
-},
-      maxItems: 10,
+        type: 'string',
+        minLength: 1,
+      },
+      minItems: 1,
+      maxItems: 5,
     },
-    amenities_mode: {
-      type: 'string',
-      enum: ['any', 'all'],
-    },
-    amenities_negate: { type: 'boolean', },
-    min_price: {
- type: 'number',
-minimum: 0, 
-},
-    max_price: {
- type: 'number',
-minimum: 0, 
-},
-    min_rating: {
- type: 'number',
-minimum: 0,
-maximum: 5, 
-},
-    max_rating: {
- type: 'number',
-minimum: 0,
-maximum: 5, 
-},
-    sort_by: {
-      type: 'string',
-      enum: ['price', 'rating', 'distance', 'relevance'],
-    },
-    limit: {
- type: 'integer',
-minimum: 1,
-maximum: 10, 
-},
+    ...SPACE_SEARCH_FILTER_PROPERTIES,
   },
+  required: ['keywords'],
   additionalProperties: false,
 } as const;
 
@@ -120,43 +147,97 @@ const findSpacesFunctionDeclaration: FunctionDeclaration = {
   parametersJsonSchema: FIND_SPACES_PARAMETERS_JSON_SCHEMA,
 };
 
-const findSpacesToolInputSchema = z
-  .object({
-    query: z.string().trim().optional(),
-    location: coordinateSchema.optional(),
-    radius: z.coerce.number().min(0).max(MAX_RADIUS_METERS).optional(),
-    amenities: z.array(z.string().trim().min(1)).max(10).optional(),
-    amenities_mode: z.enum(['any', 'all']).optional(),
-    amenities_negate: z.boolean().optional(),
-    min_price: z.coerce.number().min(0).optional(),
-    max_price: z.coerce.number().min(0).optional(),
-    min_rating: z.coerce.number().min(0).max(5).optional(),
-    max_rating: z.coerce.number().min(0).max(5).optional(),
-    sort_by: z.enum(['price', 'rating', 'distance', 'relevance']).optional(),
-    limit: z.coerce.number().int().min(1).max(10).optional(),
-    include_pending: z.boolean().optional(),
-    user_id: z.string().regex(/^\d+$/).optional(),
-  })
-  .refine(
-    (value) =>
-      value.max_price === undefined ||
-      value.min_price === undefined ||
-      value.max_price >= value.min_price,
-    {
-      message: 'max_price must be greater than or equal to min_price.',
-      path: ['max_price'],
-    }
-  )
-  .refine(
-    (value) =>
-      value.max_rating === undefined ||
-      value.min_rating === undefined ||
-      value.max_rating >= value.min_rating,
-    {
-      message: 'max_rating must be greater than or equal to min_rating.',
-      path: ['max_rating'],
-    }
-  );
+const keywordSearchFunctionDeclaration: FunctionDeclaration = {
+  name: 'keyword_search',
+  description:
+    'Retrieve coworking spaces whose description or location fields mention specific keywords.',
+  parametersJsonSchema: KEYWORD_SEARCH_PARAMETERS_JSON_SCHEMA,
+};
+
+const spaceSearchFiltersBaseSchema = z.object({
+  location: coordinateSchema.optional(),
+  radius: z.coerce.number().min(0).max(MAX_RADIUS_METERS).optional(),
+  amenities: z.array(z.string().trim().min(1)).max(10).optional(),
+  amenities_mode: z.enum(['any', 'all']).optional(),
+  amenities_negate: z.boolean().optional(),
+  min_price: z.coerce.number().min(0).optional(),
+  max_price: z.coerce.number().min(0).optional(),
+  min_rating: z.coerce.number().min(0).max(5).optional(),
+  max_rating: z.coerce.number().min(0).max(5).optional(),
+  sort_by: z.enum(['price', 'rating', 'distance', 'relevance']).optional(),
+  limit: z.coerce.number().int().min(1).max(10).optional(),
+  include_pending: z.boolean().optional(),
+  user_id: z.string().regex(/^\d+$/).optional(),
+});
+
+// Apply shared range validations without blocking schema extension.
+const withRangeRefinements = <T extends z.ZodTypeAny>(schema: T) =>
+  schema
+    .refine(
+      (value) =>
+        value.max_price === undefined ||
+        value.min_price === undefined ||
+        value.max_price >= value.min_price,
+      {
+        message: 'max_price must be greater than or equal to min_price.',
+        path: ['max_price'],
+      }
+    )
+    .refine(
+      (value) =>
+        value.max_rating === undefined ||
+        value.min_rating === undefined ||
+        value.max_rating >= value.min_rating,
+      {
+        message: 'max_rating must be greater than or equal to min_rating.',
+        path: ['max_rating'],
+      }
+    );
+
+const spaceSearchFiltersSchema = withRangeRefinements(spaceSearchFiltersBaseSchema);
+
+const findSpacesToolInputSchema = withRangeRefinements(
+  spaceSearchFiltersBaseSchema.extend({ query: z.string().trim().optional(), })
+);
+
+const keywordSearchToolInputSchema = withRangeRefinements(
+  spaceSearchFiltersBaseSchema.extend({ keywords: z.array(z.string().trim().min(1)).min(1).max(5), })
+);
+
+const spaceSearchFunctionNames = ['find_spaces', 'keyword_search'] as const;
+type SpaceSearchFunctionName = (typeof spaceSearchFunctionNames)[number];
+
+const isSpaceSearchFunction = (name: string): name is SpaceSearchFunctionName =>
+  spaceSearchFunctionNames.includes(name as SpaceSearchFunctionName);
+
+const buildSpaceSearchToolInput = (
+  name: SpaceSearchFunctionName,
+  args: Record<string, unknown>,
+  fallbackLocation?: z.infer<typeof coordinateSchema>,
+  fallbackUserId?: string
+): FindSpacesToolInput => {
+  const normalizedArgs: Record<string, unknown> = {
+    ...args,
+    location: args.location ?? fallbackLocation ?? undefined,
+    user_id: args.user_id ?? fallbackUserId ?? undefined,
+  };
+
+  if (name === 'find_spaces') {
+    return findSpacesToolInputSchema.parse(normalizedArgs);
+  }
+
+  const keywordInput = keywordSearchToolInputSchema.parse(normalizedArgs);
+  const {
+    keywords,
+    ...sharedFilters
+  } = keywordInput;
+  const query = keywords.map((keyword) => keyword.trim()).join(' ');
+
+  return {
+    ...sharedFilters,
+    query,
+  };
+};
 
 type ConversationMessage = {
   role: 'user' | 'assistant';
@@ -325,14 +406,15 @@ content: trimmedQuery,
     const toolConfig = {
       toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.AUTO, }, },
       tools: [
-        {
-          functionDeclarations: [
-            getUserLocationFunctionDeclaration,
-            findSpacesFunctionDeclaration
-          ],
-        }
+    {
+      functionDeclarations: [
+        getUserLocationFunctionDeclaration,
+        findSpacesFunctionDeclaration,
+        keywordSearchFunctionDeclaration
       ],
-    };
+    }
+  ],
+};
 
     const historyContents = [...contextContents, ...conversationContents];
 
@@ -385,18 +467,19 @@ content: trimmedQuery,
         continue;
       }
 
-      if (functionCall.name !== 'find_spaces') {
+      if (!isSpaceSearchFunction(functionCall.name)) {
         finalText = responseText ?? finalText;
         break;
       }
 
       let validatedToolInput: FindSpacesToolInput;
       try {
-        validatedToolInput = findSpacesToolInputSchema.parse({
-          ...callArgs,
-          location: callArgs.location ?? location ?? undefined,
-          user_id: callArgs.user_id ?? user_id ?? undefined,
-        });
+        validatedToolInput = buildSpaceSearchToolInput(
+          functionCall.name,
+          callArgs,
+          location,
+          user_id
+        );
       } catch (error) {
         if (error instanceof z.ZodError) {
           return NextResponse.json(

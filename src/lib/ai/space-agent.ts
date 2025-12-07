@@ -18,8 +18,7 @@ type NormalizedLocation = {
   long: number;
 };
 
-export type FindSpacesToolInput = {
-  query?: string;
+export type SharedSpaceSearchFilters = {
   location?: NormalizedLocation;
   radius?: number;
   amenities?: string[];
@@ -33,6 +32,10 @@ export type FindSpacesToolInput = {
   limit?: number;
   include_pending?: boolean;
   user_id?: string;
+};
+
+export type FindSpacesToolInput = SharedSpaceSearchFilters & {
+  query?: string;
 };
 
 export type FindSpacesToolResult = {
