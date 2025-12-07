@@ -204,11 +204,11 @@ function MessageBubble({
         <div className="mt-3 w-full max-w-[720px]">
           { (message.spaceResults?.length ?? 0) > 1 ? (
             <div className="relative">
-              <div className="flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory scroll-pl-4">
+              <div className="flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory touch-pan-x">
                 { message.spaceResults!.map((space) => (
                   <div
                     key={ space.space_id }
-                    className="min-w-[260px] max-w-[320px] snap-start"
+                    className="min-w-[320px] max-w-[360px] snap-start"
                   >
                     <SpaceCard space={ space } />
                   </div>
