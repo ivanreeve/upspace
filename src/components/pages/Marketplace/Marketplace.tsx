@@ -11,7 +11,7 @@ FiX
 import { CgOptions } from 'react-icons/cg';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
-import { CardsGrid, SkeletonGrid, SpaceCard } from './Marketplace.Cards';
+import { CardsGrid, SkeletonGrid } from './Marketplace.Cards';
 import { MarketplaceErrorState } from './Marketplace.ErrorState';
 import { MarketplaceChrome } from './MarketplaceChrome';
 
@@ -124,12 +124,16 @@ const areFiltersEqual = (a: FiltersState, b: FiltersState) => {
 };
 const ORDERED_AMENITY_CATEGORIES = Object.keys(AMENITY_CATEGORY_DISPLAY_MAP);
 
+const CURATED_HIGHLIGHT_LIMIT = 10;
+const PAGINATED_PAGE_SIZE = 12;
+const LIST_QUERY_LIMIT = PAGINATED_PAGE_SIZE + CURATED_HIGHLIGHT_LIMIT * 2;
+
 const buildQueryParams = (filters: FiltersState) => {
   const amenities = normalizeAmenityValues(filters.amenities);
   const hasAmenities = amenities.length > 0;
 
   return {
-    limit: 24,
+    limit: LIST_QUERY_LIMIT,
     q: normalizeFilterValue(filters.q) || undefined,
     region: normalizeFilterValue(filters.region) || undefined,
     city: normalizeFilterValue(filters.city) || undefined,
@@ -139,6 +143,251 @@ const buildQueryParams = (filters: FiltersState) => {
     amenities_negate: hasAmenities ? filters.amenitiesNegate : undefined,
     include_pending: false,
   };
+};
+
+type LocationMatchResult = {
+  region?: string;
+  city?: string;
+  barangay?: string;
+};
+
+type CityIndexEntry = {
+  normalizedName: string;
+  regionName: string;
+  cityName: string;
+  cityCode: string;
+};
+
+const LOCATION_PREPOSITION_REGEX = /\b(?:in|at|near)\s+(.+)$/i;
+const LOCATION_BARANGAY_REGEX = /^(?:barangay|brgy)\b\.?\s*(.+)$/i;
+const LOCATION_SPLIT_REGEX = /[,;]+/;
+const LOCATION_DESCRIPTOR_REGEX =
+  /\b(?:city|municipality|mun|municipal|province|metro|region|barangay|brgy)\b/gi;
+
+const locationDataCache = {
+  regions: null as PhilippineRegionOption[] | null,
+  cities: new Map<string, PhilippineCityOption[]>(),
+  barangays: new Map<string, PhilippineBarangayOption[]>(),
+  cityIndex: null as CityIndexEntry[] | null,
+};
+
+const normalizeLocationName = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(LOCATION_DESCRIPTOR_REGEX, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const loadRegionsCached = async () => {
+  if (!locationDataCache.regions) {
+    locationDataCache.regions = await fetchPhilippineRegions();
+  }
+
+  return locationDataCache.regions;
+};
+
+const loadCitiesForRegionCached = async (regionCode: string) => {
+  if (!locationDataCache.cities.has(regionCode)) {
+    const cities = await fetchPhilippineCitiesByRegion(regionCode);
+    locationDataCache.cities.set(regionCode, cities);
+  }
+
+  return locationDataCache.cities.get(regionCode)!;
+};
+
+const loadBarangaysForCityCached = async (cityCode: string) => {
+  if (!locationDataCache.barangays.has(cityCode)) {
+    const barangays = await fetchPhilippineBarangaysByCity(cityCode);
+    locationDataCache.barangays.set(cityCode, barangays);
+  }
+
+  return locationDataCache.barangays.get(cityCode)!;
+};
+
+const ensureCityIndex = async (
+  regions: PhilippineRegionOption[]
+): Promise<CityIndexEntry[]> => {
+  if (locationDataCache.cityIndex) {
+    return locationDataCache.cityIndex;
+  }
+
+  const entries: CityIndexEntry[] = [];
+  for (const region of regions) {
+    const cities = dedupeAddressOptions(
+      await loadCitiesForRegionCached(region.code)
+    );
+
+    for (const city of cities) {
+      const normalized = normalizeLocationName(city.name);
+      if (!normalized) continue;
+
+      entries.push({
+        cityCode: city.code,
+        cityName: city.name,
+        normalizedName: normalized,
+        regionName: region.name,
+      });
+    }
+  }
+
+  locationDataCache.cityIndex = entries;
+  return entries;
+};
+
+const findCityMatchFromIndex = (
+  normalizedTarget: string,
+  entries: CityIndexEntry[]
+): CityIndexEntry | null => {
+  if (!normalizedTarget) {
+    return null;
+  }
+
+  for (const entry of entries) {
+    if (
+      entry.normalizedName === normalizedTarget ||
+      entry.normalizedName.includes(normalizedTarget) ||
+      normalizedTarget.includes(entry.normalizedName)
+    ) {
+      return entry;
+    }
+  }
+
+  return null;
+};
+
+const findRegionMatchFromSegments = (
+  segments: string[],
+  regions: PhilippineRegionOption[]
+): PhilippineRegionOption | null => {
+  for (const segment of segments) {
+    const normalizedSegment = normalizeLocationName(segment);
+    if (!normalizedSegment) continue;
+
+    for (const region of regions) {
+      const normalizedRegion = normalizeLocationName(region.name);
+      if (
+        normalizedRegion === normalizedSegment ||
+        normalizedRegion.includes(normalizedSegment) ||
+        normalizedSegment.includes(normalizedRegion)
+      ) {
+        return region;
+      }
+    }
+  }
+
+  return null;
+};
+
+const findBarangayMatch = async (
+  cityCode: string,
+  candidate?: string
+): Promise<PhilippineBarangayOption | null> => {
+  if (!cityCode || !candidate) {
+    return null;
+  }
+
+  const normalizedCandidate = normalizeLocationName(candidate);
+  if (!normalizedCandidate) {
+    return null;
+  }
+
+  const barangays = dedupeAddressOptions(
+    await loadBarangaysForCityCached(cityCode)
+  );
+
+  for (const barangay of barangays) {
+    const normalizedBarangay = normalizeLocationName(barangay.name);
+    if (
+      normalizedBarangay === normalizedCandidate ||
+      normalizedBarangay.includes(normalizedCandidate) ||
+      normalizedCandidate.includes(normalizedBarangay)
+    ) {
+      return barangay;
+    }
+  }
+
+  return null;
+};
+
+const resolveLocationFromQuery = async (
+  query: string
+): Promise<LocationMatchResult> => {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    return {};
+  }
+
+  const locationCandidate =
+    LOCATION_PREPOSITION_REGEX.exec(trimmed)?.[1] ?? trimmed;
+  const rawSegments = locationCandidate
+    .split(LOCATION_SPLIT_REGEX)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  if (!rawSegments.length) {
+    return {};
+  }
+
+  const locationSegments: string[] = [];
+  let barangayCandidate: string | undefined;
+  for (const segment of rawSegments) {
+    const barangayMatch = segment.match(LOCATION_BARANGAY_REGEX);
+    if (barangayMatch && barangayMatch[1]) {
+      barangayCandidate = barangayMatch[1].trim();
+      continue;
+    }
+
+    locationSegments.push(segment);
+  }
+
+  if (!locationSegments.length) {
+    locationSegments.push(locationCandidate.trim());
+  }
+
+  const regions = await loadRegionsCached();
+  const cityIndex = await ensureCityIndex(regions);
+
+  let cityMatch: CityIndexEntry | null = null;
+
+  for (const segment of locationSegments) {
+    const normalizedSegment = normalizeLocationName(segment);
+    cityMatch = findCityMatchFromIndex(normalizedSegment, cityIndex);
+    if (cityMatch) {
+      break;
+    }
+  }
+
+  if (!cityMatch) {
+    const normalizedFallback = normalizeLocationName(locationCandidate);
+    cityMatch = findCityMatchFromIndex(normalizedFallback, cityIndex);
+  }
+
+  if (cityMatch) {
+    const result: LocationMatchResult = {
+      region: cityMatch.regionName,
+      city: cityMatch.cityName,
+    };
+
+    const barangayMatch = await findBarangayMatch(
+      cityMatch.cityCode,
+      barangayCandidate
+    );
+    if (barangayMatch) {
+      result.barangay = barangayMatch.name;
+    }
+
+    return result;
+  }
+
+  const regionMatch =
+    findRegionMatchFromSegments(locationSegments, regions) ??
+    findRegionMatchFromSegments([locationCandidate], regions);
+  if (regionMatch) {
+    return { region: regionMatch.name, };
+  }
+
+  return {};
 };
 
 function useDebouncedValue<T>(value: T, delayMs: number) {
@@ -162,6 +411,7 @@ export default function Marketplace({ initialSidebarOpen, }: MarketplaceProps) {
     React.useState<FiltersState>(DEFAULT_FILTERS);
   const [searchValue, setSearchValue] = React.useState('');
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
+  const [currentPage, setCurrentPage] = React.useState(1);
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -207,13 +457,35 @@ export default function Marketplace({ initialSidebarOpen, }: MarketplaceProps) {
   );
 
   const handleSearchSubmit = React.useCallback(
-    (value?: string) => {
+    async (value?: string) => {
       const nextValue = typeof value === 'string' ? value : searchValue;
       const normalized = normalizeFilterValue(nextValue);
-      const nextFilters = {
+      let locationOverrides: LocationMatchResult = {};
+
+      if (normalized) {
+        try {
+          locationOverrides = await resolveLocationFromQuery(normalized);
+        } catch {
+          // Location resolution failed, fall back to user-provided filters.
+        }
+      }
+
+      const nextFilters: FiltersState = {
         ...pendingFilters,
         q: normalized,
+        region: locationOverrides.region ?? pendingFilters.region,
+        city: locationOverrides.city ?? pendingFilters.city,
+        barangay: locationOverrides.barangay ?? pendingFilters.barangay,
       };
+
+      if (locationOverrides.region) {
+        nextFilters.city = locationOverrides.city ?? '';
+        nextFilters.barangay = locationOverrides.barangay ?? '';
+      }
+
+      if (locationOverrides.city && !locationOverrides.barangay) {
+        nextFilters.barangay = '';
+      }
 
       setSearchValue(normalized);
       setPendingFilters((prev) =>
@@ -238,6 +510,10 @@ export default function Marketplace({ initialSidebarOpen, }: MarketplaceProps) {
     const nextUrl = `${pathname}${searchString ? `?${searchString}` : ''}`;
     router.replace(nextUrl, { scroll: false, });
   }, [openSearchModal, pathname, router, searchParams]);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
 
   const {
  data, isLoading, isFetching, error, refetch, 
@@ -309,18 +585,64 @@ export default function Marketplace({ initialSidebarOpen, }: MarketplaceProps) {
       });
   }, [spaces]);
 
-  const carouselLimit = 8;
-  const topRatedSpaces = ratingSortedSpaces.slice(0, carouselLimit);
-  const nearYouSpaces = nearYouSortedSpaces.slice(0, carouselLimit);
+  const topRatedSpaces = ratingSortedSpaces.slice(0, CURATED_HIGHLIGHT_LIMIT);
+  const nearYouSpaces = nearYouSortedSpaces.slice(0, CURATED_HIGHLIGHT_LIMIT);
+
+  const curatedSpaceIds = React.useMemo(() => {
+    const ids = new Set<string>();
+    topRatedSpaces.forEach((space) => ids.add(space.space_id));
+    nearYouSpaces.forEach((space) => ids.add(space.space_id));
+    return ids;
+  }, [topRatedSpaces, nearYouSpaces]);
+
+  const restSpaces = React.useMemo(() => {
+    return spaces.filter((space) => !curatedSpaceIds.has(space.space_id));
+  }, [spaces, curatedSpaceIds]);
+
+  const totalRestPages = Math.max(1, Math.ceil(restSpaces.length / PAGINATED_PAGE_SIZE));
+
+  React.useEffect(() => {
+    if (currentPage > totalRestPages) {
+      setCurrentPage(totalRestPages);
+    }
+  }, [currentPage, totalRestPages]);
+
+  const paginatedRestSpaces = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * PAGINATED_PAGE_SIZE;
+    return restSpaces.slice(startIndex, startIndex + PAGINATED_PAGE_SIZE);
+  }, [restSpaces, currentPage]);
+
+  const paginationRange = React.useMemo(() => {
+    const maxButtons = 5;
+    if (totalRestPages <= 1) {
+      return [1];
+    }
+
+    let start = Math.max(1, currentPage - 2);
+    const end = Math.min(totalRestPages, start + maxButtons - 1);
+
+    if (end - start + 1 < maxButtons) {
+      start = Math.max(1, end - maxButtons + 1);
+    }
+
+    const range: number[] = [];
+    for (let page = start; page <= end; page += 1) {
+      range.push(page);
+    }
+
+    return range;
+  }, [currentPage, totalRestPages]);
+
+  const shouldShowPagination = restSpaces.length > PAGINATED_PAGE_SIZE;
 
   const curatedCarousels = (
     <div className="space-y-8">
-      <MarketplaceCarouselSection
+      <MarketplaceHighlightsSection
         title="Near you"
         items={ nearYouSpaces }
         emptyMessage="No nearby spaces yet. Try refining your region or city to surface curated matches."
       />
-      <MarketplaceCarouselSection
+      <MarketplaceHighlightsSection
         title="Top rated"
         items={ topRatedSpaces }
         emptyMessage="Highly rated workspaces are still coming. Check back in a moment for fresh listings."
@@ -351,7 +673,57 @@ export default function Marketplace({ initialSidebarOpen, }: MarketplaceProps) {
               Showing results for &quot;{ filters.q }&quot;
             </p>
           ) }
-          { isLoading ? <SkeletonGrid /> : <CardsGrid items={ spaces } /> }
+          { isLoading ? (
+            <SkeletonGrid />
+          ) : (
+            <CardsGrid items={ paginatedRestSpaces } />
+          ) }
+          { !isLoading && shouldShowPagination && (
+            <div className="flex flex-col items-stretch gap-2">
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={ () => {
+                    setCurrentPage((prev) => Math.max(1, prev - 1));
+                  } }
+                  disabled={ currentPage === 1 }
+                >
+                  Previous
+                </Button>
+                <div className="flex flex-wrap items-center gap-1">
+                  { paginationRange.map((page) => (
+                    <Button
+                      key={ page }
+                      type="button"
+                      variant={ page === currentPage ? 'secondary' : 'outline' }
+                      size="sm"
+                      onClick={ () => {
+                        setCurrentPage(page);
+                      } }
+                    >
+                      { page }
+                    </Button>
+                  )) }
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={ () => {
+                    setCurrentPage((prev) => Math.min(totalRestPages, prev + 1));
+                  } }
+                  disabled={ currentPage === totalRestPages }
+                >
+                  Next
+                </Button>
+              </div>
+              <span className="text-xs text-muted-foreground text-right">
+                Page { currentPage } of { totalRestPages }
+              </span>
+            </div>
+          ) }
           { isFetching && !isLoading && (
             <p className="text-xs text-muted-foreground">
               Refreshing latest availability…
@@ -405,7 +777,7 @@ type MarketplaceSearchDialogProps = {
   filters: FiltersState;
   onOpenChange: (open: boolean) => void;
   onSearchChange: (value: string) => void;
-  onSearchSubmit: (value?: string) => void;
+  onSearchSubmit: (value?: string) => Promise<void>;
   onFiltersApply: (updates: Partial<FiltersState>) => void;
 };
 
@@ -431,7 +803,7 @@ function MarketplaceSearchDialog({
   const handleVoiceSearchSubmit = React.useCallback(
     (value: string) => {
       onSearchChange(value);
-      onSearchSubmit(value);
+      void onSearchSubmit(value);
       setIsVoiceSearchOpen(false);
     },
     [onSearchChange, onSearchSubmit]
@@ -499,7 +871,7 @@ function MarketplaceSearchDialog({
   const handleSuggestionSelect = React.useCallback(
     (suggestion: SpaceSuggestion) => {
       onSearchChange(suggestion.name);
-      onSearchSubmit(suggestion.name);
+      void onSearchSubmit(suggestion.name);
       router.push(`/marketplace/${suggestion.space_id}`);
     },
     [onSearchChange, onSearchSubmit, router]
@@ -526,7 +898,7 @@ function MarketplaceSearchDialog({
           onKeyDown={ (event) => {
             if (event.key === 'Enter') {
               event.preventDefault();
-              onSearchSubmit();
+              void onSearchSubmit();
             }
           } }
           endAdornment={ <VoiceSearchButton onClick={ handleVoiceButtonClick } /> }
@@ -600,7 +972,7 @@ function MarketplaceSearchDialog({
               value={
                 trimmedValue ? `search ${trimmedValue}` : 'search marketplace'
               }
-              onSelect={ () => onSearchSubmit() }
+              onSelect={ () => void onSearchSubmit() }
               className="group hover:text-white data-[selected=true]:text-white"
             >
               <FiSearch className="size-4" aria-hidden="true" />
@@ -617,7 +989,7 @@ function MarketplaceSearchDialog({
             { hasActiveSearch && (
               <CommandItem
                 value="clear search"
-                onSelect={ () => onSearchSubmit('') }
+                onSelect={ () => void onSearchSubmit('') }
                 className="group hover:text-white data-[selected=true]:text-white"
               >
                 <FiX className="size-4" aria-hidden="true" />
@@ -743,26 +1115,21 @@ function MarketplaceSearchDialog({
   );
 }
 
-type MarketplaceCarouselSectionProps = {
+type MarketplaceHighlightsSectionProps = {
   title: string;
-  description: string;
   items: Space[];
   emptyMessage: string;
 };
 
-function MarketplaceCarouselSection({
+function MarketplaceHighlightsSection({
   title,
-  description,
   items,
   emptyMessage,
-}: MarketplaceCarouselSectionProps) {
+}: MarketplaceHighlightsSectionProps) {
   return (
-    <section className="space-y-3">
+    <section className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-1">
-          <h3 className="text-2xl font-semibold text-foreground">{ title }</h3>
-          <p className="text-sm text-muted-foreground">{ description }</p>
-        </div>
+        <h3 className="text-2xl font-semibold text-foreground">{ title }</h3>
         { items.length > 0 && (
           <Badge
             variant="outline"
@@ -772,29 +1139,13 @@ function MarketplaceCarouselSection({
           </Badge>
         ) }
       </div>
-      <div className="relative overflow-hidden rounded-none bg-card/80]">
-        <div
-          className="flex gap-4 overflow-x-auto px-4 py-3 pb-5"
-          role="list"
-          aria-label={ title }
-        >
-          { items.length === 0 ? (
-            <div className="flex min-h-[160px] w-full items-center justify-center text-sm text-muted-foreground">
-              { emptyMessage }
-            </div>
-          ) : (
-            items.map((space) => (
-              <div
-                key={ space.space_id }
-                className="min-w-[260px] max-w-[260px]"
-                role="listitem"
-              >
-                <SpaceCard space={ space } />
-              </div>
-            ))
-          ) }
+      { items.length === 0 ? (
+        <div className="rounded-md border border-border/50 bg-background/70 px-4 py-6 text-sm text-muted-foreground">
+          { emptyMessage }
         </div>
-      </div>
+      ) : (
+        <CardsGrid items={ items } />
+      ) }
     </section>
   );
 }

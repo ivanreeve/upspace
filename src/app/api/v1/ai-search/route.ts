@@ -10,7 +10,14 @@ import { z } from 'zod';
 
 import { findSpacesAgent, MAX_RADIUS_METERS } from '@/lib/ai/space-agent';
 import type { FindSpacesToolInput, FindSpacesToolResult } from '@/lib/ai/space-agent';
-import { fetchSearchReferenceData, type SearchReferenceData } from '@/lib/ai/search-reference-data';
+import {
+  fetchSearchReferenceData,
+  fetchAmenityChoices,
+  fetchRegions,
+  fetchCities,
+  fetchBarangays,
+  type SearchReferenceData
+} from '@/lib/ai/search-reference-data';
 import { searchAgentSystemPromptTemplate } from '@/lib/search-agent';
 
 export const runtime = 'nodejs';
@@ -293,6 +300,53 @@ const getUserLocationFunctionDeclaration: FunctionDeclaration = {
   },
 };
 
+const referenceDataToolDefinitions = [
+  {
+    name: 'get_amenity_choices',
+    description: 'Returns the normalized list of amenity choices available in the marketplace.',
+    fetcher: fetchAmenityChoices,
+  },
+  {
+    name: 'get_regions',
+    description: 'Returns the alphabetized list of regions that currently have listed spaces.',
+    fetcher: fetchRegions,
+  },
+  {
+    name: 'get_cities',
+    description: 'Returns the alphabetized list of cities that currently have listed spaces.',
+    fetcher: fetchCities,
+  },
+  {
+    name: 'get_barangays',
+    description: 'Returns the alphabetized list of barangays that currently have listed spaces.',
+    fetcher: fetchBarangays,
+  },
+] as const;
+
+type ReferenceDataToolName = (typeof referenceDataToolDefinitions)[number]['name'];
+
+const referenceDataFunctionDeclarations = referenceDataToolDefinitions.map(({ name, description }) => ({
+  name,
+  description,
+  parametersJsonSchema: {
+    type: 'object',
+    properties: {},
+    additionalProperties: false,
+  },
+})) satisfies FunctionDeclaration[];
+
+const referenceToolFetchers = referenceDataToolDefinitions.reduce(
+  (acc, definition) => {
+    acc[definition.name] = definition.fetcher;
+    return acc;
+  },
+  {} as Record<ReferenceDataToolName, () => Promise<string[]>>
+);
+
+const referenceDataToolSet = new Set(referenceDataToolDefinitions.map((tool) => tool.name));
+const isReferenceDataTool = (name: string): name is ReferenceDataToolName =>
+  referenceDataToolSet.has(name as ReferenceDataToolName);
+
 const createFunctionCallContent = (
   name: string,
   id?: string,
@@ -360,9 +414,7 @@ const buildReferenceContents = (data: SearchReferenceData) => {
     return {
       role: 'user' as const,
       parts: [
-        {
-          text: `${label} (${items.length}):\n${summary}${extra}`,
-        }
+        { text: `${label} (${items.length}):\n${summary}${extra}`, }
       ],
     };
   };
@@ -371,7 +423,7 @@ const buildReferenceContents = (data: SearchReferenceData) => {
     formatList('Available amenities', data.amenities),
     formatList('Regions with spaces', data.regions),
     formatList('Cities with spaces', data.cities),
-    formatList('Barangays with spaces', data.barangays),
+    formatList('Barangays with spaces', data.barangays)
   ].filter(Boolean) as Array<{ role: 'user'; parts: [{ text: string }] }>;
 };
 
@@ -406,9 +458,7 @@ export async function POST(request: NextRequest) {
       location: payload.location,
     });
 
-    const {
- messages, query, user_id, location, 
-} = parsed;
+    const { messages, query, user_id, location } = parsed;
     const trimmedQuery = query?.trim();
 
     const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
@@ -424,10 +474,12 @@ export async function POST(request: NextRequest) {
       messages && messages.length
         ? messages
         : trimmedQuery
-          ? [{
- role: 'user',
-content: trimmedQuery, 
-}]
+          ? [
+            {
+              role: 'user',
+              content: trimmedQuery,
+            },
+          ]
           : [];
 
     const conversationContents = buildConversationContents(conversation);
@@ -441,6 +493,7 @@ content: trimmedQuery,
         {
           functionDeclarations: [
             getUserLocationFunctionDeclaration,
+            ...referenceDataFunctionDeclarations,
             findSpacesFunctionDeclaration,
             keywordSearchFunctionDeclaration
           ],
@@ -495,6 +548,32 @@ content: trimmedQuery,
             locationPayload
           )
         );
+
+        continue;
+      }
+
+      if (isReferenceDataTool(functionCall.name)) {
+        try {
+          const items = await referenceToolFetchers[functionCall.name]();
+
+          historyContents.push(
+            createFunctionResponseContent(functionCall.name, functionCall.id, {
+              items,
+              count: items.length,
+            })
+          );
+        } catch (referenceToolError) {
+          const message =
+            referenceToolError instanceof Error
+              ? referenceToolError.message
+              : 'Unable to fetch reference data.';
+          console.error('Reference tool error', message);
+          historyContents.push(
+            createFunctionResponseContent(functionCall.name, functionCall.id, {
+              error: message,
+            })
+          );
+        }
 
         continue;
       }

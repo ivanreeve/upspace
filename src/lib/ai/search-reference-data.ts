@@ -16,7 +16,7 @@ const normalizeStringList = (values: (string | null | undefined)[]) =>
     )
   ).sort((a, b) => a.localeCompare(b));
 
-const fetchDistinctRegions = async () => {
+export const fetchRegions = async () => {
   const rows = await prisma.space.findMany({
     distinct: ['region'],
     orderBy: { region: 'asc', },
@@ -26,7 +26,7 @@ const fetchDistinctRegions = async () => {
   return normalizeStringList(rows.map((row) => row.region));
 };
 
-const fetchDistinctCities = async () => {
+export const fetchCities = async () => {
   const rows = await prisma.space.findMany({
     distinct: ['city'],
     orderBy: { city: 'asc', },
@@ -36,7 +36,7 @@ const fetchDistinctCities = async () => {
   return normalizeStringList(rows.map((row) => row.city));
 };
 
-const fetchDistinctBarangays = async () => {
+export const fetchBarangays = async () => {
   const rows = await prisma.space.findMany({
     distinct: ['barangay'],
     orderBy: { barangay: 'asc', },
@@ -46,7 +46,7 @@ const fetchDistinctBarangays = async () => {
   return normalizeStringList(rows.map((row) => row.barangay));
 };
 
-const fetchAmenityNames = async () => {
+export const fetchAmenityChoices = async () => {
   const rows = await prisma.amenity_choice.findMany({
     orderBy: { name: 'asc', },
     select: { name: true, },
@@ -57,10 +57,10 @@ const fetchAmenityNames = async () => {
 
 export async function fetchSearchReferenceData(): Promise<SearchReferenceData> {
   const [amenities, regions, cities, barangays] = await Promise.all([
-    fetchAmenityNames(),
-    fetchDistinctRegions(),
-    fetchDistinctCities(),
-    fetchDistinctBarangays(),
+    fetchAmenityChoices(),
+    fetchRegions(),
+    fetchCities(),
+    fetchBarangays()
   ]);
 
   return {
