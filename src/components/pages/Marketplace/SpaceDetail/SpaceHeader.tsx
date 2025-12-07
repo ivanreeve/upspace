@@ -193,7 +193,7 @@ icon: FaTelegramPlane,
               <button
                 type="button"
                 aria-haspopup="dialog"
-                className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium cursor-pointer transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium cursor-pointer transition hover:bg-accent hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed"
               >
                 <FiShare2 className="size-4" aria-hidden="true" />
                 Share
@@ -214,7 +214,7 @@ icon: FaTelegramPlane,
                         key={ option.label }
                         type="button"
                         variant="outline"
-                        className="justify-start"
+                        className="justify-start hover:!text-white hover:[&_svg]:!text-white"
                         onClick={ () => openShareLink(option.href) }
                         disabled={ !shareUrl }
                         aria-label={ `Share on ${option.label}` }
@@ -245,7 +245,7 @@ icon: FaTelegramPlane,
                       onClick={ handleCopyLink }
                       disabled={ !shareUrl || isCopying }
                       aria-busy={ isCopying }
-                      className="sm:w-auto"
+                      className="sm:w-auto hover:!text-white hover:[&_svg]:!text-white"
                     >
                       { isCopying ? (
                         <>
@@ -267,26 +267,26 @@ icon: FaTelegramPlane,
           { !isGuest && (
             <button
               type="button"
-              onClick={ handleSave }
-              disabled={ isSaving }
-              aria-busy={ isSaving }
-              aria-pressed={ isSaved }
-              className={ cn(
-                'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed',
-                isSaved
-                  ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100'
-                  : 'border-border hover:bg-accent'
-              ) }
-            >
-              { isSaving ? (
-                <CgSpinner className="size-4 animate-spin" aria-hidden="true" />
-              ) : isSaved ? (
-                <FaHeart className="size-4 text-rose-600 fill-rose-600" aria-hidden="true" />
-              ) : (
-                <FaRegHeart className="size-4" aria-hidden="true" />
-              ) }
-              { isSaving ? (isSaved ? 'Removing…' : 'Saving…') : isSaved ? 'Saved' : 'Save' }
-            </button>
+            onClick={ handleSave }
+            disabled={ isSaving }
+            aria-busy={ isSaving }
+            aria-pressed={ isSaved }
+            className={ cn(
+              'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed',
+              isSaved
+                ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100'
+                : 'border-border hover:bg-accent hover:text-white hover:[&_svg]:text-white'
+            ) }
+          >
+            { isSaving ? (
+              <CgSpinner className="size-4 animate-spin" aria-hidden="true" />
+            ) : isSaved ? (
+              <FaHeart className="size-4 text-rose-600 fill-rose-600" aria-hidden="true" />
+            ) : (
+              <FaRegHeart className="size-4" aria-hidden="true" />
+            ) }
+            { isSaving ? (isSaved ? 'Removing…' : 'Saving…') : isSaved ? 'Saved' : 'Save' }
+          </button>
           ) }
         </div>
       </div>

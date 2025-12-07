@@ -601,7 +601,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                           onClick={ () => setIsDescriptionExpanded(true) }
                           aria-expanded={ false }
                           aria-controls={ descriptionViewportId }
-                          className="flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+                          className="flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent hover:text-white"
                         >
                           Show more
                           <FiChevronDown className="size-4" aria-hidden="true" />
@@ -617,7 +617,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                       onClick={ () => setIsDescriptionExpanded(false) }
                       aria-expanded={ true }
                       aria-controls={ descriptionViewportId }
-                      className="flex items-center gap-2 rounded-lg border border-border bg-background px-6 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+                      className="flex items-center gap-2 rounded-lg border border-border bg-background px-6 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent hover:text-white"
                     >
                       Show less
                       <FiChevronUp className="size-4" aria-hidden="true" />
@@ -632,7 +632,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                       type="button"
                       onClick={ scrollToBottomOfDescription }
                       aria-label="Scroll to bottom of description"
-                      className="flex items-center justify-center rounded-full border border-border bg-background p-3 text-foreground shadow-lg transition-all hover:bg-accent hover:text-accent-foreground hover:scale-110"
+                      className="flex items-center justify-center rounded-full border border-border bg-background p-3 text-foreground shadow-lg transition-all hover:bg-accent hover:text-white hover:scale-110"
                     >
                       <FiChevronDown className="size-5" aria-hidden="true" />
                     </button>

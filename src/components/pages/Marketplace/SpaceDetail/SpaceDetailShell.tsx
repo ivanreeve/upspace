@@ -94,6 +94,7 @@ export function SpaceDetailShell({
               <CommandItem
                 value="search marketplace"
                 onSelect={ () => handleSearchSubmit() }
+                className="group hover:text-white data-[selected=true]:text-white"
               >
                 <FiSearch className="size-4" aria-hidden="true" />
                 <span>Search marketplace</span>
