@@ -68,12 +68,12 @@ export function Bookmarks({ bookmarkUserId, }: BookmarksProps) {
           variant="outline"
           onClick={ () => { void refetch(); } }
           disabled={ isFetching }
-          className="gap-2"
+          className="gap-2 hover:text-white"
         >
           <FiRefreshCw className={ cn('size-4', isFetching && 'animate-spin') } aria-hidden="true" />
           Refresh
         </Button>
-        <Button asChild variant="secondary">
+        <Button asChild variant="secondary" className="text-white hover:bg-[#0A5057]">
           <Link href="/marketplace">Browse spaces</Link>
         </Button>
       </div>

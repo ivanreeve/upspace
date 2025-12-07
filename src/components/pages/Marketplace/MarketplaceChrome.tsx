@@ -260,7 +260,7 @@ function SidebarFooterContent({
             { avatarUrl ? (
               <AvatarImage src={ avatarUrl } alt="Guest avatar" />
             ) : (
-              <AvatarFallback>{ avatarFallback }</AvatarFallback>
+              <AvatarFallback className="text-white">{ avatarFallback }</AvatarFallback>
             ) }
           </Avatar>
           { !isCollapsed && (
@@ -325,25 +325,25 @@ function SidebarFooterContent({
                 <DropdownMenuSeparator className="my-1" />
                 { showAccount && (
                   <DropdownMenuItem
-                    onSelect={ () => onNavigate('/account') }
+                    onSelect={ () => onNavigate('/account') } className="hover:!text-white hover:[&_svg]:!text-white"
                   >
                     <FiUser className="size-4" aria-hidden="true" />
                     <span>Account</span>
                   </DropdownMenuItem>
                 ) }
-                <DropdownMenuItem onSelect={ () => onNavigate('/settings') }>
+                <DropdownMenuItem onSelect={ () => onNavigate('/settings') }  className="hover:!text-white hover:[&_svg]:!text-white">
                   <FiSettings className="size-4" aria-hidden="true" />
                   <span>Settings</span>
                 </DropdownMenuItem>
                 { showNotifications && (
-                  <DropdownMenuItem onSelect={ () => onNavigate('/notifications') }>
+                  <DropdownMenuItem onSelect={ () => onNavigate('/notifications') }  className="hover:!text-white hover:[&_svg]:!text-white">
                     <FiBell className="size-4" aria-hidden="true" />
                     <span>Notifications</span>
                   </DropdownMenuItem>
                 ) }
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
-                  className="text-destructive focus-visible:text-destructive"
+                  className="text-destructive focus-visible:text-destructive hover:!text-white hover:[&_svg]:!text-white"
                   onSelect={ () => { void onLogout(); } }
                 >
                   <FiLogOut className="size-4" aria-hidden="true" />
@@ -950,7 +950,7 @@ icon: FiMessageSquare,
                     >
                       <FiSearch className="size-4" strokeWidth={ 2 } />
                       <span data-sidebar-label>Search</span>
-                      <Kbd className="ml-auto hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden">
+                      <Kbd className="ml-auto hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden hover:!text-gray-500 dark:hover:!text-sidebar-foreground/70">
                         <FiCommand className="size-3" aria-hidden="true" />
                         <span> + K</span>
                       </Kbd>
