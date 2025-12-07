@@ -10,6 +10,7 @@ import { z } from 'zod';
 
 import { findSpacesAgent, MAX_RADIUS_METERS } from '@/lib/ai/space-agent';
 import type { FindSpacesToolInput, FindSpacesToolResult } from '@/lib/ai/space-agent';
+import { fetchSearchReferenceData, type SearchReferenceData } from '@/lib/ai/search-reference-data';
 import { searchAgentSystemPromptTemplate } from '@/lib/search-agent';
 
 export const runtime = 'nodejs';
@@ -346,6 +347,34 @@ const parseFunctionCallArgs = (value?: FunctionCall['args']) => {
   return value as Record<string, unknown>;
 };
 
+const buildReferenceContents = (data: SearchReferenceData) => {
+  const MAX_ITEMS = 50;
+
+  const formatList = (label: string, items: string[]) => {
+    if (!items.length) return null;
+
+    const trimmed = items.slice(0, MAX_ITEMS);
+    const summary = trimmed.map((item) => `- ${item}`).join('\n');
+    const extra = items.length > trimmed.length ? `\n- ...and ${items.length - trimmed.length} more` : '';
+
+    return {
+      role: 'user' as const,
+      parts: [
+        {
+          text: `${label} (${items.length}):\n${summary}${extra}`,
+        }
+      ],
+    };
+  };
+
+  return [
+    formatList('Available amenities', data.amenities),
+    formatList('Regions with spaces', data.regions),
+    formatList('Cities with spaces', data.cities),
+    formatList('Barangays with spaces', data.barangays),
+  ].filter(Boolean) as Array<{ role: 'user'; parts: [{ text: string }] }>;
+};
+
 export async function POST(request: NextRequest) {
   try {
     const jsonBody = await request.json().catch(() => null);
@@ -403,6 +432,8 @@ content: trimmedQuery,
 
     const conversationContents = buildConversationContents(conversation);
     const contextContents = location ? [createLocationContext(location)] : [];
+    const referenceData = await fetchSearchReferenceData();
+    const referenceContents = buildReferenceContents(referenceData);
     const toolConfig = {
       systemInstruction: searchAgentSystemPromptTemplate,
       toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.AUTO, }, },
@@ -417,7 +448,7 @@ content: trimmedQuery,
       ],
     };
 
-    const historyContents = [...contextContents, ...conversationContents];
+    const historyContents = [...contextContents, ...referenceContents, ...conversationContents];
 
     let finalText: string | null = null;
     let toolResult: FindSpacesToolResult | null = null;
