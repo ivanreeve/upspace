@@ -446,11 +446,6 @@ function MarketplaceSearchDialog({
             <VoiceSearchButton onClick={ handleVoiceButtonClick } />
           ) }
         />
-        <VoiceSearchDialog
-          open={ isVoiceSearchOpen }
-          onOpenChange={ setIsVoiceSearchOpen }
-          onSubmit={ handleVoiceSearchSubmit }
-        />
         <CommandList className={ isMobile ? 'flex-1 max-h-full' : undefined }>
           { hasAnyFilters && (
             <CommandGroup heading="Filters">

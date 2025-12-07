@@ -2,8 +2,7 @@
 
 import React from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { CgSpinner } from 'react-icons/cg';
-import { FiAlertCircle, FiSend } from 'react-icons/fi';
+import { FiAlertCircle, FiSend, FiStopCircle } from 'react-icons/fi';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -451,7 +450,15 @@ export function AiSearch() {
 
   React.useEffect(() => {
     if (voiceHookError) {
-      setVoiceError(voiceHookError);
+      if (voiceHookError === 'not-allowed') {
+        setVoiceError(
+          'Microphone access was denied. Please allow microphone access in your browser settings to use voice search.'
+        );
+      } else if (voiceHookError === 'microphone-not-found') {
+        setVoiceError('No microphone was detected. Check your input device and try again.');
+      } else {
+        setVoiceError(voiceHookError);
+      }
     }
   }, [voiceHookError]);
 
@@ -547,7 +554,7 @@ export function AiSearch() {
     >
       { !hasMessages && (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-          <h1 className="greeting-appear text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
+          <h1 className="greeting-appear text-3xl font-semibold leading-tight bg-gradient-to-t from-primary dark:from-gray-400 to-white bg-clip-text text-transparent sm:text-4xl md:text-6xl lg:text-7xl">
             Hi, { greetingName }
           </h1>
         </div>
@@ -632,7 +639,7 @@ export function AiSearch() {
             id="ai-search-input"
             value={ query }
             onChange={ (event) => setQuery(event.target.value) }
-            placeholder="Find a quiet meeting room with whiteboards near BGC next Friday"
+            placeholder="Ask Anything"
             aria-label="AI search query"
             disabled={ aiSearchMutation.isPending }
             className="h-16 border-none bg-transparent text-sm focus-visible:ring-0 focus-visible:ring-offset-0 sm:h-12 sm:text-base"
@@ -673,7 +680,10 @@ export function AiSearch() {
               className="dark:bg-cyan-400 text-background dark:hover:bg-cyan-300 bg-primary"
             >
               { aiSearchMutation.isPending ? (
-                <CgSpinner className="h-4 w-4 animate-spin text-background" aria-hidden="true" />
+                <FiStopCircle
+                  className="size-4 text-background"
+                  aria-hidden="true"
+                />
               ) : (
                 <FiSend className="size-4 text-background" aria-hidden="true" />
               ) }
