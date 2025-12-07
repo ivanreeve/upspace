@@ -73,6 +73,18 @@ const normalizeAmenities = (amenities?: string[]) =>
     )
   );
 
+const nearbyQueryPattern = /\b(?:nearby|near|around|closest|nearest|within)\b/;
+const closeToPhrasePattern = /\bclose (?:to|by)\b/;
+
+const indicatesNearbySearch = (query?: string) => {
+  if (!query?.trim()) {
+    return false;
+  }
+
+  const normalized = query.trim().toLowerCase();
+  return nearbyQueryPattern.test(normalized) || closeToPhrasePattern.test(normalized);
+};
+
 const buildAmenityClause = (
   names: string[],
   mode: 'any' | 'all',
@@ -145,7 +157,7 @@ export async function findSpacesAgent(
       return clampNumber(input.radius, 0, MAX_RADIUS_METERS);
     }
 
-    if (input.location) {
+    if (input.location && indicatesNearbySearch(input.query)) {
       return DEFAULT_RADIUS_METERS;
     }
 
