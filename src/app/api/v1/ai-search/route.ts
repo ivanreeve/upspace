@@ -405,19 +405,15 @@ content: trimmedQuery,
     const contextContents = location ? [createLocationContext(location)] : [];
     const toolConfig = {
       systemInstruction: searchAgentSystemPromptTemplate,
-      toolConfig: {
-        functionCallingConfig: {
-          mode: FunctionCallingConfigMode.AUTO,
-        },
-      },
+      toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.AUTO, }, },
       tools: [
         {
           functionDeclarations: [
             getUserLocationFunctionDeclaration,
             findSpacesFunctionDeclaration,
-            keywordSearchFunctionDeclaration,
+            keywordSearchFunctionDeclaration
           ],
-        },
+        }
       ],
     };
 
