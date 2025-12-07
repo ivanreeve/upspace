@@ -591,20 +591,20 @@ export function SpacesInventoryForm() {
       { renderContent() }
 
       <div className="w-full">
-        <Button
-          asChild
-          variant="outline"
-          className="inline-flex w-full items-center justify-center gap-2"
+      <Button
+        asChild
+        variant="outline"
+        className="inline-flex w-full items-center justify-center gap-2 hover:text-white"
+      >
+        <Link
+          href="/spaces/create"
+          className="inline-flex items-center gap-2"
         >
-          <Link
-            href="/spaces/create"
-            className="inline-flex items-center gap-2"
-          >
-            <FiPlus className="size-4" aria-hidden="true" />
-            Add space
-          </Link>
-        </Button>
-      </div>
+          <FiPlus className="size-4" aria-hidden="true" />
+          Add space
+        </Link>
+      </Button>
+    </div>
 
     </section>
   );

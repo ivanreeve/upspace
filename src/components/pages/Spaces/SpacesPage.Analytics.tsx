@@ -822,7 +822,7 @@ hourLabel: '—',
                 </SelectTrigger>
                 <SelectContent>
                   { DATE_RANGE_PRESETS.map((preset) => (
-                    <SelectItem key={ preset.value } value={ preset.value }>
+                    <SelectItem key={ preset.value } value={ preset.value } className="hover:!text-white">
                       { preset.label }
                     </SelectItem>
                   )) }
@@ -844,9 +844,9 @@ hourLabel: '—',
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All listings</SelectItem>
+                  <SelectItem value="all" className="hover:!text-white">All listings</SelectItem>
                   { liveListingSource.map((listing) => (
-                    <SelectItem key={ listing.id } value={ listing.id }>
+                    <SelectItem key={ listing.id } value={ listing.id } className="hover:!text-white">
                       { listing.name }
                     </SelectItem>
                   )) }
@@ -870,9 +870,9 @@ hourLabel: '—',
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="hourly">Hourly</SelectItem>
-                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="all" className="hover:!text-white">All</SelectItem>
+                  <SelectItem value="hourly"className="hover:!text-white">Hourly</SelectItem>
+                  <SelectItem value="daily"className="hover:!text-white">Daily</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -884,7 +884,7 @@ hourLabel: '—',
               onChange={ (event) => setSearchTerm(event.target.value) }
               className="min-w-[200px]"
             />
-            <Button variant="outline" onClick={ exportCsv }>
+            <Button variant="outline" onClick={ exportCsv } className="hover:!text-white">
               Export CSV
             </Button>
           </div>

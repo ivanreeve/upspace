@@ -443,7 +443,7 @@ status,
             size="sm"
             className="gap-2"
           >
-            <Link href="/spaces/dashboard">
+            <Link href="/spaces/dashboard" className="hover:!text-white">
               View analytics
               <FiArrowUpRight className="size-4" aria-hidden="true" />
             </Link>
