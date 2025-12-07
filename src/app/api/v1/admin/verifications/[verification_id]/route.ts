@@ -24,6 +24,10 @@ export async function GET(req: NextRequest, context: RouteContext) {
             city: true,
             region: true,
             description: true,
+            is_published: true,
+            unpublished_at: true,
+            unpublished_reason: true,
+            unpublished_by_admin: true,
             space_image: {
               orderBy: { display_order: 'asc', },
               select: { path: true, },
@@ -67,6 +71,10 @@ export async function GET(req: NextRequest, context: RouteContext) {
         name: verification.space.name,
         location: `${verification.space.city}, ${verification.space.region}`,
         description: verification.space.description,
+        is_published: verification.space.is_published,
+        unpublished_at: verification.space.unpublished_at?.toISOString() ?? null,
+        unpublished_reason: verification.space.unpublished_reason,
+        unpublished_by_admin: verification.space.unpublished_by_admin,
         partner: {
           handle: verification.space.user.handle,
           name: [verification.space.user.first_name, verification.space.user.last_name]

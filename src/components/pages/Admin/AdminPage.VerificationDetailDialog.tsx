@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import {
   FiCalendar,
   FiCheck,
+  FiEye,
+  FiEyeOff,
   FiExternalLink,
   FiFileText,
   FiX
@@ -24,7 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useApproveVerificationMutation, useRejectVerificationMutation, type PendingVerification } from '@/hooks/api/useAdminVerifications';
+import { useAdminSpaceVisibilityMutation, useApproveVerificationMutation, useRejectVerificationMutation, type PendingVerification, type SpaceVisibilityPayload } from '@/hooks/api/useAdminVerifications';
 import { useCachedAvatar } from '@/hooks/use-cached-avatar';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
@@ -85,6 +87,13 @@ const getInitials = (value: string) =>
     .map((segment) => segment.charAt(0).toUpperCase())
     .join('');
 
+type SpaceVisibilityState = {
+  isPublished: boolean;
+  unpublishedAt: string | null;
+  unpublishedReason: string | null;
+  unpublishedByAdmin: boolean;
+};
+
 export function VerificationDetailDialog({
   verification,
   open,
@@ -99,9 +108,31 @@ export function VerificationDetailDialog({
   const [isTransitioningToValidity, setIsTransitioningToValidity] = useState(false);
   const transitioningRef = useRef(false);
   const [isReviewOpen, setIsReviewOpen] = useState(open);
+  const [visibilityReason, setVisibilityReason] = useState('');
+  const [spaceVisibility, setSpaceVisibility] = useState<SpaceVisibilityState>(() => ({
+    isPublished: verification?.space.is_published ?? true,
+    unpublishedAt: verification?.space.unpublished_at ?? null,
+    unpublishedReason: verification?.space.unpublished_reason ?? null,
+    unpublishedByAdmin: verification?.space.unpublished_by_admin ?? false,
+  }));
   useEffect(() => {
     setIsReviewOpen(open);
   }, [open]);
+  useEffect(() => {
+    setSpaceVisibility({
+      isPublished: verification?.space.is_published ?? true,
+      unpublishedAt: verification?.space.unpublished_at ?? null,
+      unpublishedReason: verification?.space.unpublished_reason ?? null,
+      unpublishedByAdmin: verification?.space.unpublished_by_admin ?? false,
+    });
+    setVisibilityReason('');
+  }, [
+    verification?.id,
+    verification?.space.is_published,
+    verification?.space.unpublished_at,
+    verification?.space.unpublished_reason,
+    verification?.space.unpublished_by_admin,
+  ]);
   const partnerAvatarUrl = useCachedAvatar(verification?.space.partner.avatar_url ?? null);
   const partnerInitials = getInitials(
     verification?.space.partner.name ?? verification?.space.partner.handle ?? ''
@@ -109,6 +140,7 @@ export function VerificationDetailDialog({
 
   const approveMutation = useApproveVerificationMutation();
   const rejectMutation = useRejectVerificationMutation();
+  const visibilityMutation = useAdminSpaceVisibilityMutation();
 
   const resetDialogState = () => {
     setShowRejectionModal(false);
@@ -119,6 +151,46 @@ export function VerificationDetailDialog({
     setShowValidityModal(false);
     setIsTransitioningToValidity(false);
     transitioningRef.current = false;
+  };
+
+  const updateSpaceVisibility = (next: SpaceVisibilityPayload) => {
+    setSpaceVisibility({
+      isPublished: next.is_published,
+      unpublishedAt: next.unpublished_at,
+      unpublishedReason: next.unpublished_reason,
+      unpublishedByAdmin: next.unpublished_by_admin,
+    });
+  };
+
+  const handleHideSpace = async () => {
+    if (!verification) return;
+    const reason = visibilityReason.trim();
+    try {
+      const result = await visibilityMutation.mutateAsync({
+        spaceId: verification.space.id,
+        action: 'hide',
+        reason: reason || undefined,
+      });
+      updateSpaceVisibility(result);
+      toast.success('Space hidden from the marketplace.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Unable to hide this space.');
+    }
+  };
+
+  const handleShowSpace = async () => {
+    if (!verification) return;
+    try {
+      const result = await visibilityMutation.mutateAsync({
+        spaceId: verification.space.id,
+        action: 'show',
+      });
+      updateSpaceVisibility(result);
+      setVisibilityReason('');
+      toast.success('Space is visible in the marketplace again.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Unable to show this space.');
+    }
   };
 
   const handleApprove = async (overrideValidUntil?: string) => {
@@ -243,6 +315,17 @@ export function VerificationDetailDialog({
   const validityButtonLabel =
     isIndefinite ? 'Indefinite' : formattedValidUntil || 'Select date';
 
+  const unpublishedAtLabel = spaceVisibility.unpublishedAt
+    ? format(new Date(spaceVisibility.unpublishedAt), 'PPP p')
+    : '';
+  const visibilityHeadline = spaceVisibility.isPublished
+    ? 'Visible to customers'
+    : 'Hidden from marketplace';
+  const visibilityHelpText = spaceVisibility.isPublished
+    ? 'Space appears in search, discovery, and booking flows.'
+    : `Hidden ${spaceVisibility.unpublishedByAdmin ? 'by an admin' : 'per partner request'}${unpublishedAtLabel ? ` since ${unpublishedAtLabel}` : ''}.`;
+  const isVisibilityUpdating = visibilityMutation.isPending;
+
   return (
     <>
       <Dialog open={ isReviewOpen } onOpenChange={ handleOpenChange }>
@@ -300,6 +383,68 @@ export function VerificationDetailDialog({
                   <p className="text-sm">{ verification.rejected_reason }</p>
                 </div>
               ) }
+            </div>
+
+            <div className="space-y-3 rounded-md border border-border/70 bg-background/60 px-4 py-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Marketplace visibility</p>
+                  <p className="text-sm font-semibold text-foreground">{ visibilityHeadline }</p>
+                  <p className="text-xs text-muted-foreground">{ visibilityHelpText }</p>
+                </div>
+                <Badge variant={ spaceVisibility.isPublished ? 'success' : 'secondary' }>
+                  { spaceVisibility.isPublished ? 'Published' : 'Hidden' }
+                </Badge>
+              </div>
+
+              { !spaceVisibility.isPublished && (spaceVisibility.unpublishedReason || unpublishedAtLabel) && (
+                <div className="rounded-md border border-border/70 bg-muted/30 px-3 py-2 text-sm">
+                  { spaceVisibility.unpublishedReason && (
+                    <p className="font-medium">{ spaceVisibility.unpublishedReason }</p>
+                  ) }
+                  { unpublishedAtLabel && (
+                    <p className="text-xs text-muted-foreground">Last hidden on { unpublishedAtLabel }</p>
+                  ) }
+                  { spaceVisibility.unpublishedByAdmin && (
+                    <p className="text-xs text-muted-foreground">Marked hidden by an admin.</p>
+                  ) }
+                </div>
+              ) }
+
+              <div className="space-y-2">
+                <Label htmlFor="visibility-reason">Visibility note (internal)</Label>
+                <Textarea
+                  id="visibility-reason"
+                  value={ visibilityReason }
+                  onChange={ (event) => setVisibilityReason(event.target.value) }
+                  maxLength={ 500 }
+                  aria-label="Visibility note"
+                  placeholder="Optional note to record why this space should be hidden or shown"
+                />
+                <p className="text-xs text-muted-foreground">Saved as the unpublished reason when hiding a space.</p>
+              </div>
+
+              <div className="flex flex-wrap justify-end gap-2">
+                { spaceVisibility.isPublished ? (
+                  <Button
+                    variant="destructive"
+                    onClick={ handleHideSpace }
+                    disabled={ isVisibilityUpdating }
+                  >
+                    <FiEyeOff className="size-4" aria-hidden="true" />
+                    { isVisibilityUpdating ? 'Hiding...' : 'Hide from marketplace' }
+                  </Button>
+                ) : (
+                  <Button
+                    variant="default"
+                    onClick={ handleShowSpace }
+                    disabled={ isVisibilityUpdating }
+                  >
+                    <FiEye className="size-4" aria-hidden="true" />
+                    { isVisibilityUpdating ? 'Publishing...' : 'Show in marketplace' }
+                  </Button>
+                ) }
+              </div>
             </div>
 
           { /* Documents + optional rejection form */ }

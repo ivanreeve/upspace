@@ -39,3 +39,14 @@ export const verificationActionSchema = z
   });
 
 export type VerificationActionInput = z.infer<typeof verificationActionSchema>;
+
+export const spaceVisibilityActionSchema = z.object({
+  action: z.enum(['hide', 'show']),
+  reason: z
+    .string()
+    .trim()
+    .max(500, 'Reason must be 500 characters or less.')
+    .optional(),
+});
+
+export type SpaceVisibilityActionInput = z.infer<typeof spaceVisibilityActionSchema>;

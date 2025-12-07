@@ -60,6 +60,10 @@ export async function GET(req: NextRequest) {
             name: true,
             city: true,
             region: true,
+            is_published: true,
+            unpublished_at: true,
+            unpublished_reason: true,
+            unpublished_by_admin: true,
             space_image: {
               where: { is_primary: 1, },
               take: 1,
@@ -105,6 +109,10 @@ export async function GET(req: NextRequest) {
         name: v.space.name,
         location: `${v.space.city}, ${v.space.region}`,
         image_url: v.space.space_image[0]?.path ?? null,
+        is_published: v.space.is_published,
+        unpublished_at: v.space.unpublished_at?.toISOString() ?? null,
+        unpublished_reason: v.space.unpublished_reason,
+        unpublished_by_admin: v.space.unpublished_by_admin,
         partner: {
           handle: v.space.user.handle,
           name: [v.space.user.first_name, v.space.user.last_name].filter(Boolean).join(' ') || v.space.user.handle,

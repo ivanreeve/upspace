@@ -282,6 +282,7 @@ export async function getSpaceDetail(
   const space = await prisma.space.findFirst({
     where: {
       id: spaceId,
+      is_published: true,
       verification: { some: { status: { in: ['approved', 'in_review'], }, }, },
     },
     include: marketplaceSpaceInclude,

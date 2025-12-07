@@ -27,6 +27,10 @@ export type PendingVerification = {
     name: string;
     location: string;
     image_url: string | null;
+    is_published: boolean;
+    unpublished_at: string | null;
+    unpublished_reason: string | null;
+    unpublished_by_admin: boolean;
     partner: {
       handle: string;
       name: string;
@@ -39,6 +43,14 @@ export type PendingVerification = {
 export type PendingVerificationsPage = {
   data: PendingVerification[];
   nextCursor: string | null;
+};
+
+export type SpaceVisibilityPayload = {
+  id: string;
+  is_published: boolean;
+  unpublished_at: string | null;
+  unpublished_reason: string | null;
+  unpublished_by_admin: boolean;
 };
 
 export const adminVerificationKeys = {
@@ -178,6 +190,35 @@ export function useRejectVerificationMutation() {
         throw new Error(await parseErrorMessage(response));
       }
       return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminVerificationKeys.all, });
+    },
+  });
+}
+
+export function useAdminSpaceVisibilityMutation() {
+  const authFetch = useAuthenticatedFetch();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      spaceId,
+      action,
+      reason,
+    }: { spaceId: string; action: 'hide' | 'show'; reason?: string }) => {
+      const response = await authFetch(`/api/v1/admin/spaces/${spaceId}/visibility`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify({ action, reason, }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+      }
+
+      const payload = (await response.json()) as { data: SpaceVisibilityPayload; };
+      return payload.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminVerificationKeys.all, });

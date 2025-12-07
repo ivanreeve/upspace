@@ -11,11 +11,11 @@ import {
 import { CgOptions } from 'react-icons/cg';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
-import { CardsGrid, SkeletonGrid } from './Marketplace.Cards';
+import { CardsGrid, SkeletonGrid, SpaceCard } from './Marketplace.Cards';
 import { MarketplaceErrorState } from './Marketplace.ErrorState';
 import { MarketplaceChrome } from './MarketplaceChrome';
 
-import { listSpaces, suggestSpaces, type SpaceSuggestion } from '@/lib/api/spaces';
+import { listSpaces, suggestSpaces, type Space, type SpaceSuggestion } from '@/lib/api/spaces';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import BackToTopButton from '@/components/ui/back-to-top';
 import { Badge } from '@/components/ui/badge';
@@ -268,36 +268,135 @@ export default function Marketplace({ initialSidebarOpen, }: MarketplaceProps) {
     };
   }, [hasError]);
 
+  const curatedStats = React.useMemo(() => {
+    const liveSpaces = spaces.length;
+    const locationKeys = new Set<string>();
+    let totalRating = 0;
+    let ratingCount = 0;
+    let totalReviews = 0;
+
+    for (const space of spaces) {
+      const locationKey = space.city?.trim() || space.region?.trim() || 'Philippines';
+      locationKeys.add(locationKey);
+
+      const rating = space.average_rating;
+      if (typeof rating === 'number' && rating > 0) {
+        totalRating += rating;
+        ratingCount += 1;
+      }
+
+      totalReviews += space.total_reviews ?? 0;
+    }
+
+    return {
+      liveSpaces,
+      locationCount: locationKeys.size,
+      averageRating: ratingCount > 0 ? totalRating / ratingCount : null,
+      totalReviews,
+    };
+  }, [spaces]);
+
+  const formattedReviewCount = React.useMemo(
+    () => new Intl.NumberFormat('en-US').format(curatedStats.totalReviews),
+    [curatedStats.totalReviews]
+  );
+
+  const ratingSortedSpaces = React.useMemo(() => {
+    return [...spaces].sort((a, b) => {
+      const ratingA = a.average_rating ?? 0;
+      const ratingB = b.average_rating ?? 0;
+      const ratingDiff = ratingB - ratingA;
+
+      if (ratingDiff !== 0) {
+        return ratingDiff;
+      }
+
+      return (b.total_reviews ?? 0) - (a.total_reviews ?? 0);
+    });
+  }, [spaces]);
+
+  const nearYouSortedSpaces = React.useMemo(() => {
+    return [...spaces]
+      .filter((space) => typeof space.distance_meters === 'number')
+      .sort((a, b) => {
+        const ratingDiff = (b.average_rating ?? 0) - (a.average_rating ?? 0);
+        if (ratingDiff !== 0) {
+          return ratingDiff;
+        }
+
+        return (a.distance_meters ?? 0) - (b.distance_meters ?? 0);
+      });
+  }, [spaces]);
+
+  const carouselLimit = 8;
+  const topRatedSpaces = ratingSortedSpaces.slice(0, carouselLimit);
+  const nearYouSpaces = nearYouSortedSpaces.slice(0, carouselLimit);
+
+  const heroSection = (
+    <MarketplaceHero
+      stats={ curatedStats }
+      reviewLabel={ formattedReviewCount }
+      onSearchOpen={ openSearchModal }
+    />
+  );
+
+  const curatedCarousels = (
+    <div className="space-y-8">
+      <MarketplaceCarouselSection
+        title="Near you"
+        description="Top rated spaces based on your location."
+        items={ nearYouSpaces }
+        emptyMessage="No nearby spaces yet. Try refining your region or city to surface curated matches."
+      />
+      <MarketplaceCarouselSection
+        title="Top rated"
+        description="Spaces with the highest average ratings across UpSpace."
+        items={ topRatedSpaces }
+        emptyMessage="Highly rated workspaces are still coming. Check back in a moment for fresh listings."
+      />
+    </div>
+  );
+
+  const searchResultsSection = (
+    <div className="space-y-6">
+      { shouldShowResultsHeader && (
+        <h2 className="text-2xl font-semibold text-foreground">Search Results</h2>
+      ) }
+      { hasError ? (
+        <div className="flex min-h-[70vh] w-full items-center justify-center px-4">
+          <MarketplaceErrorState
+            onRetry={ () => { void refetch(); } }
+            isRetrying={ isFetching }
+          />
+        </div>
+      ) : (
+        <div className="space-y-3">
+          { hasActiveSearch && (
+            <p className="text-sm text-muted-foreground">
+              Showing results for &quot;{ filters.q }&quot;
+            </p>
+          ) }
+          { isLoading ? (
+            <SkeletonGrid />
+          ) : (
+            <CardsGrid items={ spaces } />
+          ) }
+          { isFetching && !isLoading && (
+            <p className="text-xs text-muted-foreground">Refreshing latest availability…</p>
+          ) }
+        </div>
+      ) }
+    </div>
+  );
+
   const content = (
     <section className="relative mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 lg:px-10">
-      <div className="space-y-6">
-        { shouldShowResultsHeader && (
-          <h2 className="text-2xl font-semibold text-foreground">Search Results</h2>
-        ) }
-        { hasError ? (
-          <div className="flex min-h-[70vh] w-full items-center justify-center px-4">
-            <MarketplaceErrorState
-              onRetry={ () => { void refetch(); } }
-              isRetrying={ isFetching }
-            />
-          </div>
-        ) : (
-          <div className="space-y-3">
-            { hasActiveSearch && (
-              <p className="text-sm text-muted-foreground">
-                Showing results for &quot;{ filters.q }&quot;
-              </p>
-            ) }
-            { isLoading ? (
-              <SkeletonGrid />
-            ) : (
-              <CardsGrid items={ spaces } />
-            ) }
-            { isFetching && !isLoading && (
-              <p className="text-xs text-muted-foreground">Refreshing latest availability…</p>
-            ) }
-          </div>
-        ) }
+      <div className="space-y-10">
+        <div className="space-y-8">
+          { heroSection }
+          { curatedCarousels }
+        </div>
+        { searchResultsSection }
       </div>
 
       <BackToTopButton />
@@ -631,6 +730,113 @@ function MarketplaceSearchDialog({
         } }
       />
     </>
+  );
+}
+
+type MarketplaceHeroStats = {
+  liveSpaces: number;
+  locationCount: number;
+  averageRating: number | null;
+  totalReviews: number;
+};
+
+type MarketplaceHeroProps = {
+  stats: MarketplaceHeroStats;
+  reviewLabel: string;
+  onSearchOpen: () => void;
+};
+
+function MarketplaceHero({ stats, reviewLabel, onSearchOpen }: MarketplaceHeroProps) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-slate-950/90 via-slate-900/80 to-slate-900/60 p-6 shadow-[0_25px_45px_rgba(15,15,15,0.15)]">
+      <div className="space-y-3 text-white">
+        <p className="text-xs uppercase tracking-[0.5em] text-white/70">UpSpace Marketplace</p>
+        <h1 className="text-3xl font-semibold leading-tight tracking-tight">
+          Discover coworking spaces that match how you work.
+        </h1>
+        <p className="max-w-3xl text-sm text-white/70">
+          Browse verified spaces that keep their availability and reviews up to date. Find somewhere to land near you or the highest rated spaces across the Philippines.
+        </p>
+        <div className="flex flex-wrap items-center gap-3 pt-2">
+          <Button variant="secondary" onClick={ onSearchOpen }>
+            Search spaces
+          </Button>
+          <p className="text-xs font-medium text-white/70">
+            Scroll down to explore curated carousels.
+          </p>
+        </div>
+      </div>
+      <div className="mt-6 grid gap-4 text-white sm:grid-cols-3">
+        <div className="rounded-2xl bg-white/10 p-4">
+          <p className="text-xs uppercase tracking-[0.3em] text-white/60">Live spaces</p>
+          <p className="text-2xl font-semibold">{ stats.liveSpaces }</p>
+        </div>
+        <div className="rounded-2xl bg-white/10 p-4">
+          <p className="text-xs uppercase tracking-[0.3em] text-white/60">Active cities</p>
+          <p className="text-2xl font-semibold">{ stats.locationCount }</p>
+        </div>
+        <div className="rounded-2xl bg-white/10 p-4">
+          <p className="text-xs uppercase tracking-[0.3em] text-white/60">Avg rating</p>
+          <p className="text-2xl font-semibold">
+            { stats.averageRating !== null ? `${stats.averageRating.toFixed(1)} ★` : 'New' }
+          </p>
+          <p className="text-xs text-white/60">{ reviewLabel } reviews</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+type MarketplaceCarouselSectionProps = {
+  title: string;
+  description: string;
+  items: Space[];
+  emptyMessage: string;
+};
+
+function MarketplaceCarouselSection({
+  title,
+  description,
+  items,
+  emptyMessage,
+}: MarketplaceCarouselSectionProps) {
+  return (
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-1">
+          <h3 className="text-2xl font-semibold text-foreground">{ title }</h3>
+          <p className="text-sm text-muted-foreground">{ description }</p>
+        </div>
+        { items.length > 0 && (
+          <Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            { items.length } { items.length === 1 ? 'space' : 'spaces' }
+          </Badge>
+        ) }
+      </div>
+      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/80 shadow-[0_25px_45px_rgba(15,15,15,0.1)]">
+        <div
+          className="flex gap-4 overflow-x-auto px-4 py-3 pb-5"
+          role="list"
+          aria-label={ title }
+        >
+          { items.length === 0 ? (
+            <div className="flex min-h-[160px] w-full items-center justify-center text-sm text-muted-foreground">
+              { emptyMessage }
+            </div>
+          ) : (
+            items.map((space) => (
+              <div
+                key={ space.space_id }
+                className="min-w-[260px] max-w-[260px]"
+                role="listitem"
+              >
+                <SpaceCard space={ space } />
+              </div>
+            ))
+          ) }
+        </div>
+      </div>
+    </section>
   );
 }
 
