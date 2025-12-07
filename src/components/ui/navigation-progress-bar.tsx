@@ -158,7 +158,7 @@ export function NavigationProgressBar() {
 
   return (
     <div className={ containerClassName }>
-      <div className="h-1 w-full bg-transparent">
+      <div className="h-[2px] w-full bg-transparent">
         <div
           role="status"
           aria-live="polite"

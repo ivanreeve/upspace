@@ -1,21 +1,18 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { FaMicrophone, FaPlay, FaStop } from "react-icons/fa";
+import * as React from 'react';
+import { FaMicrophone, FaPlay, FaStop } from 'react-icons/fa';
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  useSpeechRecognition,
-  type SpeechRecognitionStatus,
-} from "@/hooks/use-speech-recognition";
-import { useIsMobile } from "@/hooks/use-mobile";
+  DialogTitle
+} from '@/components/ui/dialog';
+import { useSpeechRecognition, type SpeechRecognitionStatus } from '@/hooks/use-speech-recognition';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type VoiceSearchDialogProps = {
   open: boolean;
@@ -49,13 +46,13 @@ export function VoiceSearchDialog({
     errorMessage,
   } = useSpeechRecognition();
   const silenceTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
-    null,
+    null
   );
   const [displayError, setDisplayError] = React.useState<string | undefined>(
-    undefined,
+    undefined
   );
 
-  const isListening = status === "listening";
+  const isListening = status === 'listening';
   const hasTranscript = Boolean(transcript.trim());
   const borderWidth = hasTranscript
     ? Math.min(6, Math.max(2, transcript.length / 3))
@@ -63,22 +60,22 @@ export function VoiceSearchDialog({
       ? 4
       : 2;
   const ringColor =
-    status === "unsupported" ? "var(--muted)" : "var(--secondary)";
+    status === 'unsupported' ? 'var(--muted)' : 'var(--secondary)';
   const circleStyle: React.CSSProperties = {
     borderWidth,
-    borderStyle: "solid",
+    borderStyle: 'solid',
     borderColor: ringColor,
     boxShadow: isListening
-      ? "0 0 0 12px color-mix(in oklab, var(--secondary) 22%, transparent)"
+      ? '0 0 0 12px color-mix(in oklab, var(--secondary) 22%, transparent)'
       : undefined,
   };
-  const resolvedTitle = title ?? "Voice search";
+  const resolvedTitle = title ?? 'Voice search';
   const resolvedDescription =
-    description ?? "Hold the mic, speak, and we’ll type it out.";
+    description ?? 'Hold the mic, speak, and we’ll type it out.';
   const placeholderMessage =
-    status === "unsupported"
-      ? "Voice input is not available in this browser."
-      : "Speak now and your words will appear here…";
+    status === 'unsupported'
+      ? 'Voice input is not available in this browser.'
+      : 'Speak now and your words will appear here…';
 
   React.useEffect(() => {
     onStatusChange?.(status);
@@ -90,13 +87,13 @@ export function VoiceSearchDialog({
       return;
     }
 
-    if (errorMessage === "not-allowed") {
+    if (errorMessage === 'not-allowed') {
       setDisplayError(
-        "Microphone access was denied. Please allow microphone access in your browser settings to use voice search.",
+        'Microphone access was denied. Please allow microphone access in your browser settings to use voice search.'
       );
-    } else if (errorMessage === "microphone-not-found") {
+    } else if (errorMessage === 'microphone-not-found') {
       setDisplayError(
-        "No microphone was detected. Please check your input device.",
+        'No microphone was detected. Please check your input device.'
       );
     } else {
       setDisplayError(errorMessage);
@@ -149,16 +146,16 @@ export function VoiceSearchDialog({
     resetTranscript();
 
     const maybeAutoStart = async () => {
-      if (!isSupported || typeof navigator === "undefined") return;
+      if (!isSupported || typeof navigator === 'undefined') return;
 
       try {
-        if ("permissions" in navigator && navigator.permissions?.query) {
+        if ('permissions' in navigator && navigator.permissions?.query) {
           const status = await navigator.permissions.query({
             // `microphone` is supported in modern browsers; cast keeps TS happy.
-            name: "microphone" as PermissionName,
+            name: 'microphone' as PermissionName,
           });
 
-          if (status.state === "granted") {
+          if (status.state === 'granted') {
             startListening();
           }
         }
@@ -183,7 +180,7 @@ export function VoiceSearchDialog({
     silenceTimerRef.current && clearTimeout(silenceTimerRef.current);
     silenceTimerRef.current = setTimeout(
       () => handleAutoSubmit(),
-      autoSubmitDelayMs,
+      autoSubmitDelayMs
     );
 
     return () => {
@@ -192,37 +189,37 @@ export function VoiceSearchDialog({
   }, [autoSubmitDelayMs, handleAutoSubmit, transcript]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={ open } onOpenChange={ onOpenChange }>
       <DialogContent
         className="px-6 py-8 sm:px-10 sm:py-10"
         position="top"
-        mobileFullScreen={isMobile}
+        mobileFullScreen={ isMobile }
         fullWidth
       >
         <div className="flex h-full flex-col gap-6">
           <DialogHeader className="px-0 text-center">
-            <DialogTitle>{resolvedTitle}</DialogTitle>
-            <DialogDescription>{resolvedDescription}</DialogDescription>
+            <DialogTitle>{ resolvedTitle }</DialogTitle>
+            <DialogDescription>{ resolvedDescription }</DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4">
             <div
               className="mt-6 mb-6 flex size-[140px] items-center justify-center rounded-full bg-secondary/20 transition-all duration-300"
-              style={circleStyle}
+              style={ circleStyle }
             >
               <div className="relative flex h-[118px] w-[118px] items-center justify-center overflow-hidden rounded-full shadow-md text-background">
                 <div
                   className="mesh-gradient-layer absolute inset-0 rounded-full"
-                  style={{
-                    backgroundColor: "var(--secondary)",
+                  style={ {
+                    backgroundColor: 'var(--secondary)',
                     backgroundImage: [
-                      "radial-gradient(circle at 20% 25%, #22d3ee 0%, rgba(34, 211, 238, 0) 40%)",
-                      "radial-gradient(circle at 80% 20%, #34d399 0%, rgba(52, 211, 153, 0) 38%)",
-                      "radial-gradient(circle at 35% 75%, #f59e0b 0%, rgba(245, 158, 11, 0) 40%)",
-                      "radial-gradient(circle at 75% 70%, var(--secondary) 0%, rgba(99, 102, 241, 0) 42%)",
-                      "linear-gradient(135deg, #0ea5e9 0%, #22d3ee 30%, #34d399 65%, #f59e0b 100%)",
-                    ].join(","),
-                  }}
+                      'radial-gradient(circle at 20% 25%, #22d3ee 0%, rgba(34, 211, 238, 0) 40%)',
+                      'radial-gradient(circle at 80% 20%, #34d399 0%, rgba(52, 211, 153, 0) 38%)',
+                      'radial-gradient(circle at 35% 75%, #f59e0b 0%, rgba(245, 158, 11, 0) 40%)',
+                      'radial-gradient(circle at 75% 70%, var(--secondary) 0%, rgba(99, 102, 241, 0) 42%)',
+                      'linear-gradient(135deg, #0ea5e9 0%, #22d3ee 30%, #34d399 65%, #f59e0b 100%)'
+                    ].join(','),
+                  } }
                 />
                 <FaMicrophone
                   className="relative z-10 size-5"
@@ -231,29 +228,29 @@ export function VoiceSearchDialog({
               </div>
             </div>
             <div className="min-h-[3rem] text-center text-sm text-muted-foreground">
-              {transcript ? (
+              { transcript ? (
                 <p className="whitespace-pre-wrap text-foreground">
-                  {transcript}
+                  { transcript }
                 </p>
               ) : (
-                <p>{placeholderMessage}</p>
-              )}
+                <p>{ placeholderMessage }</p>
+              ) }
             </div>
-            {displayError && (
+            { displayError && (
               <p className="text-center text-xs text-destructive" role="status">
-                {displayError}
+                { displayError }
               </p>
-            )}
+            ) }
           </div>
 
           <div className="flex w-full items-center justify-center gap-2">
             <Button
-              variant={isListening ? "destructive" : "secondary"}
-              onClick={handleToggleListening}
-              disabled={status === "unsupported"}
+              variant={ isListening ? 'destructive' : 'secondary' }
+              onClick={ handleToggleListening }
+              disabled={ status === 'unsupported' }
               className="w-full sm:w-auto"
             >
-              {isListening ? (
+              { isListening ? (
                 <>
                   <FaStop className="mr-2 size-4" aria-hidden="true" />
                   Stop listening
@@ -263,11 +260,11 @@ export function VoiceSearchDialog({
                   <FaPlay className="mr-2 size-4" aria-hidden="true" />
                   Listen
                 </>
-              )}
+              ) }
             </Button>
           </div>
         </div>
-        <style jsx>{`
+        <style jsx>{ `
           @keyframes meshSpin {
             0% {
               transform: rotate(0deg) scale(1);
@@ -302,7 +299,7 @@ export function VoiceSearchDialog({
             background-size: 180% 180%;
             animation: meshSpin 14s ease-in-out infinite;
           }
-        `}</style>
+        ` }</style>
       </DialogContent>
     </Dialog>
   );
