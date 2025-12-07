@@ -81,7 +81,7 @@ export function PriceRuleCreationPage() {
           <Button variant="outline" asChild>
             <Link
               href="/spaces/pricing-rules"
-              className="flex items-center gap-2 text-sm"
+              className="flex items-center gap-2 text-sm hover:text-white"
             >
               <FiArrowLeft className="size-4" aria-hidden="true" />
               <span>Back to price rules</span>

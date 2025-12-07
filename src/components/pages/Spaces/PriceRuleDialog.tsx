@@ -234,7 +234,7 @@ function DatePickerInput({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="w-full justify-between font-normal tracking-tight"
+          className="w-full justify-between font-normal tracking-tight hover:text-white"
           disabled={ disabled }
           type="button"
           aria-label={ selectedDate ? `Selected date ${label}` : 'Select date' }
@@ -2371,7 +2371,7 @@ function RuleLanguageEditor({
             <Button
               type="button"
               variant="outline"
-              className="h-10 aspect-square p-0"
+              className="h-10 aspect-square p-0 hover:text-white"
               onClick={ addExpressionSegment }
               disabled={ !expressionField.trim() || !isExpressionFieldValid }
               aria-label="Add expression"
@@ -2439,6 +2439,7 @@ function RuleLanguageEditor({
                               variant="ghost"
                               size="sm"
                               onClick={ () => removeExpressionSegment(index) }
+                              className= "hover:text-white"
                             >
                               <FiTrash2 className="size-3" aria-hidden="true" />
                               <span className="sr-only">Delete clause</span>
@@ -2561,7 +2562,7 @@ export function PriceRuleFormShell({
       />
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end px-0 pb-0 pt-2">
           { onCancel && (
-            <Button variant="outline" onClick={ onCancel } disabled={ isSubmitting }>
+            <Button variant="outline" onClick={ onCancel } disabled={ isSubmitting } className="hover:text-white">
               Cancel
             </Button>
           ) }
