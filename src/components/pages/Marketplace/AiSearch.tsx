@@ -34,6 +34,21 @@ const makeMessageId = (role: ChatMessage['role']) =>
       : Date.now().toString(36)
   }`;
 
+const getFriendlyAiErrorMessage = (error: Error) => {
+  const message = error.message ?? '';
+  if (/can't reach database server/i.test(message)) {
+    return 'Sorry, we cannot reach our workspace database right now. Please try again in a moment.';
+  }
+  if (/unable to reach gemini/i.test(message)) {
+    return 'Gemini is currently unavailable. Please try again in a few seconds.';
+  }
+  if (/unexpected response/i.test(message)) {
+    return 'We received an unexpected response while talking to Gemini. Please try again.';
+  }
+
+  return 'UpSpace could not complete that request right now. Please try again shortly.';
+};
+
 const shimmerTextStyle: React.CSSProperties = {
   backgroundImage:
     'linear-gradient(120deg, var(--secondary) 0%, #28a745 35%, #ffc107 60%, #ff8c00 85%, #ff6f00 100%)',
@@ -371,15 +386,14 @@ export function AiSearch() {
             if (mutationError.name === 'AbortError') {
               return;
             }
-            const fallback =
-              mutationError.message || 'UpSpace could not reply.';
-            setErrorMessage(fallback);
+            const friendlyMessage = getFriendlyAiErrorMessage(mutationError);
+            setErrorMessage(friendlyMessage);
             setMessages((prev) => [
               ...prev,
               {
                 id: makeMessageId('assistant'),
                 role: 'assistant',
-                content: `Sorry, I could not complete that request: ${fallback}`,
+                content: friendlyMessage,
               }
             ]);
           },
