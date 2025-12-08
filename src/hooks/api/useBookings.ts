@@ -161,8 +161,8 @@ export function useCreateCheckoutSessionMutation() {
         throw new Error(await parseErrorMessage(response));
       }
 
-      const payload = await response.json();
-      return payload as CreateCheckoutSessionResponse;
+      const data = await response.json();
+      return data as CreateCheckoutSessionResponse;
     },
   });
 }
