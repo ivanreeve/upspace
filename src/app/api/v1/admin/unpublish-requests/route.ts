@@ -57,14 +57,14 @@ export async function GET(req: NextRequest) {
             },
           },
         },
-        user: {
+        user_unpublish_request_user_idTouser: {
           select: {
             handle: true,
             first_name: true,
             last_name: true,
           },
         },
-        processed_by: {
+        user_unpublish_request_processed_by_user_idTouser: {
           select: {
             handle: true,
             first_name: true,
@@ -91,13 +91,19 @@ export async function GET(req: NextRequest) {
         is_published: req.space.is_published,
         owner_name: buildDisplayName(req.space.user?.first_name, req.space.user?.last_name, req.space.user?.handle),
       },
-      requester: { name: buildDisplayName(req.user?.first_name, req.user?.last_name, req.user?.handle), },
-      processed_by: req.processed_by
+      requester: {
+        name: buildDisplayName(
+          req.user_unpublish_request_user_idTouser?.first_name,
+          req.user_unpublish_request_user_idTouser?.last_name,
+          req.user_unpublish_request_user_idTouser?.handle
+        ),
+      },
+      processed_by: req.user_unpublish_request_processed_by_user_idTouser
         ? {
             name: buildDisplayName(
-              req.processed_by.first_name,
-              req.processed_by.last_name,
-              req.processed_by.handle
+              req.user_unpublish_request_processed_by_user_idTouser?.first_name,
+              req.user_unpublish_request_processed_by_user_idTouser?.last_name,
+              req.user_unpublish_request_processed_by_user_idTouser?.handle
             ),
           }
         : null,
