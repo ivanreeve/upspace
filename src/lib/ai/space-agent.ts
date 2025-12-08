@@ -29,6 +29,7 @@ export type SharedSpaceSearchFilters = {
   min_rating?: number;
   max_rating?: number;
   sort_by?: 'price' | 'rating' | 'distance' | 'relevance';
+  sort_direction?: 'asc' | 'desc';
   limit?: number;
   include_pending?: boolean;
   user_id?: string;
@@ -46,6 +47,7 @@ export type FindSpacesToolResult = {
     query?: string | null;
     amenities?: string[] | null;
     sort_by: FindSpacesToolInput['sort_by'] | 'relevance';
+    sort_direction: 'asc' | 'desc';
     min_price?: number | null;
     max_price?: number | null;
     min_rating?: number | null;
@@ -163,6 +165,12 @@ export async function findSpacesAgent(
 
     return undefined;
   })();
+  const sortDirectionPreference = input.sort_direction;
+  const resolveSortDirection = (defaultDirection: 'asc' | 'desc') =>
+    (sortDirectionPreference ?? defaultDirection) as 'asc' | 'desc';
+  const priceSortDirection = resolveSortDirection('asc');
+  const distanceSortDirection = resolveSortDirection('asc');
+  const ratingSortDirection = resolveSortDirection('desc');
 
   const verificationStatuses = includePending
     ? (['approved', 'in_review'] as const)
@@ -369,6 +377,10 @@ mode: 'insensitive',
   });
 
   const sortedSpaces = filteredSpaces.sort((a, b) => {
+    const priceComparison = compareNullableAscending(
+      a.starting_price,
+      b.starting_price
+    );
     switch (sortBy) {
       case 'distance': {
         const comparison = compareNullableAscending(
@@ -376,31 +388,37 @@ mode: 'insensitive',
           b.distance_meters
         );
         if (comparison !== 0) {
-          return comparison;
+          return distanceSortDirection === 'asc' ? comparison : -comparison;
         }
-        return compareNullableAscending(a.starting_price, b.starting_price);
+        return priceComparison;
       }
       case 'price': {
-        return compareNullableAscending(a.starting_price, b.starting_price);
+        return priceSortDirection === 'asc' ? priceComparison : -priceComparison;
       }
       case 'rating': {
         const ratingDiff = b.average_rating - a.average_rating;
         if (Math.abs(ratingDiff) > Number.EPSILON) {
-          return ratingDiff;
+          return ratingSortDirection === 'asc' ? -ratingDiff : ratingDiff;
         }
-        return compareNullableAscending(a.starting_price, b.starting_price);
+        return priceComparison;
       }
       default: {
         const ratingDiff = b.average_rating - a.average_rating;
         if (Math.abs(ratingDiff) > Number.EPSILON) {
-          return ratingDiff;
+          return ratingSortDirection === 'asc' ? -ratingDiff : ratingDiff;
         }
-        return compareNullableAscending(a.starting_price, b.starting_price);
+        return priceComparison;
       }
     }
   });
 
   const limitedSpaces = sortedSpaces.slice(0, limit);
+  const activeSortDirection =
+    sortBy === 'distance'
+      ? distanceSortDirection
+      : sortBy === 'price'
+        ? priceSortDirection
+        : ratingSortDirection;
 
   return {
     spaces: limitedSpaces,
@@ -410,6 +428,7 @@ mode: 'insensitive',
       query: input.query?.trim() ?? null,
       amenities: normalizedAmenities.length ? normalizedAmenities : null,
       sort_by: sortBy,
+      sort_direction: activeSortDirection,
       min_price: input.min_price ?? null,
       max_price: input.max_price ?? null,
       min_rating: input.min_rating ?? null,

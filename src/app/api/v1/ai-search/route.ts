@@ -110,6 +110,10 @@ const SPACE_SEARCH_FILTER_PROPERTIES = {
     type: 'string',
     enum: ['price', 'rating', 'distance', 'relevance'],
   },
+  sort_direction: {
+    type: 'string',
+    enum: ['asc', 'desc'],
+  },
   limit: {
     type: 'integer',
     minimum: 1,
@@ -174,6 +178,7 @@ const spaceSearchFiltersBaseSchema = z.object({
   min_rating: z.coerce.number().min(0).max(5).optional(),
   max_rating: z.coerce.number().min(0).max(5).optional(),
   sort_by: z.enum(['price', 'rating', 'distance', 'relevance']).optional(),
+  sort_direction: z.enum(['asc', 'desc']).optional(),
   limit: z.coerce.number().int().min(1).max(10).optional(),
   include_pending: z.boolean().optional(),
   user_id: z.string().regex(/^\d+$/).optional(),
