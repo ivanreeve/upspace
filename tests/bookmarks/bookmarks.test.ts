@@ -211,7 +211,9 @@ error: null,
   });
 
   it('returns 404 when user record is missing', async () => {
-    const { authUserId, spaceId, } = bookmarksFixture;
+    const {
+ authUserId, spaceId, 
+} = bookmarksFixture;
     mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
       data: { user: { id: authUserId, }, },
       error: null,

@@ -262,7 +262,9 @@ describe('POST /api/v1/spaces', () => {
   });
 
   it('rejects non-partner roles', async () => {
-    const { createPayload, partner, } = spaceFixtures;
+    const {
+ createPayload, partner, 
+} = spaceFixtures;
     setAuthUser(partner.authUserId);
     mockPrisma.user.findFirst.mockResolvedValueOnce({
       user_id: partner.userId,
@@ -393,7 +395,10 @@ describe('POST /api/v1/spaces', () => {
         headers: { 'content-type': 'application/json', },
         body: JSON.stringify({
           ...createPayload,
-          images: [{ is_primary: true, display_order: 0 }], // missing path
+          images: [{
+ is_primary: true,
+display_order: 0, 
+}], // missing path
         }),
       })
     );

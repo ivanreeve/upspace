@@ -203,7 +203,9 @@ count: 0,
   });
 
   it('returns viewer_reviewed false when not authenticated', async () => {
-    const { spaceId, list, } = reviewFixtures;
+    const {
+ spaceId, list, 
+} = reviewFixtures;
     mockPrisma.review.aggregate.mockResolvedValueOnce(list.aggregate);
     mockPrisma.review.groupBy.mockResolvedValueOnce(list.groupBy);
     mockPrisma.review.findMany.mockResolvedValueOnce(list.reviews);
