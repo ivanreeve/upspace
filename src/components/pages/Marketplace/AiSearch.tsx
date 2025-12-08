@@ -674,78 +674,78 @@ export function AiSearch() {
   return (
     <div
       className={ cn(
-        'relative mx-auto flex h-full min-h-full w-full max-w-5xl flex-col gap-6 px-4 pb-32 sm:pb-36 md:pb-40',
+        'relative mx-auto flex h-full min-h-full min-h-screen w-full max-w-5xl flex-col gap-6 px-4 pb-32 sm:pb-36 md:pb-40',
         containerTopPadding,
         'overflow-hidden'
       ) }
     >
-      { !hasMessages && (
+      { !hasMessages ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
           <h1 className="greeting-appear text-3xl font-semibold leading-tight bg-gradient-to-t from-primary dark:from-gray-400 to-white bg-clip-text text-transparent sm:text-4xl md:text-6xl lg:text-7xl">
             Hi, { greetingName }
           </h1>
           { renderPromptForm('inline') }
         </div>
-      ) }
-
-      <div className="flex flex-1 flex-col gap-6 overflow-hidden">
-        { hasMessages && (
-          <Card className="border-none h-full">
-            <CardContent className="flex h-full flex-col space-y-6 p-6 sm:p-8">
-              <div className="flex-1 overflow-hidden rounded-md border-none bg-background/60">
-                <ScrollArea className="h-full w-full">
-                  <div
-                    ref={ lineContainerRef }
-                    className="relative space-y-4 px-3 py-4"
-                  >
+      ) : (
+        <>
+          <div className="flex flex-1 flex-col gap-6 overflow-hidden">
+            <Card className="border-none h-full">
+              <CardContent className="flex h-full flex-col space-y-6 p-6 sm:p-8">
+                <div className="flex-1 overflow-hidden rounded-md border-none bg-background/60">
+                  <ScrollArea className="h-full w-full">
                     <div
-                      className="pointer-events-none absolute left-[2.15rem] border-l-2 border-dotted border-muted opacity-80 z-0"
-                      aria-hidden="true"
-                      style={
-                        linePosition
-                          ? {
-                              top: linePosition.top,
-                              height: linePosition.height,
-                            }
-                          : { display: 'none', }
-                      }
-                    />
-                    { messages.map((message) => (
-                      <MessageBubble
-                        key={ message.id }
-                        message={ message }
-                        iconRef={
-                          message.role === 'assistant'
-                            ? registerIconRef(message.id)
-                            : undefined
+                      ref={ lineContainerRef }
+                      className="relative space-y-4 px-3 py-4"
+                    >
+                      <div
+                        className="pointer-events-none absolute left-[2.15rem] border-l-2 border-dotted border-muted opacity-80 z-0"
+                        aria-hidden="true"
+                        style={
+                          linePosition
+                            ? {
+                                top: linePosition.top,
+                                height: linePosition.height,
+                              }
+                            : { display: 'none', }
                         }
                       />
-                    )) }
+                      { messages.map((message) => (
+                        <MessageBubble
+                          key={ message.id }
+                          message={ message }
+                          iconRef={
+                            message.role === 'assistant'
+                              ? registerIconRef(message.id)
+                              : undefined
+                          }
+                        />
+                      )) }
 
-                    { isThinking ? (
-                      <MessageBubble
-                        message={ {
-                          id: 'assistant-thinking',
-                          role: 'assistant',
-                          content: 'Thinking…',
-                        } }
-                        isThinking
-                        iconRef={ registerIconRef('assistant-thinking') }
-                      />
-                    ) : null }
+                      { isThinking ? (
+                        <MessageBubble
+                          message={ {
+                            id: 'assistant-thinking',
+                            role: 'assistant',
+                            content: 'Thinking…',
+                          } }
+                          isThinking
+                          iconRef={ registerIconRef('assistant-thinking') }
+                        />
+                      ) : null }
 
-                    <div ref={ scrollAnchorRef } />
-                  </div>
-                </ScrollArea>
-              </div>
-            </CardContent>
-          </Card>
-        ) }
-      </div>
+                      <div ref={ scrollAnchorRef } />
+                    </div>
+                  </ScrollArea>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-      { hasMessages && <BottomGradientOverlay className="z-20" /> }
+          <BottomGradientOverlay className="z-20" />
 
-      { hasMessages && renderPromptForm('fixed') }
+          { renderPromptForm('fixed') }
+        </>
+      ) }
     </div>
   );
 }
