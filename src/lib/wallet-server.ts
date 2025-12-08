@@ -31,7 +31,10 @@ export async function resolveAuthenticatedUserForWallet() {
 
   const dbUser = await prisma.user.findFirst({
     where: { auth_user_id: authData.user.id, },
-    select: { user_id: true, },
+    select: {
+      user_id: true,
+      auth_user_id: true,
+    },
   });
 
   if (!dbUser) {

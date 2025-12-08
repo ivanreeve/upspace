@@ -63,7 +63,7 @@ import { cn } from '@/lib/utils';
 import { MAX_BOOKING_HOURS } from '@/lib/bookings/constants';
 import { BOOKING_DURATION_VARIABLE_KEYS, type PriceRuleOperand, type PriceRuleRecord } from '@/lib/pricing-rules';
 import { evaluatePriceRule, type PriceRuleEvaluationResult } from '@/lib/pricing-rules-evaluator';
-import { useUserBookingsQuery, useCreateBookingMutation } from '@/hooks/api/useBookings';
+import { useUserBookingsQuery, useCreateCheckoutSessionMutation } from '@/hooks/api/useBookings';
 
 const DESCRIPTION_COLLAPSED_HEIGHT = 360; // px
 const DESKTOP_BREAKPOINT_QUERY = '(min-width: 1024px)';
@@ -158,7 +158,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const handleOpenChat = useCallback(() => setIsChatOpen(true), []);
   const handleCloseChat = useCallback(() => setIsChatOpen(false), []);
-  const createBooking = useCreateBookingMutation();
+  const createCheckoutSession = useCreateCheckoutSessionMutation();
   const messageHostButtonRef = useRef<HTMLButtonElement | null>(null);
   const scrollToMessageHostButton = useCallback(() => {
     const button = messageHostButtonRef.current;
@@ -581,7 +581,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     if (!selectedAreaId) {
       return 'Select an area';
     }
-    if (createBooking.isPending) {
+    if (createCheckoutSession.isPending) {
       return 'Booking...';
     }
     if (isPricingLoading) {
@@ -598,7 +598,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
 
   const bookingButtonContent = (
     <>
-      { createBooking.isPending && (
+      { createCheckoutSession.isPending && (
         <CgSpinner className="h-4 w-4 animate-spin" aria-hidden="true" />
       ) }
       { primaryActionLabel }
@@ -612,7 +612,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     priceEvaluation &&
     priceEvaluation.price !== null &&
     !isGuest &&
-    !createBooking.isPending
+    !createCheckoutSession.isPending
   );
 
   const handleConfirmBooking = useCallback(async () => {
@@ -621,17 +621,15 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     }
 
     try {
-      await createBooking.mutateAsync({
+      const result = await createCheckoutSession.mutateAsync({
         spaceId: space.id,
         areaId: selectedArea.id,
         bookingHours,
-        price: priceEvaluation?.price ?? null,
+        price: priceEvaluation?.price ?? 0,
       });
-      toast.success(
-        'Booking confirmed. You can now message the host and leave a review.'
-      );
       resetBookingState();
       setIsBookingOpen(false);
+      window.location.assign(result.checkoutUrl);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unable to place booking.';
@@ -640,7 +638,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
   }, [
     bookingHours,
     canConfirmBooking,
-    createBooking,
+    createCheckoutSession,
     priceEvaluation?.price,
     resetBookingState,
     selectedArea,

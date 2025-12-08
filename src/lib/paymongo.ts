@@ -96,6 +96,52 @@ export async function createPaymongoRefund(opts: {
   });
 }
 
+export type PaymongoCheckoutSessionResponse = {
+  id: string;
+  attributes: {
+    amount: number;
+    currency: string;
+    checkout_url: string;
+    success_url: string | null;
+    cancel_url: string | null;
+    description: string | null;
+    metadata: Record<string, string> | null;
+    status: 'active' | 'expired';
+  };
+};
+
+export async function createPaymongoCheckoutSession(opts: {
+  amountMinor: number;
+  currency: string;
+  successUrl: string;
+  cancelUrl: string;
+  description: string;
+  metadata: Record<string, string>;
+  paymentMethodTypes?: string[];
+}) {
+  const payload = {
+    data: {
+      attributes: {
+        amount: opts.amountMinor,
+        currency: opts.currency,
+        success_url: opts.successUrl,
+        cancel_url: opts.cancelUrl,
+        description: opts.description,
+        metadata: opts.metadata,
+        payment_method_types: opts.paymentMethodTypes ?? ['card'],
+      },
+    },
+  };
+
+  return paymongoFetch<{ data: PaymongoCheckoutSessionResponse }>(
+    'checkout_sessions',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }
+  );
+}
+
 export type PaymongoWebhookSignature = {
   timestamp: number;
   te?: string;

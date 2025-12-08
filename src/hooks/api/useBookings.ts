@@ -129,6 +129,44 @@ export function useCreateBookingMutation() {
   });
 }
 
+type CreateCheckoutSessionInput = {
+  spaceId: string;
+  areaId: string;
+  bookingHours: number;
+  price: number;
+};
+
+type CreateCheckoutSessionResponse = {
+  bookingId: string;
+  checkoutUrl: string;
+};
+
+export function useCreateCheckoutSessionMutation() {
+  const authFetch = useAuthenticatedFetch();
+
+  return useMutation<CreateCheckoutSessionResponse, Error, CreateCheckoutSessionInput>({
+    mutationFn: async (payload) => {
+      const response = await authFetch('/api/v1/paymongo/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify({
+          spaceId: payload.spaceId,
+          areaId: payload.areaId,
+          bookingHours: payload.bookingHours,
+          price: payload.price,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+      }
+
+      const payload = await response.json();
+      return payload as CreateCheckoutSessionResponse;
+    },
+  });
+}
+
 export function useBulkUpdateBookingStatusMutation() {
   const authFetch = useAuthenticatedFetch();
   const queryClient = useQueryClient();
