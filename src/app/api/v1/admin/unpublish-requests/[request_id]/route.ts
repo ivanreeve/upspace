@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
 import { AdminSessionError, requireAdminSession } from '@/lib/auth/require-admin-session';
+import { invalidateSpacesListCache } from '@/lib/cache/redis';
 
 const patchSchema = z.object({
   action: z.enum(['approve', 'reject']),
@@ -80,6 +81,7 @@ is_published: true,
         })
       ]);
 
+      await invalidateSpacesListCache();
       return NextResponse.json({ status: 'approved', });
     }
 

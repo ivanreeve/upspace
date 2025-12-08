@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { WEEKDAY_ORDER, type WeekdayName } from '@/data/spaces';
 import { prisma } from '@/lib/prisma';
+import { invalidateSpacesListCache } from '@/lib/cache/redis';
 import { PartnerSessionError, requirePartnerSession } from '@/lib/auth/require-partner-session';
 import { partnerSpaceInclude, serializePartnerSpace } from '@/lib/spaces/partner-serializer';
 import { updateSpaceLocationPoint } from '@/lib/spaces/location';
@@ -210,6 +211,7 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
     }
 
     const payload = await serializePartnerSpace(updatedSpace);
+    await invalidateSpacesListCache();
     return NextResponse.json({ data: payload, });
   } catch (error) {
     if (error instanceof PartnerSessionError) {

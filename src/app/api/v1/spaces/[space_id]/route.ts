@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
+import { invalidateSpacesListCache } from '@/lib/cache/redis';
 
 type Params = { params: Promise<{ space_id?: string }> };
 
@@ -108,6 +109,7 @@ export async function PUT(req: NextRequest, { params, }: Params) {
       },
     });
 
+    await invalidateSpacesListCache();
     return NextResponse.json({
       data: {
         space_id: updated.id,
@@ -140,6 +142,7 @@ export async function DELETE(_req: NextRequest, { params, }: Params) {
 
   try {
     await prisma.space.delete({ where: { id: space_id, }, });
+    await invalidateSpacesListCache();
     return NextResponse.json({
       message: 'Space deleted successfully',
       data: {

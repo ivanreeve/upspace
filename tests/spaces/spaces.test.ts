@@ -36,6 +36,10 @@ const mockSupabaseClient = { auth: { getUser: vi.fn<() => Promise<SupabaseAuthRe
 
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma, }));
 vi.mock('@/lib/supabase/server', () => ({ createSupabaseServerClient: vi.fn(async () => mockSupabaseClient), }));
+const mockBuildSpacesListCacheKey = vi.fn(() => 'spaces:list:test-cache');
+const mockReadSpacesListCache = vi.fn(async () => null);
+const mockSetSpacesListCache = vi.fn(async () => undefined);
+const mockInvalidateSpacesListCache = vi.fn(async () => undefined);
 vi.mock('next/server', () => {
   class MockNextRequest extends Request {
     constructor(input: RequestInfo, init?: RequestInit) {
@@ -74,6 +78,13 @@ vi.mock('@/lib/spaces/image-urls', () => ({
 vi.mock('@/lib/spaces/partner-serializer', () => ({ deriveSpaceStatus: vi.fn(() => 'approved'), }));
 vi.mock('@/lib/spaces/pricing', () => ({ computeStartingPriceFromAreas: vi.fn(() => 100), }));
 vi.mock('@/data/spaces', () => ({ WEEKDAY_ORDER: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], }));
+vi.mock('@/lib/cache/redis', () => ({
+  SPACES_LIST_CACHE_TTL_SECONDS: 60,
+  buildSpacesListCacheKey: mockBuildSpacesListCacheKey,
+  readSpacesListCache: mockReadSpacesListCache,
+  setSpacesListCache: mockSetSpacesListCache,
+  invalidateSpacesListCache: mockInvalidateSpacesListCache,
+}));
 
 class HttpError extends Error {
   status: number;
@@ -132,6 +143,10 @@ beforeEach(() => {
   mockPrisma.$transaction.mockImplementation(defaultTransaction);
   mockSupabaseClient.auth.getUser.mockReset();
   mockedSupabaseServerClient.mockClear();
+  mockBuildSpacesListCacheKey.mockReset().mockReturnValue('spaces:list:test-cache');
+  mockReadSpacesListCache.mockReset().mockResolvedValue(null);
+  mockSetSpacesListCache.mockReset();
+  mockInvalidateSpacesListCache.mockReset();
 });
 
 describe('GET /api/v1/spaces', () => {
@@ -167,6 +182,21 @@ _count: { rating_star: 2, },
         isBookmarked: true,
       })
     ]);
+  });
+
+  it('returns cached response for anonymous queries', async () => {
+    mockBuildSpacesListCacheKey.mockReturnValueOnce('spaces:list:cached-hash');
+    mockReadSpacesListCache.mockResolvedValueOnce('{"data":[],"nextCursor":null}');
+    setAuthUser(null);
+
+    const response = await GET(createRequest('http://localhost/api/v1/spaces?limit=1'));
+    const body = await response.json() as { data: unknown[]; nextCursor: null };
+
+    expect(response.status).toBe(200);
+    expect(body.data).toEqual([]);
+    expect(mockPrisma.space.findMany).not.toHaveBeenCalled();
+    expect(mockSetSpacesListCache).not.toHaveBeenCalled();
+    expect(mockReadSpacesListCache).toHaveBeenCalledWith('spaces:list:cached-hash');
   });
 
   it('returns 400 for invalid availability range', async () => {

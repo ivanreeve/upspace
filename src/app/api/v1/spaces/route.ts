@@ -10,6 +10,13 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { buildPublicObjectUrl, isAbsoluteUrl, resolveSignedImageUrls } from '@/lib/spaces/image-urls';
 import { deriveSpaceStatus } from '@/lib/spaces/partner-serializer';
 import { computeStartingPriceFromAreas } from '@/lib/spaces/pricing';
+import {
+  SPACES_LIST_CACHE_TTL_SECONDS,
+  buildSpacesListCacheKey,
+  invalidateSpacesListCache,
+  readSpacesListCache,
+  setSpacesListCache
+} from '@/lib/cache/redis';
 
 // JSON-safe replacer: BigInt->string, Date->ISO
 const replacer = (_k: string, v: unknown) =>
@@ -557,6 +564,81 @@ mode: 'insensitive' as const,
 
     const where = and.length > 0 ? { AND: and, } : {};
 
+    const uniqueSpaceIds = candidateSpaceIds.length > 0
+      ? Array.from(new Set(candidateSpaceIds)).sort()
+      : null;
+    const uniqueAmenityNames = amenityNames.length > 0
+      ? Array.from(new Set(amenityNames)).sort((a, b) => a.localeCompare(b))
+      : null;
+    const canonicalAvailableDays = normalizedDays.length > 0
+      ? Array.from(new Set(normalizedDays)).sort((a, b) => a - b)
+      : null;
+
+    const cacheSignature = {
+      limit,
+      cursor: cursor ?? null,
+      city: city ?? null,
+      region: region ?? null,
+      country: country ?? null,
+      postal_code: postal_code ?? null,
+      barangay: barangay ?? null,
+      street: street ?? null,
+      user_id: user_id ?? null,
+      q: q ?? null,
+      created_from: created_from ?? null,
+      created_to: created_to ?? null,
+      updated_from: updated_from ?? null,
+      updated_to: updated_to ?? null,
+      space_ids: uniqueSpaceIds,
+      amenities: uniqueAmenityNames,
+      amenities_mode: amenities_mode ?? null,
+      amenities_negate: amenities_negate ?? false,
+      available_days: canonicalAvailableDays,
+      available_from: available_from ?? null,
+      available_to: available_to ?? null,
+      include_pending,
+      sort: sort ?? null,
+      order: order ?? null,
+      bookmark_user_id: bookmark_user_id ?? null,
+    };
+
+    const cacheKey = buildSpacesListCacheKey(cacheSignature);
+
+    let supabaseUserId: string | null = null;
+    let supabaseLookupFailed = false;
+
+    if (!bookmark_user_id) {
+      try {
+        const supabase = await createSupabaseServerClient();
+        const {
+          data: authData,
+          error: authError,
+        } = await supabase.auth.getUser();
+        if (!authError && authData?.user) {
+          supabaseUserId = authData.user.id;
+        }
+      } catch (error) {
+        supabaseLookupFailed = true;
+        console.warn('Failed to resolve Supabase session for caching', error);
+      }
+    }
+
+    const cacheEnabled = SPACES_LIST_CACHE_TTL_SECONDS > 0;
+    const shouldCacheResponse =
+      cacheEnabled &&
+      !bookmark_user_id &&
+      !supabaseUserId &&
+      !supabaseLookupFailed;
+
+    if (shouldCacheResponse) {
+      const cachedBody = await readSpacesListCache(cacheKey);
+      if (cachedBody) {
+        const response = new NextResponse(cachedBody);
+        response.headers.set('content-type', 'application/json');
+        return response;
+      }
+    }
+
     // Pagination and sorting
     const take = limit + 1; // read one extra to know if there's a next page
     const orderBy = (() => {
@@ -638,24 +720,12 @@ mode: 'insensitive' as const,
     let bookmarkLookupUserId: bigint | null = null;
     if (bookmark_user_id) {
       bookmarkLookupUserId = BigInt(bookmark_user_id);
-    } else if (spaceIds.length > 0) {
-      try {
-        const supabase = await createSupabaseServerClient();
-        const {
-          data: authData,
-          error: authError,
-        } = await supabase.auth.getUser();
-
-        if (!authError && authData?.user) {
-          const dbUser = await prisma.user.findFirst({
-            where: { auth_user_id: authData.user.id, },
-            select: { user_id: true, },
-          });
-          bookmarkLookupUserId = dbUser?.user_id ?? null;
-        }
-      } catch {
-        bookmarkLookupUserId = null;
-      }
+    } else if (spaceIds.length > 0 && supabaseUserId) {
+      const dbUser = await prisma.user.findFirst({
+        where: { auth_user_id: supabaseUserId, },
+        select: { user_id: true, },
+      });
+      bookmarkLookupUserId = dbUser?.user_id ?? null;
     }
 
     const bookmarkedSpaceIds = bookmarkLookupUserId && spaceIds.length > 0
@@ -707,6 +777,10 @@ mode: 'insensitive' as const,
       data: payload,
       nextCursor,
     }, replacer);
+
+    if (shouldCacheResponse) {
+      await setSpacesListCache(cacheKey, body);
+    }
 
     return new NextResponse(body, {
       headers: { 'content-type': 'application/json', },
@@ -889,6 +963,7 @@ export async function POST(req: NextRequest) {
     });
 
     const responsePayload = serializeSpace(created);
+    await invalidateSpacesListCache();
     const res = NextResponse.json({ data: responsePayload, }, { status: 201, });
     res.headers.set('Location', `/api/v1/spaces/${responsePayload.space_id}`);
     return res;

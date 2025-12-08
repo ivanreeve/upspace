@@ -3,7 +3,7 @@ import type { wallet, wallet_transaction } from '@prisma/client';
 import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { ensureWalletRow, resolveAuthenticatedUserForWallet } from '@/lib/wallet-server';
 
 const walletTopUpSchema = z.object({
   amount: z.preprocess(
@@ -62,57 +62,14 @@ function mapWalletTransaction(transaction: wallet_transaction) {
   };
 }
 
-async function resolveAuthenticatedUser() {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: authData,
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !authData?.user) {
-    return { response: unauthorizedResponse, } as const;
-  }
-
-  const dbUser = await prisma.user.findFirst({
-    where: { auth_user_id: authData.user.id, },
-    select: { user_id: true, },
-  });
-
-  if (!dbUser) {
-    return {
-      response: NextResponse.json(
-        { message: 'Unable to resolve your profile.', },
-        { status: 404, }
-      ),
-    } as const;
-  }
-
-  return {
-    dbUser,
-    response: null,
-  } as const;
-}
-
-async function ensureWallet(dbUserId: bigint) {
-  return prisma.wallet.upsert({
-    where: { user_id: dbUserId, },
-    create: {
-      user_id: dbUserId,
-      balance_minor: 0,
-      currency: 'PHP',
-    },
-    update: {},
-  });
-}
-
 export async function GET() {
   try {
-    const auth = await resolveAuthenticatedUser();
+    const auth = await resolveAuthenticatedUserForWallet();
     if (auth.response) {
       return auth.response;
     }
 
-    const walletRow = await ensureWallet(auth.dbUser.user_id);
+    const walletRow = await ensureWalletRow(auth.dbUser!.user_id);
     const transactions = await prisma.wallet_transaction.findMany({
       where: { wallet_id: walletRow.id, },
       orderBy: { created_at: 'desc', },
@@ -134,7 +91,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = await resolveAuthenticatedUser();
+    const auth = await resolveAuthenticatedUserForWallet();
     if (auth.response) {
       return auth.response;
     }
@@ -149,7 +106,7 @@ export async function POST(req: NextRequest) {
       return invalidPayloadResponse;
     }
 
-    const walletRow = await ensureWallet(auth.dbUser.user_id);
+    const walletRow = await ensureWalletRow(auth.dbUser!.user_id);
 
     const transactionResult = await prisma.$transaction(async (tx) => {
       const updatedWallet = await tx.wallet.update({

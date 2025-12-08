@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { AdminSessionError, requireAdminSession } from '@/lib/auth/require-admin-session';
 import { prisma } from '@/lib/prisma';
+import { invalidateSpacesListCache } from '@/lib/cache/redis';
 import { spaceVisibilityActionSchema } from '@/lib/validations/admin';
 
 type RouteContext = {
@@ -83,6 +84,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       },
     });
 
+    await invalidateSpacesListCache();
     return NextResponse.json({
       data: {
         id: updated.id,
