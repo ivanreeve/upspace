@@ -4,7 +4,19 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    environment: 'jsdom',
+    environment: 'node',
+    environmentMatchGlobs: [
+      ['tests/review/**', 'node'],
+      ['tests/spaces/**', 'node'],
+      ['tests/amenities/**', 'node'],
+      ['tests/availability/**', 'node'],
+      ['tests/area/**', 'node'],
+      ['tests/rate/**', 'node'],
+      ['tests/bookmarks/**', 'node'],
+      ['tests/user/**', 'node'],
+      ['tests/comprehensive-test-cases/**', 'node'],
+      ['tests/integration-testing/**', 'node']
+    ],
     globals: true,
     setupFiles: ['tests/setup.ts'],
     include: ['tests/**/*.test.{ts,tsx}'],
