@@ -14,11 +14,12 @@ import {
 import type { BookingRecord, BookingStatus } from '@/lib/bookings/types';
 import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { MAX_BOOKING_HOURS, MIN_BOOKING_HOURS } from '@/lib/bookings/constants';
 
 const createBookingSchema = z.object({
   spaceId: z.string().uuid(),
   areaId: z.string().uuid(),
-  bookingHours: z.number().int().min(1).max(24),
+  bookingHours: z.number().int().min(MIN_BOOKING_HOURS).max(MAX_BOOKING_HOURS),
   price: z.number().nonnegative().nullable().optional(),
 });
 

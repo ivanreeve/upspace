@@ -7,6 +7,9 @@ import type {
 
 const DATE_LITERAL_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_LITERAL_REGEX = /^\d{1,2}:\d{2}(?::\d{2})?$/;
+const HOURS_IN_DAY = 24;
+const HOURS_IN_WEEK = HOURS_IN_DAY * 7;
+const HOURS_IN_MONTH = HOURS_IN_DAY * 30;
 
 const padTwo = (value: number) => String(value).padStart(2, '0');
 
@@ -409,6 +412,13 @@ const buildExecutionVariableMap = (
   const overrides = context.variableOverrides ?? {};
   const map: Record<string, ComparableValue> = {};
 
+  const bookingHours = Number.isFinite(context.bookingHours)
+    ? context.bookingHours
+    : 0;
+  const bookingDays = bookingHours / HOURS_IN_DAY;
+  const bookingWeeks = bookingHours / HOURS_IN_WEEK;
+  const bookingMonths = bookingHours / HOURS_IN_MONTH;
+
   const defaultDate = startOfUtcDay(now).getTime();
   const defaultTime = secondsIntoDay(now);
   const defaultDayOfWeek = ((now.getDay() + 6) % 7);
@@ -417,7 +427,22 @@ const buildExecutionVariableMap = (
     const override = overrides[variable.key];
 
     if (variable.key === 'booking_hours') {
-      map[variable.key] = context.bookingHours;
+      map[variable.key] = bookingHours;
+      return;
+    }
+
+    if (variable.key === 'booking_days') {
+      map[variable.key] = bookingDays;
+      return;
+    }
+
+    if (variable.key === 'booking_weeks') {
+      map[variable.key] = bookingWeeks;
+      return;
+    }
+
+    if (variable.key === 'booking_months') {
+      map[variable.key] = bookingMonths;
       return;
     }
 

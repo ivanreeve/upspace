@@ -52,6 +52,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import {
+  BOOKING_DURATION_VARIABLE_KEYS,
+  BOOKING_DURATION_VARIABLE_REFERENCE_TEXT,
   PRICE_RULE_COMPARATORS,
   PRICE_RULE_CONNECTORS,
   PRICE_RULE_INITIAL_VARIABLES,
@@ -123,7 +125,8 @@ const formatDateForInput = (value: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const CONDITION_FIELD_PLACEHOLDER = 'IF booking_hours >= 4 THEN booking_hours * 10 ELSE booking_hours * 8';
+const CONDITION_FIELD_PLACEHOLDER =
+  'IF booking_days >= 1 THEN booking_days * 10 ELSE booking_hours * 8';
 const CONDITION_FIELD_CARET_STYLE = {
   caretColor: 'var(--foreground)',
   color: 'transparent',
@@ -310,7 +313,7 @@ const validatePriceExpression = (
     evaluateFormula(trimmed, variableMap, (key) => {
       usedVariables.add(key);
     });
-    const allowedVariables = new Set<string>(['booking_hours']);
+    const allowedVariables = new Set<string>(BOOKING_DURATION_VARIABLE_KEYS);
     definition.variables.forEach((variable) => {
       if (!RESERVED_VARIABLE_KEYS.includes(variable.key) && variable.type === 'number') {
         allowedVariables.add(variable.key);
@@ -319,7 +322,7 @@ const validatePriceExpression = (
     usedVariables.forEach((key) => {
       if (!allowedVariables.has(key)) {
         throw new Error(
-          `${label} expression can only reference booking_hours or number variables you’ve added.`
+          `${label} expression can only reference ${BOOKING_DURATION_VARIABLE_REFERENCE_TEXT} or number variables you’ve added.`
         );
       }
     });
@@ -2456,8 +2459,14 @@ function RuleLanguageEditor({
           { conditionError ? (
             <p className="text-xs text-destructive font-sf">{ conditionError }</p>
           ) : (
-            <p id="condition-language-help" className="text-xs text-muted-foreground font-sf">
-              Use <strong>IF ... THEN ...</strong> for conditional logic or type a standalone expression such as <code>booking_hours * 1.5</code>. Use <strong>AND</strong>/<strong>OR</strong> to chain conditions.
+            <p id="condition-language-help" className="text-xs text-muted-foreground font-sf space-y-1">
+              <span>
+                Use <strong>IF ... THEN ...</strong> for conditional logic or type a standalone expression such as <code>booking_hours * 1.5</code>.
+                Use <strong>AND</strong>/<strong>OR</strong> to chain conditions.
+              </span>
+              <span>
+                You can also reference <strong>booking_days</strong>, <strong>booking_weeks</strong>, and <strong>booking_months</strong> when comparing longer stays.
+              </span>
             </p>
           ) }
         </div>

@@ -60,19 +60,62 @@ import {
   SheetTitle
 } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
-import type { PriceRuleOperand, PriceRuleRecord } from '@/lib/pricing-rules';
+import { MAX_BOOKING_HOURS } from '@/lib/bookings/constants';
+import {
+  BOOKING_DURATION_VARIABLE_KEYS,
+  type PriceRuleOperand,
+  type PriceRuleRecord,
+} from '@/lib/pricing-rules';
 import { evaluatePriceRule, type PriceRuleEvaluationResult } from '@/lib/pricing-rules-evaluator';
 import { useUserBookingsQuery, useCreateBookingMutation } from '@/hooks/api/useBookings';
 
 const DESCRIPTION_COLLAPSED_HEIGHT = 360; // px
-const MIN_BOOKING_HOURS = 1;
-const MAX_BOOKING_HOURS = 24;
 const DESKTOP_BREAKPOINT_QUERY = '(min-width: 1024px)';
 const PRICE_FORMATTER = new Intl.NumberFormat('en-PH', {
   style: 'currency',
   currency: 'PHP',
   maximumFractionDigits: 0,
 });
+type BookingDurationUnitKey = 'hours' | 'days' | 'weeks' | 'months';
+type BookingDurationUnit = {
+  key: BookingDurationUnitKey;
+  label: string;
+  pluralLabel: string;
+  multiplier: number;
+};
+
+const BOOKING_DURATION_UNITS: BookingDurationUnit[] = [
+  {
+    key: 'hours',
+    label: 'Hour',
+    pluralLabel: 'Hours',
+    multiplier: 1,
+  },
+  {
+    key: 'days',
+    label: 'Day',
+    pluralLabel: 'Days',
+    multiplier: 24,
+  },
+  {
+    key: 'weeks',
+    label: 'Week',
+    pluralLabel: 'Weeks',
+    multiplier: 24 * 7,
+  },
+  {
+    key: 'months',
+    label: 'Month',
+    pluralLabel: 'Months',
+    multiplier: 24 * 30,
+  },
+];
+
+const DEFAULT_BOOKING_UNIT_INDEX = 0;
+const DEFAULT_BOOKING_UNIT_VALUE = 1;
+
+const getMaxUnitsForDurationUnit = (multiplier: number) =>
+  Math.max(1, Math.floor(MAX_BOOKING_HOURS / multiplier));
 type SpaceDetailProps = {
   space: MarketplaceSpaceDetail;
 };
@@ -104,7 +147,10 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
 
   const defaultHostName = 'Trisha M.';
   const [isBookingOpen, setIsBookingOpen] = useState(false);
-  const [bookingHours, setBookingHours] = useState(MIN_BOOKING_HOURS);
+  const [bookingDurationUnitIndex, setBookingDurationUnitIndex] = useState(
+    DEFAULT_BOOKING_UNIT_INDEX
+  );
+  const [bookingUnitValue, setBookingUnitValue] = useState(DEFAULT_BOOKING_UNIT_VALUE);
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
   const [isPricingLoading, setIsPricingLoading] = useState(false);
   const [isDesktopViewport, setIsDesktopViewport] = useState(() => {
@@ -133,7 +179,8 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
   }, [canMessageHost]);
 
   const resetBookingState = useCallback(() => {
-    setBookingHours(MIN_BOOKING_HOURS);
+    setBookingDurationUnitIndex(DEFAULT_BOOKING_UNIT_INDEX);
+    setBookingUnitValue(DEFAULT_BOOKING_UNIT_VALUE);
     setSelectedAreaId(null);
     setIsPricingLoading(false);
   }, []);
@@ -147,7 +194,8 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
 
   const initializeBookingSelection = useCallback(() => {
     const defaultAreaId = findFirstPricedAreaId();
-    setBookingHours(MIN_BOOKING_HOURS);
+    setBookingDurationUnitIndex(DEFAULT_BOOKING_UNIT_INDEX);
+    setBookingUnitValue(DEFAULT_BOOKING_UNIT_VALUE);
     setSelectedAreaId(defaultAreaId);
     setIsPricingLoading(Boolean(defaultAreaId));
   }, [findFirstPricedAreaId]);
@@ -163,17 +211,58 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     resetBookingState();
     setIsBookingOpen(false);
   }, [resetBookingState]);
-  const increaseBookingHours = useCallback(() => {
-    setBookingHours((prev) => Math.min(prev + 1, MAX_BOOKING_HOURS));
-  }, []);
-  const decreaseBookingHours = useCallback(() => {
-    setBookingHours((prev) => Math.max(prev - 1, MIN_BOOKING_HOURS));
+  const currentDurationUnit = BOOKING_DURATION_UNITS[bookingDurationUnitIndex];
+  const bookingUnitMax = getMaxUnitsForDurationUnit(currentDurationUnit.multiplier);
+  const bookingHours = bookingUnitValue * currentDurationUnit.multiplier;
+  const bookingUnitLabel =
+    bookingUnitValue === 1 ? currentDurationUnit.label : currentDurationUnit.pluralLabel;
+  const increaseBookingUnitValue = useCallback(() => {
+    setBookingUnitValue((prev) =>
+      Math.min(
+        prev + 1,
+        getMaxUnitsForDurationUnit(
+          BOOKING_DURATION_UNITS[bookingDurationUnitIndex].multiplier
+        )
+      )
+    );
+  }, [bookingDurationUnitIndex]);
+  const decreaseBookingUnitValue = useCallback(() => {
+    setBookingUnitValue((prev) => Math.max(prev - 1, DEFAULT_BOOKING_UNIT_VALUE));
   }, []);
   const handleSelectArea = useCallback((areaId: string) => {
     setSelectedAreaId(areaId);
-    setBookingHours(MIN_BOOKING_HOURS);
+    setBookingUnitValue(DEFAULT_BOOKING_UNIT_VALUE);
     setIsPricingLoading(true);
   }, []);
+
+  const cycleBookingDurationUnit = useCallback((direction: 1 | -1) => {
+    setBookingDurationUnitIndex((prevIndex) => {
+      const totalUnits = BOOKING_DURATION_UNITS.length;
+      const nextIndex =
+        (prevIndex + direction + totalUnits) % totalUnits;
+      const currentUnit = BOOKING_DURATION_UNITS[prevIndex];
+      const nextUnit = BOOKING_DURATION_UNITS[nextIndex];
+      const nextMax = getMaxUnitsForDurationUnit(nextUnit.multiplier);
+      setBookingUnitValue((prevValue) => {
+        const currentHours = prevValue * currentUnit.multiplier;
+        const nextValue = Math.max(
+          DEFAULT_BOOKING_UNIT_VALUE,
+          Math.ceil(currentHours / nextUnit.multiplier)
+        );
+        return Math.min(nextValue, nextMax);
+      });
+      return nextIndex;
+    });
+  }, []);
+
+  const handlePreviousDurationUnit = useCallback(
+    () => cycleBookingDurationUnit(-1),
+    [cycleBookingDurationUnit]
+  );
+  const handleNextDurationUnit = useCallback(
+    () => cycleBookingDurationUnit(1),
+    [cycleBookingDurationUnit]
+  );
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -320,7 +409,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
   }, [isPricingLoading, selectedAreaId]);
 
   const shouldShowHourSelector = useMemo(
-    () => doesRuleUseBookingHours(activePriceRule),
+    () => doesRuleUseBookingDurationVariables(activePriceRule),
     [activePriceRule]
   );
 
@@ -412,23 +501,25 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                     variant="outline"
                     size="icon"
                     className="h-10 w-10 rounded-full"
-                    disabled
+                    onClick={ handlePreviousDurationUnit }
+                    disabled={ isPricingLoading }
                   >
                     <FiChevronLeft className="size-4" aria-hidden="true" />
-                    <span className="sr-only">Previous unit</span>
+                    <span className="sr-only">Switch to the previous duration unit</span>
                   </Button>
                   <span className="text-sm font-semibold text-muted-foreground">
-                    Hour
+                    { bookingUnitLabel }
                   </span>
                   <Button
                     type="button"
                     variant="outline"
                     size="icon"
                     className="h-10 w-10 rounded-full"
-                    disabled
+                    onClick={ handleNextDurationUnit }
+                    disabled={ isPricingLoading }
                   >
                     <FiChevronRight className="size-4" aria-hidden="true" />
-                    <span className="sr-only">Next unit</span>
+                    <span className="sr-only">Switch to the next duration unit</span>
                   </Button>
                 </div>
                 <div className="flex items-center justify-center gap-6 my-16">
@@ -437,18 +528,22 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                     variant="outline"
                     size="icon"
                     className="h-12 w-12 rounded-full"
-                    onClick={ decreaseBookingHours }
+                    onClick={ decreaseBookingUnitValue }
                     disabled={
-                      bookingHours <= MIN_BOOKING_HOURS || isPricingLoading
+                      bookingUnitValue <= DEFAULT_BOOKING_UNIT_VALUE ||
+                      isPricingLoading
                     }
                   >
                     <FiMinus className="size-4" aria-hidden="true" />
-                    <span className="sr-only">Decrease hours</span>
+                    <span className="sr-only">Decrease booking duration</span>
                   </Button>
                   <div className="text-center">
-                    <div className="text-9xl font-semibold">{ bookingHours }</div>
+                    <div className="text-9xl font-semibold">{ bookingUnitValue }</div>
                     <p className="text-md font-semibold font-sf text-muted-foreground">
-                      Hours
+                      { bookingUnitLabel }
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      { bookingHours } hour{ bookingHours === 1 ? '' : 's' } total
                     </p>
                   </div>
                   <Button
@@ -456,13 +551,13 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                     variant="outline"
                     size="icon"
                     className="h-12 w-12 rounded-full"
-                    onClick={ increaseBookingHours }
+                    onClick={ increaseBookingUnitValue }
                     disabled={
-                      bookingHours >= MAX_BOOKING_HOURS || isPricingLoading
+                      bookingUnitValue >= bookingUnitMax || isPricingLoading
                     }
                   >
                     <FiPlus className="size-4" aria-hidden="true" />
-                    <span className="sr-only">Increase hours</span>
+                    <span className="sr-only">Increase booking duration</span>
                   </Button>
                 </div>
               </div>
@@ -802,38 +897,43 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
   );
 }
 
-const BOOKING_HOURS_VARIABLE = 'booking_hours';
-const BOOKING_HOURS_KEY = BOOKING_HOURS_VARIABLE.toLowerCase();
+const BOOKING_DURATION_VARIABLE_KEY_SET = new Set(
+  BOOKING_DURATION_VARIABLE_KEYS.map((key) => key.toLowerCase())
+);
 
-function isBookingHoursOperand(operand: PriceRuleOperand): boolean {
+function isBookingDurationVariableOperand(
+  operand: PriceRuleOperand
+): boolean {
   return (
     operand.kind === 'variable' &&
-    operand.key.trim().toLowerCase() === BOOKING_HOURS_KEY
+    BOOKING_DURATION_VARIABLE_KEY_SET.has(operand.key.trim().toLowerCase())
   );
 }
 
-function doesRuleUseBookingHours(rule: PriceRuleRecord | null): boolean {
+function doesRuleUseBookingDurationVariables(rule: PriceRuleRecord | null): boolean {
   if (!rule) {
     return false;
   }
 
   const referencesInConditions = rule.definition.conditions.some(
     (condition) =>
-      isBookingHoursOperand(condition.left) ||
-      isBookingHoursOperand(condition.right)
+      isBookingDurationVariableOperand(condition.left) ||
+      isBookingDurationVariableOperand(condition.right)
   );
 
-  const formulaReferencesBookingHours = rule.definition.formula
-    .toLowerCase()
-    .includes(BOOKING_HOURS_KEY);
+  const normalizedFormula = rule.definition.formula.toLowerCase();
+  const formulaReferencesBookingDuration = BOOKING_DURATION_VARIABLE_KEYS.some(
+    (variable) => normalizedFormula.includes(variable.toLowerCase())
+  );
 
-  const declaresBookingHoursVariable = rule.definition.variables.some(
-    (variable) => variable.key.trim().toLowerCase() === BOOKING_HOURS_KEY
+  const declaresBookingDurationVariable = rule.definition.variables.some(
+    (variable) =>
+      BOOKING_DURATION_VARIABLE_KEY_SET.has(variable.key.trim().toLowerCase())
   );
 
   return (
     referencesInConditions ||
-    formulaReferencesBookingHours ||
-    declaresBookingHoursVariable
+    formulaReferencesBookingDuration ||
+    declaresBookingDurationVariable
   );
 }

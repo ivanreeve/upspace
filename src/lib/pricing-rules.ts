@@ -111,12 +111,43 @@ export const priceRuleSchema = z.object({
 
 export type PriceRuleFormValues = z.infer<typeof priceRuleSchema>;
 
+export const BOOKING_DURATION_VARIABLE_KEYS = [
+  'booking_hours',
+  'booking_days',
+  'booking_weeks',
+  'booking_months',
+] as const;
+
+export const BOOKING_DURATION_VARIABLE_REFERENCE_TEXT =
+  'booking_hours, booking_days, booking_weeks, or booking_months';
+
 export const PRICE_RULE_INITIAL_VARIABLES: PriceRuleVariable[] = [
   {
     key: 'booking_hours',
     label: 'booking hours',
     type: 'number',
     initialValue: '1',
+    userInput: false,
+  },
+  {
+    key: 'booking_days',
+    label: 'booking days',
+    type: 'number',
+    initialValue: '0',
+    userInput: false,
+  },
+  {
+    key: 'booking_weeks',
+    label: 'booking weeks',
+    type: 'number',
+    initialValue: '0',
+    userInput: false,
+  },
+  {
+    key: 'booking_months',
+    label: 'booking months',
+    type: 'number',
+    initialValue: '0',
     userInput: false,
   },
   {
