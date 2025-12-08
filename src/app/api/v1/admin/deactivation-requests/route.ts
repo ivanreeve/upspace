@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
 import { AdminSessionError, requireAdminSession } from '@/lib/auth/require-admin-session';
+import { formatUserDisplayName } from '@/lib/user/display-name';
 
 const querySchema = z.object({
   status: z.enum(['pending', 'approved', 'rejected']).default('pending'),
@@ -10,13 +11,6 @@ const querySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   cursor: z.string().uuid().optional(),
 });
-
-function formatDisplayName(first?: string | null, last?: string | null, fallback?: string) {
-  if (first || last) {
-    return [first, last].filter(Boolean).join(' ');
-  }
-  return fallback ?? 'UpSpace member';
-}
 
 export async function GET(req: NextRequest) {
   try {
@@ -104,7 +98,7 @@ export async function GET(req: NextRequest) {
         user: {
           handle: requester.handle,
           role: requester.role,
-          name: formatDisplayName(
+          name: formatUserDisplayName(
             requester.first_name,
             requester.last_name,
             requester.handle
@@ -117,11 +111,11 @@ export async function GET(req: NextRequest) {
         },
         processed_by: processor
           ? {
-              name: formatDisplayName(
-                processor.first_name,
-                processor.last_name,
-                processor.handle
-              ),
+            name: formatUserDisplayName(
+              processor.first_name,
+              processor.last_name,
+              processor.handle
+            ),
             }
           : null,
       };

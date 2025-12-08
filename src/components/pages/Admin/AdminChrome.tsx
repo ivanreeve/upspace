@@ -2,7 +2,12 @@
 
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiCheckCircle, FiX } from 'react-icons/fi';
+import {
+FiCheckCircle,
+FiLayers,
+FiUsers,
+FiX
+} from 'react-icons/fi';
 
 import { MarketplaceChrome } from '../Marketplace/MarketplaceChrome';
 
@@ -81,20 +86,28 @@ export function AdminChrome({
             ) }
           />
           <CommandList>
-            <CommandGroup heading="Quick Actions" forceMount>
+          <CommandGroup heading="Quick Actions" forceMount>
+            <CommandItem
+              value="pending verifications"
+              onSelect={ () => handleNavigate('/admin') }
+            >
+              <FiCheckCircle className="size-4" aria-hidden="true" />
+              <span>Pending Verifications</span>
+              <Kbd className="ml-auto flex items-center gap-1 text-[10px]">
+                Enter
+              </Kbd>
+            </CommandItem>
+            <CommandItem value="users" onSelect={ () => handleNavigate('/admin/users') }>
+              <FiUsers className="size-4" aria-hidden="true" />
+              <span>Users</span>
+            </CommandItem>
+            <CommandItem value="spaces" onSelect={ () => handleNavigate('/admin/spaces') }>
+              <FiLayers className="size-4" aria-hidden="true" />
+              <span>Spaces</span>
+            </CommandItem>
+            { searchValue.trim() && (
               <CommandItem
-                value="pending verifications"
-                onSelect={ () => handleNavigate('/admin') }
-              >
-                <FiCheckCircle className="size-4" aria-hidden="true" />
-                <span>Pending Verifications</span>
-                <Kbd className="ml-auto flex items-center gap-1 text-[10px]">
-                  Enter
-                </Kbd>
-              </CommandItem>
-              { searchValue.trim() && (
-                <CommandItem
-                  value="clear search"
+                value="clear search"
                   onSelect={ () => setSearchValue('') }
                 >
                   <FiX className="size-4" aria-hidden="true" />

@@ -18,13 +18,15 @@ import {
   FiSettings,
   FiUser,
   FiUserX,
+  FiUsers,
   FiEyeOff,
-  FiChevronRight
+  FiChevronRight,
+  FiLayers
 } from 'react-icons/fi';
 import { PiMoneyWavyBold, PiWalletLight } from 'react-icons/pi';
 import { HiOutlineDocumentText } from 'react-icons/hi';
 import { LuTicket } from 'react-icons/lu';
-import { MdFormatListBulleted, MdOutlineSpaceDashboard, MdWorkOutline } from 'react-icons/md';
+import { MdOutlineSpaceDashboard, MdWorkOutline } from 'react-icons/md';
 import { TbLayoutSidebarFilled } from 'react-icons/tb';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -1049,9 +1051,14 @@ export function MarketplaceChrome({
           icon: FiEyeOff,
         },
         {
-          label: 'Observe',
-          href: '/observability',
-          icon: MdFormatListBulleted,
+          label: 'Users',
+          href: '/admin/users',
+          icon: FiUsers,
+        },
+        {
+          label: 'Spaces',
+          href: '/admin/spaces',
+          icon: FiLayers,
         }
       ];
     }
@@ -1300,11 +1307,20 @@ export function MarketplaceChrome({
                   ) }
                   { isAdminRole && (
                     <SidebarLinkItem
-                      href="/observability"
-                      label="Observability"
-                      icon={ MdFormatListBulleted }
-                      tooltip="Observability"
-                      iconProps={ { className: 'size-4', } }
+                      href="/admin/users"
+                      label="Users"
+                      icon={ FiUsers }
+                      tooltip="Manage users"
+                      iconProps={ { strokeWidth: 2, } }
+                    />
+                  ) }
+                  { isAdminRole && (
+                    <SidebarLinkItem
+                      href="/admin/spaces"
+                      label="Spaces"
+                      icon={ FiLayers }
+                      tooltip="Manage spaces"
+                      iconProps={ { strokeWidth: 2, } }
                     />
                   ) }
                 </>
