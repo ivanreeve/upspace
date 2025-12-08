@@ -224,6 +224,25 @@
   }
 }
 
+.space-card-entrance {
+  animation: fadeSlideUp 0.65s cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+@keyframes fadeSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  60% {
+    opacity: 0.7;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .greeting-appear {
   animation: greetingAppear 0.65s ease-out forwards;
 }

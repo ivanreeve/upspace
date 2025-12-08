@@ -229,7 +229,7 @@ function MessageBubble({
                 { message.spaceResults!.map((space) => (
                   <div
                     key={ space.space_id }
-                    className="min-w-[320px] max-w-[360px] snap-start"
+                    className="min-w-[320px] max-w-[360px] snap-start space-card-entrance"
                   >
                     <SpaceCard space={ space } />
                   </div>
@@ -237,7 +237,9 @@ function MessageBubble({
               </div>
             </div>
           ) : (
-            <SpaceCard space={ message.spaceResults![0] } />
+            <div className="space-card-entrance">
+              <SpaceCard space={ message.spaceResults![0] } />
+            </div>
           ) }
         </div>
       ) : null }
