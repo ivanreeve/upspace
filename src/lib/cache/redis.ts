@@ -92,7 +92,12 @@ export async function readSpacesListCache(key: string): Promise<string | null> {
   return withRedisClient((client) => client.get(key));
 }
 
-export async function setSpacesListCache(key: string, value: string): Promise<void> {
+export async function setSpacesListCache(
+  key: string,
+  value: string,
+  signature: Record<string, unknown>,
+  nextCursor: string | null
+): Promise<void> {
   if (SPACES_LIST_CACHE_TTL_SECONDS <= 0) {
     return;
   }
@@ -100,7 +105,16 @@ export async function setSpacesListCache(key: string, value: string): Promise<vo
     return;
   }
   await withRedisClient((client) =>
-    client.set(key, value, { EX: SPACES_LIST_CACHE_TTL_SECONDS, })
+    client
+      .multi()
+      .hSet(key, {
+        payload: value,
+        filters: JSON.stringify(signature),
+        next_cursor: nextCursor ?? '',
+        created_at: new Date().toISOString(),
+      })
+      .expire(key, SPACES_LIST_CACHE_TTL_SECONDS)
+      .exec()
   );
 }
 

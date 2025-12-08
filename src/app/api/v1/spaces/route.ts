@@ -779,7 +779,7 @@ mode: 'insensitive' as const,
     }, replacer);
 
     if (shouldCacheResponse) {
-      await setSpacesListCache(cacheKey, body);
+      await setSpacesListCache(cacheKey, body, cacheSignature, nextCursor);
     }
 
     return new NextResponse(body, {
