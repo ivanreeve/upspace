@@ -202,6 +202,21 @@ count: 0,
     });
   });
 
+  it('returns viewer_reviewed false when not authenticated', async () => {
+    const { spaceId, list, } = reviewFixtures;
+    mockPrisma.review.aggregate.mockResolvedValueOnce(list.aggregate);
+    mockPrisma.review.groupBy.mockResolvedValueOnce(list.groupBy);
+    mockPrisma.review.findMany.mockResolvedValueOnce(list.reviews);
+
+    const req = createRequest(`http://localhost/api/v1/spaces/${spaceId}/reviews`);
+    const response = await GET(req, { params: Promise.resolve({ space_id: spaceId, }), });
+    const body = await response.json() as { data: { viewer_reviewed: boolean } };
+
+    expect(response.status).toBe(200);
+    expect(body.data.viewer_reviewed).toBe(false);
+    expect(mockPrisma.review.findFirst).not.toHaveBeenCalled();
+  });
+
   it('returns empty summary when no reviews exist', async () => {
     const { spaceId, } = reviewFixtures;
 
@@ -350,6 +365,9 @@ describe('POST /api/v1/spaces/{space_id}/reviews', () => {
     mockPrisma.user.findFirst.mockResolvedValueOnce({ user_id: viewer.userId, });
     mockPrisma.space.findUnique.mockResolvedValueOnce({ id: spaceId, });
     mockPrisma.review.findFirst.mockResolvedValueOnce(null);
+    mockPrisma.review.create.mockImplementation(() => {
+      throw new Error('review.create should not be called on invalid payload');
+    });
 
     const invalidPayload = {
  rating_star: 6,
@@ -430,6 +448,9 @@ description: 'Too high rating',
     const {
  invalidSpaceId, createPayload, 
 } = reviewFixtures;
+    mockPrisma.review.create.mockImplementation(() => {
+      throw new Error('review.create should not be called on invalid space id');
+    });
 
     const req = createRequest(
       `http://localhost/api/v1/spaces/${invalidSpaceId}/reviews`,
@@ -446,6 +467,7 @@ description: 'Too high rating',
     expect(response.status).toBe(400);
     expect(body.error).toBe('space_id is required and must be a valid UUID');
     expect(mockPrisma.user.findFirst).not.toHaveBeenCalled();
+    expect(mockPrisma.review.create).not.toHaveBeenCalled();
   });
 });
 

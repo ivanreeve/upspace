@@ -192,9 +192,12 @@ error: null,
 } = bookmarksFixture;
     mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
  data: { user: { id: authUserId, }, },
-error: null, 
+ error: null, 
 });
     mockPrisma.user.findFirst.mockResolvedValueOnce({ user_id: userId, });
+    mockPrisma.bookmark.create.mockImplementation(() => {
+      throw new Error('bookmark.create should not be called on invalid space id');
+    });
 
     const response = await POST(
       createRequest('http://localhost/api/v1/bookmarks', {
@@ -204,6 +207,26 @@ error: null,
       })
     );
     expect(response.status).toBe(400);
+    expect(mockPrisma.bookmark.create).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when user record is missing', async () => {
+    const { authUserId, spaceId, } = bookmarksFixture;
+    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
+      data: { user: { id: authUserId, }, },
+      error: null,
+    });
+    mockPrisma.user.findFirst.mockResolvedValueOnce(null);
+
+    const response = await POST(
+      createRequest('http://localhost/api/v1/bookmarks', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', },
+        body: JSON.stringify({ space_id: spaceId, }),
+      })
+    );
+    expect(response.status).toBe(403);
+    expect(mockPrisma.bookmark.create).not.toHaveBeenCalled();
   });
 });
 
@@ -262,9 +285,12 @@ error: null,
 } = bookmarksFixture;
     mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
  data: { user: { id: authUserId, }, },
-error: null, 
+ error: null, 
 });
     mockPrisma.user.findFirst.mockResolvedValueOnce({ user_id: userId, });
+    mockPrisma.bookmark.deleteMany.mockImplementation(() => {
+      throw new Error('bookmark.deleteMany should not be called on invalid space id');
+    });
 
     const response = await DELETE(
       createRequest('http://localhost/api/v1/bookmarks', {
@@ -274,5 +300,6 @@ error: null,
       })
     );
     expect(response.status).toBe(400);
+    expect(mockPrisma.bookmark.deleteMany).not.toHaveBeenCalled();
   });
 });

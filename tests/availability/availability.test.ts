@@ -157,6 +157,9 @@ describe('POST /api/v1/spaces/{space_id}/availability', () => {
  spaceId, createPayloadArray, 
 } = availabilityFixture;
     const dup = [...createPayloadArray, createPayloadArray[0]];
+    mockPrisma.$transaction.mockImplementation(() => {
+      throw new Error('transaction should not run on duplicate days');
+    });
 
     const response = await POST(
       createRequest(`http://localhost/api/v1/spaces/${spaceId}/availability`, {
@@ -167,10 +170,14 @@ describe('POST /api/v1/spaces/{space_id}/availability', () => {
       { params: Promise.resolve({ space_id: spaceId, }), }
     );
     expect(response.status).toBe(422);
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('validates time ordering', async () => {
     const { spaceId, } = availabilityFixture;
+    mockPrisma.$transaction.mockImplementation(() => {
+      throw new Error('transaction should not run on invalid time ordering');
+    });
     const response = await POST(
       createRequest(`http://localhost/api/v1/spaces/${spaceId}/availability`, {
         method: 'POST',
@@ -184,6 +191,7 @@ describe('POST /api/v1/spaces/{space_id}/availability', () => {
       { params: Promise.resolve({ space_id: spaceId, }), }
     );
     expect(response.status).toBe(422);
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('returns 404 when space not found (P2003)', async () => {
@@ -208,6 +216,9 @@ describe('POST /api/v1/spaces/{space_id}/availability', () => {
     const {
  invalidSpaceId, createPayload, 
 } = availabilityFixture;
+    mockPrisma.$transaction.mockImplementation(() => {
+      throw new Error('transaction should not run on invalid space id');
+    });
     const response = await POST(
       createRequest(`http://localhost/api/v1/spaces/${invalidSpaceId}/availability`, {
         method: 'POST',
@@ -217,6 +228,25 @@ describe('POST /api/v1/spaces/{space_id}/availability', () => {
       { params: Promise.resolve({ space_id: invalidSpaceId, }), }
     );
     expect(response.status).toBe(400);
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when space not found via P2003 on createMany', async () => {
+    const {
+ spaceId, createPayloadArray, 
+} = availabilityFixture;
+    const err = Object.assign(new Error('fk'), { code: 'P2003', });
+    mockPrisma.$transaction.mockImplementation(async () => { throw err; });
+
+    const response = await POST(
+      createRequest(`http://localhost/api/v1/spaces/${spaceId}/availability`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', },
+        body: JSON.stringify(createPayloadArray),
+      }),
+      { params: Promise.resolve({ space_id: spaceId, }), }
+    );
+    expect(response.status).toBe(404);
   });
 });
 
@@ -278,6 +308,9 @@ availability_id: availabilityId,
  spaceId, availabilityId, existingRow, 
 } = availabilityFixture;
     mockPrisma.space_availability.findFirst.mockResolvedValueOnce(existingRow);
+    mockPrisma.space_availability.update.mockImplementation(() => {
+      throw new Error('update should not be called when closing_time precedes opening_time');
+    });
 
     const response = await PUT(
       createRequest(`http://localhost/api/v1/spaces/${spaceId}/availability/${availabilityId}`, {
@@ -296,12 +329,16 @@ availability_id: availabilityId,
 }
     );
     expect(response.status).toBe(422);
+    expect(mockPrisma.space_availability.update).not.toHaveBeenCalled();
   });
 
   it('returns 400 for invalid ids', async () => {
     const {
  invalidSpaceId, invalidAvailabilityId, 
 } = availabilityFixture;
+    mockPrisma.space_availability.update.mockImplementation(() => {
+      throw new Error('update should not be called on invalid ids');
+    });
     const response = await PUT(
       createRequest(`http://localhost/api/v1/spaces/${invalidSpaceId}/availability/${invalidAvailabilityId}`, {
         method: 'PUT',
@@ -316,6 +353,7 @@ availability_id: invalidAvailabilityId,
 }
     );
     expect(response.status).toBe(400);
+    expect(mockPrisma.space_availability.update).not.toHaveBeenCalled();
   });
 });
 
@@ -363,15 +401,19 @@ availability_id: availabilityId,
     const {
  invalidSpaceId, invalidAvailabilityId, 
 } = availabilityFixture;
+    mockPrisma.space_availability.deleteMany.mockImplementation(() => {
+      throw new Error('deleteMany should not be called on invalid ids');
+    });
     const response = await DELETE(
       createRequest(`http://localhost/api/v1/spaces/${invalidSpaceId}/availability/${invalidAvailabilityId}`, { method: 'DELETE', }),
       {
  params: Promise.resolve({
  space_id: invalidSpaceId,
-availability_id: invalidAvailabilityId, 
+ availability_id: invalidAvailabilityId, 
 }), 
 }
     );
     expect(response.status).toBe(400);
+    expect(mockPrisma.space_availability.deleteMany).not.toHaveBeenCalled();
   });
 });

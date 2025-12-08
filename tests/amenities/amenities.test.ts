@@ -175,6 +175,9 @@ describe('POST /api/v1/spaces/{space_id}/amenities', () => {
 
   it('returns 400 for invalid payload', async () => {
     const { spaceId, } = amenitiesFixture;
+    mockPrisma.amenity.create.mockImplementation(() => {
+      throw new Error('amenity.create should not be called on invalid payload');
+    });
     const response = await POST(
       createRequest(`http://localhost/api/v1/spaces/${spaceId}/amenities`, {
         method: 'POST',
@@ -184,12 +187,16 @@ describe('POST /api/v1/spaces/{space_id}/amenities', () => {
       { params: Promise.resolve({ space_id: spaceId, }), }
     );
     expect(response.status).toBe(400);
+    expect(mockPrisma.amenity.create).not.toHaveBeenCalled();
   });
 
   it('returns 400 for invalid space_id', async () => {
     const {
  invalidSpaceId, createPayload, 
 } = amenitiesFixture;
+    mockPrisma.amenity.create.mockImplementation(() => {
+      throw new Error('amenity.create should not be called on invalid space id');
+    });
     const response = await POST(
       createRequest(`http://localhost/api/v1/spaces/${invalidSpaceId}/amenities`, {
         method: 'POST',
@@ -199,7 +206,9 @@ describe('POST /api/v1/spaces/{space_id}/amenities', () => {
       { params: Promise.resolve({ space_id: invalidSpaceId, }), }
     );
     expect(response.status).toBe(400);
+    expect(mockPrisma.amenity.create).not.toHaveBeenCalled();
   });
+
 });
 
 describe('DELETE /api/v1/spaces/{space_id}/amenities/{amenity_id}', () => {

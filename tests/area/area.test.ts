@@ -159,6 +159,9 @@ describe('POST /api/v1/spaces/{space_id}/areas', () => {
 
   it('returns 400 for invalid payload', async () => {
     const { spaceId, } = areaFixture;
+    mockPrisma.area.create.mockImplementation(() => {
+      throw new Error('area.create should not be called on invalid payload');
+    });
     const response = await POST(
       createRequest(`http://localhost/api/v1/spaces/${spaceId}/areas`, {
         method: 'POST',
@@ -171,6 +174,7 @@ capacity: 'NaN',
       { params: Promise.resolve({ space_id: spaceId, }), }
     );
     expect(response.status).toBe(400);
+    expect(mockPrisma.area.create).not.toHaveBeenCalled();
   });
 });
 
@@ -228,6 +232,9 @@ area_id: areaId,
     const {
  invalidSpaceId, invalidAreaId, updatePayload, 
 } = areaFixture;
+    mockPrisma.area.updateMany.mockImplementation(() => {
+      throw new Error('area.updateMany should not be called on invalid ids');
+    });
     const response = await PUT(
       createRequest(`http://localhost/api/v1/spaces/${invalidSpaceId}/areas/${invalidAreaId}`, {
         method: 'PUT',
@@ -242,6 +249,7 @@ area_id: invalidAreaId,
 }
     );
     expect(response.status).toBe(400);
+    expect(mockPrisma.area.updateMany).not.toHaveBeenCalled();
   });
 });
 
@@ -288,17 +296,21 @@ area_id: areaId,
     const {
  invalidSpaceId, invalidAreaId, 
 } = areaFixture;
+    mockPrisma.area.deleteMany.mockImplementation(() => {
+      throw new Error('area.deleteMany should not be called on invalid ids');
+    });
 
     const response = await DELETE(
       createRequest(`http://localhost/api/v1/spaces/${invalidSpaceId}/areas/${invalidAreaId}`, { method: 'DELETE', }),
       {
  params: Promise.resolve({
  space_id: invalidSpaceId,
-area_id: invalidAreaId, 
+ area_id: invalidAreaId, 
 }), 
 }
     );
 
     expect(response.status).toBe(400);
+    expect(mockPrisma.area.deleteMany).not.toHaveBeenCalled();
   });
 });

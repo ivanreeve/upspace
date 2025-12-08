@@ -155,7 +155,7 @@ _count: { rating_star: 2, },
     const body = await response.json() as { data: unknown; nextCursor: string | null };
 
     expect(response.status).toBe(200);
-    expect(body.nextCursor).toBeNull();
+    expect(body.nextCursor).toBe(listResult[0].id);
     expect(body.data).toEqual([
       expect.objectContaining({
         space_id: listResult[0].id,
@@ -261,6 +261,29 @@ describe('POST /api/v1/spaces', () => {
     expect(body.error).toBe('Authentication required.');
   });
 
+  it('rejects non-partner roles', async () => {
+    const { createPayload, partner, } = spaceFixtures;
+    setAuthUser(partner.authUserId);
+    mockPrisma.user.findFirst.mockResolvedValueOnce({
+      user_id: partner.userId,
+      role: 'customer',
+      is_onboard: true,
+    });
+    mockPrisma.space.create.mockImplementation(() => {
+      throw new Error('space.create should not be called for non-partner');
+    });
+
+    const response = await POST(
+      createRequest('http://localhost/api/v1/spaces', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', },
+        body: JSON.stringify(createPayload),
+      })
+    );
+    expect(response.status).toBe(403);
+    expect(mockPrisma.space.create).not.toHaveBeenCalled();
+  });
+
   it('returns 422 when amenities do not match choices', async () => {
     const {
  createPayload, partner, 
@@ -270,6 +293,9 @@ describe('POST /api/v1/spaces', () => {
       user_id: partner.userId,
       role: 'partner',
       is_onboard: true,
+    });
+    mockPrisma.amenity.createMany.mockImplementation(() => {
+      throw new Error('amenity.createMany should not be called when amenities mismatch');
     });
     mockPrisma.space.create.mockResolvedValueOnce(spaceFixtures.createdSpace);
     // Only one amenity returned, causing mismatch
@@ -284,11 +310,131 @@ describe('POST /api/v1/spaces', () => {
     );
 
     expect(response.status).toBe(422);
+    expect(mockPrisma.space.create).toHaveBeenCalledTimes(1);
     expect(mockPrisma.amenity_choice.findMany).toHaveBeenCalledWith({
       where: { id: { in: createPayload.amenities, }, },
       select: { id: true, },
     });
-    expect(mockPrisma.space.create).toHaveBeenCalled();
+    expect(mockPrisma.amenity.createMany).not.toHaveBeenCalled();
+    expect(mockPrisma.verification.create).not.toHaveBeenCalled();
+  });
+
+  it('returns 422 for descriptions below minimum length', async () => {
+    const {
+ createPayload, partner, 
+} = spaceFixtures;
+    setAuthUser(partner.authUserId);
+    mockPrisma.user.findFirst.mockResolvedValueOnce({
+      user_id: partner.userId,
+      role: 'partner',
+      is_onboard: true,
+    });
+    mockPrisma.space.create.mockImplementation(() => {
+      throw new Error('space.create should not be called on invalid description');
+    });
+    const { richTextPlainTextLength, } = await import('@/lib/rich-text');
+    vi.mocked(richTextPlainTextLength).mockReturnValueOnce(5);
+
+    const response = await POST(
+      createRequest('http://localhost/api/v1/spaces', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', },
+        body: JSON.stringify({
+          ...createPayload,
+          description: '<p>short</p>',
+        }),
+      })
+    );
+    expect(response.status).toBe(422);
+    expect(mockPrisma.space.create).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when user lookup fails (P2003)', async () => {
+    const {
+ createPayload, partner, 
+} = spaceFixtures;
+    setAuthUser(partner.authUserId);
+    mockPrisma.user.findFirst.mockResolvedValueOnce({
+      user_id: partner.userId,
+      role: 'partner',
+      is_onboard: true,
+    });
+    const err = Object.assign(new Error('fk'), { code: 'P2003', });
+    mockPrisma.$transaction.mockRejectedValueOnce(err);
+
+    const response = await POST(
+      createRequest('http://localhost/api/v1/spaces', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', },
+        body: JSON.stringify(createPayload),
+      })
+    );
+    expect(response.status).toBe(404);
+    expect(mockPrisma.space.create).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 for invalid images payload', async () => {
+    const {
+ createPayload, partner, 
+} = spaceFixtures;
+    setAuthUser(partner.authUserId);
+    mockPrisma.user.findFirst.mockResolvedValueOnce({
+      user_id: partner.userId,
+      role: 'partner',
+      is_onboard: true,
+    });
+    mockPrisma.space.create.mockImplementation(() => {
+      throw new Error('space.create should not be called on invalid images');
+    });
+
+    const response = await POST(
+      createRequest('http://localhost/api/v1/spaces', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', },
+        body: JSON.stringify({
+          ...createPayload,
+          images: [{ is_primary: true, display_order: 0 }], // missing path
+        }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(mockPrisma.space.create).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 for invalid verification document payload', async () => {
+    const {
+ createPayload, partner, 
+} = spaceFixtures;
+    setAuthUser(partner.authUserId);
+    mockPrisma.user.findFirst.mockResolvedValueOnce({
+      user_id: partner.userId,
+      role: 'partner',
+      is_onboard: true,
+    });
+    mockPrisma.space.create.mockImplementation(() => {
+      throw new Error('space.create should not be called on invalid verification docs');
+    });
+
+    const response = await POST(
+      createRequest('http://localhost/api/v1/spaces', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', },
+        body: JSON.stringify({
+          ...createPayload,
+          verification_documents: [{
+            path: '', // invalid per schema
+            requirement_id: 'dti_registration',
+            slot_id: '',
+            mime_type: '',
+            file_size_bytes: 0,
+          }],
+        }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(mockPrisma.space.create).not.toHaveBeenCalled();
   });
 });
 
