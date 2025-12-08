@@ -61,11 +61,7 @@ import {
 } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { MAX_BOOKING_HOURS } from '@/lib/bookings/constants';
-import {
-  BOOKING_DURATION_VARIABLE_KEYS,
-  type PriceRuleOperand,
-  type PriceRuleRecord,
-} from '@/lib/pricing-rules';
+import { BOOKING_DURATION_VARIABLE_KEYS, type PriceRuleOperand, type PriceRuleRecord } from '@/lib/pricing-rules';
 import { evaluatePriceRule, type PriceRuleEvaluationResult } from '@/lib/pricing-rules-evaluator';
 import { useUserBookingsQuery, useCreateBookingMutation } from '@/hooks/api/useBookings';
 
@@ -108,7 +104,7 @@ const BOOKING_DURATION_UNITS: BookingDurationUnit[] = [
     label: 'Month',
     pluralLabel: 'Months',
     multiplier: 24 * 30,
-  },
+  }
 ];
 
 const DEFAULT_BOOKING_UNIT_INDEX = 0;

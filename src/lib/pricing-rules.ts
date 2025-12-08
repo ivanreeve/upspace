@@ -115,7 +115,7 @@ export const BOOKING_DURATION_VARIABLE_KEYS = [
   'booking_hours',
   'booking_days',
   'booking_weeks',
-  'booking_months',
+  'booking_months'
 ] as const;
 
 export const BOOKING_DURATION_VARIABLE_REFERENCE_TEXT =
