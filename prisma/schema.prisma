@@ -306,6 +306,7 @@ model transaction {
   booking         booking   @relation(fields: [booking_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model unpublish_request {
   id                                                String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   space_id                                          String                   @db.Uuid
@@ -355,6 +356,7 @@ model user {
   unpublish_request_unpublish_request_processed_by_user_idTouser       unpublish_request[]    @relation("unpublish_request_processed_by_user_idTouser")
   unpublish_request_unpublish_request_user_idTouser                    unpublish_request[]    @relation("unpublish_request_user_idTouser")
   verification                                                         verification[]
+  wallet                                                               wallet?
 
   @@index([expires_at], map: "idx_user_expires_at")
   @@index([status], map: "idx_user_status")
@@ -393,6 +395,40 @@ model verification_document {
   id              String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   verification_id String                       @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   verification    verification                 @relation(fields: [verification_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model wallet {
+  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id            BigInt               @unique
+  balance_minor      BigInt               @default(0)
+  currency           String               @default("PHP") @db.Char(3)
+  created_at         DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime?            @default(now()) @db.Timestamptz(6)
+  user               user                 @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "wallet_user_fk")
+  wallet_transaction wallet_transaction[]
+
+  @@index([user_id], map: "idx_wallet_user")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model wallet_transaction {
+  id                 String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  wallet_id          String                    @db.Uuid
+  type               wallet_transaction_type
+  status             wallet_transaction_status @default(succeeded)
+  amount_minor       BigInt
+  net_amount_minor   BigInt?
+  currency           String                    @default("PHP") @db.Char(3)
+  description        String?
+  external_reference String?
+  metadata           Json?                     @db.Json
+  booking_id         String?                   @db.Uuid
+  created_at         DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime?                 @default(now()) @db.Timestamptz(6)
+  wallet             wallet                    @relation(fields: [wallet_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "wallet_transaction_wallet_fk")
+
+  @@index([wallet_id, created_at(sort: Desc)], map: "idx_wallet_transaction_wallet_created")
 }
 
 enum amenity_category {
@@ -547,4 +583,17 @@ enum verification_status {
 enum verification_subject_type {
   partner
   space
+}
+
+enum wallet_transaction_status {
+  pending
+  succeeded
+  failed
+}
+
+enum wallet_transaction_type {
+  cash_in
+  charge
+  refund
+  payout
 }

@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import React from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import React from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   FiBarChart2,
   FiBell,
@@ -19,31 +19,27 @@ import {
   FiUser,
   FiUserX,
   FiEyeOff,
-  FiChevronRight,
-} from "react-icons/fi";
-import { PiMoneyWavyBold } from "react-icons/pi";
-import { HiOutlineDocumentText } from "react-icons/hi";
-import { LuTicket } from "react-icons/lu";
-import {
-  MdFormatListBulleted,
-  MdOutlineSpaceDashboard,
-  MdWorkOutline,
-} from "react-icons/md";
-import { TbLayoutSidebarFilled } from "react-icons/tb";
+  FiChevronRight
+} from 'react-icons/fi';
+import { PiMoneyWavyBold, PiWalletLight } from 'react-icons/pi';
+import { HiOutlineDocumentText } from 'react-icons/hi';
+import { LuTicket } from 'react-icons/lu';
+import { MdFormatListBulleted, MdOutlineSpaceDashboard, MdWorkOutline } from 'react-icons/md';
+import { TbLayoutSidebarFilled } from 'react-icons/tb';
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Kbd } from "@/components/ui/kbd";
-import { LogoSymbolic } from "@/components/ui/logo-symbolic";
+  CardTitle
+} from '@/components/ui/card';
+import { Kbd } from '@/components/ui/kbd';
+import { LogoSymbolic } from '@/components/ui/logo-symbolic';
 import {
   Sidebar,
   SidebarContent,
@@ -55,23 +51,23 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarRail,
-  useSidebar,
-} from "@/components/ui/sidebar";
-import { ThemeSwitcher } from "@/components/ui/theme-switcher";
+  useSidebar
+} from '@/components/ui/sidebar';
+import { ThemeSwitcher } from '@/components/ui/theme-switcher';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useSession } from "@/components/auth/SessionProvider";
-import { useCachedAvatar } from "@/hooks/use-cached-avatar";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { useUserProfile, type UserProfile } from "@/hooks/use-user-profile";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils";
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useSession } from '@/components/auth/SessionProvider';
+import { useCachedAvatar } from '@/hooks/use-cached-avatar';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useUserProfile, type UserProfile } from '@/hooks/use-user-profile';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { cn } from '@/lib/utils';
 
 type MarketplaceChromeProps = {
   children: React.ReactNode;
@@ -108,16 +104,16 @@ function GradientSparklesIcon({
     <svg
       viewBox="0 0 24 24"
       fill="none"
-      strokeWidth={2}
+      strokeWidth={ 2 }
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={cn("size-4", className)}
-      aria-hidden={props["aria-label"] ? undefined : "true"}
-      {...props}
+      className={ cn('size-4', className) }
+      aria-hidden={ props['aria-label'] ? undefined : 'true' }
+      { ...props }
     >
       <defs>
         <linearGradient
-          id={gradientId}
+          id={ gradientId }
           x1="0%"
           y1="0%"
           x2="100%"
@@ -133,19 +129,21 @@ function GradientSparklesIcon({
       </defs>
       <path
         d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"
-        stroke={stroke}
+        stroke={ stroke }
       />
-      <path d="M20 3v4" stroke={stroke} />
-      <path d="M22 5h-4" stroke={stroke} />
-      <path d="M4 17v2" stroke={stroke} />
-      <path d="M5 18H3" stroke={stroke} />
+      <path d="M20 3v4" stroke={ stroke } />
+      <path d="M22 5h-4" stroke={ stroke } />
+      <path d="M4 17v2" stroke={ stroke } />
+      <path d="M5 18H3" stroke={ stroke } />
     </svg>
   );
 }
 
 function SidebarToggleMenuItem() {
-  const { state, toggleSidebar, isMobile } = useSidebar();
-  const isExpanded = state === "expanded";
+  const {
+ state, toggleSidebar, isMobile, 
+} = useSidebar();
+  const isExpanded = state === 'expanded';
   const Icon = isExpanded ? TbLayoutSidebarFilled : TbLayoutSidebarFilled;
 
   if (isMobile) {
@@ -165,7 +163,7 @@ function SidebarToggleMenuItem() {
           <SidebarMenuButton
             tooltip="Close menu"
             type="button"
-            onClick={toggleSidebar}
+            onClick={ toggleSidebar }
             className="w-10 justify-center p-2"
             aria-label="Close menu"
           >
@@ -179,12 +177,12 @@ function SidebarToggleMenuItem() {
 
   return (
     <SidebarMenuItem
-      className={cn(
-        "flex items-center gap-2",
-        isExpanded ? "justify-between pr-2 pl-1" : "justify-center pr-1",
-      )}
+      className={ cn(
+        'flex items-center gap-2',
+        isExpanded ? 'justify-between pr-2 pl-1' : 'justify-center pr-1'
+      ) }
     >
-      {isExpanded && (
+      { isExpanded && (
         <Link
           href="/"
           className="flex items-center gap-2 text-sm font-semibold text-foreground"
@@ -192,17 +190,17 @@ function SidebarToggleMenuItem() {
           <LogoSymbolic className="size-5 text-primary dark:text-secondary" />
           <span className="leading-tight">UpSpace</span>
         </Link>
-      )}
+      ) }
       <SidebarMenuButton
-        tooltip={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
+        tooltip={ isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }
         type="button"
-        onClick={toggleSidebar}
+        onClick={ toggleSidebar }
         className="w-10 justify-center p-2"
-        aria-label={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
+        aria-label={ isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }
       >
         <Icon className="size-4" aria-hidden="true" />
         <span className="sr-only">
-          {isExpanded ? "Collapse sidebar" : "Expand sidebar"}
+          { isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }
         </span>
       </SidebarMenuButton>
     </SidebarMenuItem>
@@ -222,19 +220,21 @@ function SidebarFooterContent({
   showNotifications = true,
   showAccount = true,
 }: SidebarFooterContentProps) {
-  const { state, isMobile } = useSidebar();
-  const isCollapsed = state === "collapsed";
+  const {
+ state, isMobile, 
+} = useSidebar();
+  const isCollapsed = state === 'collapsed';
   const secondaryLabel = isGuest
-    ? "Public browsing"
-    : (userEmail ?? resolvedHandleLabel ?? "Account");
+    ? 'Public browsing'
+    : (userEmail ?? resolvedHandleLabel ?? 'Account');
   const emailLabel = isGuest
-    ? "Public browsing"
-    : (userEmail ?? "Email unavailable");
+    ? 'Public browsing'
+    : (userEmail ?? 'Email unavailable');
   const skeletonAvatarClass = cn(
-    "rounded-full",
-    isCollapsed ? "h-9 w-9" : "h-11 w-11",
+    'rounded-full',
+    isCollapsed ? 'h-9 w-9' : 'h-11 w-11'
   );
-  const skeletonTextClass = isCollapsed ? "h-3 w-16" : "h-3 w-24";
+  const skeletonTextClass = isCollapsed ? 'h-3 w-16' : 'h-3 w-24';
 
   if (isMobile) {
     return null;
@@ -242,49 +242,49 @@ function SidebarFooterContent({
 
   return (
     <div
-      className={cn(
-        "p-2 flex flex-col",
-        isCollapsed ? "items-center gap-3" : "space-y-2",
-      )}
+      className={ cn(
+        'p-2 flex flex-col',
+        isCollapsed ? 'items-center gap-3' : 'space-y-2'
+      ) }
     >
       <ThemeSwitcher
-        variant={isCollapsed ? "compact" : "default"}
-        className={isCollapsed ? undefined : "w-full justify-between"}
+        variant={ isCollapsed ? 'compact' : 'default' }
+        className={ isCollapsed ? undefined : 'w-full justify-between' }
       />
-      {isSidebarLoading ? (
+      { isSidebarLoading ? (
         isCollapsed ? (
-          <Skeleton className={skeletonAvatarClass} />
+          <Skeleton className={ skeletonAvatarClass } />
         ) : (
           <Skeleton className="h-16 w-full rounded-md" />
         )
       ) : isGuest ? (
         <SidebarMenuButton
           type="button"
-          tooltip={isCollapsed ? "Sign in" : undefined}
-          className={cn(
-            "w-full ml-[-5px] py-8 gap-2",
-            isCollapsed ? "justify-center" : "justify-start",
-          )}
+          tooltip={ isCollapsed ? 'Sign in' : undefined }
+          className={ cn(
+            'w-full ml-[-5px] py-8 gap-2',
+            isCollapsed ? 'justify-center' : 'justify-start'
+          ) }
           aria-label="Sign in"
-          onClick={() => onNavigate("/")}
+          onClick={ () => onNavigate('/') }
         >
-          <Avatar className={cn("size-9", isCollapsed && "size-8")}>
-            {avatarUrl ? (
-              <AvatarImage src={avatarUrl} alt="Guest avatar" />
+          <Avatar className={ cn('size-9', isCollapsed && 'size-8') }>
+            { avatarUrl ? (
+              <AvatarImage src={ avatarUrl } alt="Guest avatar" />
             ) : (
               <AvatarFallback className="text-white">
-                {avatarFallback}
+                { avatarFallback }
               </AvatarFallback>
-            )}
+            ) }
           </Avatar>
-          {!isCollapsed && (
+          { !isCollapsed && (
             <div className="flex min-w-0 flex-col text-left">
               <span className="text-sm font-semibold leading-tight">Guest</span>
               <span className="text-xs text-muted-foreground truncate">
-                {secondaryLabel}
+                { secondaryLabel }
               </span>
             </div>
-          )}
+          ) }
         </SidebarMenuButton>
       ) : (
         <SidebarMenu>
@@ -293,92 +293,101 @@ function SidebarFooterContent({
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
                   type="button"
-                  tooltip={isCollapsed ? "Open account menu" : undefined}
-                  className={cn(
-                    "w-full ml-[-5px] py-8",
-                    isCollapsed ? "justify-center" : "justify-start",
-                  )}
+                  tooltip={ isCollapsed ? 'Open account menu' : undefined }
+                  className={ cn(
+                    'w-full ml-[-5px] py-8',
+                    isCollapsed ? 'justify-center' : 'justify-start'
+                  ) }
                   aria-label="Open account menu"
                 >
-                  <Avatar className={cn("size-9", isCollapsed && "size-8")}>
-                    {avatarUrl ? (
-                      <AvatarImage src={avatarUrl} alt="User avatar" />
+                  <Avatar className={ cn('size-9', isCollapsed && 'size-8') }>
+                    { avatarUrl ? (
+                      <AvatarImage src={ avatarUrl } alt="User avatar" />
                     ) : (
-                      <AvatarFallback>{avatarFallback}</AvatarFallback>
-                    )}
+                      <AvatarFallback>{ avatarFallback }</AvatarFallback>
+                    ) }
                   </Avatar>
-                  {!isCollapsed && (
+                  { !isCollapsed && (
                     <div className="flex min-w-0 flex-col text-left">
                       <span className="text-sm font-semibold leading-tight">
-                        {avatarDisplayName}
+                        { avatarDisplayName }
                       </span>
-                      {secondaryLabel && (
+                      { secondaryLabel && (
                         <span className="text-xs text-muted-foreground truncate">
-                          {secondaryLabel}
+                          { secondaryLabel }
                         </span>
-                      )}
+                      ) }
                     </div>
-                  )}
+                  ) }
                   <span className="sr-only">
-                    {`Open account menu for ${avatarDisplayName}${resolvedHandleLabel ? ` (${resolvedHandleLabel})` : ""}`}
+                    { `Open account menu for ${avatarDisplayName}${resolvedHandleLabel ? ` (${resolvedHandleLabel})` : ''}` }
                   </span>
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 side="right"
                 align="end"
-                sideOffset={24}
+                sideOffset={ 24 }
                 className="w-64 border border-border bg-card p-2 shadow-lg"
               >
                 <div className="flex items-center gap-3 rounded-md px-2 py-3">
                   <Avatar className="size-11 border border-border">
-                    {avatarUrl ? (
-                      <AvatarImage src={avatarUrl} alt="User avatar" />
+                    { avatarUrl ? (
+                      <AvatarImage src={ avatarUrl } alt="User avatar" />
                     ) : (
-                      <AvatarFallback>{avatarFallback}</AvatarFallback>
-                    )}
+                      <AvatarFallback>{ avatarFallback }</AvatarFallback>
+                    ) }
                   </Avatar>
                   <div className="flex min-w-0 flex-col">
                     <span className="text-sm font-semibold leading-tight">
-                      {avatarDisplayName}
+                      { avatarDisplayName }
                     </span>
                     <span className="text-xs text-muted-foreground truncate">
-                      {emailLabel}
+                      { emailLabel }
                     </span>
                   </div>
                 </div>
                 <DropdownMenuSeparator className="my-1" />
-                {showAccount && (
+                { showAccount && (
                   <DropdownMenuItem
-                    onSelect={() => onNavigate("/account")}
+                    onSelect={ () => onNavigate('/account') }
                     className="hover:!text-white hover:[&_svg]:!text-white"
                   >
                     <FiUser className="size-4" aria-hidden="true" />
                     <span>Account</span>
                   </DropdownMenuItem>
-                )}
+                ) }
+                { showAccount && (
+                  <DropdownMenuItem
+                    onSelect={ () => onNavigate('/account/wallet') }
+                    className="hover:!text-white hover:[&_svg]:!text-white"
+                  >
+                    <PiWalletLight className="size-4" aria-hidden="true" />
+                    <span>Wallet</span>
+                  </DropdownMenuItem>
+                ) }
                 <DropdownMenuItem
-                  onSelect={() => onNavigate("/settings")}
+                  onSelect={ () => onNavigate('/settings') }
                   className="hover:!text-white hover:[&_svg]:!text-white"
                 >
                   <FiSettings className="size-4" aria-hidden="true" />
                   <span>Settings</span>
                 </DropdownMenuItem>
-                {showNotifications && (
+                { showNotifications && (
                   <DropdownMenuItem
-                    onSelect={() => onNavigate("/notifications")}
+                    onSelect={ () => onNavigate('/notifications') }
                     className="hover:!text-white hover:[&_svg]:!text-white"
                   >
                     <FiBell className="size-4" aria-hidden="true" />
                     <span>Notifications</span>
                   </DropdownMenuItem>
-                )}
+                ) }
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
                   className="text-destructive focus-visible:text-destructive hover:!text-white hover:[&_svg]:!text-white"
-                  onSelect={() => {
+                  onSelect={ () => {
                     void onLogout();
-                  }}
+                  } }
                 >
                   <FiLogOut className="size-4" aria-hidden="true" />
                   <span>Log out</span>
@@ -387,7 +396,7 @@ function SidebarFooterContent({
             </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>
-      )}
+      ) }
     </div>
   );
 }
@@ -395,9 +404,9 @@ function SidebarFooterContent({
 function SidebarLoadingSkeleton() {
   return (
     <>
-      {Array.from({ length: 5 }).map((_, index) => (
+      { Array.from({ length: 5, }).map((_, index) => (
         <SidebarMenuItem
-          key={`sidebar-skeleton-${index}`}
+          key={ `sidebar-skeleton-${index}` }
           className="pointer-events-none"
         >
           <SidebarMenuButton
@@ -409,12 +418,12 @@ function SidebarLoadingSkeleton() {
             <Skeleton className="h-7 flex-1 rounded-sm" />
           </SidebarMenuButton>
         </SidebarMenuItem>
-      ))}
+      )) }
     </>
   );
 }
 
-type SidebarRole = "guest" | "customer" | "partner" | "admin";
+type SidebarRole = 'guest' | 'customer' | 'partner' | 'admin';
 
 type SidebarLinkItemProps = {
   href: string;
@@ -435,22 +444,24 @@ function SidebarLinkItem({
   className,
   labelBadge,
 }: SidebarLinkItemProps) {
-  const { className: iconClassName, ...restIconProps } = iconProps ?? {};
+  const {
+ className: iconClassName, ...restIconProps 
+} = iconProps ?? {};
 
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild tooltip={tooltip} className={className}>
-        <Link href={href}>
+      <SidebarMenuButton asChild tooltip={ tooltip } className={ className }>
+        <Link href={ href }>
           <span className="sidebar-link-icon" aria-hidden="true">
             <Icon
-              className={cn("size-4", iconClassName)}
+              className={ cn('size-4', iconClassName) }
               aria-hidden="true"
-              {...restIconProps}
+              { ...restIconProps }
             />
           </span>
           <span data-sidebar-label className="inline-flex items-center gap-1.5">
-            <span>{label}</span>
-            {labelBadge}
+            <span>{ label }</span>
+            { labelBadge }
           </span>
         </Link>
       </SidebarMenuButton>
@@ -483,17 +494,17 @@ function MobileTopNav({
   showSearchButton?: boolean;
   showThemeSwitcher?: boolean;
 }) {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, } = useSidebar();
 
   return (
     <header
       className="fixed inset-x-0 top-0 z-40 border-b bg-background/90 px-4 py-3 backdrop-blur-md md:hidden"
       style={
         {
-          paddingTop: "calc(var(--safe-area-top) + 12px)",
-          paddingBottom: "12px",
-          paddingLeft: "max(1rem, var(--safe-area-left))",
-          paddingRight: "max(1rem, var(--safe-area-right))",
+          paddingTop: 'calc(var(--safe-area-top) + 12px)',
+          paddingBottom: '12px',
+          paddingLeft: 'max(1rem, var(--safe-area-left))',
+          paddingRight: 'max(1rem, var(--safe-area-right))',
         } as React.CSSProperties
       }
     >
@@ -505,7 +516,7 @@ function MobileTopNav({
           </span>
         </Link>
         <div className="flex items-center gap-2">
-          {!isGuest && (
+          { !isGuest && (
             <Link
               href="/notifications"
               aria-label="Notifications"
@@ -513,41 +524,41 @@ function MobileTopNav({
             >
               <FiBell className="size-5" aria-hidden="true" />
             </Link>
-          )}
-          {showSearchButton && (
+          ) }
+          { showSearchButton && (
             <button
               type="button"
               aria-label="Search"
-              onClick={onSearchOpen}
+              onClick={ onSearchOpen }
               className="rounded-full p-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               <FiSearch className="size-5" aria-hidden="true" />
             </button>
-          )}
-          {showSidebarToggle && (
+          ) }
+          { showSidebarToggle && (
             <button
               type="button"
               aria-label="Open navigation menu"
-              onClick={toggleSidebar}
+              onClick={ toggleSidebar }
               className="rounded-full p-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               <FiMenu className="size-5" aria-hidden="true" />
             </button>
-          )}
-          {showThemeSwitcher && <ThemeSwitcher variant="compact" />}
-          {isGuest ? (
+          ) }
+          { showThemeSwitcher && <ThemeSwitcher variant="compact" /> }
+          { isGuest ? (
             <button
               type="button"
               aria-label="Sign in"
-              onClick={() => onNavigate("/")}
+              onClick={ () => onNavigate('/') }
               className="rounded-full border border-border p-1 transition-colors focus-visible:outline-none focus-visible:bg-none"
             >
               <Avatar className="size-8">
-                {avatarUrl ? (
-                  <AvatarImage src={avatarUrl} alt="Guest avatar" />
+                { avatarUrl ? (
+                  <AvatarImage src={ avatarUrl } alt="Guest avatar" />
                 ) : (
-                  <AvatarFallback>{avatarFallback}</AvatarFallback>
-                )}
+                  <AvatarFallback>{ avatarFallback }</AvatarFallback>
+                ) }
               </Avatar>
             </button>
           ) : (
@@ -559,63 +570,63 @@ function MobileTopNav({
                   className="rounded-full p-1 transition-colors focus-visible:outline-none focus-visible:bg-none"
                 >
                   <Avatar className="size-8 border border-border">
-                    {avatarUrl ? (
-                      <AvatarImage src={avatarUrl} alt="User avatar" />
+                    { avatarUrl ? (
+                      <AvatarImage src={ avatarUrl } alt="User avatar" />
                     ) : (
-                      <AvatarFallback>{avatarFallback}</AvatarFallback>
-                    )}
+                      <AvatarFallback>{ avatarFallback }</AvatarFallback>
+                    ) }
                   </Avatar>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
                 side="bottom"
-                sideOffset={28}
+                sideOffset={ 28 }
                 className="z-[60] min-w-[240px] border border-border bg-card px-2 py-2 shadow-lg"
               >
                 <div className="flex items-center gap-3 rounded-md px-2 py-3">
                   <Avatar className="size-10 border border-border">
-                    {avatarUrl ? (
-                      <AvatarImage src={avatarUrl} alt="User avatar" />
+                    { avatarUrl ? (
+                      <AvatarImage src={ avatarUrl } alt="User avatar" />
                     ) : (
-                      <AvatarFallback>{avatarFallback}</AvatarFallback>
-                    )}
+                      <AvatarFallback>{ avatarFallback }</AvatarFallback>
+                    ) }
                   </Avatar>
                   <div className="flex min-w-0 flex-col">
                     <span className="text-sm font-semibold leading-tight">
-                      {displayName}
+                      { displayName }
                     </span>
                     <span className="text-xs text-muted-foreground truncate">
-                      {emailLabel}
+                      { emailLabel }
                     </span>
                   </div>
                 </div>
                 <DropdownMenuSeparator className="my-1" />
-                <DropdownMenuItem onSelect={() => onNavigate("/account")}>
+                <DropdownMenuItem onSelect={ () => onNavigate('/account') }>
                   <FiUser className="size-4" aria-hidden="true" />
                   <span>Account</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => onNavigate("/settings")}>
+                <DropdownMenuItem onSelect={ () => onNavigate('/settings') }>
                   <FiSettings className="size-4" aria-hidden="true" />
                   <span>Settings</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => onNavigate("/notifications")}>
+                <DropdownMenuItem onSelect={ () => onNavigate('/notifications') }>
                   <FiBell className="size-4" aria-hidden="true" />
                   <span>Notifications</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
                   className="text-destructive focus-visible:text-destructive"
-                  onSelect={() => {
+                  onSelect={ () => {
                     void onLogout();
-                  }}
+                  } }
                 >
                   <FiLogOut className="size-4" aria-hidden="true" />
                   <span>Log out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          )}
+          ) }
         </div>
       </div>
     </header>
@@ -634,57 +645,61 @@ type MobileBottomNavProps = {
   actions: MobileBottomNavAction[];
 };
 
-function MobileBottomNav({ actions }: MobileBottomNavProps) {
+function MobileBottomNav({ actions, }: MobileBottomNavProps) {
   const visibleActions = actions.filter((action) => action.show ?? true);
   if (visibleActions.length === 0) {
     return null;
   }
 
   const actionClassName =
-    "flex-1 flex items-center justify-center rounded-md px-2 py-2 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+    'flex-1 flex items-center justify-center rounded-md px-2 py-2 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
 
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border/70 bg-background/90 px-4 py-2 backdrop-blur-md md:hidden"
-      style={{ paddingBottom: "calc(var(--safe-area-bottom) + 0.5rem)" }}
+      style={ { paddingBottom: 'calc(var(--safe-area-bottom) + 0.5rem)', } }
       aria-label="Secondary navigation"
     >
       <div className="mx-auto flex w-full max-w-[1440px] gap-1">
-        {visibleActions.map(({ label, href, icon: ActionIcon, onClick }) => {
+        { visibleActions.map(({
+ label, href, icon: ActionIcon, onClick, 
+}) => {
           if (href) {
             return (
               <Link
-                key={label}
-                href={href}
-                className={actionClassName}
-                aria-label={label}
+                key={ label }
+                href={ href }
+                className={ actionClassName }
+                aria-label={ label }
               >
                 <ActionIcon className="size-5" aria-hidden="true" />
-                <span className="sr-only">{label}</span>
+                <span className="sr-only">{ label }</span>
               </Link>
             );
           }
 
           return (
             <button
-              key={label}
+              key={ label }
               type="button"
-              onClick={onClick}
-              className={actionClassName}
-              aria-label={label}
+              onClick={ onClick }
+              className={ actionClassName }
+              aria-label={ label }
             >
               <ActionIcon className="size-5" aria-hidden="true" />
-              <span className="sr-only">{label}</span>
+              <span className="sr-only">{ label }</span>
             </button>
           );
-        })}
+        }) }
       </div>
     </nav>
   );
 }
 
 function useMarketplaceNavData() {
-  const { session, isLoading: isSessionLoading } = useSession();
+  const {
+ session, isLoading: isSessionLoading, 
+} = useSession();
   const {
     data: userProfile,
     isLoading: isProfileLoading,
@@ -699,7 +714,7 @@ function useMarketplaceNavData() {
   const profileHandleLabel = userProfile?.handle ?? undefined;
   const preferredUsername = session?.user?.user_metadata?.preferred_username;
   const preferredUsernameLabel =
-    preferredUsername && preferredUsername.includes("@")
+    preferredUsername && preferredUsername.includes('@')
       ? undefined
       : preferredUsername;
   const resolvedHandleLabel = profileHandleLabel ?? preferredUsernameLabel;
@@ -709,26 +724,26 @@ function useMarketplaceNavData() {
     ? null
     : (userProfile?.handle ?? preferredUsernameLabel ?? null);
   const avatarFallback = isGuest
-    ? "GU"
+    ? 'GU'
     : registeredFirstName
       ? registeredFirstName.slice(0, 2).toUpperCase()
-      : (resolvedHandleValue?.slice(0, 2)?.toUpperCase() ?? "US");
+      : (resolvedHandleValue?.slice(0, 2)?.toUpperCase() ?? 'US');
   const avatarDisplayName = isGuest
-    ? "Guest"
-    : (registeredFirstName ?? resolvedHandleLabel ?? "UpSpace User");
+    ? 'Guest'
+    : (registeredFirstName ?? resolvedHandleLabel ?? 'UpSpace User');
   const userEmail = session?.user?.email ?? null;
   const handleNavigation = React.useCallback(
     (href: string) => {
       router.push(href);
     },
-    [router],
+    [router]
   );
   const handleLogout = React.useCallback(async () => {
     const supabase = getSupabaseBrowserClient();
-    const { error } = await supabase.auth.signOut();
+    const { error, } = await supabase.auth.signOut();
 
     if (error) {
-      console.error("Supabase sign-out failed", error);
+      console.error('Supabase sign-out failed', error);
       return;
     }
 
@@ -736,9 +751,9 @@ function useMarketplaceNavData() {
   }, [router]);
 
   const metadataRole = session?.user?.user_metadata?.role as
-    | "customer"
-    | "partner"
-    | "admin"
+    | 'customer'
+    | 'partner'
+    | 'admin'
     | undefined;
   const resolvedRole = isGuest
     ? undefined
@@ -774,8 +789,8 @@ function useMarketplaceNavData() {
       shouldShowSidebarLoading,
       shouldFallbackToGuestSidebar,
       userEmail,
-      userProfile,
-    ],
+      userProfile
+    ]
   );
 }
 
@@ -785,45 +800,45 @@ type AccountLockOverlayProps = {
 
 const overlayCopy = {
   deactivated: {
-    title: "Account deactivated",
+    title: 'Account deactivated',
     description:
-      "Your account is currently deactivated. Reactivate to resume your UpSpace access.",
-    actionLabel: "Reactivate account",
+      'Your account is currently deactivated. Reactivate to resume your UpSpace access.',
+    actionLabel: 'Reactivate account',
   },
   pending_deletion: {
-    title: "Deletion pending",
+    title: 'Deletion pending',
     description:
-      "Your account is scheduled for deletion. Cancel the request to keep your access.",
-    actionLabel: "Cancel deletion",
+      'Your account is scheduled for deletion. Cancel the request to keep your access.',
+    actionLabel: 'Cancel deletion',
   },
   deleted: {
-    title: "Account deleted",
+    title: 'Account deleted',
     description:
-      "This account has been permanently deleted. Create a new account or contact support for help.",
+      'This account has been permanently deleted. Create a new account or contact support for help.',
   },
 };
 
-function AccountLockOverlay({ profile }: AccountLockOverlayProps) {
+function AccountLockOverlay({ profile, }: AccountLockOverlayProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = React.useState(false);
   const handleLogout = React.useCallback(async () => {
     const supabase = getSupabaseBrowserClient();
-    const { error } = await supabase.auth.signOut();
+    const { error, } = await supabase.auth.signOut();
 
     if (error) {
-      console.error("Supabase sign-out failed", error);
+      console.error('Supabase sign-out failed', error);
       return;
     }
 
     router.refresh();
   }, [router]);
 
-  if (!profile || profile.status === "active") {
+  if (!profile || profile.status === 'active') {
     return null;
   }
 
-  const isPendingDeletion = profile.status === "pending_deletion";
+  const isPendingDeletion = profile.status === 'pending_deletion';
   const metadata = overlayCopy[profile.status];
 
   if (!metadata) {
@@ -833,19 +848,19 @@ function AccountLockOverlay({ profile }: AccountLockOverlayProps) {
   const expiration = profile.expiresAt ? new Date(profile.expiresAt) : null;
   const deadlineLabel = expiration
     ? expiration.toLocaleString(undefined, {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
       })
     : null;
 
   const action =
-    profile.status === "pending_deletion"
-      ? "cancelDeletion"
-      : profile.status === "deactivated"
-        ? "reactivate"
+    profile.status === 'pending_deletion'
+      ? 'cancelDeletion'
+      : profile.status === 'deactivated'
+        ? 'reactivate'
         : undefined;
 
   const handleAction = async () => {
@@ -856,33 +871,33 @@ function AccountLockOverlay({ profile }: AccountLockOverlayProps) {
     setIsProcessing(true);
 
     try {
-      const response = await fetch("/api/v1/auth/reactivate", {
-        method: "POST",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+      const response = await fetch('/api/v1/auth/reactivate', {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify({ action, }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(
-          payload?.message ?? "Unable to update your account status right now.",
+          payload?.message ?? 'Unable to update your account status right now.'
         );
       }
-      toast.success("Account status updated. Redirecting to home...");
-      await queryClient.invalidateQueries({ queryKey: ["user-profile"] });
-      router.push("/marketplace");
+      toast.success('Account status updated. Redirecting to home...');
+      await queryClient.invalidateQueries({ queryKey: ['user-profile'], });
+      router.push('/marketplace');
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : "Unable to update your account status right now.";
+          : 'Unable to update your account status right now.';
       toast.error(message);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const actionLabel = metadata.actionLabel ?? "";
+  const actionLabel = metadata.actionLabel ?? '';
 
   return (
     <div className="absolute inset-0 z-40 flex items-center justify-center">
@@ -891,46 +906,46 @@ function AccountLockOverlay({ profile }: AccountLockOverlayProps) {
         <Card
           role="alertdialog"
           aria-live="assertive"
-          aria-label={metadata.title}
+          aria-label={ metadata.title }
           className="mx-auto w-full max-w-xl rounded-md border border-border/70 bg-background/90 shadow-2xl"
         >
           <CardHeader className="space-y-2">
             <CardTitle className="text-2xl font-semibold text-foreground">
-              {metadata.title}
+              { metadata.title }
             </CardTitle>
             <CardDescription className="text-base text-muted-foreground">
-              {metadata.description}
+              { metadata.description }
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 pt-0">
-            {deadlineLabel && isPendingDeletion && (
+            { deadlineLabel && isPendingDeletion && (
               <p className="text-sm text-muted-foreground">
-                Scheduled deletion: {deadlineLabel}
+                Scheduled deletion: { deadlineLabel }
               </p>
-            )}
+            ) }
             <p className="text-sm text-muted-foreground">
               All navigation is suspended until you take action.
             </p>
           </CardContent>
           <CardFooter className="flex flex-col gap-3 pt-4">
-            {action && (
+            { action && (
               <Button
                 className="w-full rounded-md px-4 py-2 text-sm"
-                onClick={handleAction}
-                disabled={isProcessing}
+                onClick={ handleAction }
+                disabled={ isProcessing }
               >
-                {isProcessing ? "Working…" : actionLabel}
+                { isProcessing ? 'Working…' : actionLabel }
               </Button>
-            )}
-            {profile.status === "deleted" && (
+            ) }
+            { profile.status === 'deleted' && (
               <Button
                 variant="outline"
                 className="w-full rounded-md px-4 py-2 text-sm"
-                onClick={handleLogout}
+                onClick={ handleLogout }
               >
                 Sign out
               </Button>
-            )}
+            ) }
           </CardFooter>
         </Card>
       </div>
@@ -945,7 +960,7 @@ export function MarketplaceChrome({
   insetClassName,
   insetStyle,
   initialSidebarOpen,
-  messageHref = "/messages",
+  messageHref = '/messages',
 }: MarketplaceChromeProps) {
   const navData = useMarketplaceNavData();
   const cachedAvatarUrl = useCachedAvatar(navData.avatarUrl);
@@ -959,28 +974,28 @@ export function MarketplaceChrome({
   } = navData;
   const effectiveRole = React.useMemo<SidebarRole>(() => {
     if (isGuest || shouldFallbackToGuestSidebar) {
-      return "guest";
+      return 'guest';
     }
 
-    if (role === "partner") {
-      return "partner";
+    if (role === 'partner') {
+      return 'partner';
     }
 
-    if (role === "admin") {
-      return "admin";
+    if (role === 'admin') {
+      return 'admin';
     }
 
-    return "customer";
+    return 'customer';
   }, [isGuest, role, shouldFallbackToGuestSidebar]);
 
-  const isCustomerRole = effectiveRole === "customer";
-  const isPartnerRole = effectiveRole === "partner";
-  const isAdminRole = effectiveRole === "admin";
+  const isCustomerRole = effectiveRole === 'customer';
+  const isPartnerRole = effectiveRole === 'partner';
+  const isAdminRole = effectiveRole === 'admin';
   const shouldShowAiSearch = isCustomerRole || isPartnerRole || isAdminRole;
   const shouldShowNotifications = isCustomerRole || isPartnerRole;
-  const resolvedMessageHref = messageHref ?? "/messages";
+  const resolvedMessageHref = messageHref ?? '/messages';
   const pathname = usePathname();
-  const isAccountRoute = (pathname ?? "").startsWith("/account");
+  const isAccountRoute = (pathname ?? '').startsWith('/account');
   const isMobile = useIsMobile();
   const shouldRenderMobileBottomNav =
     isMobile && !isAccountRoute && !isPartnerRole;
@@ -988,13 +1003,13 @@ export function MarketplaceChrome({
     () =>
       isMobile
         ? {
-            paddingTop: "calc(4rem + var(--safe-area-top))",
+            paddingTop: 'calc(4rem + var(--safe-area-top))',
             paddingBottom: shouldRenderMobileBottomNav
-              ? "calc(2.75rem + var(--safe-area-bottom))"
-              : "var(--safe-area-bottom)",
+              ? 'calc(2.75rem + var(--safe-area-bottom))'
+              : 'var(--safe-area-bottom)',
           }
         : undefined,
-    [isMobile, shouldRenderMobileBottomNav],
+    [isMobile, shouldRenderMobileBottomNav]
   );
   const handleSearch = React.useCallback(() => {
     if (onSearchOpen) {
@@ -1002,67 +1017,67 @@ export function MarketplaceChrome({
       return;
     }
 
-    onNavigate("/marketplace?search=1");
+    onNavigate('/marketplace?search=1');
   }, [onNavigate, onSearchOpen]);
 
   const mobileBottomNavActions = React.useMemo((): MobileBottomNavAction[] => {
     if (isAdminRole) {
       return [
         {
-          label: "Home",
-          href: "/marketplace",
+          label: 'Home',
+          href: '/marketplace',
           icon: FiHome,
         },
         {
-          label: "Dashboard",
-          href: "/marketplace/dashboard",
+          label: 'Dashboard',
+          href: '/marketplace/dashboard',
           icon: FiBarChart2,
         },
         {
-          label: "Queue",
-          href: "/admin",
+          label: 'Queue',
+          href: '/admin',
           icon: HiOutlineDocumentText,
         },
         {
-          label: "Deactivation requests",
-          href: "/admin/deactivation-requests",
+          label: 'Deactivation requests',
+          href: '/admin/deactivation-requests',
           icon: FiUserX,
         },
         {
-          label: "Unpublish requests",
-          href: "/admin/unpublish-requests",
+          label: 'Unpublish requests',
+          href: '/admin/unpublish-requests',
           icon: FiEyeOff,
         },
         {
-          label: "Observe",
-          href: "/observability",
+          label: 'Observe',
+          href: '/observability',
           icon: MdFormatListBulleted,
-        },
+        }
       ];
     }
 
     const actions: MobileBottomNavAction[] = [
       {
-        label: "Home",
-        href: "/marketplace",
+        label: 'Home',
+        href: '/marketplace',
         icon: FiHome,
-      },
+      }
     ];
 
     if (isCustomerRole) {
       actions.push({
-        label: "Bookmarks",
-        href: "/bookmarks",
+        label: 'Bookmarks',
+        href: '/bookmarks',
         icon: FiBookmark,
       });
       actions.push({
-        label: "AI Search",
-        href: "/marketplace/ai-search",
+        label: 'AI Search',
+        href: '/marketplace/ai-search',
         icon: GradientSparklesIcon,
       });
     } else {
       actions.push({
-        label: "Search",
+        label: 'Search',
         icon: FiSearch,
         onClick: handleSearch,
       });
@@ -1070,15 +1085,15 @@ export function MarketplaceChrome({
 
     if (shouldShowNotifications && !isCustomerRole) {
       actions.push({
-        label: "Notifications",
-        href: "/notifications",
+        label: 'Notifications',
+        href: '/notifications',
         icon: FiBell,
       });
     }
 
     if (shouldShowNotifications) {
       actions.push({
-        label: "Messages",
+        label: 'Messages',
         href: resolvedMessageHref,
         icon: FiMessageSquare,
       });
@@ -1090,7 +1105,7 @@ export function MarketplaceChrome({
     isAdminRole,
     isCustomerRole,
     resolvedMessageHref,
-    shouldShowNotifications,
+    shouldShowNotifications
   ]);
 
   React.useEffect(() => {
@@ -1099,37 +1114,37 @@ export function MarketplaceChrome({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
       const key = event.key;
-      if (typeof key !== "string" || key.toLowerCase() !== "k") return;
+      if (typeof key !== 'string' || key.toLowerCase() !== 'k') return;
       if (!event.metaKey && !event.ctrlKey) return;
 
       event.preventDefault();
       onSearchOpen();
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onSearchOpen]);
 
   return (
     <SidebarProvider
       className="bg-background min-h-screen"
-      initialOpen={initialSidebarOpen}
+      initialOpen={ initialSidebarOpen }
     >
-      {dialogSlot}
-      {isMobile && (
+      { dialogSlot }
+      { isMobile && (
         <MobileTopNav
-          avatarUrl={cachedAvatarUrl}
-          avatarFallback={navData.avatarFallback}
-          onSearchOpen={handleSearch}
-          displayName={navData.avatarDisplayName}
-          emailLabel={navData.userEmail ?? "Email unavailable"}
-          onNavigate={navData.onNavigate}
-          onLogout={navData.onLogout}
-          isGuest={navData.isGuest}
-          showSidebarToggle={isPartnerRole}
-          showThemeSwitcher={isCustomerRole || isAdminRole}
+          avatarUrl={ cachedAvatarUrl }
+          avatarFallback={ navData.avatarFallback }
+          onSearchOpen={ handleSearch }
+          displayName={ navData.avatarDisplayName }
+          emailLabel={ navData.userEmail ?? 'Email unavailable' }
+          onNavigate={ navData.onNavigate }
+          onLogout={ navData.onLogout }
+          isGuest={ navData.isGuest }
+          showSidebarToggle={ isPartnerRole }
+          showThemeSwitcher={ isCustomerRole || isAdminRole }
         />
-      )}
+      ) }
       <div className="flex min-h-screen w-full">
         <Sidebar
           collapsible="icon"
@@ -1138,25 +1153,25 @@ export function MarketplaceChrome({
           <SidebarHeader className="pt-4">
             <SidebarMenu>
               <SidebarToggleMenuItem />
-              {isSidebarLoading ? (
+              { isSidebarLoading ? (
                 <SidebarLoadingSkeleton />
               ) : (
                 <>
                   <SidebarLinkItem
                     href="/marketplace"
                     label="Home"
-                    icon={FiHome}
+                    icon={ FiHome }
                     tooltip="Home"
-                    iconProps={{ strokeWidth: 2 }}
+                    iconProps={ { strokeWidth: 2, } }
                   />
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       tooltip="Search"
                       className="justify-start gap-2 group-data-[collapsible=icon]:justify-center"
                       type="button"
-                      onClick={handleSearch}
+                      onClick={ handleSearch }
                     >
-                      <FiSearch className="size-4" strokeWidth={2} />
+                      <FiSearch className="size-4" strokeWidth={ 2 } />
                       <span data-sidebar-label>Search</span>
                       <Kbd className="ml-auto hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden hover:!text-gray-500 dark:hover:!text-sidebar-foreground/70">
                         <FiCommand className="size-3" aria-hidden="true" />
@@ -1164,11 +1179,11 @@ export function MarketplaceChrome({
                       </Kbd>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                  {shouldShowAiSearch && (
+                  { shouldShowAiSearch && (
                     <SidebarLinkItem
                       href="/marketplace/ai-search"
                       label="AI Search"
-                      icon={GradientSparklesIcon}
+                      icon={ GradientSparklesIcon }
                       tooltip="AI Search"
                       labelBadge={
                         <Badge
@@ -1179,139 +1194,147 @@ export function MarketplaceChrome({
                         </Badge>
                       }
                     />
-                  )}
-                  {isCustomerRole && (
+                  ) }
+                  { isCustomerRole && (
                     <SidebarLinkItem
                       href="/bookmarks"
                       label="Bookmarks"
-                      icon={FiBookmark}
+                      icon={ FiBookmark }
                       tooltip="Bookmarks"
-                      iconProps={{ strokeWidth: 2 }}
+                      iconProps={ { strokeWidth: 2, } }
                     />
-                  )}
-                  {shouldShowNotifications && (
+                  ) }
+                  { shouldShowNotifications && (
                     <SidebarLinkItem
                       href="/notifications"
                       label="Notifications"
-                      icon={FiBell}
+                      icon={ FiBell }
                       tooltip="Notifications"
-                      iconProps={{ strokeWidth: 2 }}
+                      iconProps={ { strokeWidth: 2, } }
                     />
-                  )}
-                  {shouldShowNotifications && (
+                  ) }
+                  { shouldShowNotifications && (
                     <SidebarLinkItem
-                      href={resolvedMessageHref}
+                      href={ resolvedMessageHref }
                       label="Messages"
-                      icon={FiMessageSquare}
+                      icon={ FiMessageSquare }
                       tooltip="Messages"
-                      iconProps={{ strokeWidth: 2 }}
+                      iconProps={ { strokeWidth: 2, } }
                     />
-                  )}
-                  {isPartnerRole && (
+                  ) }
+                  { shouldShowNotifications && (
+                    <SidebarLinkItem
+                      href="/account/wallet"
+                      label="Wallet"
+                      icon={ PiWalletLight }
+                      tooltip="Wallet"
+                    />
+                  ) }
+                  { isPartnerRole && (
                     <SidebarLinkItem
                       href="/spaces"
                       label="Spaces"
-                      icon={MdWorkOutline}
+                      icon={ MdWorkOutline }
                       tooltip="Spaces"
                     />
-                  )}
-                  {isPartnerRole && (
+                  ) }
+                  { isPartnerRole && (
                     <SidebarLinkItem
                       href="/spaces/pricing-rules"
                       label="Price Rules"
-                      icon={PiMoneyWavyBold}
+                      icon={ PiMoneyWavyBold }
                       tooltip="Price rules"
                     />
-                  )}
-                  {isPartnerRole && (
+                  ) }
+                  { isPartnerRole && (
                     <SidebarLinkItem
                       href="/spaces/dashboard"
                       label="Dashboard"
-                      icon={MdOutlineSpaceDashboard}
+                      icon={ MdOutlineSpaceDashboard }
                       tooltip="Dashboard"
                     />
-                  )}
-                  {isPartnerRole && (
+                  ) }
+                  { isPartnerRole && (
                     <SidebarLinkItem
                       href="/spaces/bookings"
                       label="Bookings"
-                      icon={LuTicket}
+                      icon={ LuTicket }
                       tooltip="Bookings"
                     />
-                  )}
-                  {isAdminRole && (
+                  ) }
+                  { isAdminRole && (
                     <SidebarLinkItem
                       href="/marketplace/dashboard"
                       label="Dashboard"
-                      icon={FiBarChart2}
+                      icon={ FiBarChart2 }
                       tooltip="Dashboard"
-                      iconProps={{ strokeWidth: 2 }}
+                      iconProps={ { strokeWidth: 2, } }
                     />
-                  )}
-                  {isAdminRole && (
+                  ) }
+                  { isAdminRole && (
                     <SidebarLinkItem
                       href="/admin"
                       label="Verification Queue"
-                      icon={HiOutlineDocumentText}
+                      icon={ HiOutlineDocumentText }
                       tooltip="Verification queue"
-                      iconProps={{ strokeWidth: 2 }}
+                      iconProps={ { strokeWidth: 2, } }
                     />
-                  )}
-                  {isAdminRole && (
+                  ) }
+                  { isAdminRole && (
                     <SidebarLinkItem
                       href="/admin/deactivation-requests"
                       label="Deactivation requests"
-                      icon={FiUserX}
+                      icon={ FiUserX }
                       tooltip="Deactivation requests"
-                      iconProps={{ strokeWidth: 2 }}
+                      iconProps={ { strokeWidth: 2, } }
                     />
-                  )}
-                  {isAdminRole && (
+                  ) }
+                  { isAdminRole && (
                     <SidebarLinkItem
                       href="/admin/unpublish-requests"
                       label="Unpublish requests"
-                      icon={FiEyeOff}
+                      icon={ FiEyeOff }
                       tooltip="Unpublish requests"
-                      iconProps={{ strokeWidth: 2 }}
+                      iconProps={ { strokeWidth: 2, } }
                     />
-                  )}
-                  {isAdminRole && (
+                  ) }
+                  { isAdminRole && (
                     <SidebarLinkItem
                       href="/observability"
                       label="Observability"
-                      icon={MdFormatListBulleted}
+                      icon={ MdFormatListBulleted }
                       tooltip="Observability"
-                      iconProps={{ className: "size-4" }}
+                      iconProps={ { className: 'size-4', } }
                     />
-                  )}
+                  ) }
                 </>
-              )}
+              ) }
             </SidebarMenu>
           </SidebarHeader>
           <SidebarContent className="flex-1" />
           <SidebarFooter className="mt-auto border-t border-sidebar-border/60">
             <SidebarFooterContent
-              avatarUrl={cachedAvatarUrl}
-              avatarFallback={navData.avatarFallback}
-              avatarDisplayName={navData.avatarDisplayName}
-              resolvedHandleLabel={navData.resolvedHandleLabel}
-              userEmail={navData.userEmail}
-              onNavigate={navData.onNavigate}
-              onLogout={navData.onLogout}
-              isGuest={navData.isGuest}
-              isSidebarLoading={navData.isSidebarLoading}
-              showNotifications={shouldShowNotifications}
-              showAccount={!isAdminRole}
+              avatarUrl={ cachedAvatarUrl }
+              avatarFallback={ navData.avatarFallback }
+              avatarDisplayName={ navData.avatarDisplayName }
+              resolvedHandleLabel={ navData.resolvedHandleLabel }
+              userEmail={ navData.userEmail }
+              onNavigate={ navData.onNavigate }
+              onLogout={ navData.onLogout }
+              isGuest={ navData.isGuest }
+              isSidebarLoading={ navData.isSidebarLoading }
+              showNotifications={ shouldShowNotifications }
+              showAccount={ !isAdminRole }
             />
           </SidebarFooter>
           <SidebarRail />
         </Sidebar>
 
         <SidebarInset
-          className={cn(
-            "relative flex-1 bg-background w-full pb-0 pt-0 md:pt-0",
-            insetClassName,
-          )}
+          className={ cn(
+            'relative flex-1 bg-background w-full pb-0 pt-0 md:pt-0',
+            insetClassName
+          ) }
           style={
             mobileInsetPadding || insetStyle
               ? {
@@ -1321,13 +1344,13 @@ export function MarketplaceChrome({
               : undefined
           }
         >
-          {children}
-          <AccountLockOverlay profile={userProfile} />
+          { children }
+          <AccountLockOverlay profile={ userProfile } />
         </SidebarInset>
       </div>
-      {shouldRenderMobileBottomNav && (
-        <MobileBottomNav actions={mobileBottomNavActions} />
-      )}
+      { shouldRenderMobileBottomNav && (
+        <MobileBottomNav actions={ mobileBottomNavActions } />
+      ) }
     </SidebarProvider>
   );
 }
