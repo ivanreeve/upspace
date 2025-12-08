@@ -46,10 +46,19 @@ export const reviewFixtures: ReviewFixtures = {
     userId: BigInt(1001),
   },
   list: {
-    aggregate: { _count: 2, _avg: { rating_star: 4.5, }, },
+    aggregate: {
+ _count: 2,
+_avg: { rating_star: 4.5, }, 
+},
     groupBy: [
-      { rating_star: 5, _count: { _all: 1, }, },
-      { rating_star: 4, _count: { _all: 1, }, },
+      {
+ rating_star: 5,
+_count: { _all: 1, }, 
+},
+      {
+ rating_star: 4,
+_count: { _all: 1, }, 
+}
     ],
     reviews: [
       {
@@ -60,7 +69,7 @@ export const reviewFixtures: ReviewFixtures = {
         created_at: new Date('2024-11-01T10:00:00.000Z'),
         common_review: [
           { comment: common_comment.Clean, },
-          { comment: common_comment.Good_lighting, },
+          { comment: common_comment.Good_lighting, }
         ],
         user: {
           first_name: 'Alex',
@@ -77,7 +86,7 @@ export const reviewFixtures: ReviewFixtures = {
         created_at: new Date('2024-11-02T14:00:00.000Z'),
         common_review: [
           { comment: common_comment.Reliable_internet, },
-          { comment: common_comment.Helpful_staff, },
+          { comment: common_comment.Helpful_staff, }
         ],
         user: {
           first_name: null,
@@ -85,7 +94,7 @@ export const reviewFixtures: ReviewFixtures = {
           handle: 'remote-guest',
           avatar: null,
         },
-      },
+      }
     ],
   },
   createPayload: {
@@ -94,7 +103,7 @@ export const reviewFixtures: ReviewFixtures = {
     comments: [
       common_comment.Clean,
       common_comment.Quiet_workspace,
-      common_comment.Reliable_internet,
+      common_comment.Reliable_internet
     ],
   },
   createdReview: {
@@ -106,7 +115,7 @@ export const reviewFixtures: ReviewFixtures = {
     common_review: [
       { comment: common_comment.Clean, },
       { comment: common_comment.Quiet_workspace, },
-      { comment: common_comment.Reliable_internet, },
+      { comment: common_comment.Reliable_internet, }
     ],
     user: {
       first_name: 'Alex',

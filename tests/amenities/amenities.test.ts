@@ -1,5 +1,11 @@
 import { NextRequest } from 'next/server';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+beforeEach,
+describe,
+expect,
+it,
+vi
+} from 'vitest';
 
 import { amenitiesFixture } from '../fixtures/amenities';
 
@@ -38,14 +44,19 @@ vi.mock('next/server', () => {
   };
 });
 
-const { GET, POST, } = await import('@/app/api/v1/spaces/[space_id]/amenities/route');
+const {
+ GET, POST, 
+} = await import('@/app/api/v1/spaces/[space_id]/amenities/route');
 const { DELETE, } = await import('@/app/api/v1/spaces/[space_id]/amenities/[amenity_id]/route');
 
 type NextRequestInit = ConstructorParameters<typeof NextRequest>[1];
 
 const createRequest = (url: string, init?: RequestInit) => {
   const sanitizedInit: NextRequestInit = init
-    ? ({ ...init, signal: init.signal ?? undefined } as NextRequestInit)
+    ? ({
+ ...init,
+signal: init.signal ?? undefined, 
+} as NextRequestInit)
     : undefined;
   return new NextRequest(url, sanitizedInit);
 };
@@ -56,7 +67,9 @@ beforeEach(() => {
 
 describe('GET /api/v1/spaces/{space_id}/amenities', () => {
   it('returns amenities list', async () => {
-    const { spaceId, list, } = amenitiesFixture;
+    const {
+ spaceId, list, 
+} = amenitiesFixture;
     mockPrisma.amenity.findMany.mockResolvedValueOnce(list);
 
     const response = await GET(
@@ -67,8 +80,16 @@ describe('GET /api/v1/spaces/{space_id}/amenities', () => {
 
     expect(response.status).toBe(200);
     expect(body.data).toEqual([
-      { amenity_id: list[0].id, space_id: list[0].space_id, name: list[0].name, },
-      { amenity_id: list[1].id, space_id: list[1].space_id, name: list[1].name, },
+      {
+ amenity_id: list[0].id,
+space_id: list[0].space_id,
+name: list[0].name, 
+},
+      {
+ amenity_id: list[1].id,
+space_id: list[1].space_id,
+name: list[1].name, 
+}
     ]);
   });
 
@@ -84,7 +105,9 @@ describe('GET /api/v1/spaces/{space_id}/amenities', () => {
 
 describe('POST /api/v1/spaces/{space_id}/amenities', () => {
   it('creates an amenity and sets Location header', async () => {
-    const { spaceId, createPayload, createdAmenity, } = amenitiesFixture;
+    const {
+ spaceId, createPayload, createdAmenity, 
+} = amenitiesFixture;
     mockPrisma.amenity.create.mockResolvedValueOnce(createdAmenity);
 
     const response = await POST(
@@ -109,7 +132,9 @@ describe('POST /api/v1/spaces/{space_id}/amenities', () => {
   });
 
   it('returns 409 when amenity name already exists', async () => {
-    const { spaceId, createPayload, } = amenitiesFixture;
+    const {
+ spaceId, createPayload, 
+} = amenitiesFixture;
     const err = Object.assign(new Error('duplicate'), { code: 'P2002', });
     mockPrisma.amenity.create.mockRejectedValueOnce(err);
 
@@ -128,7 +153,9 @@ describe('POST /api/v1/spaces/{space_id}/amenities', () => {
   });
 
   it('returns 404 when space is not found (P2003)', async () => {
-    const { spaceId, createPayload, } = amenitiesFixture;
+    const {
+ spaceId, createPayload, 
+} = amenitiesFixture;
     const err = Object.assign(new Error('fk'), { code: 'P2003', });
     mockPrisma.amenity.create.mockRejectedValueOnce(err);
 
@@ -160,7 +187,9 @@ describe('POST /api/v1/spaces/{space_id}/amenities', () => {
   });
 
   it('returns 400 for invalid space_id', async () => {
-    const { invalidSpaceId, createPayload, } = amenitiesFixture;
+    const {
+ invalidSpaceId, createPayload, 
+} = amenitiesFixture;
     const response = await POST(
       createRequest(`http://localhost/api/v1/spaces/${invalidSpaceId}/amenities`, {
         method: 'POST',
@@ -175,14 +204,19 @@ describe('POST /api/v1/spaces/{space_id}/amenities', () => {
 
 describe('DELETE /api/v1/spaces/{space_id}/amenities/{amenity_id}', () => {
   it('deletes an amenity', async () => {
-    const { spaceId, amenityId, } = amenitiesFixture;
+    const {
+ spaceId, amenityId, 
+} = amenitiesFixture;
     mockPrisma.amenity.deleteMany.mockResolvedValueOnce({ count: 1, });
 
     const response = await DELETE(
-      createRequest(`http://localhost/api/v1/spaces/${spaceId}/amenities/${amenityId}`, {
-        method: 'DELETE',
-      }),
-      { params: Promise.resolve({ space_id: spaceId, amenity_id: amenityId, }), }
+      createRequest(`http://localhost/api/v1/spaces/${spaceId}/amenities/${amenityId}`, { method: 'DELETE', }),
+      {
+ params: Promise.resolve({
+ space_id: spaceId,
+amenity_id: amenityId, 
+}), 
+}
     );
     const body = await response.json() as { data: { deleted: boolean } };
 
@@ -191,25 +225,35 @@ describe('DELETE /api/v1/spaces/{space_id}/amenities/{amenity_id}', () => {
   });
 
   it('returns 404 when amenity not found', async () => {
-    const { spaceId, amenityId, } = amenitiesFixture;
+    const {
+ spaceId, amenityId, 
+} = amenitiesFixture;
     mockPrisma.amenity.deleteMany.mockResolvedValueOnce({ count: 0, });
 
     const response = await DELETE(
-      createRequest(`http://localhost/api/v1/spaces/${spaceId}/amenities/${amenityId}`, {
-        method: 'DELETE',
-      }),
-      { params: Promise.resolve({ space_id: spaceId, amenity_id: amenityId, }), }
+      createRequest(`http://localhost/api/v1/spaces/${spaceId}/amenities/${amenityId}`, { method: 'DELETE', }),
+      {
+ params: Promise.resolve({
+ space_id: spaceId,
+amenity_id: amenityId, 
+}), 
+}
     );
     expect(response.status).toBe(404);
   });
 
   it('returns 400 for invalid ids', async () => {
-    const { invalidSpaceId, invalidAmenityId, } = amenitiesFixture;
+    const {
+ invalidSpaceId, invalidAmenityId, 
+} = amenitiesFixture;
     const response = await DELETE(
-      createRequest(`http://localhost/api/v1/spaces/${invalidSpaceId}/amenities/${invalidAmenityId}`, {
-        method: 'DELETE',
-      }),
-      { params: Promise.resolve({ space_id: invalidSpaceId, amenity_id: invalidAmenityId, }), }
+      createRequest(`http://localhost/api/v1/spaces/${invalidSpaceId}/amenities/${invalidAmenityId}`, { method: 'DELETE', }),
+      {
+ params: Promise.resolve({
+ space_id: invalidSpaceId,
+amenity_id: invalidAmenityId, 
+}), 
+}
     );
     expect(response.status).toBe(400);
   });

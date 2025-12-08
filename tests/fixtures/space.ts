@@ -25,14 +25,22 @@ export const spaceFixtures = {
       updated_at: new Date('2024-11-02T00:00:00.000Z'),
       is_published: true,
       space_image: [
-        { path: 'images/space-1.png', is_primary: true, display_order: 0, },
+        {
+ path: 'images/space-1.png',
+is_primary: true,
+display_order: 0, 
+}
       ],
       verification: [{ status: 'approved', }],
       space_availability: [
-        { day_of_week: 1, opening: new Date('1970-01-01T01:00:00.000Z'), closing: new Date('1970-01-01T09:00:00.000Z'), },
+        {
+ day_of_week: 1,
+opening: new Date('1970-01-01T01:00:00.000Z'),
+closing: new Date('1970-01-01T09:00:00.000Z'), 
+}
       ],
       area: [{ price_rule: { definition: {}, }, }],
-    },
+    }
   ],
   singleResult: {
     id: '11111111-1111-4111-8111-111111111111',
@@ -63,18 +71,50 @@ export const spaceFixtures = {
     long: 121.0244,
     amenities: [
       '22222222-2222-4222-8222-222222222222',
-      '33333333-3333-4333-8333-333333333333',
+      '33333333-3333-4333-8333-333333333333'
     ],
     availability: {
-      Monday: { is_open: true, opens_at: '08:00', closes_at: '18:00', },
-      Tuesday: { is_open: false, opens_at: '00:00', closes_at: '00:00', },
-      Wednesday: { is_open: false, opens_at: '00:00', closes_at: '00:00', },
-      Thursday: { is_open: false, opens_at: '00:00', closes_at: '00:00', },
-      Friday: { is_open: false, opens_at: '00:00', closes_at: '00:00', },
-      Saturday: { is_open: false, opens_at: '00:00', closes_at: '00:00', },
-      Sunday: { is_open: false, opens_at: '00:00', closes_at: '00:00', },
+      Monday: {
+ is_open: true,
+opens_at: '08:00',
+closes_at: '18:00', 
+},
+      Tuesday: {
+ is_open: false,
+opens_at: '00:00',
+closes_at: '00:00', 
+},
+      Wednesday: {
+ is_open: false,
+opens_at: '00:00',
+closes_at: '00:00', 
+},
+      Thursday: {
+ is_open: false,
+opens_at: '00:00',
+closes_at: '00:00', 
+},
+      Friday: {
+ is_open: false,
+opens_at: '00:00',
+closes_at: '00:00', 
+},
+      Saturday: {
+ is_open: false,
+opens_at: '00:00',
+closes_at: '00:00', 
+},
+      Sunday: {
+ is_open: false,
+opens_at: '00:00',
+closes_at: '00:00', 
+},
     },
-    images: [{ path: 'images/space-1.png', is_primary: true, display_order: 0, }],
+    images: [{
+ path: 'images/space-1.png',
+is_primary: true,
+display_order: 0, 
+}],
     verification_documents: [],
   },
   createdSpace: {

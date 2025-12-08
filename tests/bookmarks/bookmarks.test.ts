@@ -1,5 +1,11 @@
 import { NextRequest } from 'next/server';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+beforeEach,
+describe,
+expect,
+it,
+vi
+} from 'vitest';
 
 import { bookmarksFixture } from '../fixtures/bookmarks';
 
@@ -7,12 +13,8 @@ type SupabaseAuthUser = { id: string };
 type SupabaseAuthResponse = { data: { user: SupabaseAuthUser | null }; error: null };
 
 const mockPrisma = {
-  user: {
-    findFirst: vi.fn(),
-  },
-  space: {
-    findUnique: vi.fn(),
-  },
+  user: { findFirst: vi.fn(), },
+  space: { findUnique: vi.fn(), },
   bookmark: {
     findFirst: vi.fn(),
     create: vi.fn(),
@@ -20,16 +22,10 @@ const mockPrisma = {
   },
 };
 
-const mockSupabaseClient = {
-  auth: {
-    getUser: vi.fn<() => Promise<SupabaseAuthResponse>>(),
-  },
-};
+const mockSupabaseClient = { auth: { getUser: vi.fn<() => Promise<SupabaseAuthResponse>>(), }, };
 
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma, }));
-vi.mock('@/lib/supabase/server', () => ({
-  createSupabaseServerClient: vi.fn(async () => mockSupabaseClient),
-}));
+vi.mock('@/lib/supabase/server', () => ({ createSupabaseServerClient: vi.fn(async () => mockSupabaseClient), }));
 vi.mock('next/server', () => {
   class MockNextRequest extends Request {
     constructor(input: RequestInfo, init?: RequestInit) {
@@ -56,7 +52,9 @@ vi.mock('next/server', () => {
   };
 });
 
-const { POST, DELETE, } = await import('@/app/api/v1/bookmarks/route');
+const {
+ POST, DELETE, 
+} = await import('@/app/api/v1/bookmarks/route');
 const { createSupabaseServerClient, } = await import('@/lib/supabase/server');
 const mockedSupabaseServerClient = vi.mocked(createSupabaseServerClient);
 
@@ -64,7 +62,10 @@ type NextRequestInit = ConstructorParameters<typeof NextRequest>[1];
 
 const createRequest = (url: string, init?: RequestInit) => {
   const sanitizedInit: NextRequestInit = init
-    ? ({ ...init, signal: init.signal ?? undefined } as NextRequestInit)
+    ? ({
+ ...init,
+signal: init.signal ?? undefined, 
+} as NextRequestInit)
     : undefined;
   return new NextRequest(url, sanitizedInit);
 };
@@ -83,8 +84,13 @@ beforeEach(() => {
 
 describe('POST /api/v1/bookmarks', () => {
   it('creates a bookmark', async () => {
-    const { authUserId, userId, spaceId, } = bookmarksFixture;
-    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({ data: { user: { id: authUserId, }, }, error: null, });
+    const {
+ authUserId, userId, spaceId, 
+} = bookmarksFixture;
+    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
+ data: { user: { id: authUserId, }, },
+error: null, 
+});
     mockPrisma.user.findFirst.mockResolvedValueOnce({ user_id: userId, });
     mockPrisma.space.findUnique.mockResolvedValueOnce({ id: spaceId, });
     mockPrisma.bookmark.findFirst.mockResolvedValueOnce(null);
@@ -111,8 +117,13 @@ describe('POST /api/v1/bookmarks', () => {
   });
 
   it('returns 200 when already bookmarked', async () => {
-    const { authUserId, userId, spaceId, } = bookmarksFixture;
-    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({ data: { user: { id: authUserId, }, }, error: null, });
+    const {
+ authUserId, userId, spaceId, 
+} = bookmarksFixture;
+    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
+ data: { user: { id: authUserId, }, },
+error: null, 
+});
     mockPrisma.user.findFirst.mockResolvedValueOnce({ user_id: userId, });
     mockPrisma.space.findUnique.mockResolvedValueOnce({ id: spaceId, });
     mockPrisma.bookmark.findFirst.mockResolvedValueOnce({ id: 'existing', });
@@ -133,7 +144,10 @@ describe('POST /api/v1/bookmarks', () => {
 
   it('requires authentication', async () => {
     const { spaceId, } = bookmarksFixture;
-    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({ data: { user: null, }, error: null, });
+    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
+ data: { user: null, },
+error: null, 
+});
 
     const response = await POST(
       createRequest('http://localhost/api/v1/bookmarks', {
@@ -149,8 +163,13 @@ describe('POST /api/v1/bookmarks', () => {
   });
 
   it('returns 404 when space not found', async () => {
-    const { authUserId, userId, spaceId, } = bookmarksFixture;
-    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({ data: { user: { id: authUserId, }, }, error: null, });
+    const {
+ authUserId, userId, spaceId, 
+} = bookmarksFixture;
+    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
+ data: { user: { id: authUserId, }, },
+error: null, 
+});
     mockPrisma.user.findFirst.mockResolvedValueOnce({ user_id: userId, });
     mockPrisma.space.findUnique.mockResolvedValueOnce(null);
 
@@ -168,8 +187,13 @@ describe('POST /api/v1/bookmarks', () => {
   });
 
   it('returns 400 for invalid space id', async () => {
-    const { authUserId, userId, } = bookmarksFixture;
-    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({ data: { user: { id: authUserId, }, }, error: null, });
+    const {
+ authUserId, userId, 
+} = bookmarksFixture;
+    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
+ data: { user: { id: authUserId, }, },
+error: null, 
+});
     mockPrisma.user.findFirst.mockResolvedValueOnce({ user_id: userId, });
 
     const response = await POST(
@@ -185,8 +209,13 @@ describe('POST /api/v1/bookmarks', () => {
 
 describe('DELETE /api/v1/bookmarks', () => {
   it('deletes a bookmark', async () => {
-    const { authUserId, userId, spaceId, } = bookmarksFixture;
-    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({ data: { user: { id: authUserId, }, }, error: null, });
+    const {
+ authUserId, userId, spaceId, 
+} = bookmarksFixture;
+    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
+ data: { user: { id: authUserId, }, },
+error: null, 
+});
     mockPrisma.user.findFirst.mockResolvedValueOnce({ user_id: userId, });
 
     mockPrisma.bookmark.deleteMany.mockResolvedValueOnce({ count: 1, });
@@ -212,7 +241,10 @@ describe('DELETE /api/v1/bookmarks', () => {
 
   it('requires authentication', async () => {
     const { spaceId, } = bookmarksFixture;
-    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({ data: { user: null, }, error: null, });
+    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
+ data: { user: null, },
+error: null, 
+});
 
     const response = await DELETE(
       createRequest('http://localhost/api/v1/bookmarks', {
@@ -225,8 +257,13 @@ describe('DELETE /api/v1/bookmarks', () => {
   });
 
   it('returns 400 for invalid space id', async () => {
-    const { authUserId, userId, } = bookmarksFixture;
-    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({ data: { user: { id: authUserId, }, }, error: null, });
+    const {
+ authUserId, userId, 
+} = bookmarksFixture;
+    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
+ data: { user: { id: authUserId, }, },
+error: null, 
+});
     mockPrisma.user.findFirst.mockResolvedValueOnce({ user_id: userId, });
 
     const response = await DELETE(

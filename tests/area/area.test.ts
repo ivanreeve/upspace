@@ -1,5 +1,11 @@
 import { NextRequest } from 'next/server';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+beforeEach,
+describe,
+expect,
+it,
+vi
+} from 'vitest';
 
 import { areaFixture } from '../fixtures/area';
 
@@ -41,14 +47,21 @@ vi.mock('next/server', () => {
   };
 });
 
-const { GET, POST, } = await import('@/app/api/v1/spaces/[space_id]/areas/route');
-const { PUT, DELETE, } = await import('@/app/api/v1/spaces/[space_id]/areas/[area_id]/route');
+const {
+ GET, POST, 
+} = await import('@/app/api/v1/spaces/[space_id]/areas/route');
+const {
+ PUT, DELETE, 
+} = await import('@/app/api/v1/spaces/[space_id]/areas/[area_id]/route');
 
 type NextRequestInit = ConstructorParameters<typeof NextRequest>[1];
 
 const createRequest = (url: string, init?: RequestInit) => {
   const sanitizedInit: NextRequestInit = init
-    ? ({ ...init, signal: init.signal ?? undefined } as NextRequestInit)
+    ? ({
+ ...init,
+signal: init.signal ?? undefined, 
+} as NextRequestInit)
     : undefined;
   return new NextRequest(url, sanitizedInit);
 };
@@ -59,7 +72,9 @@ beforeEach(() => {
 
 describe('GET /api/v1/spaces/{space_id}/areas', () => {
   it('returns areas list', async () => {
-    const { spaceId, list, } = areaFixture;
+    const {
+ spaceId, list, 
+} = areaFixture;
     mockPrisma.area.findMany.mockResolvedValueOnce(list);
 
     const response = await GET(
@@ -70,8 +85,18 @@ describe('GET /api/v1/spaces/{space_id}/areas', () => {
 
     expect(response.status).toBe(200);
     expect(body.data).toEqual([
-      { area_id: list[0].id, space_id: list[0].space_id, name: list[0].name, max_capacity: '20', },
-      { area_id: list[1].id, space_id: list[1].space_id, name: list[1].name, max_capacity: '50', },
+      {
+ area_id: list[0].id,
+space_id: list[0].space_id,
+name: list[0].name,
+max_capacity: '20', 
+},
+      {
+ area_id: list[1].id,
+space_id: list[1].space_id,
+name: list[1].name,
+max_capacity: '50', 
+}
     ]);
   });
 
@@ -87,7 +112,9 @@ describe('GET /api/v1/spaces/{space_id}/areas', () => {
 
 describe('POST /api/v1/spaces/{space_id}/areas', () => {
   it('creates an area and sets Location header', async () => {
-    const { spaceId, createPayload, created, } = areaFixture;
+    const {
+ spaceId, createPayload, created, 
+} = areaFixture;
     mockPrisma.area.create.mockResolvedValueOnce(created);
 
     const response = await POST(
@@ -113,7 +140,9 @@ describe('POST /api/v1/spaces/{space_id}/areas', () => {
   });
 
   it('returns 404 when space not found (P2003)', async () => {
-    const { spaceId, createPayload, } = areaFixture;
+    const {
+ spaceId, createPayload, 
+} = areaFixture;
     const err = Object.assign(new Error('fk'), { code: 'P2003', });
     mockPrisma.area.create.mockRejectedValueOnce(err);
 
@@ -134,7 +163,10 @@ describe('POST /api/v1/spaces/{space_id}/areas', () => {
       createRequest(`http://localhost/api/v1/spaces/${spaceId}/areas`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', },
-        body: JSON.stringify({ name: '', capacity: 'NaN', }),
+        body: JSON.stringify({
+ name: '',
+capacity: 'NaN', 
+}),
       }),
       { params: Promise.resolve({ space_id: spaceId, }), }
     );
@@ -144,7 +176,9 @@ describe('POST /api/v1/spaces/{space_id}/areas', () => {
 
 describe('PUT /api/v1/spaces/{space_id}/areas/{area_id}', () => {
   it('updates area fields', async () => {
-    const { spaceId, areaId, updatePayload, updated, } = areaFixture;
+    const {
+ spaceId, areaId, updatePayload, updated, 
+} = areaFixture;
     mockPrisma.area.updateMany.mockResolvedValueOnce({ count: 1, });
     mockPrisma.area.findUnique.mockResolvedValueOnce(updated);
 
@@ -154,7 +188,12 @@ describe('PUT /api/v1/spaces/{space_id}/areas/{area_id}', () => {
         headers: { 'content-type': 'application/json', },
         body: JSON.stringify(updatePayload),
       }),
-      { params: Promise.resolve({ space_id: spaceId, area_id: areaId, }), }
+      {
+ params: Promise.resolve({
+ space_id: spaceId,
+area_id: areaId, 
+}), 
+}
     );
     const body = await response.json() as { data: any };
 
@@ -164,7 +203,9 @@ describe('PUT /api/v1/spaces/{space_id}/areas/{area_id}', () => {
   });
 
   it('returns 404 when area not found', async () => {
-    const { spaceId, areaId, updatePayload, } = areaFixture;
+    const {
+ spaceId, areaId, updatePayload, 
+} = areaFixture;
     mockPrisma.area.updateMany.mockResolvedValueOnce({ count: 0, });
 
     const response = await PUT(
@@ -173,20 +214,32 @@ describe('PUT /api/v1/spaces/{space_id}/areas/{area_id}', () => {
         headers: { 'content-type': 'application/json', },
         body: JSON.stringify(updatePayload),
       }),
-      { params: Promise.resolve({ space_id: spaceId, area_id: areaId, }), }
+      {
+ params: Promise.resolve({
+ space_id: spaceId,
+area_id: areaId, 
+}), 
+}
     );
     expect(response.status).toBe(404);
   });
 
   it('returns 400 for invalid ids', async () => {
-    const { invalidSpaceId, invalidAreaId, updatePayload, } = areaFixture;
+    const {
+ invalidSpaceId, invalidAreaId, updatePayload, 
+} = areaFixture;
     const response = await PUT(
       createRequest(`http://localhost/api/v1/spaces/${invalidSpaceId}/areas/${invalidAreaId}`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json', },
         body: JSON.stringify(updatePayload),
       }),
-      { params: Promise.resolve({ space_id: invalidSpaceId, area_id: invalidAreaId, }), }
+      {
+ params: Promise.resolve({
+ space_id: invalidSpaceId,
+area_id: invalidAreaId, 
+}), 
+}
     );
     expect(response.status).toBe(400);
   });
@@ -194,41 +247,56 @@ describe('PUT /api/v1/spaces/{space_id}/areas/{area_id}', () => {
 
 describe('DELETE /api/v1/spaces/{space_id}/areas/{area_id}', () => {
   it('deletes an area', async () => {
-    const { spaceId, areaId, } = areaFixture;
+    const {
+ spaceId, areaId, 
+} = areaFixture;
     mockPrisma.area.deleteMany.mockResolvedValueOnce({ count: 1, });
 
     const response = await DELETE(
-      createRequest(`http://localhost/api/v1/spaces/${spaceId}/areas/${areaId}`, {
-        method: 'DELETE',
-      }),
-      { params: Promise.resolve({ space_id: spaceId, area_id: areaId, }), }
+      createRequest(`http://localhost/api/v1/spaces/${spaceId}/areas/${areaId}`, { method: 'DELETE', }),
+      {
+ params: Promise.resolve({
+ space_id: spaceId,
+area_id: areaId, 
+}), 
+}
     );
 
     expect(response.status).toBe(204);
   });
 
   it('returns 404 when area not found', async () => {
-    const { spaceId, areaId, } = areaFixture;
+    const {
+ spaceId, areaId, 
+} = areaFixture;
     mockPrisma.area.deleteMany.mockResolvedValueOnce({ count: 0, });
 
     const response = await DELETE(
-      createRequest(`http://localhost/api/v1/spaces/${spaceId}/areas/${areaId}`, {
-        method: 'DELETE',
-      }),
-      { params: Promise.resolve({ space_id: spaceId, area_id: areaId, }), }
+      createRequest(`http://localhost/api/v1/spaces/${spaceId}/areas/${areaId}`, { method: 'DELETE', }),
+      {
+ params: Promise.resolve({
+ space_id: spaceId,
+area_id: areaId, 
+}), 
+}
     );
 
     expect(response.status).toBe(404);
   });
 
   it('returns 400 for invalid ids', async () => {
-    const { invalidSpaceId, invalidAreaId, } = areaFixture;
+    const {
+ invalidSpaceId, invalidAreaId, 
+} = areaFixture;
 
     const response = await DELETE(
-      createRequest(`http://localhost/api/v1/spaces/${invalidSpaceId}/areas/${invalidAreaId}`, {
-        method: 'DELETE',
-      }),
-      { params: Promise.resolve({ space_id: invalidSpaceId, area_id: invalidAreaId, }), }
+      createRequest(`http://localhost/api/v1/spaces/${invalidSpaceId}/areas/${invalidAreaId}`, { method: 'DELETE', }),
+      {
+ params: Promise.resolve({
+ space_id: invalidSpaceId,
+area_id: invalidAreaId, 
+}), 
+}
     );
 
     expect(response.status).toBe(400);

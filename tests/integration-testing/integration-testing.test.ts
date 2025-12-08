@@ -1,22 +1,18 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from 'vitest';
 
-import {
-  integrationTestingFixture,
-  type IntegrationEpic,
-  type IntegrationTestType,
-} from "../fixtures/integration-testing";
+import { integrationTestingFixture, type IntegrationEpic, type IntegrationTestType } from '../fixtures/integration-testing';
 
-const requiredEpics: IntegrationEpic[] = ["authentication", "discovery", "search", "booking", "payment"];
-const requiredTypes: IntegrationTestType[] = ["positive", "negative"];
+const requiredEpics: IntegrationEpic[] = ['authentication', 'discovery', 'search', 'booking', 'payment'];
+const requiredTypes: IntegrationTestType[] = ['positive', 'negative'];
 
-describe("Integration Testing fixture", () => {
-  it("covers all required epics", () => {
+describe('Integration Testing fixture', () => {
+  it('covers all required epics', () => {
     const epics = new Set<IntegrationEpic>();
     integrationTestingFixture.forEach((testCase) => testCase.epics.forEach((epic) => epics.add(epic)));
     requiredEpics.forEach((epic) => expect(epics.has(epic)).toBe(true));
   });
 
-  it("includes positive and negative scenarios for every epic", () => {
+  it('includes positive and negative scenarios for every epic', () => {
     requiredEpics.forEach((epic) => {
       const casesForEpic = integrationTestingFixture.filter((testCase) => testCase.epics.includes(epic));
       const types = new Set(casesForEpic.map((testCase) => testCase.type));
@@ -24,7 +20,7 @@ describe("Integration Testing fixture", () => {
     });
   });
 
-  it("defines well-formed integration cases", () => {
+  it('defines well-formed integration cases', () => {
     const ids = new Set<string>();
     integrationTestingFixture.forEach((testCase) => {
       expect(testCase.id).toMatch(/^flow\/[a-z0-9-]+$/);

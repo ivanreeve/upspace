@@ -15,7 +15,7 @@ export default defineConfig({
       ['tests/bookmarks/**', 'node'],
       ['tests/user/**', 'node'],
       ['tests/comprehensive-test-cases/**', 'node'],
-      ['tests/integration-testing/**', 'node'],
+      ['tests/integration-testing/**', 'node']
     ],
     globals: true,
     setupFiles: ['tests/setup.ts'],

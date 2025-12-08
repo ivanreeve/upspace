@@ -1,6 +1,12 @@
 import { common_comment } from '@prisma/client';
 import { NextRequest } from 'next/server';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+beforeEach,
+describe,
+expect,
+it,
+vi
+} from 'vitest';
 
 import { reviewFixtures } from '../fixtures/review';
 
@@ -15,28 +21,16 @@ const mockPrisma = {
     findFirst: vi.fn(),
     create: vi.fn(),
   },
-  user: {
-    findFirst: vi.fn(),
-  },
-  space: {
-    findUnique: vi.fn(),
-  },
-  common_review: {
-    createMany: vi.fn(),
-  },
+  user: { findFirst: vi.fn(), },
+  space: { findUnique: vi.fn(), },
+  common_review: { createMany: vi.fn(), },
   $transaction: vi.fn(),
 };
 
-const mockSupabaseClient = {
-  auth: {
-    getUser: vi.fn<() => Promise<SupabaseAuthResponse>>(),
-  },
-};
+const mockSupabaseClient = { auth: { getUser: vi.fn<() => Promise<SupabaseAuthResponse>>(), }, };
 
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma, }));
-vi.mock('@/lib/supabase/server', () => ({
-  createSupabaseServerClient: vi.fn(async () => mockSupabaseClient),
-}));
+vi.mock('@/lib/supabase/server', () => ({ createSupabaseServerClient: vi.fn(async () => mockSupabaseClient), }));
 vi.mock('next/server', () => {
   class MockNextRequest extends Request {
     constructor(input: RequestInfo, init?: RequestInit) {
@@ -61,7 +55,9 @@ vi.mock('next/server', () => {
   };
 });
 
-const { GET, POST, } = await import('@/app/api/v1/spaces/[space_id]/reviews/route');
+const {
+ GET, POST, 
+} = await import('@/app/api/v1/spaces/[space_id]/reviews/route');
 const { createSupabaseServerClient, } = await import('@/lib/supabase/server');
 const mockedSupabaseServerClient = vi.mocked(createSupabaseServerClient);
 
@@ -92,7 +88,10 @@ type NextRequestInit = ConstructorParameters<typeof NextRequest>[1];
 
 const createRequest = (url: string, init?: RequestInit) => {
   const sanitizedInit: NextRequestInit = init
-    ? ({ ...init, signal: init.signal ?? undefined } as NextRequestInit)
+    ? ({
+ ...init,
+signal: init.signal ?? undefined, 
+} as NextRequestInit)
     : undefined;
   return new NextRequest(url, sanitizedInit);
 };
@@ -119,7 +118,9 @@ beforeEach(() => {
 
 describe('GET /api/v1/spaces/{space_id}/reviews', () => {
   it('returns summary and reviews using fixtures (honors limit/cursor query params)', async () => {
-    const { spaceId, list, viewer, } = reviewFixtures;
+    const {
+ spaceId, list, viewer, 
+} = reviewFixtures;
 
     setAuthenticatedUser(viewer.authUserId);
     mockPrisma.user.findFirst.mockResolvedValueOnce({ user_id: viewer.userId, });
@@ -141,11 +142,26 @@ describe('GET /api/v1/spaces/{space_id}/reviews', () => {
           average_rating: 4.5,
           total_reviews: 2,
           breakdown: [
-            { rating: 5, count: 1, },
-            { rating: 4, count: 1, },
-            { rating: 3, count: 0, },
-            { rating: 2, count: 0, },
-            { rating: 1, count: 0, },
+            {
+ rating: 5,
+count: 1, 
+},
+            {
+ rating: 4,
+count: 1, 
+},
+            {
+ rating: 3,
+count: 0, 
+},
+            {
+ rating: 2,
+count: 0, 
+},
+            {
+ rating: 1,
+count: 0, 
+}
           ],
         },
         reviews: [
@@ -172,7 +188,7 @@ describe('GET /api/v1/spaces/{space_id}/reviews', () => {
               handle: 'remote-guest',
               avatar: null,
             },
-          },
+          }
         ],
         viewer_reviewed: true,
       },
@@ -189,7 +205,10 @@ describe('GET /api/v1/spaces/{space_id}/reviews', () => {
   it('returns empty summary when no reviews exist', async () => {
     const { spaceId, } = reviewFixtures;
 
-    mockPrisma.review.aggregate.mockResolvedValueOnce({ _count: 0, _avg: { rating_star: null, }, });
+    mockPrisma.review.aggregate.mockResolvedValueOnce({
+ _count: 0,
+_avg: { rating_star: null, }, 
+});
     mockPrisma.review.groupBy.mockResolvedValueOnce([]);
     mockPrisma.review.findMany.mockResolvedValueOnce([]);
 
@@ -204,11 +223,26 @@ describe('GET /api/v1/spaces/{space_id}/reviews', () => {
           average_rating: 0,
           total_reviews: 0,
           breakdown: [
-            { rating: 5, count: 0, },
-            { rating: 4, count: 0, },
-            { rating: 3, count: 0, },
-            { rating: 2, count: 0, },
-            { rating: 1, count: 0, },
+            {
+ rating: 5,
+count: 0, 
+},
+            {
+ rating: 4,
+count: 0, 
+},
+            {
+ rating: 3,
+count: 0, 
+},
+            {
+ rating: 2,
+count: 0, 
+},
+            {
+ rating: 1,
+count: 0, 
+}
           ],
         },
         reviews: [],
@@ -231,7 +265,9 @@ describe('GET /api/v1/spaces/{space_id}/reviews', () => {
 
 describe('POST /api/v1/spaces/{space_id}/reviews', () => {
   it('creates a review and returns the Location header', async () => {
-    const { spaceId, viewer, createPayload, createdReview, } = reviewFixtures;
+    const {
+ spaceId, viewer, createPayload, createdReview, 
+} = reviewFixtures;
 
     setAuthenticatedUser(viewer.authUserId);
     mockPrisma.user.findFirst.mockResolvedValueOnce({ user_id: viewer.userId, });
@@ -241,9 +277,7 @@ describe('POST /api/v1/spaces/{space_id}/reviews', () => {
       ...createdReview,
       space_id: spaceId,
     });
-    mockPrisma.common_review.createMany.mockResolvedValueOnce({
-      count: createPayload.comments.length,
-    });
+    mockPrisma.common_review.createMany.mockResolvedValueOnce({ count: createPayload.comments.length, });
 
     const req = createRequest(
       `http://localhost/api/v1/spaces/${spaceId}/reviews`,
@@ -281,7 +315,9 @@ describe('POST /api/v1/spaces/{space_id}/reviews', () => {
   });
 
   it('prevents duplicate reviews from the same user', async () => {
-    const { spaceId, viewer, duplicateReview, createPayload, } = reviewFixtures;
+    const {
+ spaceId, viewer, duplicateReview, createPayload, 
+} = reviewFixtures;
 
     setAuthenticatedUser(viewer.authUserId);
     mockPrisma.user.findFirst.mockResolvedValueOnce({ user_id: viewer.userId, });
@@ -306,14 +342,19 @@ describe('POST /api/v1/spaces/{space_id}/reviews', () => {
   });
 
   it('validates payload and returns 400 on schema errors', async () => {
-    const { spaceId, viewer, } = reviewFixtures;
+    const {
+ spaceId, viewer, 
+} = reviewFixtures;
 
     setAuthenticatedUser(viewer.authUserId);
     mockPrisma.user.findFirst.mockResolvedValueOnce({ user_id: viewer.userId, });
     mockPrisma.space.findUnique.mockResolvedValueOnce({ id: spaceId, });
     mockPrisma.review.findFirst.mockResolvedValueOnce(null);
 
-    const invalidPayload = { rating_star: 6, description: 'Too high rating', };
+    const invalidPayload = {
+ rating_star: 6,
+description: 'Too high rating', 
+};
 
     const req = createRequest(
       `http://localhost/api/v1/spaces/${spaceId}/reviews`,
@@ -361,7 +402,9 @@ describe('POST /api/v1/spaces/{space_id}/reviews', () => {
   });
 
   it('returns 404 when the space is not found', async () => {
-    const { spaceId, viewer, createPayload, } = reviewFixtures;
+    const {
+ spaceId, viewer, createPayload, 
+} = reviewFixtures;
 
     setAuthenticatedUser(viewer.authUserId);
     mockPrisma.user.findFirst.mockResolvedValueOnce({ user_id: viewer.userId, });
@@ -384,7 +427,9 @@ describe('POST /api/v1/spaces/{space_id}/reviews', () => {
   });
 
   it('rejects invalid space_id before hitting prisma', async () => {
-    const { invalidSpaceId, createPayload, } = reviewFixtures;
+    const {
+ invalidSpaceId, createPayload, 
+} = reviewFixtures;
 
     const req = createRequest(
       `http://localhost/api/v1/spaces/${invalidSpaceId}/reviews`,

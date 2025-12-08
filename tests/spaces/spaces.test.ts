@@ -1,5 +1,11 @@
 import { NextRequest } from 'next/server';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+beforeEach,
+describe,
+expect,
+it,
+vi
+} from 'vitest';
 
 import { spaceFixtures } from '../fixtures/space';
 
@@ -14,46 +20,22 @@ const mockPrisma = {
     update: vi.fn(),
     delete: vi.fn(),
   },
-  review: {
-    groupBy: vi.fn(),
-  },
-  bookmark: {
-    findMany: vi.fn(),
-  },
-  user: {
-    findFirst: vi.fn(),
-  },
-  amenity_choice: {
-    findMany: vi.fn(),
-  },
-  amenity: {
-    createMany: vi.fn(),
-  },
-  space_availability: {
-    createMany: vi.fn(),
-  },
-  space_image: {
-    createMany: vi.fn(),
-  },
-  verification: {
-    create: vi.fn(),
-  },
-  verification_document: {
-    createMany: vi.fn(),
-  },
+  review: { groupBy: vi.fn(), },
+  bookmark: { findMany: vi.fn(), },
+  user: { findFirst: vi.fn(), },
+  amenity_choice: { findMany: vi.fn(), },
+  amenity: { createMany: vi.fn(), },
+  space_availability: { createMany: vi.fn(), },
+  space_image: { createMany: vi.fn(), },
+  verification: { create: vi.fn(), },
+  verification_document: { createMany: vi.fn(), },
   $transaction: vi.fn(),
 };
 
-const mockSupabaseClient = {
-  auth: {
-    getUser: vi.fn<() => Promise<SupabaseAuthResponse>>(),
-  },
-};
+const mockSupabaseClient = { auth: { getUser: vi.fn<() => Promise<SupabaseAuthResponse>>(), }, };
 
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma, }));
-vi.mock('@/lib/supabase/server', () => ({
-  createSupabaseServerClient: vi.fn(async () => mockSupabaseClient),
-}));
+vi.mock('@/lib/supabase/server', () => ({ createSupabaseServerClient: vi.fn(async () => mockSupabaseClient), }));
 vi.mock('next/server', () => {
   class MockNextRequest extends Request {
     constructor(input: RequestInfo, init?: RequestInit) {
@@ -79,9 +61,7 @@ vi.mock('next/server', () => {
     NextResponse: MockNextResponse,
   };
 });
-vi.mock('@/lib/spaces/location', () => ({
-  updateSpaceLocationPoint: vi.fn(),
-}));
+vi.mock('@/lib/spaces/location', () => ({ updateSpaceLocationPoint: vi.fn(), }));
 vi.mock('@/lib/rich-text', () => ({
   sanitizeRichText: vi.fn(() => 'Sanitized'),
   richTextPlainTextLength: vi.fn(() => 25),
@@ -91,15 +71,9 @@ vi.mock('@/lib/spaces/image-urls', () => ({
   buildPublicObjectUrl: vi.fn((path: string) => `https://cdn.test/${path}`),
   isAbsoluteUrl: vi.fn((path: string) => path.startsWith('http')),
 }));
-vi.mock('@/lib/spaces/partner-serializer', () => ({
-  deriveSpaceStatus: vi.fn(() => 'approved'),
-}));
-vi.mock('@/lib/spaces/pricing', () => ({
-  computeStartingPriceFromAreas: vi.fn(() => 100),
-}));
-vi.mock('@/data/spaces', () => ({
-  WEEKDAY_ORDER: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-}));
+vi.mock('@/lib/spaces/partner-serializer', () => ({ deriveSpaceStatus: vi.fn(() => 'approved'), }));
+vi.mock('@/lib/spaces/pricing', () => ({ computeStartingPriceFromAreas: vi.fn(() => 100), }));
+vi.mock('@/data/spaces', () => ({ WEEKDAY_ORDER: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], }));
 
 class HttpError extends Error {
   status: number;
@@ -110,8 +84,12 @@ class HttpError extends Error {
 }
 (globalThis as unknown as { HttpError?: typeof HttpError }).HttpError = HttpError;
 
-const { GET, POST, } = await import('@/app/api/v1/spaces/route');
-const { GET: GET_BY_ID, PUT, DELETE, } = await import('@/app/api/v1/spaces/[space_id]/route');
+const {
+ GET, POST, 
+} = await import('@/app/api/v1/spaces/route');
+const {
+ GET: GET_BY_ID, PUT, DELETE, 
+} = await import('@/app/api/v1/spaces/[space_id]/route');
 const { createSupabaseServerClient, } = await import('@/lib/supabase/server');
 const mockedSupabaseServerClient = vi.mocked(createSupabaseServerClient);
 
@@ -126,7 +104,10 @@ type NextRequestInit = ConstructorParameters<typeof NextRequest>[1];
 
 const createRequest = (url: string, init?: RequestInit) => {
   const sanitizedInit: NextRequestInit = init
-    ? ({ ...init, signal: init.signal ?? undefined } as NextRequestInit)
+    ? ({
+ ...init,
+signal: init.signal ?? undefined, 
+} as NextRequestInit)
     : undefined;
   return new NextRequest(url, sanitizedInit);
 };
@@ -155,10 +136,16 @@ beforeEach(() => {
 
 describe('GET /api/v1/spaces', () => {
   it('returns paginated spaces with derived fields', async () => {
-    const { listResult, partner, } = spaceFixtures;
+    const {
+ listResult, partner, 
+} = spaceFixtures;
     mockPrisma.space.findMany.mockResolvedValueOnce(listResult);
     mockPrisma.review.groupBy.mockResolvedValueOnce([
-      { space_id: listResult[0].id, _avg: { rating_star: 4.5, }, _count: { rating_star: 2, }, },
+      {
+ space_id: listResult[0].id,
+_avg: { rating_star: 4.5, },
+_count: { rating_star: 2, }, 
+}
     ]);
     mockPrisma.bookmark.findMany.mockResolvedValueOnce([{ space_id: listResult[0].id, }]);
     setAuthUser(partner.authUserId);
@@ -178,7 +165,7 @@ describe('GET /api/v1/spaces', () => {
         total_reviews: 2,
         starting_price: 100,
         isBookmarked: true,
-      }),
+      })
     ]);
   });
 
@@ -230,7 +217,9 @@ describe('GET /api/v1/spaces/{space_id}', () => {
 
 describe('POST /api/v1/spaces', () => {
   it('creates a space and sets Location header', async () => {
-    const { createPayload, createdSpace, partner, } = spaceFixtures;
+    const {
+ createPayload, createdSpace, partner, 
+} = spaceFixtures;
     setAuthUser(partner.authUserId);
     mockPrisma.user.findFirst.mockResolvedValueOnce({
       user_id: partner.userId,
@@ -273,7 +262,9 @@ describe('POST /api/v1/spaces', () => {
   });
 
   it('returns 422 when amenities do not match choices', async () => {
-    const { createPayload, partner, } = spaceFixtures;
+    const {
+ createPayload, partner, 
+} = spaceFixtures;
     setAuthUser(partner.authUserId);
     mockPrisma.user.findFirst.mockResolvedValueOnce({
       user_id: partner.userId,
@@ -303,7 +294,9 @@ describe('POST /api/v1/spaces', () => {
 
 describe('PUT /api/v1/spaces/{space_id}', () => {
   it('updates space fields', async () => {
-    const { validSpaceId, updatePayload, } = spaceFixtures;
+    const {
+ validSpaceId, updatePayload, 
+} = spaceFixtures;
     const updated = {
       ...spaceFixtures.singleResult,
       ...updatePayload,
@@ -346,9 +339,7 @@ describe('DELETE /api/v1/spaces/{space_id}', () => {
     mockPrisma.space.delete.mockResolvedValueOnce({});
 
     const response = await DELETE(
-      createRequest(`http://localhost/api/v1/spaces/${validSpaceId}`, {
-        method: 'DELETE',
-      }),
+      createRequest(`http://localhost/api/v1/spaces/${validSpaceId}`, { method: 'DELETE', }),
       { params: Promise.resolve({ space_id: validSpaceId, }), }
     );
     const body = await response.json() as { message: string };
@@ -364,9 +355,7 @@ describe('DELETE /api/v1/spaces/{space_id}', () => {
     mockPrisma.space.delete.mockRejectedValueOnce(error);
 
     const response = await DELETE(
-      createRequest(`http://localhost/api/v1/spaces/${validSpaceId}`, {
-        method: 'DELETE',
-      }),
+      createRequest(`http://localhost/api/v1/spaces/${validSpaceId}`, { method: 'DELETE', }),
       { params: Promise.resolve({ space_id: validSpaceId, }), }
     );
     expect(response.status).toBe(409);

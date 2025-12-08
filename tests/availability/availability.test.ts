@@ -1,5 +1,11 @@
 import { NextRequest } from 'next/server';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+beforeEach,
+describe,
+expect,
+it,
+vi
+} from 'vitest';
 
 import { availabilityFixture } from '../fixtures/availability';
 
@@ -41,14 +47,21 @@ vi.mock('next/server', () => {
   };
 });
 
-const { GET, POST, } = await import('@/app/api/v1/spaces/[space_id]/availability/route');
-const { PUT, DELETE, } = await import('@/app/api/v1/spaces/[space_id]/availability/[availability_id]/route');
+const {
+ GET, POST, 
+} = await import('@/app/api/v1/spaces/[space_id]/availability/route');
+const {
+ PUT, DELETE, 
+} = await import('@/app/api/v1/spaces/[space_id]/availability/[availability_id]/route');
 
 type NextRequestInit = ConstructorParameters<typeof NextRequest>[1];
 
 const createRequest = (url: string, init?: RequestInit) => {
   const sanitizedInit: NextRequestInit = init
-    ? ({ ...init, signal: init.signal ?? undefined } as NextRequestInit)
+    ? ({
+ ...init,
+signal: init.signal ?? undefined, 
+} as NextRequestInit)
     : undefined;
   return new NextRequest(url, sanitizedInit);
 };
@@ -68,7 +81,9 @@ beforeEach(() => {
 
 describe('GET /api/v1/spaces/{space_id}/availability', () => {
   it('returns availability list sorted', async () => {
-    const { spaceId, list, } = availabilityFixture;
+    const {
+ spaceId, list, 
+} = availabilityFixture;
     mockPrisma.space_availability.findMany.mockResolvedValueOnce(list);
 
     const response = await GET(
@@ -92,7 +107,7 @@ describe('GET /api/v1/spaces/{space_id}/availability', () => {
         day_of_week: 'Tuesday',
         opening_time: list[1].opening.toISOString(),
         closing_time: list[1].closing.toISOString(),
-      },
+      }
     ]);
   });
 
@@ -108,7 +123,9 @@ describe('GET /api/v1/spaces/{space_id}/availability', () => {
 
 describe('POST /api/v1/spaces/{space_id}/availability', () => {
   it('creates a single slot and sets Location header', async () => {
-    const { spaceId, createPayload, createdRows, } = availabilityFixture;
+    const {
+ spaceId, createPayload, createdRows, 
+} = availabilityFixture;
     mockPrisma.$transaction.mockImplementationOnce(async (fn: any) => {
       return fn({
         space_availability: {
@@ -136,7 +153,9 @@ describe('POST /api/v1/spaces/{space_id}/availability', () => {
   });
 
   it('validates duplicate days', async () => {
-    const { spaceId, createPayloadArray, } = availabilityFixture;
+    const {
+ spaceId, createPayloadArray, 
+} = availabilityFixture;
     const dup = [...createPayloadArray, createPayloadArray[0]];
 
     const response = await POST(
@@ -168,7 +187,9 @@ describe('POST /api/v1/spaces/{space_id}/availability', () => {
   });
 
   it('returns 404 when space not found (P2003)', async () => {
-    const { spaceId, createPayload, } = availabilityFixture;
+    const {
+ spaceId, createPayload, 
+} = availabilityFixture;
     const err = Object.assign(new Error('fk'), { code: 'P2003', });
     mockPrisma.$transaction.mockImplementationOnce(async () => { throw err; });
 
@@ -184,7 +205,9 @@ describe('POST /api/v1/spaces/{space_id}/availability', () => {
   });
 
   it('returns 400 for invalid space_id', async () => {
-    const { invalidSpaceId, createPayload, } = availabilityFixture;
+    const {
+ invalidSpaceId, createPayload, 
+} = availabilityFixture;
     const response = await POST(
       createRequest(`http://localhost/api/v1/spaces/${invalidSpaceId}/availability`, {
         method: 'POST',
@@ -199,7 +222,9 @@ describe('POST /api/v1/spaces/{space_id}/availability', () => {
 
 describe('PUT /api/v1/spaces/{space_id}/availability/{availability_id}', () => {
   it('updates a slot', async () => {
-    const { spaceId, availabilityId, existingRow, updatedRow, } = availabilityFixture;
+    const {
+ spaceId, availabilityId, existingRow, updatedRow, 
+} = availabilityFixture;
     mockPrisma.space_availability.findFirst.mockResolvedValueOnce(existingRow);
     mockPrisma.space_availability.update.mockResolvedValueOnce(updatedRow);
 
@@ -212,7 +237,12 @@ describe('PUT /api/v1/spaces/{space_id}/availability/{availability_id}', () => {
           closing_time: '19:00',
         }),
       }),
-      { params: Promise.resolve({ space_id: spaceId, availability_id: availabilityId, }), }
+      {
+ params: Promise.resolve({
+ space_id: spaceId,
+availability_id: availabilityId, 
+}), 
+}
     );
     const body = await response.json() as { data: any };
 
@@ -222,7 +252,9 @@ describe('PUT /api/v1/spaces/{space_id}/availability/{availability_id}', () => {
   });
 
   it('returns 404 when slot is missing', async () => {
-    const { spaceId, availabilityId, } = availabilityFixture;
+    const {
+ spaceId, availabilityId, 
+} = availabilityFixture;
     mockPrisma.space_availability.findFirst.mockResolvedValueOnce(null);
 
     const response = await PUT(
@@ -231,35 +263,57 @@ describe('PUT /api/v1/spaces/{space_id}/availability/{availability_id}', () => {
         headers: { 'content-type': 'application/json', },
         body: JSON.stringify({ opening_time: '10:00', }),
       }),
-      { params: Promise.resolve({ space_id: spaceId, availability_id: availabilityId, }), }
+      {
+ params: Promise.resolve({
+ space_id: spaceId,
+availability_id: availabilityId, 
+}), 
+}
     );
     expect(response.status).toBe(404);
   });
 
   it('validates time order', async () => {
-    const { spaceId, availabilityId, existingRow, } = availabilityFixture;
+    const {
+ spaceId, availabilityId, existingRow, 
+} = availabilityFixture;
     mockPrisma.space_availability.findFirst.mockResolvedValueOnce(existingRow);
 
     const response = await PUT(
       createRequest(`http://localhost/api/v1/spaces/${spaceId}/availability/${availabilityId}`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json', },
-        body: JSON.stringify({ opening_time: '20:00', closing_time: '19:00', }),
+        body: JSON.stringify({
+ opening_time: '20:00',
+closing_time: '19:00', 
+}),
       }),
-      { params: Promise.resolve({ space_id: spaceId, availability_id: availabilityId, }), }
+      {
+ params: Promise.resolve({
+ space_id: spaceId,
+availability_id: availabilityId, 
+}), 
+}
     );
     expect(response.status).toBe(422);
   });
 
   it('returns 400 for invalid ids', async () => {
-    const { invalidSpaceId, invalidAvailabilityId, } = availabilityFixture;
+    const {
+ invalidSpaceId, invalidAvailabilityId, 
+} = availabilityFixture;
     const response = await PUT(
       createRequest(`http://localhost/api/v1/spaces/${invalidSpaceId}/availability/${invalidAvailabilityId}`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json', },
         body: JSON.stringify({ opening_time: '10:00', }),
       }),
-      { params: Promise.resolve({ space_id: invalidSpaceId, availability_id: invalidAvailabilityId, }), }
+      {
+ params: Promise.resolve({
+ space_id: invalidSpaceId,
+availability_id: invalidAvailabilityId, 
+}), 
+}
     );
     expect(response.status).toBe(400);
   });
@@ -267,14 +321,19 @@ describe('PUT /api/v1/spaces/{space_id}/availability/{availability_id}', () => {
 
 describe('DELETE /api/v1/spaces/{space_id}/availability/{availability_id}', () => {
   it('deletes a slot', async () => {
-    const { spaceId, availabilityId, } = availabilityFixture;
+    const {
+ spaceId, availabilityId, 
+} = availabilityFixture;
     mockPrisma.space_availability.deleteMany.mockResolvedValueOnce({ count: 1, });
 
     const response = await DELETE(
-      createRequest(`http://localhost/api/v1/spaces/${spaceId}/availability/${availabilityId}`, {
-        method: 'DELETE',
-      }),
-      { params: Promise.resolve({ space_id: spaceId, availability_id: availabilityId, }), }
+      createRequest(`http://localhost/api/v1/spaces/${spaceId}/availability/${availabilityId}`, { method: 'DELETE', }),
+      {
+ params: Promise.resolve({
+ space_id: spaceId,
+availability_id: availabilityId, 
+}), 
+}
     );
     const body = await response.json() as { data: { deleted: boolean } };
 
@@ -283,25 +342,35 @@ describe('DELETE /api/v1/spaces/{space_id}/availability/{availability_id}', () =
   });
 
   it('returns 404 when slot not found', async () => {
-    const { spaceId, availabilityId, } = availabilityFixture;
+    const {
+ spaceId, availabilityId, 
+} = availabilityFixture;
     mockPrisma.space_availability.deleteMany.mockResolvedValueOnce({ count: 0, });
 
     const response = await DELETE(
-      createRequest(`http://localhost/api/v1/spaces/${spaceId}/availability/${availabilityId}`, {
-        method: 'DELETE',
-      }),
-      { params: Promise.resolve({ space_id: spaceId, availability_id: availabilityId, }), }
+      createRequest(`http://localhost/api/v1/spaces/${spaceId}/availability/${availabilityId}`, { method: 'DELETE', }),
+      {
+ params: Promise.resolve({
+ space_id: spaceId,
+availability_id: availabilityId, 
+}), 
+}
     );
     expect(response.status).toBe(404);
   });
 
   it('returns 400 for invalid ids', async () => {
-    const { invalidSpaceId, invalidAvailabilityId, } = availabilityFixture;
+    const {
+ invalidSpaceId, invalidAvailabilityId, 
+} = availabilityFixture;
     const response = await DELETE(
-      createRequest(`http://localhost/api/v1/spaces/${invalidSpaceId}/availability/${invalidAvailabilityId}`, {
-        method: 'DELETE',
-      }),
-      { params: Promise.resolve({ space_id: invalidSpaceId, availability_id: invalidAvailabilityId, }), }
+      createRequest(`http://localhost/api/v1/spaces/${invalidSpaceId}/availability/${invalidAvailabilityId}`, { method: 'DELETE', }),
+      {
+ params: Promise.resolve({
+ space_id: invalidSpaceId,
+availability_id: invalidAvailabilityId, 
+}), 
+}
     );
     expect(response.status).toBe(400);
   });

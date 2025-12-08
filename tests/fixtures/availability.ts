@@ -17,7 +17,7 @@ export const availabilityFixture = {
       day_of_week: 'Tuesday',
       opening: new Date('1970-01-01T09:00:00.000Z'),
       closing: new Date('1970-01-01T17:00:00.000Z'),
-    },
+    }
   ],
   createPayload: {
     day_of_week: 'Monday',
@@ -34,7 +34,7 @@ export const availabilityFixture = {
       day_of_week: 'Tuesday',
       opening_time: '09:00',
       closing_time: '17:00',
-    },
+    }
   ],
   createdRows: [
     {
@@ -43,7 +43,7 @@ export const availabilityFixture = {
       day_of_week: 'Monday',
       opening: new Date('1970-01-01T08:00:00.000Z'),
       closing: new Date('1970-01-01T18:00:00.000Z'),
-    },
+    }
   ],
   updatedRow: {
     id: '22222222-2222-4222-8222-222222222222',
