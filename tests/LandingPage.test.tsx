@@ -1,6 +1,12 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import {
+describe,
+expect,
+it,
+vi
+} from 'vitest';
+
 import LandingPage from '../src/components/pages/LandingPage/LandingPage';
 
 // Mock the hooks used by NavBar
@@ -11,20 +17,10 @@ vi.mock('@/components/auth/SessionProvider', () => ({
   }),
 }));
 
-vi.mock('@/hooks/use-user-profile', () => ({
-  useUserProfile: () => ({
-    data: null,
-  }),
-}));
+vi.mock('@/hooks/use-user-profile', () => ({ useUserProfile: () => ({ data: null, }), }));
 
 // Mock the Supabase client used by NavBar for logout
-vi.mock('@/lib/supabase/client', () => ({
-  getSupabaseBrowserClient: () => ({
-    auth: {
-      signOut: vi.fn(),
-    },
-  }),
-}));
+vi.mock('@/lib/supabase/client', () => ({ getSupabaseBrowserClient: () => ({ auth: { signOut: vi.fn(), }, }), }));
 
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
@@ -37,9 +33,11 @@ vi.mock('next/navigation', () => ({
 // Mock Link from next/link
 vi.mock('next/link', () => {
   return {
-    default: ({ children, href, onClick }: { children: React.ReactNode; href: string; onClick?: any }) => (
-      <a href={href} onClick={onClick}>
-        {children}
+    default: ({
+ children, href, onClick, 
+}: { children: React.ReactNode; href: string; onClick?: any }) => (
+      <a href={ href } onClick={ onClick }>
+        { children }
       </a>
     ),
   };

@@ -1,51 +1,51 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import * as React from "react";
-import type { IconType } from "react-icons";
-import { GrHomeRounded } from "react-icons/gr";
-import { TbSparkles } from "react-icons/tb";
-import { LuBookOpenText, LuUsers } from "react-icons/lu";
-import { FaQuestion } from "react-icons/fa6";
+import Link from 'next/link';
+import * as React from 'react';
+import type { IconType } from 'react-icons';
+import { GrHomeRounded } from 'react-icons/gr';
+import { TbSparkles } from 'react-icons/tb';
+import { LuBookOpenText, LuUsers } from 'react-icons/lu';
+import { FaQuestion } from 'react-icons/fa6';
 import {
   FiBell,
   FiChevronRight,
   FiLogOut,
   FiSettings,
   FiSidebar,
-  FiUser,
-} from "react-icons/fi";
-import { useRouter } from "next/navigation";
+  FiUser
+} from 'react-icons/fi';
+import { useRouter } from 'next/navigation';
 
-import { ThemeSwitcher } from "./theme-switcher";
-import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
-import { LogoSymbolic } from "./logo-symbolic";
+import { ThemeSwitcher } from './theme-switcher';
+import { Avatar, AvatarFallback, AvatarImage } from './avatar';
+import { LogoSymbolic } from './logo-symbolic';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "./dropdown-menu";
+  DropdownMenuTrigger
+} from './dropdown-menu';
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   NavigationMenu,
   NavigationMenuList,
   NavigationMenuItem,
   NavigationMenuLink,
-  navigationMenuTriggerStyle,
-} from "@/components/ui/navigation-menu";
+  navigationMenuTriggerStyle
+} from '@/components/ui/navigation-menu';
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { useSession } from "@/components/auth/SessionProvider";
-import { useUserProfile } from "@/hooks/use-user-profile";
+  SheetTrigger
+} from '@/components/ui/sheet';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { useSession } from '@/components/auth/SessionProvider';
+import { useUserProfile } from '@/hooks/use-user-profile';
 
 export type NavItem = {
   href: string;
@@ -53,7 +53,7 @@ export type NavItem = {
   icon?: IconType;
 };
 
-export type NavBarVariant = "default" | "logo-only";
+export type NavBarVariant = 'default' | 'logo-only';
 
 export type NavBarProps = React.HTMLAttributes<HTMLElement> & {
   menuItems?: NavItem[];
@@ -88,52 +88,52 @@ function AccountMenu({
           className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <Avatar>
-            {avatarUrl && <AvatarImage src={avatarUrl} alt="User avatar" />}
-            <AvatarFallback>{fallbackLabel}</AvatarFallback>
+            { avatarUrl && <AvatarImage src={ avatarUrl } alt="User avatar" /> }
+            <AvatarFallback>{ fallbackLabel }</AvatarFallback>
           </Avatar>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
         side="bottom"
-        sideOffset={12}
+        sideOffset={ 12 }
         className="z-[60] min-w-[240px] border border-border bg-card px-2 py-2 shadow-lg"
       >
         <div className="flex items-center gap-3 rounded-md px-2 py-3">
           <Avatar className="size-10 border border-border">
-            {avatarUrl ? (
-              <AvatarImage src={avatarUrl} alt="User avatar" />
+            { avatarUrl ? (
+              <AvatarImage src={ avatarUrl } alt="User avatar" />
             ) : (
-              <AvatarFallback>{fallbackLabel}</AvatarFallback>
-            )}
+              <AvatarFallback>{ fallbackLabel }</AvatarFallback>
+            ) }
           </Avatar>
           <div className="flex min-w-0 flex-col">
             <span className="text-sm font-semibold leading-tight">
-              {displayName}
+              { displayName }
             </span>
             <span className="text-xs text-muted-foreground truncate">
-              {secondaryLabel ?? emailLabel}
+              { secondaryLabel ?? emailLabel }
             </span>
           </div>
         </div>
         <DropdownMenuSeparator className="my-1" />
-        <DropdownMenuItem onSelect={() => onNavigate("/account")}>
+        <DropdownMenuItem onSelect={ () => onNavigate('/account') }>
           <FiUser className="size-4" aria-hidden="true" />
           <span>Account</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => onNavigate("/settings")}>
+        <DropdownMenuItem onSelect={ () => onNavigate('/settings') }>
           <FiSettings className="size-4" aria-hidden="true" />
           <span>Settings</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => onNavigate("/notifications")}>
+        <DropdownMenuItem onSelect={ () => onNavigate('/notifications') }>
           <FiBell className="size-4" aria-hidden="true" />
           <span>Notifications</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator className="my-1" />
         <DropdownMenuItem
-          onSelect={() => {
+          onSelect={ () => {
             onLogout();
-          }}
+          } }
           className="rounded-sm text-sm font-medium text-destructive focus-visible:text-destructive"
         >
           <FiLogOut className="size-4" aria-hidden="true" />
@@ -145,18 +145,20 @@ function AccountMenu({
 }
 
 export default function NavBar({
-  className = "",
+  className = '',
   menuItems,
-  variant = "default",
+  variant = 'default',
   ...props
 }: NavBarProps) {
   const navRef = React.useRef<HTMLElement>(null);
   const [isOpen, setIsOpen] = React.useState(false);
-  const { session, isLoading: isSessionLoading } = useSession();
-  const { data: userProfile } = useUserProfile();
+  const {
+ session, isLoading: isSessionLoading, 
+} = useSession();
+  const { data: userProfile, } = useUserProfile();
   const isSessionResolved = !isSessionLoading;
   const router = useRouter();
-  const isLogoOnly = variant === "logo-only";
+  const isLogoOnly = variant === 'logo-only';
 
   const closeMenu = React.useCallback(() => setIsOpen(false), []);
 
@@ -164,19 +166,19 @@ export default function NavBar({
     (
       event: React.MouseEvent<HTMLAnchorElement>,
       href: string,
-      shouldCloseMenu?: boolean,
+      shouldCloseMenu?: boolean
     ) => {
       if (shouldCloseMenu) {
         closeMenu();
       }
 
-      if (typeof window === "undefined") {
+      if (typeof window === 'undefined') {
         return;
       }
 
       const url = new URL(href, window.location.href);
       const isSamePath = url.pathname === window.location.pathname;
-      const targetId = url.hash.replace("#", "");
+      const targetId = url.hash.replace('#', '');
 
       if (!isSamePath || !targetId) {
         return;
@@ -196,40 +198,40 @@ export default function NavBar({
 
       window.scrollTo({
         top: targetPosition - navHeight,
-        behavior: "smooth",
+        behavior: 'smooth',
       });
 
-      history.replaceState(null, "", `${url.pathname}${url.hash}`);
+      history.replaceState(null, '', `${url.pathname}${url.hash}`);
     },
-    [closeMenu],
+    [closeMenu]
   );
 
   const defaultMenuItems: NavItem[] = [
     {
-      href: "/#home",
-      label: "Home",
+      href: '/#home',
+      label: 'Home',
       icon: GrHomeRounded,
     },
     {
-      href: "/#features",
-      label: "Features",
+      href: '/#features',
+      label: 'Features',
       icon: TbSparkles,
     },
     {
-      href: "/#about",
-      label: "About",
+      href: '/#about',
+      label: 'About',
       icon: LuBookOpenText,
     },
     {
-      href: "/#team",
-      label: "Team",
+      href: '/#team',
+      label: 'Team',
       icon: LuUsers,
     },
     {
-      href: "/#faqs",
-      label: "FAQs",
+      href: '/#faqs',
+      label: 'FAQs',
       icon: FaQuestion,
-    },
+    }
   ];
   const shouldShowNavLinks = isSessionResolved && !session;
   const resolvedMenuItems = shouldShowNavLinks
@@ -242,28 +244,28 @@ export default function NavBar({
     null;
   const preferredUsername = session?.user?.user_metadata?.preferred_username;
   const preferredUsernameLabel =
-    preferredUsername && preferredUsername.includes("@")
+    preferredUsername && preferredUsername.includes('@')
       ? undefined
       : preferredUsername;
   const resolvedHandleValue =
     userProfile?.handle ?? preferredUsernameLabel ?? null;
   const avatarFallback =
-    resolvedHandleValue?.slice(0, 2)?.toUpperCase() ?? "US";
-  const displayName = resolvedHandleValue ?? "UpSpace User";
+    resolvedHandleValue?.slice(0, 2)?.toUpperCase() ?? 'US';
+  const displayName = resolvedHandleValue ?? 'UpSpace User';
   const secondaryLabel = session?.user?.email ?? null;
   const handleNavigate = React.useCallback(
     (href: string) => {
       router.push(href);
     },
-    [router],
+    [router]
   );
 
   const handleLogout = React.useCallback(async () => {
     const supabase = getSupabaseBrowserClient();
-    const { error } = await supabase.auth.signOut();
+    const { error, } = await supabase.auth.signOut();
 
     if (error) {
-      console.error("Supabase sign-out failed", error);
+      console.error('Supabase sign-out failed', error);
       return;
     }
 
@@ -272,17 +274,17 @@ export default function NavBar({
 
   return (
     <nav
-      ref={navRef}
+      ref={ navRef }
       aria-label="Main"
-      className={[
-        "sticky top-0 z-50 w-full",
-        "bg-background/93 text-foreground border-none",
-        "backdrop-blur",
-        className,
-      ].join(" ")}
-      {...props}
+      className={ [
+        'sticky top-0 z-50 w-full',
+        'bg-background/93 text-foreground border-none',
+        'backdrop-blur',
+        className
+      ].join(' ') }
+      { ...props }
     >
-      {isLogoOnly ? (
+      { isLogoOnly ? (
         <div className="mx-auto flex h-18 max-w-[1440px] items-center justify-center px-4">
           <Link href="/" className="flex items-center gap-2">
             <LogoSymbolic className="text-primary dark:text-secondary" />
@@ -300,62 +302,62 @@ export default function NavBar({
             </Link>
           </div>
 
-          {/* Desktop Navigation */}
+          { /* Desktop Navigation */ }
           <div className="hidden min-[570px]:flex items-center">
             <NavigationMenu className="ml-auto">
               <NavigationMenuList className="gap-1">
-                {resolvedMenuItems.map((item) => (
-                  <NavigationMenuItem key={item.href}>
+                { resolvedMenuItems.map((item) => (
+                  <NavigationMenuItem key={ item.href }>
                     <NavigationMenuLink asChild>
                       <Link
-                        href={item.href}
-                        onClick={(event) =>
+                        href={ item.href }
+                        onClick={ (event) =>
                           handleNavLinkClick(event, item.href)
                         }
-                        className={navigationMenuTriggerStyle()}
+                        className={ navigationMenuTriggerStyle() }
                       >
-                        {item.label}
+                        { item.label }
                       </Link>
                     </NavigationMenuLink>
                   </NavigationMenuItem>
-                ))}
+                )) }
 
                 <NavigationMenuItem>
                   <div className="flex items-center gap-3 px-2">
                     <ThemeSwitcher />
-                    {session && (
+                    { session && (
                       <AccountMenu
-                        avatarUrl={avatarUrl}
-                        fallbackLabel={avatarFallback}
-                        onLogout={handleLogout}
-                        onNavigate={handleNavigate}
-                        displayName={displayName}
-                        secondaryLabel={resolvedHandleValue}
-                        emailLabel={secondaryLabel ?? "Email unavailable"}
+                        avatarUrl={ avatarUrl }
+                        fallbackLabel={ avatarFallback }
+                        onLogout={ handleLogout }
+                        onNavigate={ handleNavigate }
+                        displayName={ displayName }
+                        secondaryLabel={ resolvedHandleValue }
+                        emailLabel={ secondaryLabel ?? 'Email unavailable' }
                       />
-                    )}
+                    ) }
                   </div>
                 </NavigationMenuItem>
               </NavigationMenuList>
             </NavigationMenu>
           </div>
 
-          {/* Mobile Menu Button */}
+          { /* Mobile Menu Button */ }
           <div className="flex min-[570px]:hidden items-center gap-2">
             <ThemeSwitcher />
-            {session && (
+            { session && (
               <AccountMenu
-                avatarUrl={avatarUrl}
-                fallbackLabel={avatarFallback}
-                onLogout={handleLogout}
-                onNavigate={handleNavigate}
-                displayName={displayName}
-                secondaryLabel={resolvedHandleValue}
-                emailLabel={secondaryLabel ?? "Email unavailable"}
+                avatarUrl={ avatarUrl }
+                fallbackLabel={ avatarFallback }
+                onLogout={ handleLogout }
+                onNavigate={ handleNavigate }
+                displayName={ displayName }
+                secondaryLabel={ resolvedHandleValue }
+                emailLabel={ secondaryLabel ?? 'Email unavailable' }
               />
-            )}
-            {resolvedMenuItems.length > 0 && (
-              <Sheet open={isOpen} onOpenChange={setIsOpen}>
+            ) }
+            { resolvedMenuItems.length > 0 && (
+              <Sheet open={ isOpen } onOpenChange={ setIsOpen }>
                 <SheetTrigger asChild>
                   <Button
                     className="p-2 rounded-sm bg-muted text-primary dark:bg-muted dark:text-muted-foreground hover:bg-secondary/20 transition-colors"
@@ -396,8 +398,8 @@ export default function NavBar({
                         <Button asChild size="sm">
                           <Link
                             href="/#features"
-                            onClick={(event) =>
-                              handleNavLinkClick(event, "/#features", true)
+                            onClick={ (event) =>
+                              handleNavLinkClick(event, '/#features', true)
                             }
                             aria-label="Explore featured workspaces"
                           >
@@ -407,8 +409,8 @@ export default function NavBar({
                         <Button asChild size="sm" variant="outline">
                           <Link
                             href="/#faqs"
-                            onClick={(event) =>
-                              handleNavLinkClick(event, "/#faqs", true)
+                            onClick={ (event) =>
+                              handleNavLinkClick(event, '/#faqs', true)
                             }
                             aria-label="Browse frequently asked questions"
                           >
@@ -423,29 +425,29 @@ export default function NavBar({
                       className="relative flex-1 overflow-y-auto px-4 py-4"
                     >
                       <div className="flex flex-col gap-2">
-                        {resolvedMenuItems.map((item) => {
+                        { resolvedMenuItems.map((item) => {
                           const Icon = item.icon;
                           return (
                             <Link
-                              key={item.href}
-                              href={item.href}
-                              onClick={(event) =>
+                              key={ item.href }
+                              href={ item.href }
+                              onClick={ (event) =>
                                 handleNavLinkClick(event, item.href, true)
                               }
                               className="group flex items-center gap-3 rounded-lg border border-border/70 bg-card/80 px-4 py-3 text-sm font-semibold text-foreground shadow-sm transition hover:-translate-x-1 hover:border-primary/50 hover:bg-card focus-visible:ring-ring/50 focus-visible:ring-[3px] active:scale-[0.995]"
                             >
-                              {Icon && (
+                              { Icon && (
                                 <span className="rounded-md bg-muted/60 p-2 text-primary transition group-hover:bg-primary/10 group-hover:text-primary">
                                   <Icon
                                     className="h-5 w-5"
                                     aria-hidden="true"
                                   />
                                 </span>
-                              )}
+                              ) }
                               <div className="flex flex-1 flex-col items-start">
-                                <span>{item.label}</span>
+                                <span>{ item.label }</span>
                                 <span className="text-xs font-normal text-muted-foreground">
-                                  Jump to the {item.label.toLowerCase()} section
+                                  Jump to the { item.label.toLowerCase() } section
                                 </span>
                               </div>
                               <FiChevronRight
@@ -454,7 +456,7 @@ export default function NavBar({
                               />
                             </Link>
                           );
-                        })}
+                        }) }
                       </div>
                     </nav>
 
@@ -471,8 +473,8 @@ export default function NavBar({
                         <Button size="sm" variant="secondary" asChild>
                           <Link
                             href="/#team"
-                            onClick={(event) =>
-                              handleNavLinkClick(event, "/#team", true)
+                            onClick={ (event) =>
+                              handleNavLinkClick(event, '/#team', true)
                             }
                             aria-label="Meet the UpSpace team"
                           >
@@ -484,10 +486,10 @@ export default function NavBar({
                   </div>
                 </SheetContent>
               </Sheet>
-            )}
+            ) }
           </div>
         </div>
-      )}
+      ) }
     </nav>
   );
 }
