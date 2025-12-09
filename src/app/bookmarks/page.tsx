@@ -33,7 +33,7 @@ export default async function BookmarksPage() {
     redirect('/');
   }
 
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const sidebarCookie = cookieStore.get(SIDEBAR_STATE_COOKIE)?.value;
   const initialSidebarOpen = parseSidebarState(sidebarCookie);
 

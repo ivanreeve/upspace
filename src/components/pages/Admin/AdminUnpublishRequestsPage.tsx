@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-FiCheck,
-FiChevronLeft,
-FiChevronRight,
-FiX
+  FiCheck,
+  FiChevronLeft,
+  FiChevronRight,
+  FiEye,
+  FiX
 } from 'react-icons/fi';
 import { toast } from 'sonner';
 
@@ -15,6 +16,7 @@ import {
   useRejectUnpublishRequestMutation,
   type UnpublishRequest
 } from '@/hooks/api/useAdminUnpublishRequests';
+import { useAdminSpaceVisibilityMutation } from '@/hooks/api/useAdminVerifications';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -98,7 +100,7 @@ const formatBadgeVariant = (status: UnpublishRequest['status']) => {
 
 export function AdminUnpublishRequestsPage() {
   const [activeTab, setActiveTab] = useState<RequestTab>('pending');
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
+  const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(PAGE_SIZE_OPTIONS[1]);
   const [pageIndex, setPageIndex] = useState(0);
   const [pageCursors, setPageCursors] = useState<(string | null)[]>([null]);
   const cursor = pageCursors[pageIndex] ?? null;
@@ -124,6 +126,8 @@ export function AdminUnpublishRequestsPage() {
   const currentTabInfo = REQUEST_TABS.find((tab) => tab.value === activeTab);
   const approveMutation = useApproveUnpublishRequestMutation();
   const rejectMutation = useRejectUnpublishRequestMutation();
+  const visibilityMutation = useAdminSpaceVisibilityMutation();
+  const [republishingSpaceId, setRepublishingSpaceId] = useState<string | null>(null);
 
   const tableRows = useMemo(
     () =>
@@ -191,6 +195,22 @@ export function AdminUnpublishRequestsPage() {
     }
   };
 
+  const handleRepublish = async (request: UnpublishRequest) => {
+    setRepublishingSpaceId(request.space.id);
+    try {
+      await visibilityMutation.mutateAsync({
+        spaceId: request.space.id,
+        action: 'show',
+      });
+      toast.success('Space republished to the marketplace.');
+      await refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Unable to republish space.');
+    } finally {
+      setRepublishingSpaceId(null);
+    }
+  };
+
   const handleTabChange = (value: string) => {
     const nextTab = value as RequestTab;
     if (nextTab === activeTab) {
@@ -222,10 +242,20 @@ export function AdminUnpublishRequestsPage() {
   };
 
   const handlePageSizeChange = (value: string) => {
-    const parsed = Number(value);
-    if (Number.isNaN(parsed) || parsed === pageSize) {
+    const parsedNumber = Number(value);
+    if (Number.isNaN(parsedNumber)) {
       return;
     }
+
+    if (!PAGE_SIZE_OPTIONS.includes(parsedNumber as typeof PAGE_SIZE_OPTIONS[number])) {
+      return;
+    }
+
+    const parsed = parsedNumber as typeof PAGE_SIZE_OPTIONS[number];
+    if (parsed === pageSize) {
+      return;
+    }
+
     setPageSize(parsed);
     setPageIndex(0);
     setPageCursors([null]);
@@ -353,30 +383,44 @@ export function AdminUnpublishRequestsPage() {
                       ) }
                     </TableCell>
                     <TableCell className="text-right space-x-2">
-                      { row.status === 'pending' ? (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="success"
-                            onClick={ () => handleApprove(request) }
-                            disabled={ approveMutation.isPending }
-                          >
-                            <FiCheck className="size-4" aria-hidden="true" />
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={ () => handleReject(request) }
-                            disabled={ rejectMutation.isPending }
-                          >
-                            <FiX className="size-4" aria-hidden="true" />
-                            Reject
-                          </Button>
-                        </>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">No actions</span>
-                      ) }
+                    { row.status === 'pending' ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={ () => handleApprove(request) }
+                          disabled={ approveMutation.isPending }
+                        >
+                          <FiCheck className="size-4" aria-hidden="true" />
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={ () => handleReject(request) }
+                          disabled={ rejectMutation.isPending }
+                        >
+                          <FiX className="size-4" aria-hidden="true" />
+                          Reject
+                        </Button>
+                      </>
+                    ) : row.status === 'approved' ? (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={ () => handleRepublish(request) }
+                        disabled={
+                          republishingSpaceId === request.space.id && visibilityMutation.isPending
+                        }
+                      >
+                        <FiEye className="size-4" aria-hidden="true" />
+                        { republishingSpaceId === request.space.id && visibilityMutation.isPending
+                          ? 'Republishing…'
+                          : 'Republish' }
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">No actions</span>
+                    ) }
                     </TableCell>
                   </TableRow>
                 );
@@ -427,7 +471,7 @@ export function AdminUnpublishRequestsPage() {
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button
                       size="sm"
-                      variant="success"
+                      variant="secondary"
                       onClick={ () => handleApprove(request) }
                       disabled={ approveMutation.isPending }
                     >
@@ -442,6 +486,22 @@ export function AdminUnpublishRequestsPage() {
                     >
                       <FiX className="size-4" aria-hidden="true" />
                       Reject
+                    </Button>
+                  </div>
+                ) : request.status === 'approved' ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={ () => handleRepublish(request) }
+                      disabled={
+                        republishingSpaceId === request.space.id && visibilityMutation.isPending
+                      }
+                    >
+                      <FiEye className="size-4" aria-hidden="true" />
+                      { republishingSpaceId === request.space.id && visibilityMutation.isPending
+                        ? 'Republishing…'
+                        : 'Republish' }
                     </Button>
                   </div>
                 ) : (

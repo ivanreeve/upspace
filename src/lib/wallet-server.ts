@@ -55,7 +55,7 @@ export async function ensureWalletRow(dbUserId: bigint) {
     where: { user_id: dbUserId, },
     create: {
       user_id: dbUserId,
-      balance_minor: 0n,
+      balance_minor: BigInt(0),
       currency: 'PHP',
     },
     update: {},

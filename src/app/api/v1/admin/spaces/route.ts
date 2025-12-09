@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
 import { AdminSessionError, requireAdminSession } from '@/lib/auth/require-admin-session';
@@ -34,42 +35,42 @@ export async function GET(req: NextRequest) {
     const {
  search, limit, cursor, 
 } = parsed.data;
-    const searchClause = search
+    const searchClause: Prisma.spaceWhereInput | undefined = search
       ? {
           OR: [
             {
- name: {
- contains: search,
-mode: 'insensitive', 
-}, 
-},
+              name: {
+                contains: search,
+                mode: 'insensitive' as Prisma.QueryMode,
+              },
+            },
             {
- city: {
- contains: search,
-mode: 'insensitive', 
-}, 
-},
+              city: {
+                contains: search,
+                mode: 'insensitive' as Prisma.QueryMode,
+              },
+            },
             {
- region: {
- contains: search,
-mode: 'insensitive', 
-}, 
-},
+              region: {
+                contains: search,
+                mode: 'insensitive' as Prisma.QueryMode,
+              },
+            },
             {
- street: {
- contains: search,
-mode: 'insensitive', 
-}, 
-},
+              street: {
+                contains: search,
+                mode: 'insensitive' as Prisma.QueryMode,
+              },
+            },
             {
- unit_number: {
- contains: search,
-mode: 'insensitive', 
-}, 
-}
+              unit_number: {
+                contains: search,
+                mode: 'insensitive' as Prisma.QueryMode,
+              },
+            }
           ],
         }
-      : {};
+      : undefined;
 
     const spaces = await prisma.space.findMany({
       where: searchClause,

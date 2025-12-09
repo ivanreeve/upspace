@@ -95,7 +95,7 @@ const getStatusLabel = (status: DeactivationRequest['status']) => {
 
 export function AdminDeactivationRequestsPage() {
   const [activeTab, setActiveTab] = useState<RequestFilterValue>('pending');
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
+  const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(PAGE_SIZE_OPTIONS[1]);
   const [pageIndex, setPageIndex] = useState(0);
   const [pageCursors, setPageCursors] = useState<(string | null)[]>([null]);
   const cursor = pageCursors[pageIndex] ?? null;
@@ -210,10 +210,20 @@ export function AdminDeactivationRequestsPage() {
   };
 
   const handlePageSizeChange = (value: string) => {
-    const parsed = Number(value);
-    if (Number.isNaN(parsed) || parsed === pageSize) {
+    const parsedNumber = Number(value);
+    if (Number.isNaN(parsedNumber)) {
       return;
     }
+
+    if (!PAGE_SIZE_OPTIONS.includes(parsedNumber as typeof PAGE_SIZE_OPTIONS[number])) {
+      return;
+    }
+
+    const parsed = parsedNumber as typeof PAGE_SIZE_OPTIONS[number];
+    if (parsed === pageSize) {
+      return;
+    }
+
     setPageSize(parsed);
     setPageIndex(0);
     setPageCursors([null]);
@@ -351,7 +361,7 @@ export function AdminDeactivationRequestsPage() {
                         <Button
                           size="sm"
                           onClick={ () => handleApprove(request) }
-                          disabled={ approveMutation.isLoading }
+                          disabled={ approveMutation.status === 'pending' }
                         >
                           Approve
                         </Button>
@@ -420,7 +430,7 @@ export function AdminDeactivationRequestsPage() {
                     <Button
                       size="sm"
                       onClick={ () => handleApprove(request) }
-                      disabled={ approveMutation.isLoading }
+                       disabled={ approveMutation.status === 'pending' }
                     >
                       Approve
                     </Button>

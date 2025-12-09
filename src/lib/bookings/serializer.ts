@@ -49,6 +49,8 @@ export const mapBookingRowToRecord = (row: BookingRow): BookingRecord => ({
   customerAuthId: row.user_auth_id,
   partnerAuthId: row.partner_auth_id,
   areaMaxCapacity: normalizeNumeric(row.area_max_capacity),
+  customerHandle: null,
+  customerName: null,
 });
 
 export const formatFullName = (

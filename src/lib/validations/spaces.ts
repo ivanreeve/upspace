@@ -78,7 +78,8 @@ const weeklyAvailabilitySchema = z
 export const spaceSchema = z.object({
   name: z.string().min(1, 'Space name is required.'),
   description: z
-    .string({ required_error: 'Description is required.', })
+    .string()
+    .nonempty('Description is required.')
     .refine((value) => value.trim().length >= 20, 'Description must be at least 20 characters long.'),
   unit_number: z
     .string()

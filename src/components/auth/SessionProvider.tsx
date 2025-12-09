@@ -50,7 +50,7 @@ export function SessionProvider({ children, }: { children: ReactNode }) {
       setSession(newSession);
       setIsLoading(false);
 
-      if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+      if (event === 'SIGNED_OUT') {
         clearSpaceFormDraft();
         clearStoredPhotoState();
       }

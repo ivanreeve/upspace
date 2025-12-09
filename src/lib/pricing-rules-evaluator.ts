@@ -115,6 +115,7 @@ export function evaluatePriceRule(
   }
 
   const variableMap = buildExecutionVariableMap(definition, context);
+  const numericVariableMap = buildNumericVariableMap(variableMap);
   const {
     thenExpression,
     elseExpression,
@@ -131,7 +132,7 @@ export function evaluatePriceRule(
       };
     }
     return {
-      price: safeEvaluateExpression(thenExpression, variableMap),
+      price: safeEvaluateExpression(thenExpression, numericVariableMap),
       appliedExpression: thenExpression,
       branch: 'unconditional',
       conditionsSatisfied: true,
@@ -142,7 +143,7 @@ export function evaluatePriceRule(
 
   if (conditionsMatch && thenExpression) {
     return {
-      price: safeEvaluateExpression(thenExpression, variableMap),
+      price: safeEvaluateExpression(thenExpression, numericVariableMap),
       appliedExpression: thenExpression,
       branch: 'then',
       conditionsSatisfied: true,
@@ -151,7 +152,7 @@ export function evaluatePriceRule(
 
   if (!conditionsMatch && elseExpression) {
     return {
-      price: safeEvaluateExpression(elseExpression, variableMap),
+      price: safeEvaluateExpression(elseExpression, numericVariableMap),
       appliedExpression: elseExpression,
       branch: 'else',
       conditionsSatisfied: false,
@@ -470,6 +471,18 @@ const buildExecutionVariableMap = (
   });
 
   return map;
+};
+
+const buildNumericVariableMap = (
+  variables: Record<string, ComparableValue>
+): FormulaVariableValueMap => {
+  const numeric: FormulaVariableValueMap = {};
+  for (const [key, value] of Object.entries(variables)) {
+    if (typeof value === 'number') {
+      numeric[key] = value;
+    }
+  }
+  return numeric;
 };
 
 const parseNumeric = (value: string | number | undefined, fallback: number) => {

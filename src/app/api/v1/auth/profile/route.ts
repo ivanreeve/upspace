@@ -78,7 +78,7 @@ export async function GET() {
 }
 
 const profileUpdateSchema = z.object({
-  handle: z.string().min(3).max(50),
+  handle: z.string().trim().min(3).max(50).optional(),
   firstName: z.string().max(50).nullable().optional(),
   middleName: z.string().max(50).nullable().optional(),
   lastName: z.string().max(50).nullable().optional(),
@@ -122,28 +122,34 @@ export async function PATCH(req: NextRequest) {
     }
 
     const {
- handle, firstName, middleName, lastName, birthday, 
-} = parsed.data;
+      handle,
+      firstName,
+      middleName,
+      lastName,
+      birthday,
+    } = parsed.data;
 
-    const conflictingHandle = await prisma.user.findFirst({
-      where: {
-        handle,
-        auth_user_id: { not: authUser.id, },
-      },
-      select: { user_id: true, },
-    });
+    if (handle) {
+      const conflictingHandle = await prisma.user.findFirst({
+        where: {
+          handle,
+          auth_user_id: { not: authUser.id, },
+        },
+        select: { user_id: true, },
+      });
 
-    if (conflictingHandle) {
-      return NextResponse.json(
-        { message: 'Handle already taken. Choose another one.', },
-        { status: 409, }
-      );
+      if (conflictingHandle) {
+        return NextResponse.json(
+          { message: 'Handle already taken. Choose another one.', },
+          { status: 409, }
+        );
+      }
     }
 
     const updatedUser = await prisma.user.update({
       where: { auth_user_id: authUser.id, },
       data: {
-        handle,
+        ...(handle ? { handle, } : {}),
         first_name: firstName ?? null,
         middle_name: middleName ?? null,
         last_name: lastName ?? null,

@@ -1,6 +1,16 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma, verification_status } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+
+class HttpError extends Error {
+  public readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+    this.name = 'HttpError';
+  }
+}
 
 import { WEEKDAY_ORDER, type WeekdayName } from '@/data/spaces';
 import { prisma } from '@/lib/prisma';
@@ -9,6 +19,7 @@ import { richTextPlainTextLength, sanitizeRichText } from '@/lib/rich-text';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { buildPublicObjectUrl, isAbsoluteUrl, resolveSignedImageUrls } from '@/lib/spaces/image-urls';
 import { deriveSpaceStatus } from '@/lib/spaces/partner-serializer';
+import { PriceRuleDefinition } from '@/lib/pricing-rules';
 import { computeStartingPriceFromAreas } from '@/lib/spaces/pricing';
 import {
   SPACES_LIST_CACHE_TTL_SECONDS,
@@ -457,7 +468,7 @@ mode: 'insensitive' as const,
       and.push({ id: { in: candidateSpaceIds, }, });
     }
 
-    const verificationStatuses: Prisma.verificationStatus[] = include_pending
+    const verificationStatuses: verification_status[] = include_pending
       ? ['approved', 'in_review']
       : ['approved'];
 
@@ -713,7 +724,13 @@ mode: 'insensitive' as const,
 
     const startingPriceMap = new Map<string, number | null>();
     for (const space of items) {
-      const startingPrice = computeStartingPriceFromAreas(space.area ?? []);
+      const areaPayloads =
+        space.area?.map((entry) => ({
+          price_rule: entry.price_rule
+            ? { definition: entry.price_rule.definition as PriceRuleDefinition, }
+            : null,
+        })) ?? [];
+      const startingPrice = computeStartingPriceFromAreas(areaPayloads);
       startingPriceMap.set(space.id, startingPrice);
     }
 

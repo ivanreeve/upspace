@@ -58,7 +58,7 @@ const mapStatusLabel = (status: string) => {
 
 export function AdminUsersPage() {
   const [searchValue, setSearchValue] = useState('');
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
+  const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(PAGE_SIZE_OPTIONS[1]);
   const [pageIndex, setPageIndex] = useState(0);
   const [pageCursors, setPageCursors] = useState<(string | null)[]>([null]);
   const cursor = pageCursors[pageIndex] ?? null;
@@ -104,10 +104,20 @@ export function AdminUsersPage() {
   }, [pageSize, searchParam]);
 
   const handlePageSizeChange = (value: string) => {
-    const parsed = Number(value);
-    if (Number.isNaN(parsed) || parsed === pageSize) {
+    const parsedNumber = Number(value);
+    if (Number.isNaN(parsedNumber)) {
       return;
     }
+
+    if (!PAGE_SIZE_OPTIONS.includes(parsedNumber as typeof PAGE_SIZE_OPTIONS[number])) {
+      return;
+    }
+
+    const parsed = parsedNumber as typeof PAGE_SIZE_OPTIONS[number];
+    if (parsed === pageSize) {
+      return;
+    }
+
     setPageSize(parsed);
   };
 
@@ -290,7 +300,7 @@ export function AdminUsersPage() {
                           const isDisabling = processingState?.type === 'disable';
                           const isEnabling = processingState?.type === 'enable';
                           const showEnableAction = user.status !== 'active';
-                          const isActionLoading = showEnableAction ? enableMutation.isLoading : disableMutation.isLoading;
+                           const isActionLoading = showEnableAction ? enableMutation.status === 'pending' : disableMutation.status === 'pending';
                           const canToggleUser = user.role !== 'admin';
                           const actionLabel = showEnableAction ? 'Enable account' : 'Disable account';
                           const processingLabel = showEnableAction ? 'Enabling…' : 'Disabling…';

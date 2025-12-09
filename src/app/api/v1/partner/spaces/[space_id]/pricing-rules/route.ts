@@ -24,15 +24,16 @@ type PrismaPriceRuleRow = Prisma.price_ruleGetPayload<{
 }>;
 
 type RouteParams = {
-  params: {
-    space_id?: string;
-  };
+  params: Promise<{
+    space_id: string;
+  }>;
 };
 
 export async function GET(_req: NextRequest, { params, }: RouteParams) {
   try {
     const { userId, } = await requirePartnerSession();
-    const spaceIdParam = params?.space_id;
+    const resolvedParams = await params;
+    const spaceIdParam = resolvedParams.space_id;
 
     if (!isUuid(spaceIdParam)) {
       return NextResponse.json({ error: 'space_id must be a valid UUID.', }, { status: 400, });
@@ -69,7 +70,8 @@ export async function GET(_req: NextRequest, { params, }: RouteParams) {
 export async function POST(req: NextRequest, { params, }: RouteParams) {
   try {
     const { userId, } = await requirePartnerSession();
-    const spaceIdParam = params?.space_id;
+    const resolvedParams = await params;
+    const spaceIdParam = resolvedParams.space_id;
 
     if (!isUuid(spaceIdParam)) {
       return NextResponse.json({ error: 'space_id must be a valid UUID.', }, { status: 400, });
@@ -94,13 +96,15 @@ export async function POST(req: NextRequest, { params, }: RouteParams) {
       return NextResponse.json({ error: 'Space not found.', }, { status: 404, });
     }
 
+    const rulePayload: Prisma.price_ruleCreateInput = {
+      name: parsed.data.name.trim(),
+      description: parsed.data.description?.trim() ?? '',
+      definition: parsed.data.definition,
+      space: { connect: { id: spaceIdParam, }, },
+    };
+
     const createdRule = await prisma.price_rule.create({
-      data: {
-        space_id: spaceIdParam,
-        name: parsed.data.name.trim(),
-        description: parsed.data.description?.trim() ?? null,
-        definition: parsed.data.definition,
-      },
+      data: rulePayload,
       include: { _count: { select: { area: true, }, }, },
     });
 

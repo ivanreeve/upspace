@@ -2,6 +2,48 @@
 
 import * as React from 'react';
 
+type VoiceRecognitionAlternative = {
+  transcript?: string;
+};
+
+type VoiceRecognitionResult = {
+  readonly isFinal?: boolean;
+  readonly [index: number]: VoiceRecognitionAlternative | undefined;
+};
+
+type VoiceRecognitionResults = VoiceRecognitionResult[];
+
+type VoiceRecognitionEvent = {
+  readonly results: VoiceRecognitionResults;
+};
+
+type VoiceRecognitionErrorEvent = {
+  readonly error?: DOMException | Error | string;
+};
+
+interface VoiceRecognition {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  maxAlternatives: number;
+  onstart: (() => void) | null;
+  onresult: ((event: VoiceRecognitionEvent) => void) | null;
+  onerror: ((event: VoiceRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
+type VoiceRecognitionConstructor = new () => VoiceRecognition;
+
+declare global {
+  interface Window {
+    SpeechRecognition?: VoiceRecognitionConstructor;
+    webkitSpeechRecognition?: VoiceRecognitionConstructor;
+  }
+}
+
 export type SpeechRecognitionStatus = 'idle' | 'listening' | 'error' | 'unsupported';
 
 type UseSpeechRecognitionOptions = {
@@ -46,7 +88,7 @@ export function useSpeechRecognition(
   const [isSupported, setIsSupported] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string>();
   const [transcript, setTranscript] = React.useState('');
-  const recognitionRef = React.useRef<SpeechRecognition | null>(null);
+  const recognitionRef = React.useRef<VoiceRecognition | null>(null);
   const shouldResumeRef = React.useRef(false);
 
   React.useEffect(() => {
@@ -79,7 +121,7 @@ export function useSpeechRecognition(
       setStatus('listening');
     };
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
+    recognition.onresult = (event: VoiceRecognitionEvent) => {
       const transcriptValue = Array.from(event.results)
         .map((result) => result[0]?.transcript ?? '')
         .join(' ')
@@ -88,7 +130,7 @@ export function useSpeechRecognition(
       setTranscript(transcriptValue);
     };
 
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+    recognition.onerror = (event: VoiceRecognitionErrorEvent) => {
       const message = normalizeRecognitionError(event.error || 'Speech recognition error');
       shouldResumeRef.current = false;
       setErrorMessage(message);
@@ -200,11 +242,4 @@ export function useSpeechRecognition(
     stopListening,
     resetTranscript,
   };
-}
-
-declare global {
-  interface Window {
-    webkitSpeechRecognition?: typeof SpeechRecognition;
-    SpeechRecognition?: typeof SpeechRecognition;
-  }
 }
