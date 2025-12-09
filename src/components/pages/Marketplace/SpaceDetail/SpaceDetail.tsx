@@ -558,144 +558,240 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
         <p className="text-sm text-muted-foreground">
           Choose an area, date, duration, and guest count to preview pricing.
         </p>
-        { space.areas.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border/70 bg-muted/40 px-4 py-5 text-center text-sm text-muted-foreground">
-            This space has no areas to book yet.
-          </div>
-        ) : (
-          <Select
-            value={ selectedAreaId ?? undefined }
-            onValueChange={ handleSelectArea }
-          >
-            <SelectTrigger
-              aria-label="Choose an area"
-              className="w-full justify-between rounded-md"
-            >
-              <SelectValue placeholder="Select an area" />
-            </SelectTrigger>
-            <SelectContent className="max-w-[26rem]">
-              { space.areas.map((area) => {
-                const hasPricingRule = Boolean(
-                  area.pricingRuleId && area.pricingRuleName
-                );
-                return (
-                  <SelectItem
-                    key={ area.id }
-                    value={ area.id }
-                    disabled={ !hasPricingRule }
-                  >
-                    <div className="flex w-full flex-col gap-0.5">
-                      <span className="text-sm font-semibold leading-tight text-foreground">
-                        { area.name }
-                      </span>
-                    </div>
-                  </SelectItem>
-                );
-              }) }
-            </SelectContent>
-          </Select>
-        ) }
       </div>
-
-      { selectedAreaId ? (
-        isPricingLoading ? (
-          <div className="flex items-center justify-center gap-3 rounded-lg border border-dashed border-border/70 bg-muted/40 px-4 py-6">
-            <CgSpinner
-              className="h-4 w-4 animate-spin text-muted-foreground"
-              aria-hidden="true"
-            />
-            <div className="space-y-1 text-center">
-              <p className="text-sm font-semibold text-foreground">
-                Computing pricing data...
-              </p>
+      <div className="space-y-4 rounded-2xl border border-border/60 bg-background/80 p-4 shadow-sm">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label
+                htmlFor="area-select"
+                className="text-sm font-semibold text-foreground"
+              >
+                Area selection
+              </Label>
+              <span className="text-xs text-muted-foreground">
+                { space.areas.length } area{ space.areas.length === 1 ? '' : 's' }
+              </span>
             </div>
-          </div>
-        ) : activePriceRule ? (
-          <div className="space-y-5">
-            { shouldShowHourSelector ? (
-              <div className="space-y-5">
-                <div className="flex items-center justify-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-10 w-10 rounded-full"
-                    onClick={ handlePreviousDurationUnit }
-                    disabled={ isPricingLoading }
-                  >
-                    <FiChevronLeft className="size-4" aria-hidden="true" />
-                    <span className="sr-only">Switch to the previous duration unit</span>
-                  </Button>
-                  <span className="text-sm font-semibold text-muted-foreground">
-                    { bookingUnitLabel }
-                  </span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-10 w-10 rounded-full"
-                    onClick={ handleNextDurationUnit }
-                    disabled={ isPricingLoading }
-                  >
-                    <FiChevronRight className="size-4" aria-hidden="true" />
-                    <span className="sr-only">Switch to the next duration unit</span>
-                  </Button>
-                </div>
-                <div className="flex items-center justify-center gap-6 my-16">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-12 w-12 rounded-full"
-                    onClick={ decreaseBookingUnitValue }
-                    disabled={
-                      bookingUnitValue <= DEFAULT_BOOKING_UNIT_VALUE ||
-                      isPricingLoading
-                    }
-                  >
-                    <FiMinus className="size-4" aria-hidden="true" />
-                    <span className="sr-only">Decrease booking duration</span>
-                  </Button>
-                  <div className="text-center">
-                    <div className="text-9xl font-semibold">{ bookingUnitValue }</div>
-                    <p className="text-md font-semibold font-sf text-muted-foreground">
-                      { bookingUnitLabel }
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      { bookingHours } hour{ bookingHours === 1 ? '' : 's' } total
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-12 w-12 rounded-full"
-                    onClick={ increaseBookingUnitValue }
-                    disabled={
-                      bookingUnitValue >= bookingUnitMax || isPricingLoading
-                    }
-                  >
-                    <FiPlus className="size-4" aria-hidden="true" />
-                    <span className="sr-only">Increase booking duration</span>
-                  </Button>
-                </div>
+            { space.areas.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border/60 bg-muted/40 px-3 py-5 text-center text-sm text-muted-foreground">
+                No areas available yet.
               </div>
             ) : (
-              <p className="text-sm text-center text-muted-foreground">
-                This pricing rule applies a fixed rate for every booking.
-              </p>
+              <Select
+                value={ selectedAreaId ?? undefined }
+                onValueChange={ handleSelectArea }
+              >
+                <SelectTrigger
+                  id="area-select"
+                  className="w-full rounded-md"
+                  aria-label="Select an area"
+                >
+                  <SelectValue placeholder="Select an area" />
+                </SelectTrigger>
+                <SelectContent className="max-w-[26rem]">
+                  { space.areas.map((area) => {
+                    const hasPricingRule = Boolean(
+                      area.pricingRuleId && area.pricingRuleName
+                    );
+                    return (
+                      <SelectItem
+                        key={ area.id }
+                        value={ area.id }
+                        disabled={ !hasPricingRule }
+                      >
+                        <div className="flex w-full flex-col gap-0.5">
+                          <span className="text-sm font-semibold leading-tight text-foreground">
+                            { area.name }
+                          </span>
+                        </div>
+                      </SelectItem>
+                    );
+                  }) }
+                </SelectContent>
+              </Select>
             ) }
           </div>
-        ) : (
-          <div className="rounded-lg border border-dashed border-border/70 bg-muted/40 px-4 py-5 text-center text-sm text-muted-foreground">
-            Pricing for this area is not yet available. Choose another area or
-            message the host.
+          <div className="space-y-2">
+            <Label
+              htmlFor="booking-date"
+              className="text-sm font-semibold text-foreground"
+            >
+              Calendar schedule
+            </Label>
+            <Input
+              id="booking-date"
+              type="date"
+              value={ scheduledDate }
+              min={ earliestScheduleDate }
+              onChange={ handleScheduledDateChange }
+            />
+            <p className="text-xs text-muted-foreground">
+              We&apos;ll confirm availability with the host for { scheduledDate }.
+            </p>
           </div>
-        )
-      ) : (
-        <p className="text-sm text-center text-muted-foreground">
-          Select an area to preview pricing.
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-semibold text-foreground">
+                Duration
+              </Label>
+              <span className="text-xs text-muted-foreground">
+                { bookingHours } hour{ bookingHours === 1 ? '' : 's' } total
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl border border-border/70 bg-muted/40 px-2 py-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={ decreaseBookingUnitValue }
+                disabled={
+                  bookingUnitValue <= DEFAULT_BOOKING_UNIT_VALUE ||
+                  isPricingLoading ||
+                  !selectedAreaId
+                }
+                aria-label="Decrease booking duration"
+              >
+                <FiMinus className="size-4" aria-hidden="true" />
+              </Button>
+              <div className="text-center">
+                <p className="text-2xl font-semibold text-foreground">
+                  { bookingUnitValue }
+                </p>
+                <p className="text-xs uppercase text-muted-foreground">
+                  { bookingUnitLabel }
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={ increaseBookingUnitValue }
+                disabled={
+                  bookingUnitValue >= bookingUnitMax ||
+                  isPricingLoading ||
+                  !selectedAreaId
+                }
+                aria-label="Increase booking duration"
+              >
+                <FiPlus className="size-4" aria-hidden="true" />
+              </Button>
+            </div>
+            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={ handlePreviousDurationUnit }
+                disabled={ isPricingLoading || !selectedAreaId }
+                aria-label="Switch to the previous duration unit"
+              >
+                <FiChevronLeft className="size-4" aria-hidden="true" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={ handleNextDurationUnit }
+                disabled={ isPricingLoading || !selectedAreaId }
+                aria-label="Switch to the next duration unit"
+              >
+                <FiChevronRight className="size-4" aria-hidden="true" />
+              </Button>
+              <span>
+                { shouldShowHourSelector
+                  ? 'Dynamic pricing'
+                  : 'Fixed rate' }
+              </span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-semibold text-foreground">
+                No. of guests
+              </Label>
+              <span className="text-xs text-muted-foreground">
+                { selectedAreaMaxCapacity
+                  ? `Max ${selectedAreaMaxCapacity}`
+                  : 'No maximum' }
+              </span>
+            </div>
+            <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-muted/40 px-2 py-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={ handleDecreaseGuestCount }
+                disabled={ guestCount <= MIN_GUEST_COUNT }
+                aria-label="Decrease guest count"
+              >
+                <FiMinus className="size-4" aria-hidden="true" />
+              </Button>
+              <Input
+                type="number"
+                min={ MIN_GUEST_COUNT }
+                max={ currentGuestLimit }
+                step={ 1 }
+                className="w-16 text-center text-sm"
+                value={ guestCount }
+                onChange={ handleGuestCountInputChange }
+                aria-label="Number of guests"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={ handleIncreaseGuestCount }
+                disabled={ guestCount >= currentGuestLimit }
+                aria-label="Increase guest count"
+              >
+                <FiPlus className="size-4" aria-hidden="true" />
+              </Button>
+            </div>
+            <p
+              className={ cn(
+                'text-xs font-medium',
+                isOverCapacity ? 'text-destructive' : 'text-muted-foreground'
+              ) }
+              aria-live="polite"
+            >
+              { capacityHelperText }
+            </p>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-border/70 bg-background/80 p-4 shadow-sm">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold text-muted-foreground">
+            Final price
+          </span>
+          { isPricingLoading && (
+            <div className="flex items-center gap-1 text-xs font-semibold text-muted-foreground">
+              <CgSpinner className="h-3 w-3 animate-spin" aria-hidden="true" />
+              <span>Updating</span>
+            </div>
+          ) }
+        </div>
+        <p className="text-3xl font-semibold text-foreground mt-2">
+          { pricePreviewLabel }
         </p>
+        { priceEvaluation && priceEvaluation.branch !== 'no-match' ? (
+          <p className="text-xs text-muted-foreground">
+            { priceBranchLabel(priceEvaluation.branch) }
+          </p>
+        ) : null }
+        { isOverCapacity && (
+          <p className="text-xs text-destructive font-medium mt-2">
+            Guest count exceeds this area&apos;s capacity.
+          </p>
+        ) }
+      </div>
+      { !selectedAreaId && (
+        <div className="rounded-lg border border-dashed border-border/70 bg-muted/30 px-4 py-2 text-xs text-muted-foreground">
+          Select an area to unlock pricing and confirm your preferred date.
+        </div>
       ) }
     </div>
   );
