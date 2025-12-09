@@ -440,7 +440,6 @@ const isReferenceDataTool = (name: string): name is ReferenceDataToolName =>
   referenceDataToolSet.has(name as ReferenceDataToolName);
 
 const createFunctionCallContent = (
-<<<<<<< HEAD
   name: string,
   id?: string,
   args?: Record<string, unknown>,
@@ -458,26 +457,6 @@ const createFunctionCallContent = (
     }
   ],
 });
-=======
-  functionCall: FunctionCall,
-  args: Record<string, unknown>
-): AgentConversationContent => {
-  const name = functionCall.name ?? 'unknown';
-
-  return {
-    role: 'model',
-    parts: [
-      {
-        functionCall: {
-          name,
-          args,
-          id: functionCall.id,
-        },
-      }
-    ],
-  };
-};
->>>>>>> b30ccc5888a5ce00256ab21fa24a06f6c3c2bdf9
 
 const createFunctionResponseContent = (
   name: string,
@@ -650,7 +629,6 @@ export async function POST(request: NextRequest) {
 
       const functionCallName = functionCall.name ?? 'unknown';
       const callArgs = parseFunctionCallArgs(functionCall.args);
-<<<<<<< HEAD
       historyContents.push(
         createFunctionCallContent(
           functionCall.name,
@@ -659,9 +637,6 @@ export async function POST(request: NextRequest) {
           functionCallPart?.thoughtSignature
         )
       );
-=======
-      historyContents.push(createFunctionCallContent(functionCall, callArgs));
->>>>>>> b30ccc5888a5ce00256ab21fa24a06f6c3c2bdf9
 
       if (functionCallName === 'get_user_location') {
         const locationPayload = location
