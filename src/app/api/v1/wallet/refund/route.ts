@@ -18,7 +18,7 @@ const refundRequestSchema = z.object({
     .enum(['duplicate', 'fraudulent', 'requested_by_customer', 'other'])
     .optional(),
   notes: z.string().max(255).optional(),
-  metadata: z.record(z.union([z.string(), z.number(), z.boolean(), z.bigint()])).optional(),
+  metadata: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.bigint()])).optional(),
 });
 
 const invalidPayloadResponse = NextResponse.json(

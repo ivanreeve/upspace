@@ -166,7 +166,7 @@ export function SpaceCard({
             { space.name }
           </span>
           <span className="text-sm text-muted-foreground line-clamp-1">
-            { space.city || space.province ? `${space.city ? space.city : ''}${space.city && space.province ? ', ' : ''}${space.province ? space.province : ''}` : 'Location TBA' }
+            { space.city || space.region ? `${space.city ? space.city : ''}${space.city && space.region ? ', ' : ''}${space.region ? space.region : ''}` : 'Location TBA' }
           </span>
         </Link>
         <div className="flex items-center gap-1.5 text-sm">

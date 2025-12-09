@@ -520,7 +520,6 @@ export default function Marketplace({ initialSidebarOpen, }: MarketplaceProps) {
 } = useQuery({
     queryKey: ['marketplace-spaces', filters],
     queryFn: async () => listSpaces(buildQueryParams(filters)),
-    keepPreviousData: true,
   });
 
   const spaces = React.useMemo(() => {

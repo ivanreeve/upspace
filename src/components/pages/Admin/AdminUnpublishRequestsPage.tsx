@@ -100,7 +100,7 @@ const formatBadgeVariant = (status: UnpublishRequest['status']) => {
 
 export function AdminUnpublishRequestsPage() {
   const [activeTab, setActiveTab] = useState<RequestTab>('pending');
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
+  const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(PAGE_SIZE_OPTIONS[1]);
   const [pageIndex, setPageIndex] = useState(0);
   const [pageCursors, setPageCursors] = useState<(string | null)[]>([null]);
   const cursor = pageCursors[pageIndex] ?? null;
@@ -242,10 +242,20 @@ export function AdminUnpublishRequestsPage() {
   };
 
   const handlePageSizeChange = (value: string) => {
-    const parsed = Number(value);
-    if (Number.isNaN(parsed) || parsed === pageSize) {
+    const parsedNumber = Number(value);
+    if (Number.isNaN(parsedNumber)) {
       return;
     }
+
+    if (!PAGE_SIZE_OPTIONS.includes(parsedNumber as typeof PAGE_SIZE_OPTIONS[number])) {
+      return;
+    }
+
+    const parsed = parsedNumber as typeof PAGE_SIZE_OPTIONS[number];
+    if (parsed === pageSize) {
+      return;
+    }
+
     setPageSize(parsed);
     setPageIndex(0);
     setPageCursors([null]);
@@ -373,6 +383,7 @@ export function AdminUnpublishRequestsPage() {
                       ) }
                     </TableCell>
                     <TableCell className="text-right space-x-2">
+<<<<<<< HEAD
                     { row.status === 'pending' ? (
                       <>
                         <Button
@@ -411,6 +422,32 @@ export function AdminUnpublishRequestsPage() {
                     ) : (
                       <span className="text-xs text-muted-foreground">No actions</span>
                     ) }
+=======
+                      { row.status === 'pending' ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={ () => handleApprove(request) }
+                            disabled={ approveMutation.isPending }
+                          >
+                            <FiCheck className="size-4" aria-hidden="true" />
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={ () => handleReject(request) }
+                            disabled={ rejectMutation.isPending }
+                          >
+                            <FiX className="size-4" aria-hidden="true" />
+                            Reject
+                          </Button>
+                        </>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">No actions</span>
+                      ) }
+>>>>>>> b30ccc5888a5ce00256ab21fa24a06f6c3c2bdf9
                     </TableCell>
                   </TableRow>
                 );
@@ -461,7 +498,7 @@ export function AdminUnpublishRequestsPage() {
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button
                       size="sm"
-                      variant="success"
+                      variant="secondary"
                       onClick={ () => handleApprove(request) }
                       disabled={ approveMutation.isPending }
                     >

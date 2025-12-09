@@ -51,6 +51,11 @@ import TextAlign from '@tiptap/extension-text-align';
 import Link from '@tiptap/extension-link';
 import { zipcodes as philippineZipcodes } from 'ph-zipcode-lookup';
 
+type Coordinates = {
+  lat: number;
+  lng: number;
+};
+
 import { SPACE_DESCRIPTION_EDITOR_CLASSNAME } from './space-description-rich-text';
 
 import {
@@ -267,9 +272,9 @@ export const createSpaceFormDefaults = (): SpaceFormValues => ({
   availability: disableWeeklyAvailability(cloneWeeklyAvailability(SPACE_INPUT_DEFAULT.availability)),
 });
 
-export const createAreaFormDefaults = (): AreaFormValues => ({
+export const createAreaFormDefaults = (priceRuleId: string | null = null): AreaFormValues => ({
   ...AREA_INPUT_DEFAULT,
-  price_rule_id: null,
+  price_rule_id: priceRuleId,
 });
 
 export const spaceRecordToFormValues = (space: SpaceRecord): SpaceFormValues => ({

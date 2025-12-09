@@ -10,17 +10,18 @@ const isUuid = (value: string | undefined): value is string =>
   typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
 type RouteParams = {
-  params: {
-    space_id?: string;
-    area_id?: string;
-  };
+  params: Promise<{
+    space_id: string;
+    area_id: string;
+  }>;
 };
 
 export async function PUT(req: NextRequest, { params, }: RouteParams) {
   try {
     const { userId, } = await requirePartnerSession();
-    const spaceIdParam = params?.space_id;
-    const areaIdParam = params?.area_id;
+    const resolvedParams = await params;
+    const spaceIdParam = resolvedParams.space_id;
+    const areaIdParam = resolvedParams.area_id;
 
     if (!isUuid(spaceIdParam) || !isUuid(areaIdParam)) {
       return NextResponse.json({ error: 'space_id and area_id must be valid UUIDs.', }, { status: 400, });
@@ -125,8 +126,9 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
 export async function DELETE(_req: NextRequest, { params, }: RouteParams) {
   try {
     const { userId, } = await requirePartnerSession();
-    const spaceIdParam = params?.space_id;
-    const areaIdParam = params?.area_id;
+    const resolvedParams = await params;
+    const spaceIdParam = resolvedParams.space_id;
+    const areaIdParam = resolvedParams.area_id;
 
     if (!isUuid(spaceIdParam) || !isUuid(areaIdParam)) {
       return NextResponse.json({ error: 'space_id and area_id must be valid UUIDs.', }, { status: 400, });

@@ -83,6 +83,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.90.7
         version: 5.90.7(react@19.1.0)
+      '@tiptap/core':
+        specifier: 3.10.7
+        version: 3.10.7(@tiptap/pm@3.10.7)
       '@tiptap/extension-link':
         specifier: ^3.10.7
         version: 3.10.7(@tiptap/core@3.10.7(@tiptap/pm@3.10.7))(@tiptap/pm@3.10.7)
