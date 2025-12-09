@@ -98,54 +98,46 @@ export default function WalletPage() {
       </CardContent>
     </Card>
 
-    { /* Top Up Section */ }
-    <Card className="rounded-lg border border-[#FFFFFF] dark:border-neutral-600 bg-card p-4 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.05)]
-">
-      <CardHeader className="p-0 mb-2">
-        <CardTitle>Top up wallet</CardTitle>
-        <CardDescription>
-          Add funds using your linked PayMongo payment method.
-        </CardDescription>
-      </CardHeader>
-
-      <CardContent className="p-0">
-        <form className="space-y-4" onSubmit={ handleTopUp }>
-          <div className="space-y-1">
-            <Label htmlFor="wallet-top-up-amount">Amount (PHP)</Label>
-            <Input
-              id="wallet-top-up-amount"
-              type="number"
-              min="0.01"
-              step="0.01"
-              placeholder="500.00"
-              value={ amount }
-              onChange={ (event) => setAmount(event.target.value) }
-              aria-describedby="wallet-top-up-help"
-            />
-            <p
-              id="wallet-top-up-help"
-              className="text-xs text-muted-foreground"
+      <Card className="rounded-lg border border-[#FFFFFF] dark:border-neutral-600 bg-card shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
+        <CardHeader>
+          <CardTitle>Top up wallet</CardTitle>
+          <CardDescription>
+            Use your linked PayMongo payment method to add funds. We’ll record the receipt automatically.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-4" onSubmit={ handleTopUp }>
+            <div className="space-y-1">
+              <Label htmlFor="wallet-top-up-amount">Amount (PHP)</Label>
+              <Input
+                id="wallet-top-up-amount"
+                type="number"
+                min="0.01"
+                step="0.01"
+                placeholder="500.00"
+                value={ amount }
+                onChange={ (event) => setAmount(event.target.value) }
+                aria-describedby="wallet-top-up-help"
+              />
+              <p id="wallet-top-up-help" className="text-xs text-muted-foreground">
+                The amount will be charged through PayMongo before being credited to this wallet.
+              </p>
+            </div>
+            <Button
+              type="submit"
+              className="w-full rounded-md"
+              disabled={ topUpMutation.isPending }
             >
-              Amount will be charged via PayMongo.
-            </p>
-          </div>
-
-          <Button
-            type="submit"
-            className="w-full rounded-md"
-            disabled={ topUpMutation.isLoading }
-          >
-            { topUpMutation.isLoading ? 'Processing…' : 'Top up wallet' }
-          </Button>
-        </form>
-      </CardContent>
-
-      <CardFooter className="p-0 pt-3">
-        <p className="text-xs text-muted-foreground">
-          Update your default payment method in your PayMongo dashboard.
-        </p>
-      </CardFooter>
-    </Card>
+              { topUpMutation.isPending ? 'Processing…' : 'Top up wallet' }
+            </Button>
+          </form>
+        </CardContent>
+        <CardFooter>
+          <p className="text-xs text-muted-foreground">
+            Need to change your default payment method? Update it in the PayMongo dashboard to keep this wallet in sync.
+          </p>
+        </CardFooter>
+      </Card>
 
     { /* Recent Activity */ }
     <Card className="rounded-lg border border-[#FFFFFF] dark:border-neutral-600 bg-card p-4 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.05)]
