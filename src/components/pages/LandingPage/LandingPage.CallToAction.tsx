@@ -84,7 +84,7 @@ export default function CallToAction() {
         title="Discover Your Ideal Workspace"
         description="Whether you're searching for the perfect desk or offering one, connect with our thriving community of professionals and workspace partners."
         buttonText="Start Exploring"
-        buttonHref="/"
+        buttonHref="/marketplace"
       />
     </div>
   );

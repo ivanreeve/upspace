@@ -1,9 +1,18 @@
 'use server';
 
-import { AuthError } from 'next-auth';
+import { AuthApiError, type Session } from '@supabase/supabase-js';
+import { user_status } from '@prisma/client';
 import { z } from 'zod';
 
-import { signIn } from '@/lib/auth';
+import { ROLE_REDIRECT_MAP } from '@/lib/constants';
+import { reactivateUserIfEligible } from '@/lib/auth/reactivate-user';
+import { prisma } from '@/lib/prisma';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+
+type SupabaseSessionPayload = {
+  access_token: string;
+  refresh_token: string;
+};
 
 const schema = z.object({
   email: z.string().email('Provide a valid email.'),
@@ -15,7 +24,20 @@ export type LoginState = {
   message?: string;
   errors?: Record<string, string[]>;
   redirectTo?: string;
+  supabaseSession?: SupabaseSessionPayload;
 };
+
+function extractSupabaseSession(session: Session | null): SupabaseSessionPayload | undefined {
+  if (!session?.access_token || !session?.refresh_token) {
+    return undefined;
+  }
+
+  return {
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+  };
+}
+
 
 export async function loginAction(_prev: LoginState, formData: FormData): Promise<LoginState> {
   const data = {
@@ -35,32 +57,33 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     };
   }
 
-  const callbackUrl = String(formData.get('callbackUrl') ?? '/dashboard');
+  const callbackUrl = String(formData.get('callbackUrl') ?? '/');
 
   try {
-    const redirectTarget = await signIn('credentials', {
+    const supabase = await createSupabaseServerClient();
+
+    const {
+ data: signInData, error, 
+} = await supabase.auth.signInWithPassword({
       email: parsed.data.email,
       password: parsed.data.password,
-      redirect: false,
-      redirectTo: callbackUrl,
     });
+    const supabaseSession = extractSupabaseSession(signInData?.session ?? null);
 
-    const redirectTo =
-      typeof redirectTarget === 'string'
-        ? redirectTarget
-        : redirectTarget?.toString() ?? callbackUrl;
-
-    return {
-      ok: true,
-      redirectTo,
-    };
-  } catch (error) {
-    if (error instanceof AuthError) {
-      if (error.type === 'CredentialsSignin') {
-        return {
-          ok: false,
-          message: 'Invalid email or password.',
-        };
+    if (error) {
+      if (error instanceof AuthApiError) {
+        if (error.status === 400) {
+          return {
+            ok: false,
+            message: 'Invalid email or password.',
+          };
+        }
+        if (error.status === 403) {
+          return {
+            ok: false,
+            message: 'Confirm your email address before signing in.',
+          };
+        }
       }
 
       return {
@@ -69,6 +92,92 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
       };
     }
 
-    throw error;
+    const authedUser = signInData?.user;
+
+    if (!authedUser) {
+      console.warn('Supabase sign-in succeeded but returned no user payload');
+      return {
+        ok: true,
+        redirectTo: callbackUrl,
+        supabaseSession,
+      };
+    }
+
+    const reactivation = await reactivateUserIfEligible(authedUser.id).catch((err) => {
+      console.error('Failed to resolve user status during sign-in', err);
+      return null;
+    });
+
+    if (!reactivation) {
+      await supabase.auth.signOut();
+      return {
+        ok: false,
+        message: 'Unable to verify your account status. Please try again.',
+      };
+    }
+
+    if (!reactivation.allow) {
+      await supabase.auth.signOut();
+
+      const statusMessages: Record<string, string> = {
+        deleted: 'Your account has been deleted.',
+        deletion_expired: 'Your account was permanently deleted after the grace period.',
+        not_found: 'Unable to locate your profile.',
+      };
+
+      return {
+        ok: false,
+        message: statusMessages[reactivation.reason] ?? 'Your account is not active. Contact support for help.',
+      };
+    }
+
+    const profile = await prisma.user.findUnique({
+      where: { auth_user_id: authedUser.id, },
+      select: {
+        is_onboard: true,
+        role: true,
+        status: true,
+      },
+    });
+
+    if (!profile) {
+      await supabase.auth.signOut();
+      return {
+        ok: false,
+        message: 'Unable to locate your profile.',
+      };
+    }
+
+    if (profile.status !== user_status.active) {
+      await supabase.auth.signOut();
+      return {
+        ok: false,
+        message: 'Your account is not active. Contact support for help.',
+      };
+    }
+
+    const shouldOnboard = !profile.is_onboard;
+
+    if (shouldOnboard) {
+      return {
+        ok: true,
+        redirectTo: '/onboarding',
+        supabaseSession,
+      };
+    }
+
+    const roleRedirect = profile?.role ? ROLE_REDIRECT_MAP[profile.role] : undefined;
+
+    return {
+      ok: true,
+      redirectTo: roleRedirect ?? callbackUrl,
+      supabaseSession,
+    };
+  } catch (error) {
+    console.error('Failed to sign in with Supabase', error);
+    return {
+      ok: false,
+      message: 'Unable to sign in. Please try again.',
+    };
   }
 }

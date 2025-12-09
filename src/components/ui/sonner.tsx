@@ -1,4 +1,3 @@
-// sonner.tsx
 import { Toaster as Sonner } from 'sonner';
 import type { ToasterProps } from 'sonner';
 
@@ -10,14 +9,16 @@ export const Toaster = ({ ...props }: ToasterProps) => {
         className="toaster group"
         visibleToasts={ 1 }
         position="top-center"
-        offset={ 80 }
+        offset={ 32 }
         closeButton
         toastOptions={ {
           className: 'custom-toast',
           style: {
-            backdropFilter: 'blur(5px)',
-            border: '1px solid var(--custom-red)',
-            backgroundColor: 'hsl(var(--sonner-bg-h, 0 0% 100%) / 0.75)',
+            backdropFilter: 'blur(16px)',
+            border: '1px solid var(--toast-border)',
+            backgroundColor: 'var(--toast-background)',
+            boxShadow: 'var(--toast-shadow)',
+            color: 'var(--foreground)',
           },
           // ADD TYPE-SPECIFIC STYLING HERE
           classNames: {

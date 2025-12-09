@@ -1,6 +1,22 @@
+import type { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 
+import { WEEKDAY_ORDER, type WeekdayName } from '@/data/spaces';
 import { prisma } from '@/lib/prisma';
+import { updateSpaceLocationPoint } from '@/lib/spaces/location';
+import { richTextPlainTextLength, sanitizeRichText } from '@/lib/rich-text';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { buildPublicObjectUrl, isAbsoluteUrl, resolveSignedImageUrls } from '@/lib/spaces/image-urls';
+import { deriveSpaceStatus } from '@/lib/spaces/partner-serializer';
+import { computeStartingPriceFromAreas } from '@/lib/spaces/pricing';
+import {
+  SPACES_LIST_CACHE_TTL_SECONDS,
+  buildSpacesListCacheKey,
+  invalidateSpacesListCache,
+  readSpacesListCache,
+  setSpacesListCache
+} from '@/lib/cache/redis';
 
 // JSON-safe replacer: BigInt->string, Date->ISO
 const replacer = (_k: string, v: unknown) =>
@@ -8,47 +24,763 @@ const replacer = (_k: string, v: unknown) =>
   : v instanceof Date ? v.toISOString()
   : v;
 
+const TIME_24H_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const MIN_DESCRIPTION_CHARS = 20;
+
+const weekdayEnum = z.enum(WEEKDAY_ORDER);
+
+const timeStringToMinutes = (value: string) => {
+  const [hours, minutes] = value.split(':').map((part) => Number(part));
+  return Number.isFinite(hours) && Number.isFinite(minutes)
+    ? hours * 60 + minutes
+    : Number.NaN;
+};
+
+const timeStringToUtcDate = (value: string) => {
+  const [hours, minutes] = value.split(':').map((part) => Number(part));
+  return new Date(Date.UTC(1970, 0, 1, hours, minutes, 0));
+};
+
+const daySlotSchema = z.object({
+  is_open: z.boolean(),
+  opens_at: z.string().regex(TIME_24H_PATTERN, 'Use 24-hour HH:MM format.'),
+  closes_at: z.string().regex(TIME_24H_PATTERN, 'Use 24-hour HH:MM format.'),
+}).superRefine((values, ctx) => {
+  if (!values.is_open) {
+    return;
+  }
+
+  const openMinutes = timeStringToMinutes(values.opens_at);
+  const closeMinutes = timeStringToMinutes(values.closes_at);
+
+  if (!Number.isFinite(openMinutes) || !Number.isFinite(closeMinutes)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Enter valid HH:MM times.',
+    });
+    return;
+  }
+
+  if (closeMinutes <= openMinutes) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['closes_at'],
+      message: 'Closing time must be after opening time.',
+    });
+  }
+});
+
+const weeklyAvailabilitySchema = z.record(weekdayEnum, daySlotSchema).superRefine((availability, ctx) => {
+  let openDayCount = 0;
+
+  for (const day of WEEKDAY_ORDER) {
+    const slot = availability[day];
+    if (!slot) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [day],
+        message: `Provide hours for ${day}.`,
+      });
+      continue;
+    }
+
+    if (slot.is_open) {
+      openDayCount += 1;
+    }
+  }
+
+  if (openDayCount === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Open the space on at least one day of the week.',
+    });
+  }
+});
+
+const optionalLocationField = z
+  .string()
+  .max(200)
+  .optional()
+  .transform((value) => (value ?? '').trim());
+
+const coordinateSchema = z
+  .coerce
+  .number()
+  .refine((value) => Number.isFinite(value), { message: 'Coordinate is required.', });
+
+const spaceImageSchema = z.object({
+  path: z.string().trim().min(1).max(1024),
+  category: z.string().trim().min(1).max(200).optional(),
+  is_primary: z.boolean(),
+  display_order: z.number().int().min(0).max(10_000),
+});
+
+const VERIFICATION_REQUIREMENT_IDS = ['dti_registration', 'tax_registration', 'representative_id'] as const;
+
+const verificationDocumentSchema = z.object({
+  path: z.string().trim().min(1).max(1024),
+  requirement_id: z.enum(VERIFICATION_REQUIREMENT_IDS),
+  slot_id: z.string().trim().min(1).max(100).optional(),
+  mime_type: z.string().trim().min(1).max(255),
+  file_size_bytes: z.number().int().positive().max(50 * 1024 * 1024),
+});
+
+const spaceCreateSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  description: z.string().min(1),
+  unit_number: optionalLocationField,
+  address_subunit: optionalLocationField,
+  street: z.string().trim().min(1).max(200),
+  barangay: z.string().max(200).optional().transform((value) => value?.trim() ?? ''),
+  city: z.string().trim().min(1).max(200),
+  region: z.string().trim().min(1).max(200),
+  postal_code: z.string().trim().length(4).regex(/^[0-9]{4}$/),
+  country_code: z
+    .string()
+    .trim()
+    .length(2)
+    .regex(/^[A-Za-z]{2}$/)
+    .transform((value) => value.toUpperCase()),
+  lat: coordinateSchema.min(-90).max(90),
+  long: coordinateSchema.min(-180).max(180),
+  amenities: z.array(z.string().uuid()).min(2),
+  availability: weeklyAvailabilitySchema,
+  images: z.array(spaceImageSchema).max(50).optional(),
+  verification_documents: z.array(verificationDocumentSchema).max(20).optional(),
+});
+
+type SpaceCreateInput = z.infer<typeof spaceCreateSchema>;
+
+type VerificationRequirementId = (typeof VERIFICATION_REQUIREMENT_IDS)[number];
+
+const REQUIREMENT_TO_DOCUMENT_TYPE: Record<VerificationRequirementId, 'dti_registration' | 'bir_cor' | 'authorized_rep_id'> = {
+  dti_registration: 'dti_registration',
+  tax_registration: 'bir_cor',
+  representative_id: 'authorized_rep_id',
+};
+
+type AvailabilitySlot = {
+  day: WeekdayName;
+  dayIndex: number;
+  opening: Date;
+  closing: Date;
+};
+
+const DAY_NAME_TO_INDEX: Record<WeekdayName, number> = {
+  Monday: 0,
+  Tuesday: 1,
+  Wednesday: 2,
+  Thursday: 3,
+  Friday: 4,
+  Saturday: 5,
+  Sunday: 6,
+};
+
+const padTime = (value: number) => value.toString().padStart(2, '0');
+const formatTime = (value: Date) => `${padTime(value.getUTCHours())}:${padTime(value.getUTCMinutes())}`;
+
+const serializeAvailabilitySlots = (
+  slots: {
+    day_of_week: number;
+    opening: Date;
+    closing: Date;
+  }[]
+) => slots.map((slot) => ({
+  day_of_week: slot.day_of_week,
+  opens_at: formatTime(new Date(slot.opening)),
+  closes_at: formatTime(new Date(slot.closing)),
+}));
+
+const normalizeAvailability = (availability: SpaceCreateInput['availability']): AvailabilitySlot[] => {
+  const slots: AvailabilitySlot[] = [];
+
+  for (const day of WEEKDAY_ORDER) {
+    const slot = availability[day];
+    if (!slot || !slot.is_open) {
+      continue;
+    }
+
+    const opening = timeStringToUtcDate(slot.opens_at);
+    const closing = timeStringToUtcDate(slot.closes_at);
+
+    if (closing <= opening) {
+      throw new HttpError(422, `Closing time must be after opening time on ${day}.`);
+    }
+
+    slots.push({
+      day,
+      dayIndex: DAY_NAME_TO_INDEX[day],
+      opening,
+      closing,
+    });
+  }
+
+  if (!slots.length) {
+    throw new HttpError(422, 'Provide availability for at least one day.');
+  }
+
+  return slots;
+};
+
+const serializeSpace = (space: {
+  id: string;
+  user_id: bigint;
+  name: string;
+  unit_number: string;
+  street: string;
+  address_subunit: string;
+  city: string;
+  region: string;
+  country_code: string;
+  postal_code: string;
+  description: string | null;
+  barangay: string | null;
+  lat: Prisma.Decimal | number;
+  long: Prisma.Decimal | number;
+  created_at: Date;
+  updated_at: Date;
+}) => ({
+  space_id: space.id,
+  user_id: space.user_id.toString(),
+  name: space.name,
+  unit_number: space.unit_number,
+  street: space.street,
+  address_subunit: space.address_subunit,
+  city: space.city,
+  region: space.region,
+  country_code: space.country_code,
+  postal_code: space.postal_code,
+  description: space.description ?? '',
+  barangay: space.barangay,
+  lat: typeof space.lat === 'number' ? space.lat : Number(space.lat),
+  long: typeof space.long === 'number' ? space.long : Number(space.long),
+  created_at: space.created_at.toISOString(),
+  updated_at: space.updated_at.toISOString(),
+});
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams, } = new URL(req.url);
 
-    // Pagination (cursor = last space_id as string)
-    const limit = Math.min(parseInt(searchParams.get('limit') ?? '20', 10), 100);
-    const cursor = searchParams.get('cursor');
+    // Validate and normalize query params
+    const querySchema = z.object({
+      // pagination
+      limit: z.coerce.number().int().min(1).max(100).default(20),
+      cursor: z.string().uuid().optional(),
 
-    // Simple filters (extend as needed)
-    const city   = searchParams.get('city')   ?? undefined;
-    const region = searchParams.get('region') ?? undefined;
-    const q      = searchParams.get('q')      ?? undefined; // name contains
+      // simple equals filters
+      city: z.string().min(1).optional(),
+      region: z.string().min(1).optional(),
+      country: z.string().min(1).optional(),
+      postal_code: z.string().min(1).optional(),
+      barangay: z.string().min(1).optional(),
+      street: z.string().min(1).optional(),
+      user_id: z.string().regex(/^\d+$/).optional(),
 
-    const where = {
-      ...(city ? { city, } : {}),
-      ...(region ? { region, } : {}),
-      ...(q ? {
-        name: {
-          contains: q,
-          mode: 'insensitive' as const,
-        },
-      } : {}),
+      // search
+      q: z.string().min(1).optional(),
+
+      // date ranges (RFC3339/ISO-8601)
+      created_from: z.string().datetime().optional(),
+      created_to: z.string().datetime().optional(),
+      updated_from: z.string().datetime().optional(),
+      updated_to: z.string().datetime().optional(),
+
+      // ids filter
+      space_ids: z.string().optional(), // comma-separated UUIDs
+
+      // relational filters
+      amenities: z.string().optional(), // comma-separated list of names
+      amenities_mode: z.enum(['all', 'any']).optional(),
+      amenities_negate: z.coerce.boolean().optional().default(false),
+      bookmark_user_id: z.string().regex(/^\d+$/).optional(),
+      available_days: z.string().optional(), // comma-separated day_of_week
+      available_from: z.string().regex(TIME_24H_PATTERN).optional(),
+      available_to: z.string().regex(TIME_24H_PATTERN).optional(),
+      include_pending: z.coerce.boolean().optional().default(false),
+
+      // sorting
+      sort: z.enum(['id','name','created_at','updated_at']).optional(),
+      order: z.enum(['asc','desc']).optional(),
+    });
+
+    const parsed = querySchema.safeParse({
+      limit: searchParams.get('limit') ?? undefined,
+      cursor: searchParams.get('cursor') ?? undefined,
+      city: searchParams.get('city') ?? undefined,
+      region: searchParams.get('region') ?? undefined,
+      country: searchParams.get('country') ?? undefined,
+      postal_code: searchParams.get('postal_code') ?? undefined,
+      barangay: searchParams.get('barangay') ?? undefined,
+      street: searchParams.get('street') ?? undefined,
+      user_id: searchParams.get('user_id') ?? undefined,
+      q: searchParams.get('q') ?? undefined,
+      created_from: searchParams.get('created_from') ?? undefined,
+      created_to: searchParams.get('created_to') ?? undefined,
+      updated_from: searchParams.get('updated_from') ?? undefined,
+      updated_to: searchParams.get('updated_to') ?? undefined,
+      space_ids: searchParams.get('space_ids') ?? undefined,
+      amenities: searchParams.get('amenities') ?? undefined,
+      amenities_mode: searchParams.get('amenities_mode') ?? undefined,
+      amenities_negate: searchParams.get('amenities_negate') ?? undefined,
+      bookmark_user_id: searchParams.get('bookmark_user_id') ?? undefined,
+      available_days: searchParams.get('available_days') ?? undefined,
+      available_from: searchParams.get('available_from') ?? undefined,
+      available_to: searchParams.get('available_to') ?? undefined,
+      include_pending: searchParams.get('include_pending') ?? undefined,
+      sort: searchParams.get('sort') ?? undefined,
+      order: searchParams.get('order') ?? undefined,
+    });
+
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.flatten(), }, { status: 400, });
+    }
+
+    const {
+      limit,
+      cursor,
+      city,
+      region,
+      country,
+      postal_code,
+      barangay,
+      street,
+      user_id,
+      q,
+      created_from,
+      created_to,
+      updated_from,
+      updated_to,
+      space_ids,
+      amenities,
+      amenities_mode,
+      amenities_negate,
+      bookmark_user_id,
+      available_days,
+      available_from,
+      available_to,
+      include_pending,
+      sort,
+      order,
+    } = parsed.data;
+
+    if (available_from && available_to) {
+      const startMinutes = timeStringToMinutes(available_from);
+      const endMinutes = timeStringToMinutes(available_to);
+      if (!Number.isFinite(startMinutes) || !Number.isFinite(endMinutes) || endMinutes <= startMinutes) {
+        return NextResponse.json(
+          { error: 'available_to must be later than available_from.', },
+          { status: 400, }
+        );
+      }
+    }
+
+    // Build Prisma where clause
+    const and: any[] = [];
+    if (city) and.push({ city, });
+    if (region) and.push({ region, });
+    if (country) and.push({ country_code: country, });
+    if (postal_code) and.push({ postal_code, });
+    if (barangay) and.push({ barangay, });
+    if (street) and.push({ street, });
+    if (user_id) and.push({ user_id: BigInt(user_id), });
+
+    if (q) {
+      and.push({
+        OR: [
+          {
+ name: {
+ contains: q,
+mode: 'insensitive' as const, 
+}, 
+},
+          {
+ street: {
+ contains: q,
+mode: 'insensitive' as const, 
+}, 
+},
+          {
+ address_subunit: {
+ contains: q,
+mode: 'insensitive' as const, 
+}, 
+},
+          {
+ unit_number: {
+ contains: q,
+mode: 'insensitive' as const, 
+}, 
+},
+          {
+ city: {
+ contains: q,
+mode: 'insensitive' as const, 
+}, 
+},
+          {
+ region: {
+ contains: q,
+mode: 'insensitive' as const, 
+}, 
+},
+          {
+            country_code: {
+              contains: q,
+              mode: 'insensitive' as const,
+            },
+          },
+          {
+ postal_code: {
+ contains: q,
+mode: 'insensitive' as const, 
+}, 
+}
+        ],
+      });
+    }
+
+    // Space IDs filter
+    const candidateSpaceIds = (space_ids ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (candidateSpaceIds.length > 0) {
+      try {
+        candidateSpaceIds.forEach((value) => z.string().uuid().parse(value));
+      } catch {
+        return NextResponse.json(
+          { error: 'space_ids must be a comma-separated list of UUIDs', },
+          { status: 400, }
+        );
+      }
+      and.push({ id: { in: candidateSpaceIds, }, });
+    }
+
+    const verificationStatuses: Prisma.verificationStatus[] = include_pending
+      ? ['approved', 'in_review']
+      : ['approved'];
+
+    and.push({ verification: { some: { status: { in: verificationStatuses, }, }, }, });
+    and.push({ is_published: true, });
+
+    // Created/updated range filters
+    if (created_from || created_to) {
+      const created: any = {};
+      if (created_from) created.gte = new Date(created_from);
+      if (created_to) created.lte = new Date(created_to);
+      and.push({ created_at: created, });
+    }
+    if (updated_from || updated_to) {
+      const updated: any = {};
+      if (updated_from) updated.gte = new Date(updated_from);
+      if (updated_to) updated.lte = new Date(updated_to);
+      and.push({ updated_at: updated, });
+    }
+
+    // Amenities filter: comma separated names, mode: any|all
+    const amenityNames = (amenities ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (amenityNames.length > 0) {
+      if (amenities_negate) {
+        and.push({
+          amenity: {
+            none: {
+              name: {
+                in: amenityNames,
+                mode: 'insensitive' as const,
+              },
+            },
+          },
+        });
+      } else if ((amenities_mode ?? 'any') === 'all') {
+        for (const name of amenityNames) {
+          and.push({
+ amenity: {
+ some: {
+ name: {
+ equals: name,
+mode: 'insensitive' as const, 
+}, 
+}, 
+}, 
+});
+        }
+      } else {
+        and.push({
+          amenity: {
+            some: {
+ OR: amenityNames.map((name) => ({
+ name: {
+ equals: name,
+mode: 'insensitive' as const, 
+}, 
+})), 
+},
+          },
+        });
+      }
+    }
+
+    // Minimum capacity via related areas
+    // Bookmarked by a specific user
+    if (bookmark_user_id) {
+      and.push({ bookmark: { some: { user_id: BigInt(bookmark_user_id), }, }, });
+    }
+
+    // Availability by day_of_week
+    const days = (available_days ?? '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    const normalizedDays = days
+      .map((day) => {
+        if (/^\d+$/.test(day)) {
+          return Number(day);
+        }
+        if ((day as WeekdayName) in DAY_NAME_TO_INDEX) {
+          return DAY_NAME_TO_INDEX[day as WeekdayName];
+        }
+        return null;
+      })
+      .filter((value): value is number => value !== null);
+
+    const availabilityClause: Prisma.space_availabilityWhereInput = {};
+    if (normalizedDays.length > 0) {
+      availabilityClause.day_of_week = { in: normalizedDays, };
+    }
+    if (available_from) {
+      availabilityClause.opening = { lte: timeStringToUtcDate(available_from), };
+    }
+    if (available_to) {
+      availabilityClause.closing = { gte: timeStringToUtcDate(available_to), };
+    }
+    if (Object.keys(availabilityClause).length > 0) {
+      and.push({ space_availability: { some: availabilityClause, }, });
+    }
+
+    const where = and.length > 0 ? { AND: and, } : {};
+
+    const uniqueSpaceIds = candidateSpaceIds.length > 0
+      ? Array.from(new Set(candidateSpaceIds)).sort()
+      : null;
+    const uniqueAmenityNames = amenityNames.length > 0
+      ? Array.from(new Set(amenityNames)).sort((a, b) => a.localeCompare(b))
+      : null;
+    const canonicalAvailableDays = normalizedDays.length > 0
+      ? Array.from(new Set(normalizedDays)).sort((a, b) => a - b)
+      : null;
+
+    const cacheSignature = {
+      limit,
+      cursor: cursor ?? null,
+      city: city ?? null,
+      region: region ?? null,
+      country: country ?? null,
+      postal_code: postal_code ?? null,
+      barangay: barangay ?? null,
+      street: street ?? null,
+      user_id: user_id ?? null,
+      q: q ?? null,
+      created_from: created_from ?? null,
+      created_to: created_to ?? null,
+      updated_from: updated_from ?? null,
+      updated_to: updated_to ?? null,
+      space_ids: uniqueSpaceIds,
+      amenities: uniqueAmenityNames,
+      amenities_mode: amenities_mode ?? null,
+      amenities_negate: amenities_negate ?? false,
+      available_days: canonicalAvailableDays,
+      available_from: available_from ?? null,
+      available_to: available_to ?? null,
+      include_pending,
+      sort: sort ?? null,
+      order: order ?? null,
+      bookmark_user_id: bookmark_user_id ?? null,
     };
 
+    const cacheKey = buildSpacesListCacheKey(cacheSignature);
+
+    let supabaseUserId: string | null = null;
+    let supabaseLookupFailed = false;
+
+    if (!bookmark_user_id) {
+      try {
+        const supabase = await createSupabaseServerClient();
+        const {
+          data: authData,
+          error: authError,
+        } = await supabase.auth.getUser();
+        if (!authError && authData?.user) {
+          supabaseUserId = authData.user.id;
+        }
+      } catch (error) {
+        supabaseLookupFailed = true;
+        console.warn('Failed to resolve Supabase session for caching', error);
+      }
+    }
+
+    const cacheEnabled = SPACES_LIST_CACHE_TTL_SECONDS > 0;
+    const shouldCacheResponse =
+      cacheEnabled &&
+      !bookmark_user_id &&
+      !supabaseUserId &&
+      !supabaseLookupFailed;
+
+    if (shouldCacheResponse) {
+      const cachedBody = await readSpacesListCache(cacheKey);
+      if (cachedBody) {
+        const response = new NextResponse(cachedBody);
+        response.headers.set('content-type', 'application/json');
+        return response;
+      }
+    }
+
+    // Pagination and sorting
     const take = limit + 1; // read one extra to know if there's a next page
+    const orderBy = (() => {
+      const field = sort ?? 'id';
+      const direction = order ?? 'asc';
+      return { [field]: direction, } as const;
+    })();
+
     const rows = await prisma.space.findMany({
       where,
       take,
       skip: cursor ? 1 : 0,
-      ...(cursor ? { cursor: { space_id: BigInt(cursor), }, } : {}),
-      orderBy: { space_id: 'asc', }, // use a unique, stable field
+      ...(cursor ? { cursor: { id: cursor, }, } : {}),
+      orderBy,
+      include: {
+        space_image: {
+          orderBy: [
+            { is_primary: 'desc' as const, },
+            { display_order: 'asc' as const, },
+            { created_at: 'asc' as const, }
+          ],
+          select: {
+            path: true,
+            is_primary: true,
+            display_order: true,
+          },
+          take: 2,
+        },
+        verification: {
+          orderBy: { created_at: 'desc' as const, },
+          take: 1,
+          select: { status: true, },
+        },
+        space_availability: {
+          select: {
+            day_of_week: true,
+            opening: true,
+            closing: true,
+          },
+          orderBy: { day_of_week: 'asc' as const, },
+        },
+        area: { select: { price_rule: { select: { definition: true, }, }, }, },
+      },
     });
+
+    const signedImageUrlMap = await resolveSignedImageUrls(rows.flatMap((space) => space.space_image));
 
     const hasNext = rows.length > limit;
     const items = hasNext ? rows.slice(0, limit) : rows;
-    const nextCursor = hasNext ? String(items[items.length - 1].space_id as unknown as bigint) : null;
+    const nextCursor = hasNext ? items[items.length - 1].id : null;
+    const spaceIds = items.map((space) => space.id);
+
+    // Preload rating aggregates for listed spaces to avoid N+1 queries
+    const ratingAggregates = spaceIds.length > 0
+      ? await prisma.review.groupBy({
+        by: ['space_id'],
+        where: { space_id: { in: spaceIds, }, },
+        _avg: { rating_star: true, },
+        _count: { rating_star: true, },
+      })
+      : [];
+
+    const ratingMap = new Map<string, { average_rating: number; total_reviews: number }>();
+    for (const aggregate of ratingAggregates) {
+      const avg = aggregate._avg.rating_star ?? null;
+      const count = aggregate._count.rating_star ?? 0;
+      ratingMap.set(aggregate.space_id, {
+        average_rating: avg === null ? 0 : Number(avg),
+        total_reviews: count,
+      });
+    }
+
+    const startingPriceMap = new Map<string, number | null>();
+    for (const space of items) {
+      const startingPrice = computeStartingPriceFromAreas(space.area ?? []);
+      startingPriceMap.set(space.id, startingPrice);
+    }
+
+    let bookmarkLookupUserId: bigint | null = null;
+    if (bookmark_user_id) {
+      bookmarkLookupUserId = BigInt(bookmark_user_id);
+    } else if (spaceIds.length > 0 && supabaseUserId) {
+      const dbUser = await prisma.user.findFirst({
+        where: { auth_user_id: supabaseUserId, },
+        select: { user_id: true, },
+      });
+      bookmarkLookupUserId = dbUser?.user_id ?? null;
+    }
+
+    const bookmarkedSpaceIds = bookmarkLookupUserId && spaceIds.length > 0
+      ? new Set(
+        (await prisma.bookmark.findMany({
+          where: {
+            user_id: bookmarkLookupUserId,
+            space_id: { in: spaceIds, },
+          },
+          select: { space_id: true, },
+        })).map((bookmark) => bookmark.space_id)
+      )
+      : null;
+
+    const payload = items.map((space) => {
+      const base = serializeSpace(space);
+      const primaryImage = space.space_image[0];
+      const resolvedImageUrl = (() => {
+        const path = primaryImage?.path ?? null;
+        if (!path) return null;
+        if (isAbsoluteUrl(path)) return path;
+        return signedImageUrlMap.get(path) ?? buildPublicObjectUrl(path);
+      })();
+
+      const ratingSummary = ratingMap.get(space.id) ?? {
+        average_rating: 0,
+        total_reviews: 0,
+      };
+
+      return {
+        ...base,
+        status: deriveSpaceStatus({
+          verification: space.verification,
+          is_published: space.is_published,
+        }),
+        image_url: resolvedImageUrl,
+        min_rate_price: null,
+        max_rate_price: null,
+        rate_time_unit: null,
+        starting_price: startingPriceMap.get(space.id) ?? null,
+        availability: serializeAvailabilitySlots(space.space_availability),
+        isBookmarked: bookmarkedSpaceIds?.has(space.id) ?? false,
+        average_rating: ratingSummary.average_rating,
+        total_reviews: ratingSummary.total_reviews,
+      };
+    });
 
     const body = JSON.stringify({
-      data: items,
+      data: payload,
       nextCursor,
     }, replacer);
+
+    if (shouldCacheResponse) {
+      await setSpacesListCache(cacheKey, body, cacheSignature, nextCursor);
+    }
 
     return new NextResponse(body, {
       headers: { 'content-type': 'application/json', },
@@ -61,9 +793,190 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: authData,
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !authData?.user) {
+    return NextResponse.json({ error: 'Authentication required.', }, { status: 401, });
+  }
+
+  const dbUser = await prisma.user.findFirst({
+    where: { auth_user_id: authData.user.id, },
+    select: {
+      user_id: true,
+      role: true,
+      is_onboard: true,
+    },
+  });
+
+  if (!dbUser) {
+    return NextResponse.json({ error: 'User profile not found.', }, { status: 403, });
+  }
+
+  if (dbUser.role !== 'partner') {
+    return NextResponse.json({ error: 'Only partner accounts can create spaces.', }, { status: 403, });
+  }
+
+  if (!dbUser.is_onboard) {
+    return NextResponse.json({ error: 'Complete onboarding before submitting spaces.', }, { status: 409, });
+  }
+
+  const body = await req.json().catch(() => null);
+  const parsed = spaceCreateSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten(), }, { status: 400, });
+  }
+
+  const sanitizedDescription = sanitizeRichText(parsed.data.description ?? '');
+  const plainTextLength = richTextPlainTextLength(sanitizedDescription);
+
+  if (plainTextLength < MIN_DESCRIPTION_CHARS) {
+    return NextResponse.json(
+      { error: `Description must be at least ${MIN_DESCRIPTION_CHARS} characters.`, },
+      { status: 422, }
+    );
+  }
+
+  const uniqueAmenityIds = Array.from(new Set(parsed.data.amenities));
+  const normalizedAvailability = normalizeAvailability(parsed.data.availability);
+  const imagesPayload = parsed.data.images ?? [];
+  const verificationDocsPayload = parsed.data.verification_documents ?? [];
+  const now = new Date();
+
   try {
-    return NextResponse.json({ test: 'Post space', }, { status: 200, });
-  } catch (err) {
+    const created = await prisma.$transaction(async (tx) => {
+      const space = await tx.space.create({
+        data: {
+          user_id: dbUser.user_id,
+          name: parsed.data.name.trim(),
+          description: sanitizedDescription,
+          unit_number: parsed.data.unit_number ?? '',
+          address_subunit: parsed.data.address_subunit ?? '',
+          street: parsed.data.street.trim(),
+          barangay: parsed.data.barangay?.trim() ? parsed.data.barangay.trim() : null,
+          city: parsed.data.city.trim(),
+          region: parsed.data.region.trim(),
+          postal_code: parsed.data.postal_code.trim(),
+          country_code: parsed.data.country_code,
+          lat: parsed.data.lat,
+          long: parsed.data.long,
+          created_at: now,
+          updated_at: now,
+        },
+        select: {
+          id: true,
+          user_id: true,
+          name: true,
+          unit_number: true,
+          street: true,
+          address_subunit: true,
+          city: true,
+          region: true,
+          country_code: true,
+          postal_code: true,
+          description: true,
+          barangay: true,
+          lat: true,
+          long: true,
+          created_at: true,
+          updated_at: true,
+        },
+      });
+
+      await updateSpaceLocationPoint(tx, {
+        spaceId: space.id,
+        lat: parsed.data.lat,
+        long: parsed.data.long,
+      });
+
+      if (uniqueAmenityIds.length) {
+        const amenityChoices = await tx.amenity_choice.findMany({
+          where: { id: { in: uniqueAmenityIds, }, },
+          select: { id: true, },
+        });
+
+        if (amenityChoices.length !== uniqueAmenityIds.length) {
+          throw new HttpError(422, 'One or more amenities are invalid.');
+        }
+
+        await tx.amenity.createMany({
+          data: amenityChoices.map((choice) => ({
+            space_id: space.id,
+            amenity_choice_id: choice.id,
+          })),
+        });
+      }
+
+      if (normalizedAvailability.length) {
+        await tx.space_availability.createMany({
+          data: normalizedAvailability.map((slot) => ({
+            space_id: space.id,
+            day_of_week: slot.dayIndex,
+            opening: slot.opening,
+            closing: slot.closing,
+          })),
+        });
+      }
+
+      if (imagesPayload.length) {
+        await tx.space_image.createMany({
+          data: imagesPayload.map((image) => ({
+            space_id: space.id,
+            path: image.path,
+            category: image.category ?? null,
+            display_order: BigInt(image.display_order),
+            is_primary: image.is_primary ? 1 : 0,
+            created_at: now,
+          })),
+        });
+      }
+
+      if (verificationDocsPayload.length) {
+        const verificationRecord = await tx.verification.create({
+          data: {
+            subject_type: 'space',
+            partner_id: null,
+            space_id: space.id,
+            status: 'in_review',
+            submitted_at: now,
+            created_at: now,
+            updated_at: now,
+          },
+          select: { id: true, },
+        });
+
+        await tx.verification_document.createMany({
+          data: verificationDocsPayload.map((doc) => ({
+            verification_id: verificationRecord.id,
+            document_type: REQUIREMENT_TO_DOCUMENT_TYPE[doc.requirement_id],
+            path: doc.path,
+            file_size_bytes: BigInt(doc.file_size_bytes),
+            mime_type: doc.mime_type,
+          })),
+        });
+      }
+
+      return space;
+    });
+
+    const responsePayload = serializeSpace(created);
+    await invalidateSpacesListCache();
+    const res = NextResponse.json({ data: responsePayload, }, { status: 201, });
+    res.headers.set('Location', `/api/v1/spaces/${responsePayload.space_id}`);
+    return res;
+  } catch (error: any) {
+    if (error instanceof HttpError) {
+      return NextResponse.json({ error: error.message, }, { status: error.status, });
+    }
+
+    if (error?.code === 'P2003') {
+      return NextResponse.json({ error: 'User not found.', }, { status: 404, });
+    }
+
+    console.error('Failed to create space', error);
     return NextResponse.json({ error: 'Failed to create space', }, { status: 500, });
   }
 }

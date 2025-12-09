@@ -53,7 +53,7 @@ export function Hero() {
         </h1>
         <span className="font-serif text-sm sm:text-base">Smarter. Faster. Easier.</span>
         <br />
-        <SignInCard />
+        <SignInCard className="w-full max-w-sm" />
       </div>
 
       { /* Right container - Hidden on mobile */ }
