@@ -40,6 +40,7 @@ export async function GET() {
         avatar: true,
         role: true,
         birthday: true,
+        is_onboard: true,
         status: true,
         pending_deletion_at: true,
         expires_at: true,
@@ -54,12 +55,13 @@ export async function GET() {
     }
 
       return NextResponse.json({
-        userId: dbUser.user_id.toString(),
-        handle: dbUser.handle,
-        firstName: dbUser.first_name,
-        middleName: dbUser.middle_name,
-        lastName: dbUser.last_name,
-        avatar: dbUser.avatar,
+      userId: dbUser.user_id.toString(),
+      handle: dbUser.handle,
+      firstName: dbUser.first_name,
+      middleName: dbUser.middle_name,
+      lastName: dbUser.last_name,
+      avatar: dbUser.avatar,
+      isOnboard: dbUser.is_onboard,
       role: dbUser.role,
       status: dbUser.status,
       birthday: dbUser.birthday ? dbUser.birthday.toISOString().slice(0, 10) : null,
