@@ -84,7 +84,11 @@ export function normalizeTimestamp(value: number | string) {
 export function getInternalUserId(metadata: Record<string, unknown> | null) {
   if (!metadata) return null;
 
-  const candidate = metadata.internal_user_id ?? metadata.user_id;
+  const candidate =
+    metadata.partner_internal_user_id ??
+    metadata.partner_user_id ??
+    metadata.internal_user_id ??
+    metadata.user_id;
   if (candidate == null) return null;
 
   if (typeof candidate === 'string') {

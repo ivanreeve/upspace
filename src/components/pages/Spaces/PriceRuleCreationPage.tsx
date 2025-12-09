@@ -55,7 +55,7 @@ export function PriceRuleCreationPage() {
     try {
       await createPriceRuleMutation.mutateAsync(values);
       toast.success('Pricing rule saved.');
-      router.push('/spaces/pricing-rules');
+      router.push('/partner/spaces/pricing-rules');
     } catch (mutationError) {
       toast.error(
         mutationError instanceof Error
@@ -80,7 +80,7 @@ export function PriceRuleCreationPage() {
         <div className="flex items-center gap-2">
           <Button variant="outline" asChild>
             <Link
-              href="/spaces/pricing-rules"
+              href="/partner/spaces/pricing-rules"
               className="flex items-center gap-2 text-sm hover:text-white"
             >
               <FiArrowLeft className="size-4" aria-hidden="true" />
@@ -130,7 +130,7 @@ export function PriceRuleCreationPage() {
                 mode="create"
                 isSubmitting={ createPriceRuleMutation.isPending }
                 onSubmit={ handleSubmit }
-                onCancel={ () => router.push('/spaces/pricing-rules') }
+                onCancel={ () => router.push('/partner/spaces/pricing-rules') }
               />
             </>
           ) }

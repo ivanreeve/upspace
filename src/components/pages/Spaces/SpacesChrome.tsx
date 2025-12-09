@@ -65,10 +65,10 @@ export function SpacesChrome({
   }, [handleDialogOpenChange]);
 
   return (
-    <MarketplaceChrome
-      initialSidebarOpen={ initialSidebarOpen }
-      onSearchOpen={ handleSearchOpen }
-      messageHref="/spaces/messages"
+      <MarketplaceChrome
+        initialSidebarOpen={ initialSidebarOpen }
+        onSearchOpen={ handleSearchOpen }
+        messageHref="/partner/messages"
       insetClassName={ insetClassName }
       insetStyle={ insetStyle }
       dialogSlot={ (

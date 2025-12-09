@@ -46,7 +46,31 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="your_google_maps_api_key"
 PAYMONGO_SECRET_KEY="your_paymongo_secret_key"
 ```
 
-> **Note:** If you are connecting to a remote Supabase instance, replace `DATABASE_URL` with the connection string provided by Supabase (Transaction Pooler is recommended).
+
+### Redis-backed features
+
+The marketplace uses Redis for cached collections and rate limiting. Point `REDIS_URL` to your Redis or Upstash instance to enable these protections; the code will fallback gracefully when the variable is missing.
+
+```bash
+REDIS_URL="redis://USER:PASSWORD@HOST:PORT"
+```
+
+### Rate limiting overrides
+
+The read-heavy catalog, suggestion, and partner feed endpoints are throttled by default. Each window is expressed in seconds:
+
+| Variable | Default | Explanation |
+| --- | --- | --- |
+| `RATE_LIMIT_SPACES_LIMIT` | `120` | Requests allowed per `RATE_LIMIT_SPACES_WINDOW` for `GET /api/v1/spaces`. |
+| `RATE_LIMIT_SPACES_WINDOW` | `60` | Window duration for the public spaces listing. |
+| `RATE_LIMIT_SPACES_SUGGEST_LIMIT` | `60` | Requests allowed per window for `GET /api/v1/spaces/suggest`. |
+| `RATE_LIMIT_SPACES_SUGGEST_WINDOW` | `60` | Window duration for the suggestion endpoint. |
+| `RATE_LIMIT_PARTNER_SPACES_LIMIT` | `30` | Requests allowed per window when partners list their own spaces. |
+| `RATE_LIMIT_PARTNER_SPACES_WINDOW` | `60` | Window duration for partners listing spaces. |
+| `RATE_LIMIT_PARTNER_DASHBOARD_FEED_LIMIT` | `30` | Requests allowed per window for the partner dashboard feed. |
+| `RATE_LIMIT_PARTNER_DASHBOARD_FEED_WINDOW` | `60` | Window duration for the dashboard feed. |
+
+Unset any of the overrides above to keep using the defaults.
 
 ## 4. Database Setup
 

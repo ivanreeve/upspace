@@ -93,6 +93,7 @@ type SidebarFooterContentProps = {
   isSidebarLoading: boolean;
   showNotifications?: boolean;
   showAccount?: boolean;
+  showWallet?: boolean;
 };
 
 function GradientSparklesIcon({
@@ -221,6 +222,7 @@ function SidebarFooterContent({
   isSidebarLoading,
   showNotifications = true,
   showAccount = true,
+  showWallet = false,
 }: SidebarFooterContentProps) {
   const {
  state, isMobile, 
@@ -352,16 +354,16 @@ function SidebarFooterContent({
                 <DropdownMenuSeparator className="my-1" />
                 { showAccount && (
                   <DropdownMenuItem
-                    onSelect={ () => onNavigate('/account') }
+                    onSelect={ () => onNavigate('/customer/account') }
                     className="hover:!text-white hover:[&_svg]:!text-white"
                   >
                     <FiUser className="size-4" aria-hidden="true" />
                     <span>Account</span>
                   </DropdownMenuItem>
                 ) }
-                { showAccount && (
+                { showWallet && (
                   <DropdownMenuItem
-                    onSelect={ () => onNavigate('/account/wallet') }
+                    onSelect={ () => onNavigate('/customer/account/wallet') }
                     className="hover:!text-white hover:[&_svg]:!text-white"
                   >
                     <PiWalletLight className="size-4" aria-hidden="true" />
@@ -369,7 +371,7 @@ function SidebarFooterContent({
                   </DropdownMenuItem>
                 ) }
                 <DropdownMenuItem
-                  onSelect={ () => onNavigate('/settings') }
+                  onSelect={ () => onNavigate('/customer/settings') }
                   className="hover:!text-white hover:[&_svg]:!text-white"
                 >
                   <FiSettings className="size-4" aria-hidden="true" />
@@ -377,7 +379,7 @@ function SidebarFooterContent({
                 </DropdownMenuItem>
                 { showNotifications && (
                   <DropdownMenuItem
-                    onSelect={ () => onNavigate('/notifications') }
+                    onSelect={ () => onNavigate('/customer/notifications') }
                     className="hover:!text-white hover:[&_svg]:!text-white"
                   >
                     <FiBell className="size-4" aria-hidden="true" />
@@ -520,7 +522,7 @@ function MobileTopNav({
         <div className="flex items-center gap-2">
           { !isGuest && (
             <Link
-              href="/notifications"
+              href="/customer/notifications"
               aria-label="Notifications"
               className="rounded-full p-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
@@ -604,15 +606,15 @@ function MobileTopNav({
                   </div>
                 </div>
                 <DropdownMenuSeparator className="my-1" />
-                <DropdownMenuItem onSelect={ () => onNavigate('/account') }>
+                <DropdownMenuItem onSelect={ () => onNavigate('/customer/account') }>
                   <FiUser className="size-4" aria-hidden="true" />
                   <span>Account</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={ () => onNavigate('/settings') }>
+                <DropdownMenuItem onSelect={ () => onNavigate('/customer/settings') }>
                   <FiSettings className="size-4" aria-hidden="true" />
                   <span>Settings</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={ () => onNavigate('/notifications') }>
+                <DropdownMenuItem onSelect={ () => onNavigate('/customer/notifications') }>
                   <FiBell className="size-4" aria-hidden="true" />
                   <span>Notifications</span>
                 </DropdownMenuItem>
@@ -749,7 +751,7 @@ function useMarketplaceNavData() {
       return;
     }
 
-    router.refresh();
+    await router.replace('/');
   }, [router]);
 
   const metadataRole = session?.user?.user_metadata?.role as
@@ -833,7 +835,7 @@ function AccountLockOverlay({ profile, }: AccountLockOverlayProps) {
       return;
     }
 
-    router.refresh();
+    await router.replace('/');
   }, [router]);
 
   if (!profile || profile.status === 'active') {
@@ -965,7 +967,7 @@ export function MarketplaceChrome({
   insetClassName,
   insetStyle,
   initialSidebarOpen,
-  messageHref = '/messages',
+  messageHref = '/customer/messages',
 }: MarketplaceChromeProps) {
   const navData = useMarketplaceNavData();
   const cachedAvatarUrl = useCachedAvatar(navData.avatarUrl);
@@ -998,9 +1000,9 @@ export function MarketplaceChrome({
   const isAdminRole = effectiveRole === 'admin';
   const shouldShowAiSearch = isCustomerRole || isPartnerRole || isAdminRole;
   const shouldShowNotifications = isCustomerRole || isPartnerRole;
-  const resolvedMessageHref = messageHref ?? '/messages';
+  const resolvedMessageHref = messageHref ?? '/customer/messages';
   const pathname = usePathname();
-  const isAccountRoute = (pathname ?? '').startsWith('/account');
+  const isAccountRoute = (pathname ?? '').startsWith('/customer/account');
   const isMobile = useIsMobile();
   const shouldRenderMobileBottomNav =
     isMobile && !isAccountRoute && !isPartnerRole;
@@ -1074,10 +1076,10 @@ export function MarketplaceChrome({
       icon: FiHome,
     });
 
-    if (!isGuest) {
+    if (isPartnerRole) {
       actions.push({
         label: 'Wallet',
-        href: '/account/wallet',
+        href: '/customer/account/wallet',
         icon: PiWalletLight,
       });
     }
@@ -1091,7 +1093,7 @@ export function MarketplaceChrome({
 
       actions.push({
         label: 'Bookmarks',
-        href: '/bookmarks',
+        href: '/customer/bookmarks',
         icon: FiBookmark,
       });
       actions.push(aiSearchAction);
@@ -1106,7 +1108,7 @@ export function MarketplaceChrome({
     if (shouldShowNotifications && !isCustomerRole) {
       actions.push({
         label: 'Notifications',
-        href: '/notifications',
+        href: '/customer/notifications',
         icon: FiBell,
       });
     }
@@ -1133,7 +1135,7 @@ export function MarketplaceChrome({
     handleSearch,
     isAdminRole,
     isCustomerRole,
-    isGuest,
+    isPartnerRole,
     resolvedMessageHref,
     shouldShowNotifications
   ]);
@@ -1227,7 +1229,7 @@ export function MarketplaceChrome({
                   ) }
                   { isCustomerRole && (
                     <SidebarLinkItem
-                      href="/bookmarks"
+                      href="/customer/bookmarks"
                       label="Bookmarks"
                       icon={ FiBookmark }
                       tooltip="Bookmarks"
@@ -1236,7 +1238,7 @@ export function MarketplaceChrome({
                   ) }
                   { shouldShowNotifications && (
                     <SidebarLinkItem
-                      href="/notifications"
+                      href="/customer/notifications"
                       label="Notifications"
                       icon={ FiBell }
                       tooltip="Notifications"
@@ -1252,9 +1254,9 @@ export function MarketplaceChrome({
                       iconProps={ { strokeWidth: 2, } }
                     />
                   ) }
-                  { shouldShowNotifications && (
+                  { isPartnerRole && (
                     <SidebarLinkItem
-                      href="/account/wallet"
+                      href="/customer/account/wallet"
                       label="Wallet"
                       icon={ PiWalletLight }
                       tooltip="Wallet"
@@ -1262,7 +1264,7 @@ export function MarketplaceChrome({
                   ) }
                   { isPartnerRole && (
                     <SidebarLinkItem
-                      href="/spaces"
+                      href="/partner/spaces"
                       label="Spaces"
                       icon={ MdWorkOutline }
                       tooltip="Spaces"
@@ -1270,7 +1272,7 @@ export function MarketplaceChrome({
                   ) }
                   { isPartnerRole && (
                     <SidebarLinkItem
-                      href="/spaces/pricing-rules"
+                      href="/partner/spaces/pricing-rules"
                       label="Price Rules"
                       icon={ PiMoneyWavyBold }
                       tooltip="Price rules"
@@ -1278,7 +1280,7 @@ export function MarketplaceChrome({
                   ) }
                   { isPartnerRole && (
                     <SidebarLinkItem
-                      href="/spaces/dashboard"
+                      href="/partner/spaces/dashboard"
                       label="Dashboard"
                       icon={ MdOutlineSpaceDashboard }
                       tooltip="Dashboard"
@@ -1286,7 +1288,7 @@ export function MarketplaceChrome({
                   ) }
                   { isPartnerRole && (
                     <SidebarLinkItem
-                      href="/spaces/bookings"
+                      href="/partner/spaces/bookings"
                       label="Bookings"
                       icon={ LuTicket }
                       tooltip="Bookings"
@@ -1364,6 +1366,7 @@ export function MarketplaceChrome({
               isSidebarLoading={ navData.isSidebarLoading }
               showNotifications={ shouldShowNotifications }
               showAccount={ !isAdminRole }
+              showWallet={ isPartnerRole }
             />
           </SidebarFooter>
           <SidebarRail />

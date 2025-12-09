@@ -54,7 +54,7 @@ export default async function CustomerMessagesPage() {
       return aKey > bKey ? -1 : 1;
     });
 
-    redirect(`/messages/${sorted[0]?.id}`);
+    redirect(`/customer/messages/${sorted[0]?.id}`);
   }
 
   const cookieStore = await cookies();

@@ -26,7 +26,7 @@ export function SpacesBreadcrumbs({
       <BreadcrumbList>
         <BreadcrumbItem>
           <BreadcrumbLink asChild>
-            <Link href="/spaces" aria-label="Back to spaces">
+            <Link href="/partner/spaces" aria-label="Back to spaces">
               Spaces
             </Link>
           </BreadcrumbLink>

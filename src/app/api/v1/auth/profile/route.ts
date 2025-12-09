@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
@@ -70,13 +72,18 @@ export async function GET() {
         : null,
       expiresAt: dbUser.expires_at ? dbUser.expires_at.toISOString() : null,
     });
-    } catch (error) {
-      console.error('Unexpected error in profile route', error);
-      return NextResponse.json(
-        { message: 'Unable to load user profile at the moment.', },
-        { status: 500, }
-      );
+  } catch (error) {
+    const databaseResponse = createDatabaseErrorResponse(error);
+    if (databaseResponse) {
+      return databaseResponse;
     }
+
+    console.error('Unexpected error in profile route', error);
+    return NextResponse.json(
+      { message: 'Unable to load user profile at the moment.', },
+      { status: 500, }
+    );
+  }
 }
 
 const profileUpdateSchema = z.object({
@@ -170,10 +177,38 @@ export async function PATCH(req: NextRequest) {
       birthday: updatedUser.birthday ? updatedUser.birthday.toISOString().slice(0, 10) : null,
     });
   } catch (error) {
+    const databaseResponse = createDatabaseErrorResponse(error);
+    if (databaseResponse) {
+      return databaseResponse;
+    }
+
     console.error('Unexpected error in profile route', error);
     return NextResponse.json(
       { message: 'Unable to update your profile at the moment.', },
       { status: 500, }
     );
   }
+}
+
+function createDatabaseErrorResponse(error: unknown) {
+  if (
+    error instanceof PrismaClientKnownRequestError &&
+    error.code === 'P1001'
+  ) {
+    console.error('Prisma connection error in profile route', error);
+    return NextResponse.json(
+      { message: 'Database unavailable. Please try again shortly.', },
+      { status: 503, }
+    );
+  }
+
+  if (error instanceof Prisma.PrismaClientInitializationError) {
+    console.error('Prisma initialization error in profile route', error);
+    return NextResponse.json(
+      { message: 'Database unavailable. Please try again shortly.', },
+      { status: 503, }
+    );
+  }
+
+  return null;
 }

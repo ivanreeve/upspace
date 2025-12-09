@@ -90,15 +90,32 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(homeUrl);
     }
 
-    const profileUrl = new URL('/api/v1/auth/profile', request.url);
-    const profileHeaders = new Headers();
+    const syncProfileUrl = new URL('/api/v1/auth/sync-profile', request.url);
     const cookieHeader = request.headers.get('cookie');
+    const sharedHeaders = new Headers();
 
     if (cookieHeader) {
-      profileHeaders.set('cookie', cookieHeader);
+      sharedHeaders.set('cookie', cookieHeader);
     }
 
-    profileHeaders.set('x-upspace-internal-call', '1');
+    sharedHeaders.set('x-upspace-internal-call', '1');
+
+    const syncResponse = await fetch(syncProfileUrl, {
+      method: 'POST',
+      headers: new Headers(sharedHeaders),
+      cache: 'no-store',
+    });
+
+    if (!syncResponse.ok) {
+      console.error(
+        'Failed to sync user profile in middleware',
+        syncResponse.status,
+        syncResponse.statusText
+      );
+    }
+
+    const profileUrl = new URL('/api/v1/auth/profile', request.url);
+    const profileHeaders = new Headers(sharedHeaders);
 
     const profileResponse = await fetch(profileUrl, {
       headers: profileHeaders,
@@ -107,12 +124,12 @@ export async function middleware(request: NextRequest) {
 
     if (!profileResponse.ok) {
       console.error('Failed to fetch user profile in middleware', profileResponse.status, profileResponse.statusText);
-      if (pathname === '/signin' || pathname.startsWith('/api/auth')) {
+      if (pathname.startsWith('/api/auth')) {
         return response;
       }
 
-      const signinUrl = new URL('/signin', request.url);
-      return NextResponse.redirect(signinUrl);
+      const landingUrl = new URL('/', request.url);
+      return NextResponse.redirect(landingUrl);
     }
 
     const profilePayload = await profileResponse.json().catch(() => null);
@@ -122,12 +139,12 @@ export async function middleware(request: NextRequest) {
 
     if (!profile) {
       console.error('Malformed profile payload in middleware');
-      if (pathname === '/signin' || pathname.startsWith('/api/auth')) {
+      if (pathname.startsWith('/api/auth')) {
         return response;
       }
 
-      const signinUrl = new URL('/signin', request.url);
-      return NextResponse.redirect(signinUrl);
+      const landingUrl = new URL('/', request.url);
+      return NextResponse.redirect(landingUrl);
     }
 
     const isOnboard = Boolean(profile?.isOnboard);

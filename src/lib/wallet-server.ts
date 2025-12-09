@@ -15,7 +15,32 @@ const missingProfileResponse = NextResponse.json(
   { status: 404, }
 );
 
-export async function resolveAuthenticatedUserForWallet() {
+const partnerOnlyResponse = NextResponse.json(
+  { message: 'Wallet access is limited to partners.', },
+  { status: 403, }
+);
+
+type ResolveAuthenticatedUserForWalletOptions = {
+  requirePartner?: boolean;
+};
+
+type AuthenticatedUserForWallet =
+  | {
+      response: null;
+      dbUser: {
+        user_id: bigint;
+        auth_user_id: string;
+        role: 'customer' | 'partner' | 'admin' | string;
+      };
+    }
+  | {
+      response: NextResponse;
+      dbUser: null;
+    };
+
+export async function resolveAuthenticatedUserForWallet(
+  options: ResolveAuthenticatedUserForWalletOptions = {}
+) {
   const supabase = await createSupabaseServerClient();
   const {
     data: authData,
@@ -34,6 +59,7 @@ export async function resolveAuthenticatedUserForWallet() {
     select: {
       user_id: true,
       auth_user_id: true,
+      role: true,
     },
   });
 
@@ -44,10 +70,17 @@ export async function resolveAuthenticatedUserForWallet() {
     };
   }
 
+  if (options.requirePartner && dbUser.role !== 'partner') {
+    return {
+      response: partnerOnlyResponse,
+      dbUser: null,
+    };
+  }
+
   return {
     response: null,
     dbUser,
-  };
+  } satisfies AuthenticatedUserForWallet;
 }
 
 export async function ensureWalletRow(dbUserId: bigint) {

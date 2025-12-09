@@ -70,7 +70,7 @@ export function PartnerMessagesList() {
             return (
               <Link
                 key={ room.id }
-                href={ `/spaces/messages/${room.id}` }
+                href={ `/partner/messages/${room.id}` }
                 className={ cn(
                   'block w-full rounded-2xl border p-3 text-left transition hover:border-primary/70 hover:bg-primary/5'
                 ) }

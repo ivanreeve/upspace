@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
       return invalidPayloadResponse;
     }
 
-    const auth = await resolveAuthenticatedUserForWallet();
+    const auth = await resolveAuthenticatedUserForWallet({ requirePartner: true, });
     if (auth.response) {
       return auth.response;
     }
