@@ -3,7 +3,8 @@
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
-import { ONBOARDING_PATH } from '@/lib/constants';
+import { ONBOARDING_PATH, ROLE_REDIRECT_MAP } from '@/lib/constants';
+import { useSession } from '@/components/auth/SessionProvider';
 import { useUserProfile } from '@/hooks/use-user-profile';
 
 export function OnboardingRedirect() {
@@ -14,19 +15,47 @@ export function OnboardingRedirect() {
     isLoading,
     isFetching,
   } = useUserProfile();
+  const {
+    session,
+    isLoading: isSessionLoading,
+  } = useSession();
 
   const isOnboardingRoute =
     pathname === ONBOARDING_PATH || pathname.startsWith(`${ONBOARDING_PATH}/`);
   const isProfileLoading = isLoading || isFetching;
-  const needsOnboarding = Boolean(profile && !profile.isOnboard);
+  const isSessionResolved = Boolean(session) || !isSessionLoading;
+  const redirectTarget = profile?.role ? ROLE_REDIRECT_MAP[profile.role] : '/marketplace';
 
   useEffect(() => {
-    if (isOnboardingRoute || isProfileLoading || !needsOnboarding) {
+    if (!isSessionResolved || isProfileLoading || !session || !profile) {
       return;
     }
 
-    router.replace(ONBOARDING_PATH);
-  }, [isOnboardingRoute, isProfileLoading, needsOnboarding, router]);
+    if (!profile.isOnboard) {
+      if (!isOnboardingRoute) {
+        router.replace(ONBOARDING_PATH);
+      }
+      return;
+    }
+
+    const isRestrictedRoute =
+      pathname === ONBOARDING_PATH ||
+      pathname.startsWith(`${ONBOARDING_PATH}/`) ||
+      pathname === '/signin';
+
+    if (isRestrictedRoute) {
+      router.replace(redirectTarget);
+    }
+  }, [
+    isOnboardingRoute,
+    isProfileLoading,
+    profile,
+    redirectTarget,
+    router,
+    session,
+    isSessionResolved,
+    pathname
+  ]);
 
   return null;
 }
