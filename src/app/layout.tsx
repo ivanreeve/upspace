@@ -3,6 +3,7 @@ import './globals.css';
 import { ThemeProvider } from 'next-themes';
 
 import { AuthProfileSync } from '@/components/auth/AuthProfileSync';
+import { OnboardingRedirect } from '@/components/auth/OnboardingRedirect';
 import { SessionProvider } from '@/components/auth/SessionProvider';
 import { ServiceWorkerRegistration } from '@/components/common/ServiceWorkerRegistration';
 import { QueryProvider } from '@/components/providers/QueryProvider';
@@ -58,6 +59,7 @@ export default function RootLayout({ children, }: Readonly<{
             >
               <NavigationProgressBar />
               <AuthProfileSync />
+              <OnboardingRedirect />
               { children }
               <Toaster />
               <ServiceWorkerRegistration />
