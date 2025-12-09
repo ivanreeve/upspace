@@ -182,7 +182,7 @@ const buildStorageObjectPath = (prefix: string, ownerId: string, fileName: strin
     .join('/');
 
 const SPACE_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg'] as const;
-const SPACE_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
+const SPACE_IMAGE_MAX_BYTES = 50 * 1024 * 1024;
 const VERIFICATION_DOC_MIME_TYPES = ['image/png', 'image/jpeg', 'application/pdf'] as const;
 const VERIFICATION_DOC_MAX_BYTES = 50 * 1024 * 1024;
 
@@ -267,6 +267,8 @@ const normalizeMimeType = (mime: string) => {
 
 export default function SpaceCreateRoute() {
   const router = useRouter();
+  const spaceImageMaxLabel = formatBytes(SPACE_IMAGE_MAX_BYTES);
+  const verificationDocMaxLabel = formatBytes(VERIFICATION_DOC_MAX_BYTES);
   const [searchParamsString, setSearchParamsString] = useState('');
   useEffect(() => {
     const update = () => {
@@ -308,6 +310,7 @@ export default function SpaceCreateRoute() {
     isHydrated: isFormHydrated,
   } = useSpaceFormPersistence(form, currentStep);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   const [listingChecklistState, setListingChecklistState] = useState<Record<string, boolean>>(createListingChecklistState);
   const isListingChecklistComplete = useMemo(
@@ -661,7 +664,7 @@ export default function SpaceCreateRoute() {
   }, [navigateToStep, stepParam]);
 
   useEffect(() => {
-    if (!isPersistenceHydrated) {
+    if (!isPersistenceHydrated || hasSubmitted) {
       return;
     }
 
@@ -752,6 +755,7 @@ export default function SpaceCreateRoute() {
     }
   }, [
     currentStep,
+    hasSubmitted,
     isAddressStepComplete,
     isAvailabilityStepComplete,
     isAmenitiesStepComplete,
@@ -764,6 +768,18 @@ export default function SpaceCreateRoute() {
   const handleFeaturedImageSelection = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
+      return;
+    }
+
+    try {
+      ensureFileWithinConstraints(file, SPACE_IMAGE_MIME_TYPES, SPACE_IMAGE_MAX_BYTES, 'Space image');
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : `Space image must be ${spaceImageMaxLabel} or smaller.`;
+      toast.error(message);
+      event.target.value = '';
       return;
     }
 
@@ -854,6 +870,7 @@ export default function SpaceCreateRoute() {
     }
 
     let message: string | null = null;
+    let sizeValidationMessage: string | null = null;
 
     setPhotoCategories((prev) =>
       prev.map((category) => {
@@ -869,20 +886,46 @@ export default function SpaceCreateRoute() {
         }
 
         const acceptedFiles = files.slice(0, remainingSlots);
+        const validFiles: File[] = [];
 
         if (acceptedFiles.length < files.length) {
           message = `Only ${remainingSlots} more photo${remainingSlots === 1 ? '' : 's'} fit in ${category.name || 'this category'}.`;
         }
 
+        acceptedFiles.forEach((file) => {
+          try {
+            ensureFileWithinConstraints(
+              file,
+              SPACE_IMAGE_MIME_TYPES,
+              SPACE_IMAGE_MAX_BYTES,
+              'Space image'
+            );
+            validFiles.push(file);
+          } catch (error) {
+            const nextMessage =
+              error instanceof Error
+                ? error.message
+                : `Space image must be ${spaceImageMaxLabel} or smaller.`;
+            if (!sizeValidationMessage) {
+              sizeValidationMessage = nextMessage;
+            }
+          }
+        });
+
+        if (validFiles.length === 0) {
+          return category;
+        }
+
         return {
           ...category,
-          images: [...category.images, ...acceptedFiles],
+          images: [...category.images, ...validFiles],
         };
       })
     );
 
-    if (message) {
-      toast.error(message);
+    const errorMessage = sizeValidationMessage ?? message;
+    if (errorMessage) {
+      toast.error(errorMessage);
     }
 
     event.target.value = '';
@@ -1106,10 +1149,11 @@ export default function SpaceCreateRoute() {
 
       toast.success(`${values.name} submitted for review.`);
       queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
+      setHasSubmitted(true);
       clearDraft();
       clearImages();
       resetVerificationRequirements();
-      router.push('/spaces');
+      router.replace('/spaces');
     } catch (error) {
       console.error('Failed to submit space', error);
       toast.error(error instanceof Error ? error.message : 'Failed to submit the space. Please try again.');
@@ -1358,6 +1402,9 @@ export default function SpaceCreateRoute() {
                       uploads={ verificationRequirements }
                       onUpload={ handleRequirementUpload }
                       onRemove={ handleRequirementRemove }
+                      maxFileSizeBytes={ VERIFICATION_DOC_MAX_BYTES }
+                      maxFileSizeLabel={ verificationDocMaxLabel }
+                      onInvalidFile={ (message) => toast.error(message) }
                     />
                   ) }
                 </div>

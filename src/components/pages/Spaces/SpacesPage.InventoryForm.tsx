@@ -420,7 +420,7 @@ export function SpacesInventoryForm() {
         <div className="hidden rounded-md border border-border/70 bg-background/80 md:block">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow  className="hover:bg-transparent">
                 <TableHead className="w-[96px]">Preview</TableHead>
                 <TableHead>Space</TableHead>
                 <TableHead>Location</TableHead>
@@ -484,7 +484,7 @@ export function SpacesInventoryForm() {
                   </TableCell>
                   <TableCell>{ row.areas }</TableCell>
                   <TableCell className="text-right">
-                    <Button asChild size="sm" variant="outline">
+                    <Button asChild size="sm" variant="outline" className="hover:text-white">
                       <Link href={ `/spaces/${row.id}` }>Open</Link>
                     </Button>
                   </TableCell>

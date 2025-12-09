@@ -579,11 +579,11 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
               </div>
             ) : (
               <Select
-                id="area-select"
                 value={ selectedAreaId ?? undefined }
                 onValueChange={ handleSelectArea }
               >
                 <SelectTrigger
+                  id="area-select"
                   className="w-full rounded-md"
                   aria-label="Select an area"
                 >

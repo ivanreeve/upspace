@@ -89,6 +89,7 @@ export function NotificationsPage() {
             type="button"
             size="sm"
             variant="outline"
+            className="hover:text-white"
             onClick={ handleMarkAllRead }
             disabled={ !hasUnread || isMarkingAll || isLoading || isError }
             aria-disabled={ !hasUnread || isMarkingAll || isLoading || isError }
