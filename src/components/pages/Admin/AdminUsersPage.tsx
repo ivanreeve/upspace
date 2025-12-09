@@ -244,7 +244,7 @@ export function AdminUsersPage() {
                           <Skeleton className="h-4 w-28" />
                         </TableCell>
                         <TableCell className="text-right">
-                          <Skeleton className="h-8 w-8" />
+                          <Skeleton className="h-9 w-9 rounded-full" />
                         </TableCell>
                       </TableRow>
                     )) }
