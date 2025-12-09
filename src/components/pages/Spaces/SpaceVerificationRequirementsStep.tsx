@@ -63,12 +63,18 @@ type SpaceVerificationRequirementsStepProps = {
   uploads: Record<VerificationRequirementId, (File | null)[]>;
   onUpload: (requirementId: VerificationRequirementId, slotIndex: number, file: File) => void;
   onRemove: (requirementId: VerificationRequirementId, slotIndex: number) => void;
+  maxFileSizeBytes: number;
+  maxFileSizeLabel: string;
+  onInvalidFile: (message: string) => void;
 };
 
 export function SpaceVerificationRequirementsStep({
   uploads,
   onUpload,
   onRemove,
+  maxFileSizeBytes,
+  maxFileSizeLabel,
+  onInvalidFile,
 }: SpaceVerificationRequirementsStepProps) {
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({} as Record<string, HTMLInputElement | null>);
 
@@ -84,6 +90,11 @@ export function SpaceVerificationRequirementsStep({
   ) => {
     const file = event.target.files?.[0];
     if (file) {
+      if (file.size > maxFileSizeBytes) {
+        onInvalidFile(`File must be ${maxFileSizeLabel} or smaller.`);
+        event.target.value = '';
+        return;
+      }
       onUpload(requirementId, slotIndex, file);
     }
 
