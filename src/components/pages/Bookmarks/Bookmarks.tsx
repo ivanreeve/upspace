@@ -144,7 +144,7 @@ export function Bookmarks({ bookmarkUserId, }: BookmarksProps) {
             <Button asChild variant="default">
               <Link href="/marketplace">Find a space</Link>
             </Button>
-            <Button type="button" variant="ghost" onClick={ () => { void refetch(); } }>
+            <Button type="button" variant="ghost" className="hover:text-white" onClick={ () => { void refetch(); } }>
               Refresh list
             </Button>
           </div>

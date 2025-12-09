@@ -37,7 +37,7 @@ const mockSupabaseClient = { auth: { getUser: vi.fn<() => Promise<SupabaseAuthRe
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma, }));
 vi.mock('@/lib/supabase/server', () => ({ createSupabaseServerClient: vi.fn(async () => mockSupabaseClient), }));
 const mockBuildSpacesListCacheKey = vi.fn(() => 'spaces:list:test-cache');
-const mockReadSpacesListCache = vi.fn(async () => null);
+const mockReadSpacesListCache = vi.fn(async (): Promise<string | null> => null);
 const mockSetSpacesListCache = vi.fn(async () => undefined);
 const mockInvalidateSpacesListCache = vi.fn(async () => undefined);
 vi.mock('next/server', () => {

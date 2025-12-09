@@ -775,7 +775,7 @@ hourLabel: '—',
 
   return (
     <div className="space-y-8 mt-8">
-      <Card className="rounded-3xl border bg-gradient-to-br from-primary/20 to-primary/5">
+      <Card className="rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5 shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
         <CardHeader className="items-start gap-4">
           <div>
             <CardTitle className="text-lg font-semibold">
@@ -805,7 +805,7 @@ hourLabel: '—',
         </CardContent>
       </Card>
 
-      <Card className="rounded-3xl border">
+      <Card className="rounded-3xl border border-[#FFFFFF] shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
         <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center">
           <div>
             <CardTitle>Filters & controls</CardTitle>
@@ -945,7 +945,7 @@ hourLabel: '—',
         { summaryMetrics.map((metric) => (
           <Card
             key={ metric.label }
-            className="rounded-3xl border bg-gradient-to-br from-white/70 to-white/10 shadow-[0_20px_60px_rgba(15,23,42,0.16)] dark:from-foreground/10 dark:to-transparent"
+            className="rounded-3xl border border-[#FFFFFF]  shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:from-foreground/10 dark:to-transparent"
           >
             <CardContent className="space-y-2 px-4 py-5">
               <div className="flex items-center justify-between">
@@ -968,7 +968,7 @@ hourLabel: '—',
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
-        <Card className="rounded-3xl border xl:col-span-2">
+        <Card className="rounded-3xl border xl:col-span-2 border-[#FFFFFF]  shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
           <CardHeader className="flex items-center justify-between gap-2">
             <div>
               <CardTitle>Bookings & revenue over time</CardTitle>
@@ -1001,7 +1001,7 @@ hourLabel: '—',
             />
           </CardContent>
         </Card>
-        <Card className="rounded-3xl border">
+        <Card className="rounded-3xl border border-[#FFFFFF]  shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
           <CardHeader>
             <div>
               <CardTitle>Views vs bookings</CardTitle>
@@ -1023,7 +1023,7 @@ hourLabel: '—',
         </Card>
       </div>
 
-      <Card className="rounded-3xl border">
+      <Card className="rounded-3xl border border-[#FFFFFF] shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
         <CardHeader className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle>Funnel & engagement</CardTitle>
@@ -1090,7 +1090,7 @@ hourLabel: '—',
         </CardContent>
       </Card>
 
-      <Card className="rounded-3xl border">
+      <Card className="rounded-3xl border border-[#FFFFFF] shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
         <CardHeader className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle>Listing performance</CardTitle>
@@ -1105,7 +1105,7 @@ hourLabel: '—',
         <CardContent className="px-0 pb-0">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="hover:bg-transparent">
                 { [
                   {
                     label: 'Listing',
@@ -1176,7 +1176,7 @@ hourLabel: '—',
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="rounded-3xl border">
+        <Card className="rounded-3xl border border-[#FFFFFF] shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
           <CardHeader>
             <div>
               <CardTitle>Booking status</CardTitle>
@@ -1210,7 +1210,7 @@ hourLabel: '—',
             }) }
           </CardContent>
         </Card>
-        <Card className="rounded-3xl border">
+        <Card className="rounded-3xl border border-[#FFFFFF] shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
           <CardHeader>
             <div>
               <CardTitle>Operational insights</CardTitle>

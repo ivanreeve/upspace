@@ -312,7 +312,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                   { listAvatarUrl ? (
                     <AvatarImage src={ listAvatarUrl } alt={ room.spaceName ?? 'Space avatar' } />
                   ) : null }
-                  <AvatarFallback>{ initials }</AvatarFallback>
+                  <AvatarFallback className="text-white">{ initials }</AvatarFallback>
                 </Avatar>
                 <div className="flex min-w-0 flex-1 flex-col">
             <div className="flex items-center justify-between gap-2">
@@ -511,7 +511,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                   { headerAvatarUrl ? (
                     <AvatarImage src={ headerAvatarUrl } alt={ activeRoom?.spaceName ?? 'Space avatar' } />
                   ) : null }
-                  <AvatarFallback>{ headerAvatarInitials }</AvatarFallback>
+                  <AvatarFallback className="text-white">{ headerAvatarInitials }</AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col">
                   <span className="text-2xl font-semibold tracking-tight text-foreground">
