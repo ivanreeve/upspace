@@ -27,8 +27,9 @@ const patchSchema = z
 
 export async function PATCH(
   req: NextRequest,
-  { params, }: { params: { request_id: string } }
+  { params, }: { params: Promise<{ request_id: string }> }
 ) {
+  const resolvedParams = await params;
   try {
     const session = await requireAdminSession(req);
 
