@@ -65,6 +65,7 @@ export function AdminSpacesPage() {
     search: searchParam,
   });
   const spaces = page?.data ?? [];
+  const approvedSpaces = spaces.filter((space) => space.isPublished);
   const nextCursor = page?.nextCursor ?? null;
   const visibilityMutation = useAdminSpaceVisibilityMutation();
   const [processingSpaceId, setProcessingSpaceId] = useState<{
@@ -242,7 +243,7 @@ export function AdminSpacesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  { spaces.map((space) => {
+                  { approvedSpaces.map((space) => {
                     const location = [space.city, space.region].filter(Boolean).join(', ');
                     return (
                       <TableRow key={ space.id }>
@@ -280,10 +281,10 @@ export function AdminSpacesPage() {
                       </TableRow>
                     );
                   }) }
-                  { spaces.length === 0 && (
+                  { approvedSpaces.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={ 6 } className="py-8 text-center text-sm text-muted-foreground">
-                        No spaces matched your search.
+                        No approved spaces matched your search.
                       </TableCell>
                     </TableRow>
                   ) }
@@ -293,7 +294,7 @@ export function AdminSpacesPage() {
           </div>
 
           <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>{ isFetching ? 'Updating…' : `${spaces.length} space${spaces.length === 1 ? '' : 's'}` }</span>
+            <span>{ isFetching ? 'Updating…' : `${approvedSpaces.length} approved space${approvedSpaces.length === 1 ? '' : 's'}` }</span>
             <div className="flex items-center gap-2">
               <Button
                 type="button"
