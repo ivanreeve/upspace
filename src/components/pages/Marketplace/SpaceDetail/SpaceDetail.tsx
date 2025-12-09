@@ -5,7 +5,8 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState
+  useState,
+  type ChangeEvent
 } from 'react';
 import {
   FiChevronDown,
@@ -14,7 +15,8 @@ import {
   FiChevronUp,
   FiMessageSquare,
   FiMinus,
-  FiPlus
+  FiPlus,
+  FiUsers
 } from 'react-icons/fi';
 import { CgSpinner } from 'react-icons/cg';
 import { toast } from 'sonner';
@@ -36,6 +38,8 @@ import { SPACE_DESCRIPTION_VIEWER_CLASSNAME } from '@/components/pages/Spaces/sp
 import type { MarketplaceSpaceDetail } from '@/lib/queries/space';
 import { sanitizeRichText } from '@/lib/rich-text';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -110,6 +114,17 @@ const BOOKING_DURATION_UNITS: BookingDurationUnit[] = [
 
 const DEFAULT_BOOKING_UNIT_INDEX = 0;
 const DEFAULT_BOOKING_UNIT_VALUE = 1;
+const MIN_GUEST_COUNT = 1;
+const MAX_GUEST_COUNT = 99;
+
+const clampGuestCount = (value: number, maxLimit: number | null = null) => {
+  if (!Number.isFinite(value)) {
+    return MIN_GUEST_COUNT;
+  }
+  const normalized = Math.trunc(value);
+  const upperLimit = maxLimit ?? MAX_GUEST_COUNT;
+  return Math.min(Math.max(normalized, MIN_GUEST_COUNT), upperLimit);
+};
 
 const getMaxUnitsForDurationUnit = (multiplier: number) =>
   Math.max(1, Math.floor(MAX_BOOKING_HOURS / multiplier));
@@ -153,6 +168,15 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
   const [bookingUnitValue, setBookingUnitValue] = useState(DEFAULT_BOOKING_UNIT_VALUE);
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
   const [isPricingLoading, setIsPricingLoading] = useState(false);
+  const [guestCount, setGuestCount] = useState(MIN_GUEST_COUNT);
+  const [scheduledDate, setScheduledDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
+  const earliestScheduleDate = useMemo(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  }, []);
   const [isDesktopViewport, setIsDesktopViewport] = useState(() => {
     if (typeof window === 'undefined') {
       return false;
@@ -183,6 +207,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     setBookingUnitValue(DEFAULT_BOOKING_UNIT_VALUE);
     setSelectedAreaId(null);
     setIsPricingLoading(false);
+    setGuestCount(MIN_GUEST_COUNT);
   }, []);
 
   const findFirstPricedAreaId = useCallback(() => {
@@ -207,6 +232,10 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     initializeBookingSelection();
     setIsBookingOpen(true);
   }, [hasAreas, initializeBookingSelection]);
+
+  const handleScheduledDateChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setScheduledDate(event.target.value);
+  }, []);
 
   useEffect(() => {
     const paymentStatus = searchParams.get('payment');
@@ -431,12 +460,81 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     [activePriceRule]
   );
 
+  const variableOverrides = useMemo(() => {
+    const overrides: Record<string, number> = { guest_count: guestCount, };
+
+    if (selectedArea) {
+      if (typeof selectedArea.maxCapacity === 'number') {
+        overrides.area_max_capacity = selectedArea.maxCapacity;
+      }
+      if (typeof selectedArea.minCapacity === 'number') {
+        overrides.area_min_capacity = selectedArea.minCapacity;
+      }
+    }
+
+    return overrides;
+  }, [guestCount, selectedArea]);
+
   const priceEvaluation = useMemo(() => {
     if (!activePriceRule) {
       return null;
     }
-    return evaluatePriceRule(activePriceRule.definition, { bookingHours, });
-  }, [activePriceRule, bookingHours]);
+    return evaluatePriceRule(
+      activePriceRule.definition,
+      {
+        bookingHours,
+        variableOverrides,
+      }
+    );
+  }, [activePriceRule, bookingHours, variableOverrides]);
+
+  const selectedAreaMaxCapacity = selectedArea?.maxCapacity ?? null;
+  const remainingCapacity =
+    selectedAreaMaxCapacity !== null
+      ? Math.max(selectedAreaMaxCapacity - guestCount, 0)
+      : null;
+  const isOverCapacity =
+    selectedAreaMaxCapacity !== null && guestCount > selectedAreaMaxCapacity;
+  const capacityHelperText = selectedArea
+    ? selectedAreaMaxCapacity === null
+      ? 'This area does not have a capacity limit.'
+      : isOverCapacity
+        ? `Over the ${selectedAreaMaxCapacity}-guest limit`
+        : `${remainingCapacity} slot${remainingCapacity === 1 ? '' : 's'} remaining`
+    : 'Select an area to view capacity limits.';
+
+  const basePrice = priceEvaluation?.price ?? null;
+  const totalPrice = basePrice === null ? null : basePrice * guestCount;
+  const pricePreviewLabel = (() => {
+    if (!selectedArea) {
+      return 'Select an area to preview pricing';
+    }
+    if (!activePriceRule) {
+      return 'Pricing unavailable';
+    }
+    if (totalPrice === null) {
+      return 'Calculating price...';
+    }
+    return PRICE_FORMATTER.format(totalPrice);
+  })();
+
+  const currentGuestLimit = selectedAreaMaxCapacity ?? MAX_GUEST_COUNT;
+  useEffect(() => {
+    setGuestCount((current) => clampGuestCount(current, selectedAreaMaxCapacity));
+  }, [selectedAreaMaxCapacity]);
+
+  const handleDecreaseGuestCount = useCallback(() => {
+    setGuestCount((current) => clampGuestCount(current - 1, currentGuestLimit));
+  }, [currentGuestLimit]);
+
+  const handleIncreaseGuestCount = useCallback(() => {
+    setGuestCount((current) => clampGuestCount(current + 1, currentGuestLimit));
+  }, [currentGuestLimit]);
+
+  const handleGuestCountInputChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const parsed = Number(event.target.value);
+    setGuestCount(clampGuestCount(parsed, currentGuestLimit));
+  }, [currentGuestLimit]);
 
   const priceBranchLabel = (branch: PriceRuleEvaluationResult['branch']) => {
     switch (branch) {
@@ -452,10 +550,13 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
   };
 
   const bookingDurationContent = (
-    <div className="space-y-6">
-      <div className="space-y-3">
-        <p className="text-lg font-semibold text-left font-sf mt-8 text-muted-foreground">
-          Choose an area
+    <div className="space-y-4">
+      <div className="space-y-1">
+        <p className="text-lg font-semibold text-left font-sf text-muted-foreground">
+          Plan your visit
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Choose an area, date, duration, and guest count to preview pricing.
         </p>
         { space.areas.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border/70 bg-muted/40 px-4 py-5 text-center text-sm text-muted-foreground">
@@ -468,7 +569,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
           >
             <SelectTrigger
               aria-label="Choose an area"
-              className="w-full justify-between rounded-md "
+              className="w-full justify-between rounded-md"
             >
               <SelectValue placeholder="Select an area" />
             </SelectTrigger>
@@ -482,10 +583,9 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                     key={ area.id }
                     value={ area.id }
                     disabled={ !hasPricingRule }
-                    className="hover:!text-white"
                   >
-                    <div className="flex w-full flex-col gap-0.5 ">
-                      <span className="text-sm font-semibold leading-tight group-hover:text-white">
+                    <div className="flex w-full flex-col gap-0.5">
+                      <span className="text-sm font-semibold leading-tight text-foreground">
                         { area.name }
                       </span>
                     </div>
@@ -519,7 +619,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                     type="button"
                     variant="outline"
                     size="icon"
-                    className="h-10 w-10 rounded-full hover:text-white"
+                    className="h-10 w-10 rounded-full"
                     onClick={ handlePreviousDurationUnit }
                     disabled={ isPricingLoading }
                   >
@@ -533,7 +633,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                     type="button"
                     variant="outline"
                     size="icon"
-                    className="h-10 w-10 rounded-full hover:text-white"
+                    className="h-10 w-10 rounded-full"
                     onClick={ handleNextDurationUnit }
                     disabled={ isPricingLoading }
                   >
@@ -546,7 +646,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                     type="button"
                     variant="outline"
                     size="icon"
-                    className="h-12 w-12 rounded-full hover:text-white"
+                    className="h-12 w-12 rounded-full"
                     onClick={ decreaseBookingUnitValue }
                     disabled={
                       bookingUnitValue <= DEFAULT_BOOKING_UNIT_VALUE ||
@@ -569,7 +669,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                     type="button"
                     variant="outline"
                     size="icon"
-                    className="h-12 w-12 rounded-full hover:text-white"
+                    className="h-12 w-12 rounded-full"
                     onClick={ increaseBookingUnitValue }
                     disabled={
                       bookingUnitValue >= bookingUnitMax || isPricingLoading
@@ -613,10 +713,10 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     if (!activePriceRule) {
       return 'Pricing unavailable';
     }
-    if (!priceEvaluation || priceEvaluation.price === null) {
+    if (totalPrice === null) {
       return 'Price unavailable';
     }
-    return PRICE_FORMATTER.format(priceEvaluation.price);
+    return PRICE_FORMATTER.format(totalPrice);
   })();
 
   const bookingButtonContent = (
@@ -632,8 +732,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     selectedAreaId &&
     !isPricingLoading &&
     activePriceRule &&
-    priceEvaluation &&
-    priceEvaluation.price !== null &&
+    totalPrice !== null &&
     !isGuest &&
     !createCheckoutSession.isPending
   );
@@ -648,7 +747,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
         spaceId: space.id,
         areaId: selectedArea.id,
         bookingHours,
-        price: priceEvaluation?.price ?? 0,
+        price: totalPrice ?? 0,
       });
       resetBookingState();
       setIsBookingOpen(false);
@@ -662,11 +761,11 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     bookingHours,
     canConfirmBooking,
     createCheckoutSession,
-    priceEvaluation?.price,
     resetBookingState,
     selectedArea,
     session,
-    space.id
+    space.id,
+    totalPrice
   ]);
 
   return (
@@ -840,7 +939,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
             </DialogDescription>
           </DialogHeader>
           { bookingDurationContent }
-          <DialogFooter className="flex-col gap-3 lg:flex-row lg:items-center">
+          <DialogFooter className="flex-col gap-3 lg:flex-row lg:items-center mt-4">
             <Button
               type="button"
               className="w-full lg:w-auto"
@@ -869,7 +968,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
             <SheetTitle>Book a reservation</SheetTitle>
           </SheetHeader>
           <div className="px-6 pb-4">{ bookingDurationContent }</div>
-          <SheetFooter className="space-y-3 px-6 pb-6">
+          <SheetFooter className="space-y-3 px-6 pb-6 mt-4">
             <Button
               type="button"
               className="w-full"
