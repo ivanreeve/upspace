@@ -121,9 +121,7 @@ export async function POST(req: NextRequest) {
     if (isTestingModeEnabled()) {
       const confirmedBooking = await prisma.booking.update({
         where: { id: bookingRow.id, },
-        data: {
-          status: 'confirmed',
-        },
+        data: { status: 'confirmed', },
       });
 
       const booking = mapBookingRowToRecord(confirmedBooking);
