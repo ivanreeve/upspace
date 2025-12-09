@@ -60,7 +60,7 @@ export async function GET() {
 
 export async function POST(_req: NextRequest) {
   return NextResponse.json(
-    { message: 'Top-ups are disabled. Wallet receives funds only from bookings.' },
-    { status: 405 }
+    { message: 'Top-ups are disabled. Wallet receives funds only from bookings.', },
+    { status: 405, }
   );
 }

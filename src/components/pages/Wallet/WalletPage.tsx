@@ -12,11 +12,7 @@ import {
 } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  type WalletTransactionStatus,
-  type WalletTransactionType,
-  useWallet
-} from '@/hooks/use-wallet';
+import { type WalletTransactionStatus, type WalletTransactionType, useWallet } from '@/hooks/use-wallet';
 import { formatCurrencyMinor } from '@/lib/wallet';
 import { useUserProfile } from '@/hooks/use-user-profile';
 

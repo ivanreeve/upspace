@@ -22,7 +22,7 @@ async function hashString(value: string) {
       .join('');
   }
 
-  const { createHash } = await import('crypto');
+  const { createHash, } = await import('crypto');
   return createHash('sha256').update(value).digest('hex');
 }
 
