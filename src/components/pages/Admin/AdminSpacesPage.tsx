@@ -5,13 +5,10 @@ import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { AdminRowActions } from './AdminRowActions';
-
 import { useAdminSpacesQuery, adminSpacesKeys } from '@/hooks/api/useAdminSpaces';
 import { useAdminSpaceVisibilityMutation } from '@/hooks/api/useAdminVerifications';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -254,14 +251,21 @@ export function AdminSpacesPage() {
                           { space.updatedAt ? dateFormatter.format(new Date(space.updatedAt)) : '—' }
                         </TableCell>
                         <TableCell className="text-right">
-                          <AdminRowActions disabled={ visibilityMutation.isLoading && processingSpaceId === space.id }>
-                            <DropdownMenuItem
-                              onSelect={ () => handleUnpublish(space.id) }
-                              disabled={ !space.isPublished || processingSpaceId === space.id }
+                          <div className="flex justify-end">
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="rounded-md"
+                              onClick={ () => handleUnpublish(space.id) }
+                              disabled={
+                                !space.isPublished
+                                || processingSpaceId === space.id
+                                || visibilityMutation.isLoading
+                              }
                             >
-                              Unpublish space
-                            </DropdownMenuItem>
-                          </AdminRowActions>
+                              { processingSpaceId === space.id ? 'Unpublishing…' : 'Unpublish space' }
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );

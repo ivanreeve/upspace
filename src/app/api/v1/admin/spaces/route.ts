@@ -103,17 +103,17 @@ mode: 'insensitive',
     const payload = items.map((space) => ({
       id: space.id,
       name: space.name,
-      owner_name: formatUserDisplayName(
+      ownerName: formatUserDisplayName(
         space.user?.first_name,
         space.user?.last_name,
         space.user?.handle ?? undefined
       ),
       city: space.city,
       region: space.region,
-      is_published: space.is_published,
-      unpublished_at: space.unpublished_at?.toISOString() ?? null,
-      unpublished_by_admin: space.unpublished_by_admin,
-      updated_at: space.updated_at?.toISOString() ?? null,
+      isPublished: space.is_published,
+      unpublishedAt: space.unpublished_at?.toISOString() ?? null,
+      unpublishedByAdmin: space.unpublished_by_admin,
+      updatedAt: space.updated_at?.toISOString() ?? null,
     }));
 
     return NextResponse.json({
