@@ -12,6 +12,7 @@ export type UserProfile = {
   middleName: string | null;
   lastName: string | null;
   avatar: string | null;
+  isOnboard: boolean;
   role: 'customer' | 'partner' | 'admin';
   birthday: string | null;
   status: 'active' | 'deactivated' | 'pending_deletion' | 'deleted';
