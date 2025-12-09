@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm lint:*)",
+      "Bash(git checkout:*)",
+      "Bash(pnpm tsc:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

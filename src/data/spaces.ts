@@ -1,4 +1,4 @@
-export type SpaceStatus = 'Live' | 'Pending' | 'Draft';
+export type SpaceStatus = 'Live' | 'Pending' | 'Draft' | 'Unpublished';
 
 export const WEEKDAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
 export type WeekdayName = (typeof WEEKDAY_ORDER)[number];
@@ -40,6 +40,8 @@ export const cloneWeeklyAvailability = (availability: WeeklyAvailability): Weekl
   return clone;
 };
 
+import type { PriceRuleRecord } from '@/lib/pricing-rules';
+
 export type SpaceInput = {
   name: string;
   description: string;
@@ -59,15 +61,21 @@ export type SpaceInput = {
 
 export type AreaInput = {
   name: string;
-  min_capacity: number;
   max_capacity: number;
-  rate_time_unit: 'hour' | 'day' | 'week';
-  rate_amount: number;
+  automatic_booking_enabled: boolean;
+  request_approval_at_capacity: boolean;
+  advance_booking_enabled: boolean;
+  advance_booking_value: number | null;
+  advance_booking_unit: 'days' | 'weeks' | 'months' | null;
+  booking_notes_enabled: boolean;
+  booking_notes: string | null;
+  price_rule_id?: string | null;
 };
 
 export type AreaRecord = AreaInput & {
   id: string;
   created_at: string;
+  price_rule: PriceRuleRecord | null;
 };
 
 export type SpaceImageRecord = {
@@ -83,7 +91,10 @@ export type SpaceRecord = SpaceInput & {
   id: string;
   status: SpaceStatus;
   created_at: string;
+  is_published: boolean;
+  pending_unpublish_request: boolean;
   areas: AreaRecord[];
+  pricing_rules: PriceRuleRecord[];
   images: SpaceImageRecord[];
 };
 
@@ -106,10 +117,14 @@ export const SPACE_INPUT_DEFAULT: SpaceInput = {
 
 export const AREA_INPUT_DEFAULT: AreaInput = {
   name: '',
-  min_capacity: 1,
   max_capacity: 10,
-  rate_time_unit: 'hour',
-  rate_amount: 100,
+  automatic_booking_enabled: false,
+  request_approval_at_capacity: false,
+  advance_booking_enabled: false,
+  advance_booking_value: null,
+  advance_booking_unit: null,
+  booking_notes_enabled: false,
+  booking_notes: null,
 };
 
 export const INITIAL_SPACES: SpaceRecord[] = [
@@ -130,17 +145,25 @@ export const INITIAL_SPACES: SpaceRecord[] = [
     amenities: ['amenity-meeting-room', 'amenity-free-coffee'],
     availability: createDefaultWeeklyAvailability(),
     status: 'Live',
+    is_published: true,
+    pending_unpublish_request: false,
     created_at: '2025-02-10T10:00:00.000Z',
     images: [],
+    pricing_rules: [],
     areas: [
       {
         id: 'atlas-loft-boardroom',
         name: 'Sky Boardroom',
-        min_capacity: 4,
         max_capacity: 14,
-        rate_time_unit: 'hour',
-        rate_amount: 185,
+        automatic_booking_enabled: false,
+        request_approval_at_capacity: false,
+        advance_booking_enabled: false,
+        advance_booking_value: null,
+        advance_booking_unit: null,
+        booking_notes_enabled: false,
+        booking_notes: null,
         created_at: '2025-02-11T09:00:00.000Z',
+        price_rule: null,
       }
     ],
   },
@@ -161,26 +184,39 @@ export const INITIAL_SPACES: SpaceRecord[] = [
     amenities: ['amenity-podcast-booth', 'amenity-yoga-room'],
     availability: createDefaultWeeklyAvailability(),
     status: 'Pending',
+    is_published: true,
+    pending_unpublish_request: false,
     created_at: '2025-03-01T13:15:00.000Z',
     images: [],
+    pricing_rules: [],
     areas: [
       {
         id: 'beacon-maker-lab',
         name: 'Maker Lab',
-        min_capacity: 6,
         max_capacity: 24,
-        rate_time_unit: 'hour',
-        rate_amount: 145,
+        automatic_booking_enabled: false,
+        request_approval_at_capacity: false,
+        advance_booking_enabled: false,
+        advance_booking_value: null,
+        advance_booking_unit: null,
+        booking_notes_enabled: false,
+        booking_notes: null,
         created_at: '2025-03-02T08:00:00.000Z',
+        price_rule: null,
       },
       {
         id: 'beacon-podcast',
         name: 'Podcast Booth',
-        min_capacity: 2,
         max_capacity: 4,
-        rate_time_unit: 'hour',
-        rate_amount: 95,
+        automatic_booking_enabled: false,
+        request_approval_at_capacity: false,
+        advance_booking_enabled: false,
+        advance_booking_value: null,
+        advance_booking_unit: null,
+        booking_notes_enabled: false,
+        booking_notes: null,
         created_at: '2025-03-02T08:30:00.000Z',
+        price_rule: null,
       }
     ],
   },
@@ -201,8 +237,11 @@ export const INITIAL_SPACES: SpaceRecord[] = [
     amenities: ['amenity-daylight', 'amenity-modular'],
     availability: createDefaultWeeklyAvailability(),
     status: 'Draft',
+    is_published: true,
+    pending_unpublish_request: false,
     created_at: '2025-03-05T08:45:00.000Z',
     images: [],
+    pricing_rules: [],
     areas: [],
   }
 ];

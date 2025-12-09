@@ -1,27 +1,23 @@
 'use server';
 
 import { AuthApiError, type Session } from '@supabase/supabase-js';
+import { user_status } from '@prisma/client';
 import { z } from 'zod';
 
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { ROLE_REDIRECT_MAP } from '@/lib/constants';
+import { reactivateUserIfEligible } from '@/lib/auth/reactivate-user';
+import { prisma } from '@/lib/prisma';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 type SupabaseSessionPayload = {
   access_token: string;
   refresh_token: string;
 };
 
-const schema = z
-  .object({
-    email: z.string().email('Provide a valid email.'),
-    password: z
-      .string()
-      .min(8, 'Minimum 8 characters.')
-      .regex(/[A-Z]/, 'Include at least one uppercase letter.')
-      .regex(/[a-z]/, 'Include at least one lowercase letter.')
-      .regex(/[0-9]/, 'Include at least one number.')
-      .regex(/[^A-Za-z0-9]/, 'Include at least one symbol.'),
-  });
+const schema = z.object({
+  email: z.string().email('Provide a valid email.'),
+  password: z.string().min(8, 'Minimum 8 characters.'),
+});
 
 export type LoginState = {
   ok: boolean;
@@ -42,8 +38,8 @@ function extractSupabaseSession(session: Session | null): SupabaseSessionPayload
   };
 }
 
+
 export async function loginAction(_prev: LoginState, formData: FormData): Promise<LoginState> {
-  
   const data = {
     email: String(formData.get('email') ?? ''),
     password: String(formData.get('password') ?? ''),
@@ -107,28 +103,60 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
       };
     }
 
-    const {
- data: profile, error: profileError, 
-} = await supabase
-      .from('user')
-      .select('is_onboard, role, is_disabled')
-      .eq('auth_user_id', authedUser.id)
-      .maybeSingle();
+    const reactivation = await reactivateUserIfEligible(authedUser.id).catch((err) => {
+      console.error('Failed to resolve user status during sign-in', err);
+      return null;
+    });
 
-    if (profile?.is_disabled) {
+    if (!reactivation) {
       await supabase.auth.signOut();
-
       return {
         ok: false,
-        message: 'Your account has been disabled. Contact support for help.',
+        message: 'Unable to verify your account status. Please try again.',
       };
     }
 
-    if (profileError) {
-      console.error('Failed to fetch user onboarding state after sign-in', profileError);
+    if (!reactivation.allow) {
+      await supabase.auth.signOut();
+
+      const statusMessages: Record<string, string> = {
+        deleted: 'Your account has been deleted.',
+        deletion_expired: 'Your account was permanently deleted after the grace period.',
+        not_found: 'Unable to locate your profile.',
+      };
+
+      return {
+        ok: false,
+        message: statusMessages[reactivation.reason] ?? 'Your account is not active. Contact support for help.',
+      };
     }
 
-    const shouldOnboard = Boolean(profileError) || !profile?.is_onboard;
+    const profile = await prisma.user.findUnique({
+      where: { auth_user_id: authedUser.id, },
+      select: {
+        is_onboard: true,
+        role: true,
+        status: true,
+      },
+    });
+
+    if (!profile) {
+      await supabase.auth.signOut();
+      return {
+        ok: false,
+        message: 'Unable to locate your profile.',
+      };
+    }
+
+    if (profile.status !== user_status.active) {
+      await supabase.auth.signOut();
+      return {
+        ok: false,
+        message: 'Your account is not active. Contact support for help.',
+      };
+    }
+
+    const shouldOnboard = !profile.is_onboard;
 
     if (shouldOnboard) {
       return {

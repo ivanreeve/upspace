@@ -1,10 +1,16 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseQueryOptions
+} from '@tanstack/react-query';
 
 import type { AreaRecord, SpaceRecord } from '@/data/spaces';
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
 import type { AreaFormValues, SpaceFormValues } from '@/lib/validations/spaces';
+import type { PriceRuleFormValues, PriceRuleRecord } from '@/lib/pricing-rules';
 
 export const partnerSpacesKeys = {
   all: ['partner-spaces'] as const,
@@ -27,7 +33,9 @@ const parseErrorMessage = async (response: Response) => {
   return 'Something went wrong. Please try again.';
 };
 
-export function usePartnerSpacesQuery() {
+export function usePartnerSpacesQuery(
+  options?: Omit<UseQueryOptions<SpaceRecord[], Error>, 'queryKey' | 'queryFn'>
+) {
   const authFetch = useAuthenticatedFetch();
 
   return useQuery<SpaceRecord[]>({
@@ -41,6 +49,7 @@ export function usePartnerSpacesQuery() {
       const payload = (await response.json()) as { data: SpaceRecord[] };
       return payload.data;
     },
+    ...options,
   });
 }
 
@@ -155,6 +164,85 @@ export function useDeleteAreaMutation(spaceId: string) {
   });
 }
 
+export function useCreatePriceRuleMutation(spaceId: string) {
+  const authFetch = useAuthenticatedFetch();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: PriceRuleFormValues) => {
+      const response = await authFetch(`/api/v1/partner/spaces/${spaceId}/pricing-rules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+      }
+
+      const data = (await response.json()) as { data: PriceRuleRecord };
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), });
+    },
+  });
+}
+
+export function useUpdatePriceRuleMutation(spaceId: string) {
+  const authFetch = useAuthenticatedFetch();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      priceRuleId,
+      payload,
+    }: {
+      priceRuleId: string;
+      payload: PriceRuleFormValues;
+    }) => {
+      const response = await authFetch(`/api/v1/partner/spaces/${spaceId}/pricing-rules/${priceRuleId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+      }
+
+      const data = (await response.json()) as { data: PriceRuleRecord };
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), });
+    },
+  });
+}
+
+export function useDeletePriceRuleMutation(spaceId: string) {
+  const authFetch = useAuthenticatedFetch();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (priceRuleId: string) => {
+      const response = await authFetch(`/api/v1/partner/spaces/${spaceId}/pricing-rules/${priceRuleId}`, { method: 'DELETE', });
+
+      if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+      }
+
+      return priceRuleId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), });
+    },
+  });
+}
+
 export function useUpdatePartnerSpaceMutation(spaceId: string) {
   const authFetch = useAuthenticatedFetch();
   const queryClient = useQueryClient();
@@ -177,6 +265,35 @@ export function useUpdatePartnerSpaceMutation(spaceId: string) {
 
       const data = (await response.json()) as { data: SpaceRecord };
       return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), });
+    },
+  });
+}
+
+export function useRequestUnpublishSpaceMutation(spaceId: string) {
+  const authFetch = useAuthenticatedFetch();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ reason, }: { reason?: string }) => {
+      if (!spaceId) {
+        throw new Error('Space ID is required.');
+      }
+
+      const response = await authFetch(`/api/v1/partner/spaces/${spaceId}/unpublish-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify({ reason, }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+      }
+
+      return response.json() as Promise<{ data: { id: string; status: string; created_at: string } }>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });

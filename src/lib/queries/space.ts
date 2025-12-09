@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 
+import type { PriceRuleDefinition, PriceRuleRecord } from '@/lib/pricing-rules';
 import type { SpaceStatus } from '@/data/spaces';
 import { prisma } from '@/lib/prisma';
 import { buildPublicObjectUrl, isAbsoluteUrl, resolveSignedImageUrls } from '@/lib/spaces/image-urls';
@@ -9,9 +10,11 @@ const DAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Sat
 
 const formatTime = (value: Date | string) => {
   const date = value instanceof Date ? value : new Date(value);
-  const hours = date.getUTCHours().toString().padStart(2, '0');
+  const hours = date.getUTCHours();
   const minutes = date.getUTCMinutes().toString().padStart(2, '0');
-  return `${hours}:${minutes}`;
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const twelveHour = hours % 12 || 12;
+  return `${twelveHour}:${minutes} ${period}`;
 };
 
 const marketplaceSpaceInclude = {
@@ -32,16 +35,25 @@ const marketplaceSpaceInclude = {
     select: {
       id: true,
       name: true,
-      min_capacity: true,
       max_capacity: true,
-      price_rate: {
-        orderBy: { created_at: 'asc' as const, },
+      price_rule: {
         select: {
           id: true,
-          price: true,
-          time_unit: true,
+          name: true,
         },
       },
+    },
+  },
+  price_rule: {
+    orderBy: { created_at: 'asc' as const, },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      definition: true,
+      created_at: true,
+      updated_at: true,
+      _count: { select: { area: true, }, },
     },
   },
   space_availability: {
@@ -86,18 +98,13 @@ type MarketplaceSpaceRow = Prisma.spaceGetPayload<{
   include: typeof marketplaceSpaceInclude;
 }>;
 
-export type SpaceAreaRate = {
-  id: string;
-  price: number;
-  timeUnit: string;
-};
-
 export type SpaceAreaWithRates = {
   id: string;
   name: string;
   minCapacity: number;
   maxCapacity: number | null;
-  rates: SpaceAreaRate[];
+  pricingRuleName: string | null;
+  pricingRuleId: string | null;
 };
 
 export type SpaceAvailabilityDisplay = {
@@ -125,6 +132,8 @@ export type MarketplaceSpaceDetail = {
   name: string;
   isBookmarked: boolean;
   description: string;
+  averageRating: number;
+  totalReviews: number;
   unitNumber: string;
   addressSubunit: string;
   street: string;
@@ -141,6 +150,7 @@ export type MarketplaceSpaceDetail = {
   amenities: SpaceAmenityDisplay[];
   availability: SpaceAvailabilityDisplay[];
   areas: SpaceAreaWithRates[];
+  pricingRules: PriceRuleRecord[];
   hostName: string | null;
   hostAvatarUrl: string | null;
 };
@@ -182,14 +192,22 @@ const buildAreaSummaries = (areas: MarketplaceSpaceRow['area']): SpaceAreaWithRa
   areas.map((area) => ({
     id: area.id,
     name: area.name,
-    minCapacity: Number(area.min_capacity),
     maxCapacity: area.max_capacity === null ? null : Number(area.max_capacity),
-    rates: area.price_rate.map((rate) => ({
-      id: rate.id,
-      price: Number(rate.price),
-      timeUnit: rate.time_unit,
-    })),
+    pricingRuleName: area.price_rule?.name ?? null,
+    pricingRuleId: area.price_rule?.id ?? null,
   }));
+
+const serializeMarketplacePriceRule = (
+  rule: MarketplaceSpaceRow['price_rule'][number]
+): PriceRuleRecord => ({
+  id: rule.id,
+  name: rule.name,
+  description: rule.description ?? null,
+  definition: rule.definition as PriceRuleDefinition,
+  linked_area_count: rule._count?.area ?? 0,
+  created_at: rule.created_at instanceof Date ? rule.created_at.toISOString() : String(rule.created_at),
+  updated_at: rule.updated_at instanceof Date ? rule.updated_at.toISOString() : null,
+});
 
 const buildAmenities = (amenities: MarketplaceSpaceRow['amenity']): SpaceAmenityDisplay[] =>
   amenities
@@ -264,6 +282,7 @@ export async function getSpaceDetail(
   const space = await prisma.space.findFirst({
     where: {
       id: spaceId,
+      is_published: true,
       verification: { some: { status: { in: ['approved', 'in_review'], }, }, },
     },
     include: marketplaceSpaceInclude,
@@ -272,6 +291,17 @@ export async function getSpaceDetail(
   if (!space) {
     return null;
   }
+
+  const reviewAggregate = await prisma.review.aggregate({
+    where: { space_id: spaceId, },
+    _avg: { rating_star: true, },
+    _count: { _all: true, },
+  });
+
+  const averageRating = reviewAggregate._avg.rating_star === null
+    ? 0
+    : Number(reviewAggregate._avg.rating_star);
+  const totalReviews = reviewAggregate._count?._all ?? 0;
 
   const status = deriveSpaceStatus(space);
   const {
@@ -290,12 +320,15 @@ export async function getSpaceDetail(
   const availability = buildAvailabilityDisplay(space.space_availability);
   const areas = buildAreaSummaries(space.area);
   const amenities = buildAmenities(space.amenity);
+  const pricingRules = space.price_rule.map(serializeMarketplacePriceRule);
 
   return {
     id: space.id,
     name: space.name,
     isBookmarked,
     description: space.description ?? '',
+    averageRating,
+    totalReviews,
     unitNumber: space.unit_number,
     addressSubunit: space.address_subunit,
     street: space.street,
@@ -312,6 +345,7 @@ export async function getSpaceDetail(
     amenities,
     availability,
     areas,
+    pricingRules,
     hostName: buildHostName(space.user),
     hostAvatarUrl: buildHostAvatarUrl(space.user),
   };

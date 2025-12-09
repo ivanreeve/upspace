@@ -6,6 +6,7 @@ import { AuthProfileSync } from '@/components/auth/AuthProfileSync';
 import { SessionProvider } from '@/components/auth/SessionProvider';
 import { ServiceWorkerRegistration } from '@/components/common/ServiceWorkerRegistration';
 import { QueryProvider } from '@/components/providers/QueryProvider';
+import { NavigationProgressBar } from '@/components/ui/navigation-progress-bar';
 import { Toaster } from '@/components/ui/sonner';
 
 export const metadata: Metadata = {
@@ -37,13 +38,16 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = { themeColor: '#023347', };
+export const viewport: Viewport = {
+  themeColor: '#023347',
+  viewportFit: 'cover',
+};
 
 export default function RootLayout({ children, }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <body>
         <SessionProvider>
           <QueryProvider>
@@ -52,6 +56,7 @@ export default function RootLayout({ children, }: Readonly<{
               defaultTheme="light"
               disableTransitionOnChange
             >
+              <NavigationProgressBar />
               <AuthProfileSync />
               { children }
               <Toaster />

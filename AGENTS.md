@@ -23,6 +23,12 @@ PostgreSQL with required extensions:
 - **Validation**: Use Zod for runtime validation of inputs and API payloads.
 - **DRY Principle**: Avoid code duplication. Extract repeated logic into reusable utilities, hooks, endpoints, or components. Maintain a single source of truth for shared behavior, constants, and business logic.
 - **State Management**: Use React Query for "business data" that changes frequently and benefits from caching and prefetching.
+- **Testing**: Write unit tests for business logic and integration tests for API endpoints. Use Vitest and Supabase Edge Functions.
+- **Documentation**: Document all public APIs, including hooks, endpoints, and components through the scalar API spec.
+- **Security**: Keep flagging any new prisma.$queryRaw/$executeRaw usage during reviews; require Zod (or similar) validation before values reach the template literal so Prisma can continue to bind parameters safely.
+- **Raw SQL**: When adding raw SQL in the future, favor multi-line template strings over building SQL strings yourself, and document the validation steps so code reviewers can see why the query is safe.
+- **DialogTitle**: DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.
+- **Error Handling**: Always display meaningful error messages to users in the form of a sonner component.
 
 ### UI Development
 
@@ -34,6 +40,7 @@ pnpm dlx shadcn@latest add <component>
 ```
 
 **Accessibility requirements**: Label all inputs with `aria-*` attributes, maintain visible focus states, and use semantic HTML.
+**Consistent rounded-md**: always prefer rounded-md for components that have rounded corners.
 
 ### Icons
 
@@ -70,6 +77,7 @@ export function SearchBar() {
 - **Secrets & tokens**: Never hardcode. Use environment variables only.
 - **Input handling**: Treat all user input as untrusted. Sanitize and validate using Zod.
 - **Dangerous functions**: Avoid `eval`, dynamic `Function` constructors, and unsafe regex patterns.
+- **Error handling**: Always handle errors gracefully and log them securely, make sure to handle error UI states as well to provide a good user experience.
 
 ## Performance
 

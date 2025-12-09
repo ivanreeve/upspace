@@ -22,6 +22,7 @@ import {
   FiList,
   FiMapPin,
   FiPlus,
+  FiSave,
   FiShield,
   FiTrash,
   FiX
@@ -37,6 +38,7 @@ import { SpaceAddressFields, SpaceDetailsFields, createSpaceFormDefaults } from 
 import { SpaceAmenitiesStep } from '@/components/pages/Spaces/SpaceAmenitiesStep';
 import { SpaceAvailabilityStep } from '@/components/pages/Spaces/SpaceAvailabilityStep';
 import { SpaceVerificationRequirementsStep, VERIFICATION_REQUIREMENTS, type VerificationRequirementId } from '@/components/pages/Spaces/SpaceVerificationRequirementsStep';
+import { SpacesBreadcrumbs } from '@/components/pages/Spaces/SpacesBreadcrumbs';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { type AgreementChecklistItem } from '@/components/ui/AgreementChecklist';
@@ -45,7 +47,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { richTextPlainTextLength } from '@/lib/rich-text';
 import { useSession } from '@/components/auth/SessionProvider';
-import NavBar from '@/components/ui/navbar';
 import { useSpaceFormPersistence } from '@/hooks/useSpaceFormPersistence';
 import { usePersistentSpaceImages } from '@/hooks/usePersistentSpaceImages';
 import { WEEKDAY_ORDER } from '@/data/spaces';
@@ -176,7 +177,7 @@ const buildStorageObjectPath = (prefix: string, ownerId: string, fileName: strin
 const SPACE_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg'] as const;
 const SPACE_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
 const VERIFICATION_DOC_MIME_TYPES = ['image/png', 'image/jpeg', 'application/pdf'] as const;
-const VERIFICATION_DOC_MAX_BYTES = 10 * 1024 * 1024;
+const VERIFICATION_DOC_MAX_BYTES = 50 * 1024 * 1024;
 
 type UploadedSpaceImagePayload = {
   path: string;
@@ -285,8 +286,9 @@ export default function SpaceCreateRoute() {
   });
   const {
     clearDraft,
+    saveDraft,
     isHydrated: isFormHydrated,
-  } = useSpaceFormPersistence(form);
+  } = useSpaceFormPersistence(form, currentStep);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [listingChecklistState, setListingChecklistState] = useState<Record<string, boolean>>(createListingChecklistState);
@@ -501,6 +503,72 @@ export default function SpaceCreateRoute() {
     },
     [router, serializedSearchParams]
   );
+
+  const renderStepButton = (item: StepSidebarItem, variant: 'vertical' | 'horizontal') => {
+    const isCurrent = item.step === currentStep;
+    const isAccessible = stepAccessibility[item.step];
+    const isComplete = stepCompletionStatus[item.step];
+    const Icon = item.icon;
+
+    const baseClasses = variant === 'vertical'
+      ? 'flex w-full items-center justify-between gap-3 px-3 py-3 text-left text-sm'
+      : 'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-2 pb-3 pt-2 text-center text-[10px] leading-tight sm:text-[11px] after:absolute after:inset-x-0 after:bottom-0 after:rounded-full after:transition-all after:duration-150 after:ease-out';
+
+    return (
+      <button
+        key={ `${variant}-${item.step}` }
+        type="button"
+        className={ cn(
+          'transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+          baseClasses,
+          variant === 'vertical'
+            ? 'rounded-lg border'
+            : 'rounded-none border-none text-muted-foreground',
+          variant === 'vertical'
+            ? (isCurrent ? 'border-primary bg-primary/10' : 'border-border/60 bg-background/80')
+            : (isCurrent
+              ? 'text-foreground after:h-[3px] after:bg-primary after:rounded-none'
+              : 'after:h-px after:bg-border/70'),
+          !isAccessible && 'cursor-not-allowed opacity-60'
+        ) }
+        disabled={ !isAccessible }
+        aria-label={ variant === 'horizontal' ? item.label : undefined }
+        aria-current={ isCurrent ? 'step' : undefined }
+        onClick={ () => {
+          if (!isAccessible || isCurrent) {
+            return;
+          }
+          navigateToStep(item.step);
+        } }
+      >
+        <span className="sr-only">Step { item.step }</span>
+        { variant === 'vertical' ? (
+          <>
+            <div className="flex items-center gap-2">
+              <Icon className="size-4" aria-hidden="true" />
+              <span className="text-sm font-semibold text-foreground">{ item.label }</span>
+            </div>
+            { isComplete && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
+                <FiCheck className="size-3" aria-hidden="true" />
+                Complete
+              </span>
+            ) }
+          </>
+        ) : (
+          <>
+            <div className="relative flex items-center justify-center">
+              <Icon className="size-4" aria-hidden="true" />
+              { isComplete && (
+                <FiCheck className="size-3 text-muted-foreground absolute -right-2 -top-2" aria-hidden="true" />
+              ) }
+            </div>
+            <span className="sr-only">{ item.label }</span>
+          </>
+        ) }
+      </button>
+    );
+  };
 
   const goToPhotoStep = async () => {
     const canProceed = await form.trigger(['name', 'description']);
@@ -1038,85 +1106,58 @@ export default function SpaceCreateRoute() {
     }
   };
 
+  const handleSaveDraft = useCallback(() => {
+    const summary = saveDraft();
+    if (!summary) {
+      toast.error('Drafts can only be saved in browsers that support local storage.');
+      return;
+    }
+
+    const name = summary.name.trim() || 'Space draft';
+    toast.success(`${name} saved as draft.`);
+  }, [saveDraft]);
+
   return (
     <>
-      <NavBar />
       <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-wide text-muted-foreground">Space setup</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-2">
+            <SpacesBreadcrumbs currentPage="Add space" className="justify-start" />
             <h1 className="text-3xl font-semibold tracking-tight">Add a coworking space</h1>
             <p className="text-base text-muted-foreground">
               Provide the source-of-truth location details so your listing stays accurate across UpSpace.
             </p>
           </div>
-          <Button asChild size="sm" variant="outline">
-            <Link href="/spaces" className="inline-flex items-center gap-2">
-              <FiArrowLeft className="size-4" aria-hidden="true" />
-              Back to spaces
-            </Link>
-          </Button>
         </div>
 
-        <Card className="mt-6 border-border/70 bg-background/80">
-          <CardContent>
-            <Form { ...form }>
-              <form
-                className="grid gap-6 lg:grid-cols-[240px_1fr]"
-                onSubmit={ form.handleSubmit(handleSubmit) }
-              >
-                <aside className="space-y-5 bg-background/80 p-5 lg:sticky lg:top-4 lg:self-start">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Step navigation</p>
-                    <p className="text-sm font-semibold text-foreground">Follow the flow</p>
-                  </div>
-                  <nav className="space-y-2" aria-label="Space setup steps">
-                    { STEP_SIDEBAR_ITEMS.map((item) => {
-                      const isCurrent = item.step === currentStep;
-                      const isAccessible = stepAccessibility[item.step];
-                      const isComplete = stepCompletionStatus[item.step];
-                      const Icon = item.icon;
-                      return (
-                        <button
-                          key={ item.step }
-                          type="button"
-                          className={ cn(
-                            'flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-                            isCurrent ? 'border-primary bg-primary/10' : 'border-border/60 bg-background/80',
-                            !isAccessible && 'cursor-not-allowed opacity-60'
-                          ) }
-                          disabled={ !isAccessible }
-                          aria-current={ isCurrent ? 'step' : undefined }
-                          onClick={ () => {
-                            if (!isAccessible || isCurrent) {
-                              return;
-                            }
-                            navigateToStep(item.step);
-                          } }
-                        >
-                          <span className="sr-only">Step { item.step }</span>
-                          <div className="flex items-center gap-2">
-                            <Icon className="size-4" aria-hidden="true" />
-                            <span className="text-sm font-semibold text-foreground">{ item.label }</span>
-                          </div>
-                          { isComplete && (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
-                              <FiCheck className="size-3" aria-hidden="true" />
-                              Complete
-                            </span>
-                          ) }
-                        </button>
-                      );
-                    }) }
-                  </nav>
-                  <p className="text-xs text-muted-foreground">
-                    Locked steps unlock when the previous section is completed.
-                  </p>
-                </aside>
-                <div className="space-y-6">
-                  <div className="space-y-4">
-                    { currentStep === 1 ? (
-                      <SpaceDetailsFields form={ form } />
+        <Form { ...form }>
+          <form
+            className="mt-6 grid w-full max-w-full min-w-0 grid-cols-1 gap-6 lg:grid-cols-[240px_1fr]"
+            onSubmit={ form.handleSubmit(handleSubmit) }
+          >
+            <nav
+              className="lg:hidden flex w-full min-w-0 flex-nowrap items-stretch justify-between gap-0 px-1 py-1"
+              aria-label="Space setup steps"
+            >
+              { STEP_SIDEBAR_ITEMS.map((item) => renderStepButton(item, 'horizontal')) }
+            </nav>
+            <aside className="hidden space-y-5 bg-background/80 p-5 lg:block lg:sticky lg:top-4 lg:self-start">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Step navigation</p>
+                <p className="text-sm font-semibold text-foreground">Follow the flow</p>
+              </div>
+              <nav className="space-y-2" aria-label="Space setup steps">
+                { STEP_SIDEBAR_ITEMS.map((item) => renderStepButton(item, 'vertical')) }
+              </nav>
+              <p className="text-xs text-muted-foreground">
+                Locked steps unlock when the previous section is completed.
+              </p>
+            </aside>
+            <Card className="w-full max-w-full border-border/70 bg-background/80">
+              <CardContent className="w-full max-w-full min-w-0 space-y-6">
+                <div className="space-y-4 min-w-0">
+                  { currentStep === 1 ? (
+                    <SpaceDetailsFields form={ form } />
                   ) : currentStep === 2 ? (
                     <div className="space-y-6">
                       <div className="rounded-md border border-border/70 bg-background/50 p-4">
@@ -1160,11 +1201,12 @@ export default function SpaceCreateRoute() {
                             type="button"
                             variant="outline"
                             onClick={ () => featuredImageInputRef.current?.click() }
+                            className="hover:text-white"
                           >
                             { featuredImage ? 'Replace featured image' : 'Upload featured image' }
                           </Button>
                           { featuredImage && (
-                            <Button type="button" variant="ghost" onClick={ handleRemoveFeaturedImage }>
+                            <Button type="button" variant="ghost" onClick={ handleRemoveFeaturedImage }  className="hover:text-white">
                               Remove
                             </Button>
                           ) }
@@ -1209,6 +1251,7 @@ export default function SpaceCreateRoute() {
                                         type="button"
                                         variant="ghost"
                                         onClick={ () => handleRemoveCategory(category.id) }
+                                        className="hover:text-white"
                                       >
                                         <FiTrash className="mr-1 size-4" aria-hidden="true" />
                                         Remove
@@ -1272,6 +1315,7 @@ export default function SpaceCreateRoute() {
                                       variant="outline"
                                       onClick={ () => handleTriggerCategoryPicker(category.id) }
                                       disabled={ !canAddMore }
+                                      className="hover:text-white"
                                     >
                                       Upload photos
                                     </Button>
@@ -1284,7 +1328,7 @@ export default function SpaceCreateRoute() {
                               );
                             })
                           ) }
-                          <Button type="button" variant="outline" onClick={ handleAddCategory }>
+                          <Button type="button" variant="outline" onClick={ handleAddCategory } className="hover:text-white">
                             <FiPlus className="mr-2 size-4" aria-hidden="true" />
                             Add another category
                           </Button>
@@ -1335,20 +1379,33 @@ export default function SpaceCreateRoute() {
                     </div>
                   </div>
                 ) }
-                <div className="flex flex-col gap-2 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={ isSubmitting }
-                    onClick={ () => {
-                      clearDraft();
-                      clearImages();
-                      resetVerificationRequirements();
-                      router.push('/spaces');
-                    } }
-                  >
-                    Cancel
-                  </Button>
+                <div className="flex items-center justify-between gap-2 pt-4">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={ isSubmitting }
+                      onClick={ () => {
+                        clearDraft();
+                        clearImages();
+                        resetVerificationRequirements();
+                        router.push('/spaces');
+                      } }
+                      className="hover:text-white"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={ isSubmitting }
+                      onClick={ handleSaveDraft }
+                      className="bg-[#0A5057] text-white hover:bg-[#4a5f6b]"
+                    >
+                      <FiSave className="size-4" aria-hidden="true" />
+                      Save as draft
+                    </Button>
+                  </div>
                   <div className="flex items-center gap-2">
                     { currentStep === 1 && (
                       <Button type="button" disabled={ !isBasicsStepComplete } onClick={ goToPhotoStep }>
@@ -1362,6 +1419,7 @@ export default function SpaceCreateRoute() {
                           type="button"
                           variant="outline"
                           onClick={ () => navigateToStep(1) }
+                          className="hover:text-white"
                         >
                           <FiArrowLeft className="size-4" aria-hidden="true" />
                           Back
@@ -1378,6 +1436,7 @@ export default function SpaceCreateRoute() {
                           type="button"
                           variant="outline"
                           onClick={ () => navigateToStep(2) }
+                          className="hover:text-white"
                         >
                           <FiArrowLeft className="size-4" aria-hidden="true" />
                           Back
@@ -1394,6 +1453,7 @@ export default function SpaceCreateRoute() {
                           type="button"
                           variant="outline"
                           onClick={ () => navigateToStep(3) }
+                          className="hover:text-white"
                         >
                           <FiArrowLeft className="size-4" aria-hidden="true" />
                           Back
@@ -1410,6 +1470,7 @@ export default function SpaceCreateRoute() {
                           type="button"
                           variant="outline"
                           onClick={ () => navigateToStep(4) }
+                          className="hover:text-white"
                         >
                           <FiArrowLeft className="size-4" aria-hidden="true" />
                           Back
@@ -1427,6 +1488,7 @@ export default function SpaceCreateRoute() {
                           variant="outline"
                           disabled={ isSubmitting }
                           onClick={ () => navigateToStep(5) }
+                          className="hover:text-white"
                         >
                           <FiArrowLeft className="size-4" aria-hidden="true" />
                           Back
@@ -1455,11 +1517,10 @@ export default function SpaceCreateRoute() {
                     ) }
                   </div>
                 </div>
-                </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </form>
+        </Form>
       </main>
     </>
   );

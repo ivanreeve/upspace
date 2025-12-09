@@ -164,12 +164,12 @@ export function SpaceVerificationRequirementsStep({
                             className="sr-only"
                             onChange={ (event) => handleFileChange(requirement.id, slotIndex, event) }
                           />
-                          <Button type="button" variant="outline" onClick={ () => handleTriggerPicker(requirement.id, slot) }>
+                          <Button type="button" variant="outline" onClick={ () => handleTriggerPicker(requirement.id, slot) } className="hover:!text-white">
                             <FiUpload className="mr-2 size-4" aria-hidden="true" />
                             { slotFile ? 'Replace file' : 'Upload file' }
                           </Button>
                           { slotFile && (
-                            <Button type="button" variant="ghost" onClick={ () => onRemove(requirement.id, slotIndex) }>
+                            <Button type="button" variant="ghost" onClick={ () => onRemove(requirement.id, slotIndex) } className="hover:!text-white">
                               <FiTrash className="mr-2 size-4" aria-hidden="true" />
                               Remove
                             </Button>

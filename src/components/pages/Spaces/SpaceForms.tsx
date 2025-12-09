@@ -62,6 +62,7 @@ import {
   SpaceRecord,
   type WeeklyAvailability
 } from '@/data/spaces';
+import type { PriceRuleRecord } from '@/lib/pricing-rules';
 import {
   Form,
   FormControl,
@@ -80,6 +81,12 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from '@/components/ui/accordion';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -96,6 +103,9 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { richTextPlainTextLength, sanitizeRichText } from '@/lib/rich-text';
 import { useGoogleMapsPlaces } from '@/hooks/useGoogleMapsPlaces';
 import {
@@ -106,9 +116,10 @@ import {
   type PhilippineCityOption,
   type PhilippineRegionOption
 } from '@/lib/philippines-addresses/client';
+import { dedupeAddressOptions } from '@/lib/addresses';
 import {
+  advanceBookingUnits,
   areaSchema,
-  rateUnits,
   spaceSchema,
   type AreaFormValues,
   type SpaceFormValues
@@ -137,17 +148,6 @@ const formatCoordinate = (value: number | undefined) => {
   return Math.round(value * 1_000_000) / 1_000_000;
 };
 
-const dedupeAddressOptions = <T extends { code: string; name: string }>(options: readonly T[]) => {
-  const seen = new Set<string>();
-  return options.filter((option) => {
-    const identifier = `${option.code}-${option.name}`.trim().toLowerCase();
-    if (seen.has(identifier)) {
-      return false;
-    }
-    seen.add(identifier);
-    return true;
-  });
-};
 const GOOGLE_AUTOCOMPLETE_MIN_QUERY_LENGTH = 3;
 const FORM_SET_OPTIONS = {
   shouldDirty: true,
@@ -267,7 +267,10 @@ export const createSpaceFormDefaults = (): SpaceFormValues => ({
   availability: disableWeeklyAvailability(cloneWeeklyAvailability(SPACE_INPUT_DEFAULT.availability)),
 });
 
-export const createAreaFormDefaults = (): AreaFormValues => ({ ...AREA_INPUT_DEFAULT, });
+export const createAreaFormDefaults = (): AreaFormValues => ({
+  ...AREA_INPUT_DEFAULT,
+  price_rule_id: null,
+});
 
 export const spaceRecordToFormValues = (space: SpaceRecord): SpaceFormValues => ({
   name: space.name,
@@ -288,10 +291,15 @@ export const spaceRecordToFormValues = (space: SpaceRecord): SpaceFormValues => 
 
 export const areaRecordToFormValues = (area: AreaRecord): AreaFormValues => ({
   name: area.name,
-  min_capacity: area.min_capacity,
   max_capacity: area.max_capacity,
-  rate_time_unit: area.rate_time_unit,
-  rate_amount: area.rate_amount,
+  automatic_booking_enabled: area.automatic_booking_enabled ?? false,
+  request_approval_at_capacity: area.request_approval_at_capacity ?? false,
+  advance_booking_enabled: area.advance_booking_enabled ?? false,
+  advance_booking_value: area.advance_booking_value ?? null,
+  advance_booking_unit: area.advance_booking_unit ?? null,
+  booking_notes_enabled: area.booking_notes_enabled ?? false,
+  booking_notes: area.booking_notes ?? null,
+  price_rule_id: area.price_rule?.id ?? null,
 });
 
 export type DescriptionEditorProps<TFieldValues extends { description: string }> = {
@@ -578,9 +586,13 @@ export function DescriptionEditor<TFieldValues extends { description: string }>(
   const ActiveAlignmentIcon = activeAlignmentOption.icon;
 
   return (
-    <div className="rounded-md border border-border/70">
+    <div className="w-full max-w-full min-w-0 overflow-hidden rounded-md border border-border/70">
       <div className="border-b border-border/70 bg-muted px-3 py-2">
-        <div className="flex flex-wrap items-center gap-2" role="toolbar" aria-label="Description formatting tools">
+        <div
+          className="flex flex-wrap items-center gap-2 min-w-0"
+          role="toolbar"
+          aria-label="Description formatting tools"
+        >
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -589,7 +601,7 @@ export function DescriptionEditor<TFieldValues extends { description: string }>(
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="gap-1 font-normal"
+                    className="gap-1 font-normal hover:text-white"
                     aria-label={ activeHeadingOption.label }
                   >
                     <span>{ activeHeadingOption.title }</span>
@@ -604,7 +616,7 @@ export function DescriptionEditor<TFieldValues extends { description: string }>(
                 <DropdownMenuItem
                   key={ option.label }
                   onSelect={ () => toggleHeading(option.level) }
-                  className="flex items-center justify-between gap-2"
+                  className="flex items-center justify-between gap-2 hover:!text-white"
                 >
                   <span>{ option.label }</span>
                   { isHeadingActive(option.level) && (
@@ -613,247 +625,254 @@ export function DescriptionEditor<TFieldValues extends { description: string }>(
                 </DropdownMenuItem>
               )) }
             </DropdownMenuContent>
-          </DropdownMenu>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                size="sm"
-                variant={ editor.isActive('bold') ? 'outline' : 'ghost' }
-                onClick={ toggleBold }
-                aria-pressed={ editor.isActive('bold') }
-                aria-label="Bold"
-              >
-                B
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Bold</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                size="sm"
-                variant={ editor.isActive('italic') ? 'outline' : 'ghost' }
-                onClick={ toggleItalic }
-                aria-pressed={ editor.isActive('italic') }
-                aria-label="Italic"
-              >
-                I
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Italic</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                size="sm"
-                variant={ editor.isActive('strike') ? 'outline' : 'ghost' }
-                onClick={ toggleStrike }
-                aria-pressed={ editor.isActive('strike') }
-                aria-label="Strikethrough"
-              >
-                S
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Strikethrough</TooltipContent>
-          </Tooltip>
-          <DropdownMenu>
+            </DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="gap-1"
-                    aria-label={ activeAlignmentOption.label }
-                  >
-                  <ActiveAlignmentIcon className="size-4" aria-hidden="true" />
-                    <FiChevronDown className="size-4" aria-hidden="true" />
-                  </Button>
-                </DropdownMenuTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Text alignment</TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent align="start" className="w-56">
-              { TEXT_ALIGNMENT_OPTIONS.map((option) => {
-                const AlignmentIcon = option.icon;
-                return (
-                  <DropdownMenuItem
-                    key={ option.value }
-                    onSelect={ () => setTextAlignment(option.value) }
-                    className="flex items-center justify-between gap-2"
-                  >
-                    <div className="flex items-center gap-2">
-                      <AlignmentIcon className="size-4" aria-hidden="true" />
-                      <span>{ option.label }</span>
-                    </div>
-                    { isAlignmentActive(option.value) && (
-                      <FiCheck className="size-4" aria-hidden="true" />
-                    ) }
-                  </DropdownMenuItem>
-                );
-              }) }
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Popover open={ linkPopoverOpen } onOpenChange={ handleLinkOpenChange }>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={ isLinkActive ? 'outline' : 'ghost' }
-                    aria-pressed={ isLinkActive }
-                    aria-label="Insert link"
-                  >
-                    <LuLink2 className="size-4" aria-hidden="true" />
-                    <span className="sr-only">Insert link</span>
-                  </Button>
-                </PopoverTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Insert link</TooltipContent>
-            </Tooltip>
-            <PopoverContent align="start" className="w-64 space-y-3">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground" htmlFor="description-link-input">
-                  Link URL
-                </label>
-                <Input
-                  id="description-link-input"
-                  value={ linkHref }
-                  onChange={ (event) => setLinkHref(event.target.value) }
-                  placeholder="https://example.com"
-                  autoComplete="url"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Button type="button" size="sm" onClick={ applyLink } disabled={ !canApplyLink }>
-                  Apply
-                </Button>
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
-                  onClick={ removeLink }
-                  disabled={ !canRemoveLink }
+                  variant={ editor.isActive('bold') ? 'outline' : 'ghost' }
+                  onClick={ toggleBold }
+                  aria-pressed={ editor.isActive('bold') }
+                  aria-label="Bold"
+                  className="hover:text-white"
                 >
-                  <LuLink2Off className="mr-2 size-4" aria-hidden="true" />
-                  Remove
+                  B
                 </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                size="sm"
-                variant={ editor.isActive('bulletList') ? 'outline' : 'ghost' }
-                onClick={ toggleBulletList }
-                aria-pressed={ editor.isActive('bulletList') }
-                aria-label="Bullet list"
-              >
-                <FiList className="size-4" aria-hidden="true" />
-                <span className="sr-only">Bullet list</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Bullet list</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                size="sm"
-                variant={ editor.isActive('orderedList') ? 'outline' : 'ghost' }
-                onClick={ toggleOrderedList }
-                aria-pressed={ editor.isActive('orderedList') }
-                aria-label="Numbered list"
-              >
-                <LuListOrdered className="size-4" aria-hidden="true" />
-                <span className="sr-only">Numbered list</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Numbered list</TooltipContent>
-          </Tooltip>
-          <DropdownMenu>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Bold</TooltipContent>
+            </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={ editor.isActive('italic') ? 'outline' : 'ghost' }
+                  onClick={ toggleItalic }
+                  aria-pressed={ editor.isActive('italic') }
+                  aria-label="Italic"
+                  className="hover:text-white"
+                >
+                  I
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Italic</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={ editor.isActive('strike') ? 'outline' : 'ghost' }
+                  onClick={ toggleStrike }
+                  aria-pressed={ editor.isActive('strike') }
+                  aria-label="Strikethrough"
+                  className="hover:text-white"
+                >
+                  S
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Strikethrough</TooltipContent>
+            </Tooltip>
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="gap-1 hover:text-white"
+                      aria-label={ activeAlignmentOption.label }
+                    >
+                      <ActiveAlignmentIcon className="size-4" aria-hidden="true" />
+                      <FiChevronDown className="size-4" aria-hidden="true" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Text alignment</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="start" className="w-56">
+                { TEXT_ALIGNMENT_OPTIONS.map((option) => {
+                  const AlignmentIcon = option.icon;
+                  return (
+                    <DropdownMenuItem
+                      key={ option.value }
+                      onSelect={ () => setTextAlignment(option.value) }
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <AlignmentIcon className="size-4" aria-hidden="true" />
+                        <span>{ option.label }</span>
+                      </div>
+                      { isAlignmentActive(option.value) && (
+                        <FiCheck className="size-4" aria-hidden="true" />
+                      ) }
+                    </DropdownMenuItem>
+                  );
+                }) }
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Popover open={ linkPopoverOpen } onOpenChange={ handleLinkOpenChange }>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={ isLinkActive ? 'outline' : 'ghost' }
+                      aria-pressed={ isLinkActive }
+                      aria-label="Insert link"
+                      className="hover:text-white"
+                    >
+                      <LuLink2 className="size-4" aria-hidden="true" />
+                      <span className="sr-only">Insert link</span>
+                    </Button>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Insert link</TooltipContent>
+              </Tooltip>
+              <PopoverContent align="start" className="w-64 space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground" htmlFor="description-link-input">
+                    Link URL
+                  </label>
+                  <Input
+                    id="description-link-input"
+                    value={ linkHref }
+                    onChange={ (event) => setLinkHref(event.target.value) }
+                    placeholder="https://example.com"
+                    autoComplete="url"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button type="button" size="sm" onClick={ applyLink } disabled={ !canApplyLink }>
+                    Apply
+                  </Button>
                   <Button
                     type="button"
                     size="sm"
-                    variant={ isTableActive ? 'outline' : 'ghost' }
-                    aria-pressed={ isTableActive }
-                    aria-label="Table tools"
+                    variant="outline"
+                    onClick={ removeLink }
+                    disabled={ !canRemoveLink }
                   >
-                    <LuTable className="size-4" aria-hidden="true" />
-                    <span className="sr-only">Table tools</span>
+                    <LuLink2Off className="mr-2 size-4" aria-hidden="true" />
+                    Remove
                   </Button>
-                </DropdownMenuTrigger>
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={ editor.isActive('bulletList') ? 'outline' : 'ghost' }
+                  onClick={ toggleBulletList }
+                  aria-pressed={ editor.isActive('bulletList') }
+                  aria-label="Bullet list"
+                  className="hover:text-white"
+                >
+                  <FiList className="size-4" aria-hidden="true" />
+                  <span className="sr-only">Bullet list</span>
+                </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Table tools</TooltipContent>
+              <TooltipContent side="bottom">Bullet list</TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="start" className="w-56">
-              <DropdownMenuItem
-                onSelect={ () => insertTable() }
-                disabled={ !canInsertTable }
-              >
-                Insert 2x2 table
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={ () => addTableRowBelow() }
-                disabled={ !canAddRowAfter }
-              >
-                Add row below
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={ () => addTableColumnAfter() }
-                disabled={ !canAddColumnAfter }
-              >
-                Add column to the right
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={ () => deleteTableRow() }
-                disabled={ !canDeleteRow }
-              >
-                Delete row
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={ () => deleteTableColumn() }
-                disabled={ !canDeleteColumn }
-              >
-                Delete column
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={ () => deleteTable() }
-                disabled={ !canDeleteTable }
-              >
-                Delete table
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="text-sm font-normal"
-                onClick={ clearFormatting }
-                aria-label="Clear formatting"
-              >
-                <FiSlash className="size-4" aria-hidden="true" />
-                <span className="sr-only">Clear formatting</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Clear formatting</TooltipContent>
-          </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={ editor.isActive('orderedList') ? 'outline' : 'ghost' }
+                  onClick={ toggleOrderedList }
+                  aria-pressed={ editor.isActive('orderedList') }
+                  aria-label="Numbered list"
+                  className="hover:text-white"
+                >
+                  <LuListOrdered className="size-4" aria-hidden="true" />
+                  <span className="sr-only">Numbered list</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Numbered list</TooltipContent>
+            </Tooltip>
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={ isTableActive ? 'outline' : 'ghost' }
+                      aria-pressed={ isTableActive }
+                      aria-label="Table tools"
+                      className="hover:text-white"
+                    >
+                      <LuTable className="size-4" aria-hidden="true" />
+                      <span className="sr-only">Table tools</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Table tools</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuItem
+                  onSelect={ () => insertTable() }
+                  disabled={ !canInsertTable }
+                >
+                  Insert 2x2 table
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={ () => addTableRowBelow() }
+                  disabled={ !canAddRowAfter }
+                >
+                  Add row below
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={ () => addTableColumnAfter() }
+                  disabled={ !canAddColumnAfter }
+                >
+                  Add column to the right
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={ () => deleteTableRow() }
+                  disabled={ !canDeleteRow }
+                >
+                  Delete row
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={ () => deleteTableColumn() }
+                  disabled={ !canDeleteColumn }
+                >
+                  Delete column
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={ () => deleteTable() }
+                  disabled={ !canDeleteTable }
+                >
+                  Delete table
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="text-sm font-normal hover:text-white"
+                  onClick={ clearFormatting }
+                  aria-label="Clear formatting"
+                >
+                  <FiSlash className="size-4" aria-hidden="true" />
+                  <span className="sr-only">Clear formatting</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Clear formatting</TooltipContent>
+            </Tooltip>
         </div>
       </div>
-      <div className="bg-background px-3 py-3">
+      <div className="bg-background px-3 py-3 w-full max-w-full min-w-0 overflow-hidden">
         <EditorContent
           editor={ editor }
           className="h-[500px] w-full overflow-auto border-none focus-visible:outline-none"
@@ -874,7 +893,7 @@ export function SpaceDetailsFields({ form, }: SpaceFormFieldsProps) {
         control={ form.control }
         name="name"
         render={ ({ field, }) => (
-          <FormItem>
+          <FormItem className="w-full min-w-0">
             <FormLabel>Space name</FormLabel>
             <FormControl>
               <Input placeholder="Study Corner" { ...field } />
@@ -887,7 +906,7 @@ export function SpaceDetailsFields({ form, }: SpaceFormFieldsProps) {
         control={ form.control }
         name="description"
         render={ ({ field, }) => (
-          <FormItem>
+          <FormItem className="w-full min-w-0">
             <FormLabel>Description <span className="text-muted-foreground italic">(min. 20 characters)</span></FormLabel>
             <FormControl>
               <DescriptionEditor field={ field } />
@@ -1611,292 +1630,300 @@ export function SpaceAddressFields({ form, }: SpaceFormFieldsProps) {
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-4">
-        <FormField
-          control={ form.control }
-          name="country_code"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel className="flex items-center gap-2">
-                <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
-                <span>Country</span>
-              </FormLabel>
-              <FormControl>
-                <Select
-                  value={ field.value ?? '' }
-                  onValueChange={ (value) => {
-                    const normalized = (value ?? '').toUpperCase();
-                    field.onChange(normalized);
-                    form.setValue('region', '', FORM_SET_OPTIONS);
-                    form.setValue('city', '', FORM_SET_OPTIONS);
-                    form.setValue('barangay', '', FORM_SET_OPTIONS);
-                    form.setValue('postal_code', '', FORM_SET_OPTIONS);
-                  } }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Philippines" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    { SUPPORTED_COUNTRIES.map((country) => (
-                      <SelectItem key={ country.code } value={ country.code }>
-                        { country.name }
-                      </SelectItem>
-                    )) }
-                  </SelectContent>
-                </Select>
-              </FormControl>
-            </FormItem>
-          ) }
-        />
-        <FormField
-          control={ form.control }
-          name="region"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel>Region / State</FormLabel>
-              <FormControl>
-                <Select
-                  value={ field.value ?? '' }
-                  onValueChange={ (value) => {
-                    field.onChange(value);
-                    form.setValue('city', '', FORM_SET_OPTIONS);
-                    form.setValue('barangay', '', FORM_SET_OPTIONS);
-                    form.setValue('postal_code', '', FORM_SET_OPTIONS);
-                  } }
-                  disabled={ regionDisabled }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder={ isRegionsLoading ? 'Loading regions...' : 'Select region / state' } />
-                  </SelectTrigger>
-                  <SelectContent>
-                    { isRegionsError && (
-                      <SelectItem value="regions-error" disabled>
-                        Unable to load regions
-                      </SelectItem>
-                    ) }
-                    { regionOptions.map((region) => (
-                      <SelectItem key={ region.code } value={ region.name }>
-                        { region.name }
-                      </SelectItem>
-                    )) }
-                  </SelectContent>
-                </Select>
-              </FormControl>
-            </FormItem>
-          ) }
-        />
-        <FormField
-          control={ form.control }
-          name="city"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel className="data-[error=true]:text-foreground">City</FormLabel>
-              <FormControl>
-                <Select
-                  value={ field.value ?? '' }
-                  onValueChange={ (value) => {
-                    field.onChange(value);
-                    form.setValue('barangay', '', FORM_SET_OPTIONS);
-                    form.setValue('postal_code', '', FORM_SET_OPTIONS);
-                  } }
-                  disabled={ cityDisabled }
-                >
-                  <SelectTrigger className="w-full aria-invalid:border-input aria-invalid:ring-transparent aria-invalid:ring-0">
-                    <SelectValue placeholder={ isCitiesLoading ? 'Loading cities...' : 'Select city' } />
-                  </SelectTrigger>
-                  <SelectContent>
-                    { isCitiesError && (
-                      <SelectItem value="cities-error" disabled>
-                        Unable to load cities
-                      </SelectItem>
-                    ) }
-                    { dedupedCityOptions.map((city) => (
-                      <SelectItem key={ `${city.code}-${city.name}` } value={ city.name }>
-                        { city.name }
-                      </SelectItem>
-                    )) }
-                  </SelectContent>
-                </Select>
-              </FormControl>
-            </FormItem>
-          ) }
-        />
-        <FormField
-          control={ form.control }
-          name="barangay"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel>Barangay</FormLabel>
-              <FormControl>
-                <Select
-                  value={ field.value ?? '' }
-                  onValueChange={ (value) => field.onChange(value) }
-                  disabled={ barangayDisabled }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue
-                      placeholder={
-                        !selectedCity
-                          ? 'Select a city first'
-                          : isBarangaysLoading
-                            ? 'Loading barangays...'
-                            : dedupedBarangayOptions.length === 0
-                              ? 'No barangays available'
-                              : 'Select barangay'
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    { isBarangaysError && (
-                      <SelectItem value="barangays-error" disabled>
-                        Unable to load barangays
-                      </SelectItem>
-                    ) }
-                    { dedupedBarangayOptions.map((barangay) => (
-                      <SelectItem key={ `${barangay.code}-${barangay.name}` } value={ barangay.name }>
-                        { barangay.name }
-                      </SelectItem>
-                    )) }
-                  </SelectContent>
-                </Select>
-              </FormControl>
-            </FormItem>
-          ) }
-        />
-      </div>
-      <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
-        <FormField
-          control={ form.control }
-          name="street"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel>Street</FormLabel>
-              <FormControl>
-                <Input placeholder="Rizal Ave" { ...field } />
-              </FormControl>
-            </FormItem>
-          ) }
-        />
-        <FormField
-          control={ form.control }
-          name="address_subunit"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel>Address subunit <span className="italic text-muted-foreground">(Optional)</span></FormLabel>
-              <FormControl>
-                <Input placeholder="2F" { ...field } />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          ) }
-        />
-        <FormField
-          control={ form.control }
-          name="unit_number"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel>Unit / Suite <span className="italic text-muted-foreground">(Optional)</span></FormLabel>
-              <FormControl>
-                <Input placeholder="Unit Number" { ...field } />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          ) }
-        />
-        <FormField
-          control={ form.control }
-          name="postal_code"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel className="data-[error=true]:text-foreground">Postal code</FormLabel>
-              <FormControl>
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="\d{4}"
-                  maxLength={ 4 }
-                  placeholder="1000"
-                  { ...field }
-                  readOnly
-                  disabled
-                  className="aria-invalid:border-input aria-invalid:ring-transparent aria-invalid:ring-0"
-                  aria-live="polite"
-                />
-              </FormControl>
-            </FormItem>
-          ) }
-        />
-      </div>
-      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
-        <FormField
-          control={ form.control }
-          name="lat"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel>
-                <div className="flex items-center gap-2">
+      <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField
+            control={ form.control }
+            name="country_code"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel className="flex items-center gap-2">
                   <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
-                  <span>Latitude</span>
-                </div>
-              </FormLabel>
-              <FormControl>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Input
-                      type="number"
-                      step="0.000001"
-                      placeholder="37.791212"
-                      { ...field }
-                      readOnly
-                      value={ field.value ?? '' }
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Latitude and longitude are determined by the address or by pinning the map.
-                  </TooltipContent>
-                </Tooltip>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          ) }
-        />
-        <FormField
-          control={ form.control }
-          name="long"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel>
-                <div className="flex items-center gap-2">
-                  <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
-                  <span>Longitude</span>
-                </div>
-              </FormLabel>
-              <FormControl>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Input
-                      type="number"
-                      step="0.000001"
-                      placeholder="-122.392756"
-                      { ...field }
-                      readOnly
-                      value={ field.value ?? '' }
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Latitude and longitude are determined by the address or by pinning the map.
-                  </TooltipContent>
-                </Tooltip>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          ) }
-        />
-        <div className="flex flex-col items-end gap-2 md:col-span-1">
-          <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={ () => setPinDialogOpen(true) }>
-            <FiMapPin className="mr-2 size-4" aria-hidden="true" />
-            Pin exact location
-          </Button>
+                  <span>Country</span>
+                </FormLabel>
+                <FormControl>
+                  <Select
+                    value={ field.value ?? '' }
+                    onValueChange={ (value) => {
+                      const normalized = (value ?? '').toUpperCase();
+                      field.onChange(normalized);
+                      form.setValue('region', '', FORM_SET_OPTIONS);
+                      form.setValue('city', '', FORM_SET_OPTIONS);
+                      form.setValue('barangay', '', FORM_SET_OPTIONS);
+                      form.setValue('postal_code', '', FORM_SET_OPTIONS);
+                    } }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Philippines" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      { SUPPORTED_COUNTRIES.map((country) => (
+                        <SelectItem key={ country.code } value={ country.code } className="hover:!text-white">
+                          { country.name }
+                        </SelectItem>
+                      )) }
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+              </FormItem>
+            ) }
+          />
+          <FormField
+            control={ form.control }
+            name="region"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel>Region / State</FormLabel>
+                <FormControl>
+                  <Select
+                    value={ field.value ?? '' }
+                    onValueChange={ (value) => {
+                      field.onChange(value);
+                      form.setValue('city', '', FORM_SET_OPTIONS);
+                      form.setValue('barangay', '', FORM_SET_OPTIONS);
+                      form.setValue('postal_code', '', FORM_SET_OPTIONS);
+                    } }
+                    disabled={ regionDisabled }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={ isRegionsLoading ? 'Loading regions...' : 'Select region / state' } />
+                    </SelectTrigger>
+                    <SelectContent>
+                      { isRegionsError && (
+                        <SelectItem value="regions-error" disabled>
+                          Unable to load regions
+                        </SelectItem>
+                      ) }
+                      { regionOptions.map((region) => (
+                        <SelectItem key={ region.code } value={ region.name } className="hover:!text-white">
+                          { region.name }
+                        </SelectItem>
+                      )) }
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+              </FormItem>
+            ) }
+          />
+        </div>
+        <div className="grid gap-4">
+          <FormField
+            control={ form.control }
+            name="city"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel className="data-[error=true]:text-foreground">City</FormLabel>
+                <FormControl>
+                  <Select
+                    value={ field.value ?? '' }
+                    onValueChange={ (value) => {
+                      field.onChange(value);
+                      form.setValue('barangay', '', FORM_SET_OPTIONS);
+                      form.setValue('postal_code', '', FORM_SET_OPTIONS);
+                    } }
+                    disabled={ cityDisabled }
+                  >
+                    <SelectTrigger className="w-full aria-invalid:border-input aria-invalid:ring-transparent aria-invalid:ring-0">
+                      <SelectValue placeholder={ isCitiesLoading ? 'Loading cities...' : 'Select city' } />
+                    </SelectTrigger>
+                    <SelectContent>
+                      { isCitiesError && (
+                        <SelectItem value="cities-error" disabled>
+                          Unable to load cities
+                        </SelectItem>
+                      ) }
+                      { dedupedCityOptions.map((city) => (
+                        <SelectItem key={ `${city.code}-${city.name}` } value={ city.name } className="hover:!text-white">
+                          { city.name }
+                        </SelectItem>
+                      )) }
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+              </FormItem>
+            ) }
+          />
+        </div>
+        <div className="grid gap-4">
+          <FormField
+            control={ form.control }
+            name="barangay"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel>Barangay</FormLabel>
+                <FormControl>
+                  <Select
+                    value={ field.value ?? '' }
+                    onValueChange={ (value) => field.onChange(value) }
+                    disabled={ barangayDisabled }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue
+                        placeholder={
+                          !selectedCity
+                            ? 'Select a city first'
+                            : isBarangaysLoading
+                              ? 'Loading barangays...'
+                              : dedupedBarangayOptions.length === 0
+                                ? 'No barangays available'
+                                : 'Select barangay'
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      { isBarangaysError && (
+                        <SelectItem value="barangays-error" disabled className="hover:!text-white">
+                          Unable to load barangays
+                        </SelectItem>
+                      ) }
+                      { dedupedBarangayOptions.map((barangay) => (
+                        <SelectItem key={ `${barangay.code}-${barangay.name}` } value={ barangay.name } className="hover:!text-white">
+                          { barangay.name }
+                        </SelectItem>
+                      )) }
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+              </FormItem>
+            ) }
+          />
+        </div>
+        <div className="grid gap-4 md:grid-cols-[minmax(0,4fr)_minmax(0,1fr)]">
+          <FormField
+            control={ form.control }
+            name="street"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel>Street</FormLabel>
+                <FormControl>
+                  <Input placeholder="Rizal Ave" { ...field } />
+                </FormControl>
+              </FormItem>
+            ) }
+          />
+          <FormField
+            control={ form.control }
+            name="postal_code"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel className="data-[error=true]:text-foreground">Postal code</FormLabel>
+                <FormControl>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="\d{4}"
+                    maxLength={ 4 }
+                    placeholder="1000"
+                    { ...field }
+                    readOnly
+                    disabled
+                    className="aria-invalid:border-input aria-invalid:ring-transparent aria-invalid:ring-0"
+                    aria-live="polite"
+                  />
+                </FormControl>
+              </FormItem>
+            ) }
+          />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField
+            control={ form.control }
+            name="address_subunit"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel>Address subunit <span className="italic text-muted-foreground">(Optional)</span></FormLabel>
+                <FormControl>
+                  <Input placeholder="2F" { ...field } />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            ) }
+          />
+          <FormField
+            control={ form.control }
+            name="unit_number"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel>Unit / Suite <span className="italic text-muted-foreground">(Optional)</span></FormLabel>
+                <FormControl>
+                  <Input placeholder="Unit Number" { ...field } />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            ) }
+          />
+        </div>
+        <div className="grid gap-4 grid-cols-[repeat(2,minmax(0,1fr))_auto] items-end">
+          <FormField
+            control={ form.control }
+            name="lat"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel>
+                  <div className="flex items-center gap-2">
+                    <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
+                    <span>Latitude</span>
+                  </div>
+                </FormLabel>
+                <FormControl>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Input
+                        type="number"
+                        step="0.000001"
+                        placeholder="37.791212"
+                        { ...field }
+                        readOnly
+                        value={ field.value ?? '' }
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Latitude and longitude are determined by the address or by pinning the map.
+                    </TooltipContent>
+                  </Tooltip>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            ) }
+          />
+          <FormField
+            control={ form.control }
+            name="long"
+            render={ ({ field, }) => (
+              <FormItem>
+                <FormLabel>
+                  <div className="flex items-center gap-2">
+                    <FiLock className="size-4 text-muted-foreground" aria-hidden="true" />
+                    <span>Longitude</span>
+                  </div>
+                </FormLabel>
+                <FormControl>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Input
+                        type="number"
+                        step="0.000001"
+                        placeholder="-122.392756"
+                        { ...field }
+                        readOnly
+                        value={ field.value ?? '' }
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Latitude and longitude are determined by the address or by pinning the map.
+                    </TooltipContent>
+                  </Tooltip>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            ) }
+          />
+          <div className="flex flex-col items-end gap-2 md:col-span-1">
+            <Button type="button" variant="outline" className="w-full sm:w-auto hover:text-white" onClick={ () => setPinDialogOpen(true) }>
+              <FiMapPin className="mr-2 size-4" aria-hidden="true" />
+              Pin exact location
+            </Button>
+          </div>
         </div>
       </div>
       <PinLocationDialog
@@ -1953,6 +1980,29 @@ export function SpaceDialog({
     form.reset(initialValues);
   }, [initialValues, form]);
 
+  /* eslint-disable react-hooks/exhaustive-deps */
+  useEffect(() => {
+    if (!automaticBookingEnabled) {
+      form.setValue('request_approval_at_capacity', false, FORM_SET_OPTIONS);
+    }
+  }, [automaticBookingEnabled, form]);
+
+  useEffect(() => {
+    if (!advanceBookingEnabled) {
+      form.setValue('advance_booking_value', null, FORM_SET_OPTIONS);
+      form.setValue('advance_booking_unit', null, FORM_SET_OPTIONS);
+    } else if (!form.getValues('advance_booking_unit')) {
+      form.setValue('advance_booking_unit', 'days', FORM_SET_OPTIONS);
+    }
+  }, [advanceBookingEnabled, form]);
+
+  useEffect(() => {
+    if (!bookingNotesEnabled) {
+      form.setValue('booking_notes', null, FORM_SET_OPTIONS);
+    }
+  }, [bookingNotesEnabled, form]);
+  /* eslint-enable react-hooks/exhaustive-deps */
+
   const close = () => onOpenChange(false);
 
   return (
@@ -1989,7 +2039,10 @@ type AreaDialogProps = {
   onSubmit: (values: AreaFormValues) => void;
   mode?: 'create' | 'edit';
   isSubmitting?: boolean;
+  pricingRules: PriceRuleRecord[];
 };
+
+type AdvanceBookingUnit = (typeof advanceBookingUnits)[number];
 
 export function AreaDialog({
   open,
@@ -1998,136 +2051,365 @@ export function AreaDialog({
   onSubmit,
   mode = 'create',
   isSubmitting = false,
+  pricingRules,
 }: AreaDialogProps) {
   const form = useForm<AreaFormValues>({
     resolver: zodResolver(areaSchema),
     defaultValues: initialValues,
+  });
+  const automaticBookingEnabled = useWatch({
+    control: form.control,
+    name: 'automatic_booking_enabled',
+    defaultValue: initialValues.automatic_booking_enabled,
+  });
+  const advanceBookingEnabled = useWatch({
+    control: form.control,
+    name: 'advance_booking_enabled',
+    defaultValue: initialValues.advance_booking_enabled,
+  });
+  const bookingNotesEnabled = useWatch({
+    control: form.control,
+    name: 'booking_notes_enabled',
+    defaultValue: initialValues.booking_notes_enabled,
+  });
+  const selectedPriceRuleId = useWatch({
+    control: form.control,
+    name: 'price_rule_id',
+    defaultValue: initialValues.price_rule_id,
   });
 
   useEffect(() => {
     form.reset(initialValues);
   }, [initialValues, form]);
 
+  useEffect(() => {
+    if (!automaticBookingEnabled) {
+      form.setValue('request_approval_at_capacity', false, FORM_SET_OPTIONS);
+    }
+  }, [automaticBookingEnabled, form]);
+
+  useEffect(() => {
+    if (!advanceBookingEnabled) {
+      form.setValue('advance_booking_value', null, FORM_SET_OPTIONS);
+      form.setValue('advance_booking_unit', null, FORM_SET_OPTIONS);
+    } else if (!form.getValues('advance_booking_unit')) {
+      form.setValue('advance_booking_unit', 'days', FORM_SET_OPTIONS);
+    }
+  }, [advanceBookingEnabled, form]);
+
+  useEffect(() => {
+    if (!bookingNotesEnabled) {
+      form.setValue('booking_notes', null, FORM_SET_OPTIONS);
+    }
+  }, [bookingNotesEnabled, form]);
+
+  const isPriceRuleRequired = mode === 'create';
+  const isPriceRuleSelected = Boolean(selectedPriceRuleId);
+  const disableSaveButton = isSubmitting || (isPriceRuleRequired && !isPriceRuleSelected);
+
   const close = () => onOpenChange(false);
 
   return (
     <Dialog open={ open } onOpenChange={ onOpenChange }>
-      <DialogContent>
-        <DialogHeader>
+      <DialogContent
+        mobileFullScreen
+        position="top"
+        className="h-screen w-screen max-w-none overflow-y-auto sm:h-screen sm:w-screen sm:max-w-none"
+      >
+        <DialogHeader className="mb-6">
           <DialogTitle>{ mode === 'edit' ? 'Edit area' : 'Add area' }</DialogTitle>
-          <DialogDescription>Maps to <code>prisma.area</code> and <code>price_rate</code>.</DialogDescription>
+          <DialogDescription>
+            Adjust capacity, availability, and pricing settings for this space area.
+          </DialogDescription>
         </DialogHeader>
         <Form { ...form }>
           <form className="space-y-4" onSubmit={ form.handleSubmit(onSubmit) }>
             <FormField
               control={ form.control }
               name="name"
-          render={ ({ field, }) => (
-            <FormItem>
-              <FormLabel>Area name</FormLabel>
-              <FormControl>
-                <Input placeholder="Boardroom A" { ...field } />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          ) }
-        />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField
-            control={ form.control }
-            name="min_capacity"
-            render={ ({ field, }) => (
-              <FormItem>
-                <FormLabel>Min capacity</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    min={ 1 }
-                    placeholder="2"
-                    value={ field.value ?? '' }
-                    onChange={ (event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value)) }
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            ) }
-          />
-          <FormField
-            control={ form.control }
-            name="max_capacity"
-            render={ ({ field, }) => (
-              <FormItem>
-                <FormLabel>Max capacity</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    min={ 1 }
-                    placeholder="12"
-                    value={ field.value ?? '' }
-                    onChange={ (event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value)) }
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            ) }
-          />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField
-            control={ form.control }
-            name="rate_time_unit"
-            render={ ({ field, }) => (
-              <FormItem>
-                <FormLabel>Billing cadence</FormLabel>
-                <Select value={ field.value } onValueChange={ field.onChange }>
+              render={ ({ field, }) => (
+                <FormItem>
+                  <FormLabel>Area name</FormLabel>
                   <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select cadence" />
-                    </SelectTrigger>
+                    <Input placeholder="Boardroom A" { ...field } />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              ) }
+            />
+            <div className="space-y-3 rounded-lg border border-border/70 bg-muted/30 p-4">
+              <FormField
+                control={ form.control }
+                name="automatic_booking_enabled"
+                render={ ({ field, }) => (
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-foreground">Allow automatic booking</p>
+                      <p className="text-xs text-muted-foreground">
+                        Default off. When disabled, all bookings require manual approval by the partner.
+                      </p>
+                    </div>
+                    <Switch
+                      id="automatic-booking"
+                      checked={ Boolean(field.value) }
+                      onCheckedChange={ (checked) => {
+                        field.onChange(checked);
+                        if (!checked) {
+                          form.setValue('request_approval_at_capacity', false, FORM_SET_OPTIONS);
+                        }
+                      } }
+                      aria-label="Allow automatic booking"
+                    />
+                  </div>
+                ) }
+              />
+              { automaticBookingEnabled ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={ form.control }
+                    name="max_capacity"
+                    render={ ({ field, }) => (
+                      <FormItem>
+                        <div className="flex items-center justify-between gap-2">
+                          <Label htmlFor="max-capacity" className="text-sm font-medium text-foreground">
+                            Maximum capacity
+                          </Label>
+                          <span className="text-[11px] font-medium text-muted-foreground">Required</span>
+                        </div>
+                        <FormControl>
+                          <Input
+                            id="max-capacity"
+                            type="number"
+                            min={ 1 }
+                            placeholder="12"
+                            value={ field.value ?? '' }
+                            onChange={ (event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value)) }
+                            aria-label="Maximum automatic booking capacity"
+                          />
+                        </FormControl>
+                        <FormDescription>Auto-approve bookings until this limit is reached.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    ) }
+                  />
+                  <FormField
+                    control={ form.control }
+                    name="request_approval_at_capacity"
+                    render={ ({ field, }) => (
+                      <FormItem className="rounded-lg border border-border/70 bg-background/70 p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <Label htmlFor="request-approval-capacity" className="text-sm font-medium text-foreground">
+                              Request approval when maximum capacity is reached
+                            </Label>
+                            <p className="text-xs text-muted-foreground">
+                              Keep accepting requests but require approvals after the limit.
+                            </p>
+                          </div>
+                          <Switch
+                            id="request-approval-capacity"
+                            checked={ Boolean(field.value) }
+                            onCheckedChange={ field.onChange }
+                            aria-label="Request approval when maximum capacity is reached"
+                          />
+                        </div>
+                        <FormDescription className="mt-1">
+                          { field.value
+                            ? 'After the cap, bookings stay open but revert to manual approvals.'
+                            : 'Turn off to stop accepting bookings entirely once capacity is full.' }
+                        </FormDescription>
+                      </FormItem>
+                    ) }
+                  />
+                </div>
+              ) : (
+                <div className="rounded-md border border-dashed border-border/60 bg-background/60 p-3 text-xs text-muted-foreground">
+                  Maximum capacity and approval fallbacks appear once automatic booking is enabled.
+                </div>
+              ) }
+              <div className="rounded-md border border-dashed border-border/60 bg-background/60 p-3 text-xs text-muted-foreground">
+                <p className="mb-2 text-[13px] font-semibold text-foreground">Booking approval logic</p>
+                <ul className="space-y-1 pl-4 list-disc">
+                  <li>Automatic booking off (default): all bookings require manual approval; capacity settings stay hidden.</li>
+                  <li>Automatic booking on + request approval at capacity: bookings auto-approve until the limit, then revert to manual approvals.</li>
+                  <li>Automatic booking on + request approval off: bookings auto-approve until the limit, then new bookings are blocked as fully booked.</li>
+                </ul>
+              </div>
+            </div>
+
+        <FormField
+          control={ form.control }
+          name="price_rule_id"
+          render={ ({ field, }) => (
+            <FormItem className="rounded-lg border border-border/70 bg-background/70 p-4">
+              <FormLabel>Pricing rule</FormLabel>
+              <FormControl>
+                <Select
+                  value={ field.value ?? 'none' }
+                  onValueChange={ (value) => field.onChange(value === 'none' ? null : value) }
+                >
+                  <SelectTrigger className="w-full" aria-label="Select pricing rule">
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
                   <SelectContent>
-                    { rateUnits.map((unit) => (
-                      <SelectItem key={ unit } value={ unit }>
-                        { unit === 'hour' && 'Hourly' }
-                        { unit === 'day' && 'Daily' }
-                        { unit === 'week' && 'Weekly' }
+                    <SelectItem value="none">None</SelectItem>
+                    { pricingRules.map((rule) => (
+                      <SelectItem key={ rule.id } value={ rule.id }>
+                        { rule.name }
                       </SelectItem>
                     )) }
                   </SelectContent>
                 </Select>
-                <FormMessage />
-              </FormItem>
-            ) }
-          />
-          <FormField
-            control={ form.control }
-            name="rate_amount"
-            render={ ({ field, }) => (
-              <FormItem>
-                <FormLabel>Rate (PHP)</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    min={ 0 }
-                    step="0.01"
-                    placeholder="150"
-                    value={ field.value ?? '' }
-                    onChange={ (event) => field.onChange(event.target.value === '' ? undefined : Number(event.target.value)) }
+              </FormControl>
+              <FormDescription>
+                Billing cadence and rate now live in the selected pricing rule. Choose a rule to apply its logic to this area.
+                { mode === 'create' ? ' Selecting a pricing rule is required to save a new area.' : '' }
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          ) }
+        />
+
+        <Accordion type="single" collapsible defaultValue="advanced-options">
+          <AccordionItem value="advanced-options" className="border-border/70">
+            <AccordionTrigger className="text-sm font-semibold">Advanced options</AccordionTrigger>
+            <AccordionContent className="space-y-4 pt-2">
+              <div className="space-y-3 rounded-lg border border-border/70 bg-background/70 p-4">
+                <FormField
+                  control={ form.control }
+                  name="advance_booking_enabled"
+                  render={ ({ field, }) => (
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-foreground">Allow advance booking</p>
+                        <p className="text-xs text-muted-foreground">
+                          Default: customers can only book hours in advance (same-day).
+                        </p>
+                      </div>
+                      <Switch
+                        id="advance-booking"
+                        checked={ Boolean(field.value) }
+                        onCheckedChange={ field.onChange }
+                        aria-label="Allow advance booking"
+                      />
+                    </div>
+                  ) }
+                />
+                { advanceBookingEnabled ? (
+                  <div className="flex flex-wrap items-center gap-3 rounded-md bg-muted/20 p-3">
+                    <p className="text-sm text-foreground">Allow bookings up to</p>
+                    <FormField
+                      control={ form.control }
+                      name="advance_booking_value"
+                      render={ ({ field, }) => (
+                        <FormItem className="mb-0">
+                          <FormControl>
+                            <Input
+                              id="advance-booking-window"
+                              type="number"
+                              min={ 1 }
+                              aria-label="Advance booking window"
+                              className="w-24"
+                              placeholder="30"
+                              value={ field.value ?? '' }
+                              onChange={ (event) => field.onChange(event.target.value === '' ? null : Number(event.target.value)) }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      ) }
+                    />
+                    <FormField
+                      control={ form.control }
+                      name="advance_booking_unit"
+                      render={ ({ field, }) => (
+                        <FormItem className="mb-0">
+                          <FormControl>
+                            <Select
+                              value={ field.value ?? 'days' }
+                              onValueChange={ (value: AdvanceBookingUnit) => field.onChange(value) }
+                            >
+                              <SelectTrigger id="advance-booking-unit" aria-label="Advance booking unit">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="days">Days</SelectItem>
+                                <SelectItem value="weeks">Weeks</SelectItem>
+                                <SelectItem value="months">Months</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      ) }
+                    />
+                    <p className="text-sm text-foreground">in advance</p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Customers can only book hours in advance by default. Enable to set a window in days, weeks, or months.
+                  </p>
+                ) }
+              </div>
+
+              <div className="space-y-3 rounded-lg border border-border/70 bg-background/70 p-4">
+                <FormField
+                  control={ form.control }
+                  name="booking_notes_enabled"
+                  render={ ({ field, }) => (
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-foreground">Enable booking notes</p>
+                        <p className="text-xs text-muted-foreground">
+                          Share arrival instructions or expectations; notes will appear in the customer booking interface.
+                        </p>
+                      </div>
+                      <Switch
+                        id="booking-notes"
+                        checked={ Boolean(field.value) }
+                        onCheckedChange={ field.onChange }
+                        aria-label="Enable booking notes"
+                      />
+                    </div>
+                  ) }
+                />
+                { bookingNotesEnabled ? (
+                  <FormField
+                    control={ form.control }
+                    name="booking_notes"
+                    render={ ({ field, }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Textarea
+                            aria-label="Booking notes for customers"
+                            placeholder="Example: Please check in at the front desk and present your ID."
+                            value={ field.value ?? '' }
+                            onChange={ field.onChange }
+                            rows={ 4 }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    ) }
                   />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            ) }
-          />
-            </div>
-            <DialogFooter className="flex-col gap-2 sm:flex-row">
-              <Button type="button" variant="outline" onClick={ close } disabled={ isSubmitting }>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={ isSubmitting }>
-                { isSubmitting ? 'Saving…' : mode === 'edit' ? 'Update area' : 'Save area' }
-              </Button>
-            </DialogFooter>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Turn on booking notes to add messaging customers will see before confirming.
+                  </p>
+                ) }
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+
+        <DialogFooter className="flex-col gap-2 sm:flex-row">
+          <Button type="button" variant="outline" onClick={ close } disabled={ isSubmitting }>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={ disableSaveButton }>
+            { isSubmitting ? 'Saving…' : mode === 'edit' ? 'Update area' : 'Save area' }
+          </Button>
+        </DialogFooter>
           </form>
         </Form>
       </DialogContent>

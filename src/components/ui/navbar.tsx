@@ -7,7 +7,14 @@ import { GrHomeRounded } from 'react-icons/gr';
 import { TbSparkles } from 'react-icons/tb';
 import { LuBookOpenText, LuUsers } from 'react-icons/lu';
 import { FaQuestion } from 'react-icons/fa6';
-import { FiSidebar, FiLogOut } from 'react-icons/fi';
+import {
+  FiBell,
+  FiChevronRight,
+  FiLogOut,
+  FiSettings,
+  FiSidebar,
+  FiUser
+} from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
 
 import { ThemeSwitcher } from './theme-switcher';
@@ -17,6 +24,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from './dropdown-menu';
 
@@ -37,6 +45,7 @@ import {
 } from '@/components/ui/sheet';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useSession } from '@/components/auth/SessionProvider';
+import { useUserProfile } from '@/hooks/use-user-profile';
 
 export type NavItem = {
   href: string;
@@ -55,10 +64,20 @@ type AccountMenuProps = {
   avatarUrl: string | null;
   fallbackLabel: string;
   onLogout: () => void;
+  onNavigate: (href: string) => void;
+  displayName: string;
+  secondaryLabel: string | null;
+  emailLabel: string;
 };
 
 function AccountMenu({
- avatarUrl, fallbackLabel, onLogout, 
+  avatarUrl,
+  fallbackLabel,
+  onLogout,
+  onNavigate,
+  displayName,
+  secondaryLabel,
+  emailLabel,
 }: AccountMenuProps) {
   return (
     <DropdownMenu>
@@ -74,17 +93,53 @@ function AccountMenu({
           </Avatar>
         </button>
       </DropdownMenuTrigger>
-        <DropdownMenuContent className="min-w-[180px] px-1 py-1">
-          <DropdownMenuItem
-            onSelect={ () => {
-              onLogout();
-            } }
-            className="rounded-sm text-sm font-medium text-destructive"
-          >
-            <FiLogOut className="size-4" />
-            Logout
-          </DropdownMenuItem>
-        </DropdownMenuContent>
+      <DropdownMenuContent
+        align="end"
+        side="bottom"
+        sideOffset={ 12 }
+        className="z-[60] min-w-[240px] border border-border bg-card px-2 py-2 shadow-lg"
+      >
+        <div className="flex items-center gap-3 rounded-md px-2 py-3">
+          <Avatar className="size-10 border border-border">
+            { avatarUrl ? (
+              <AvatarImage src={ avatarUrl } alt="User avatar" />
+            ) : (
+              <AvatarFallback>{ fallbackLabel }</AvatarFallback>
+            ) }
+          </Avatar>
+          <div className="flex min-w-0 flex-col">
+            <span className="text-sm font-semibold leading-tight">
+              { displayName }
+            </span>
+            <span className="text-xs text-muted-foreground truncate">
+              { secondaryLabel ?? emailLabel }
+            </span>
+          </div>
+        </div>
+        <DropdownMenuSeparator className="my-1" />
+        <DropdownMenuItem onSelect={ () => onNavigate('/account') }>
+          <FiUser className="size-4" aria-hidden="true" />
+          <span>Account</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={ () => onNavigate('/settings') }>
+          <FiSettings className="size-4" aria-hidden="true" />
+          <span>Settings</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={ () => onNavigate('/notifications') }>
+          <FiBell className="size-4" aria-hidden="true" />
+          <span>Notifications</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator className="my-1" />
+        <DropdownMenuItem
+          onSelect={ () => {
+            onLogout();
+          } }
+          className="rounded-sm text-sm font-medium text-destructive focus-visible:text-destructive"
+        >
+          <FiLogOut className="size-4" aria-hidden="true" />
+          Logout
+        </DropdownMenuItem>
+      </DropdownMenuContent>
     </DropdownMenu>
   );
 }
@@ -100,6 +155,7 @@ export default function NavBar({
   const {
  session, isLoading: isSessionLoading, 
 } = useSession();
+  const { data: userProfile, } = useUserProfile();
   const isSessionResolved = !isSessionLoading;
   const router = useRouter();
   const isLogoOnly = variant === 'logo-only';
@@ -107,7 +163,11 @@ export default function NavBar({
   const closeMenu = React.useCallback(() => setIsOpen(false), []);
 
   const handleNavLinkClick = React.useCallback(
-    (event: React.MouseEvent<HTMLAnchorElement>, href: string, shouldCloseMenu?: boolean) => {
+    (
+      event: React.MouseEvent<HTMLAnchorElement>,
+      href: string,
+      shouldCloseMenu?: boolean
+    ) => {
       if (shouldCloseMenu) {
         closeMenu();
       }
@@ -133,7 +193,8 @@ export default function NavBar({
       event.preventDefault();
 
       const navHeight = navRef.current?.offsetHeight ?? 0;
-      const targetPosition = targetElement.getBoundingClientRect().top + window.scrollY;
+      const targetPosition =
+        targetElement.getBoundingClientRect().top + window.scrollY;
 
       window.scrollTo({
         top: targetPosition - navHeight,
@@ -173,13 +234,31 @@ export default function NavBar({
     }
   ];
   const shouldShowNavLinks = isSessionResolved && !session;
-  const resolvedMenuItems = shouldShowNavLinks ? (menuItems ?? defaultMenuItems) : [];
+  const resolvedMenuItems = shouldShowNavLinks
+    ? (menuItems ?? defaultMenuItems)
+    : [];
 
-  const avatarUrl = session?.user?.user_metadata?.avatar_url
-    ?? session?.user?.user_metadata?.picture
-    ?? null;
-
-  const fallbackLabel = 'US';
+  const avatarUrl =
+    session?.user?.user_metadata?.avatar_url ??
+    session?.user?.user_metadata?.picture ??
+    null;
+  const preferredUsername = session?.user?.user_metadata?.preferred_username;
+  const preferredUsernameLabel =
+    preferredUsername && preferredUsername.includes('@')
+      ? undefined
+      : preferredUsername;
+  const resolvedHandleValue =
+    userProfile?.handle ?? preferredUsernameLabel ?? null;
+  const avatarFallback =
+    resolvedHandleValue?.slice(0, 2)?.toUpperCase() ?? 'US';
+  const displayName = resolvedHandleValue ?? 'UpSpace User';
+  const secondaryLabel = session?.user?.email ?? null;
+  const handleNavigate = React.useCallback(
+    (href: string) => {
+      router.push(href);
+    },
+    [router]
+  );
 
   const handleLogout = React.useCallback(async () => {
     const supabase = getSupabaseBrowserClient();
@@ -209,14 +288,18 @@ export default function NavBar({
         <div className="mx-auto flex h-18 max-w-[1440px] items-center justify-center px-4">
           <Link href="/" className="flex items-center gap-2">
             <LogoSymbolic className="text-primary dark:text-secondary" />
-            <span className="text-xl font-bold tracking-wide text-foreground dark:text-foreground">UpSpace</span>
+            <span className="text-xl font-bold tracking-wide text-foreground dark:text-foreground">
+              UpSpace
+            </span>
           </Link>
         </div>
       ) : (
         <div className="mx-auto px-4 max-w-[1440px] h-18 flex items-center self-center justify-between">
-          <div className='flex flex-row gap-2'>
-            <LogoSymbolic className='text-primary dark:text-secondary' />
-            <Link href='/'><h1 className='text-xl font-bold'>UpSpace</h1></Link>
+          <div className="flex flex-row gap-2">
+            <LogoSymbolic className="text-primary dark:text-secondary" />
+            <Link href="/">
+              <h1 className="text-xl font-bold">UpSpace</h1>
+            </Link>
           </div>
 
           { /* Desktop Navigation */ }
@@ -228,7 +311,9 @@ export default function NavBar({
                     <NavigationMenuLink asChild>
                       <Link
                         href={ item.href }
-                        onClick={ (event) => handleNavLinkClick(event, item.href) }
+                        onClick={ (event) =>
+                          handleNavLinkClick(event, item.href)
+                        }
                         className={ navigationMenuTriggerStyle() }
                       >
                         { item.label }
@@ -238,16 +323,20 @@ export default function NavBar({
                 )) }
 
                 <NavigationMenuItem>
-                    <div className="flex items-center gap-3 px-2">
-                      <ThemeSwitcher />
-                      { session && (
-                        <AccountMenu
-                          avatarUrl={ avatarUrl }
-                          fallbackLabel={ fallbackLabel }
-                          onLogout={ handleLogout }
-                        />
-                      ) }
-                    </div>
+                  <div className="flex items-center gap-3 px-2">
+                    <ThemeSwitcher />
+                    { session && (
+                      <AccountMenu
+                        avatarUrl={ avatarUrl }
+                        fallbackLabel={ avatarFallback }
+                        onLogout={ handleLogout }
+                        onNavigate={ handleNavigate }
+                        displayName={ displayName }
+                        secondaryLabel={ resolvedHandleValue }
+                        emailLabel={ secondaryLabel ?? 'Email unavailable' }
+                      />
+                    ) }
+                  </div>
                 </NavigationMenuItem>
               </NavigationMenuList>
             </NavigationMenu>
@@ -259,8 +348,12 @@ export default function NavBar({
             { session && (
               <AccountMenu
                 avatarUrl={ avatarUrl }
-                fallbackLabel={ fallbackLabel }
+                fallbackLabel={ avatarFallback }
                 onLogout={ handleLogout }
+                onNavigate={ handleNavigate }
+                displayName={ displayName }
+                secondaryLabel={ resolvedHandleValue }
+                emailLabel={ secondaryLabel ?? 'Email unavailable' }
               />
             ) }
             { resolvedMenuItems.length > 0 && (
@@ -275,31 +368,121 @@ export default function NavBar({
                 </SheetTrigger>
                 <SheetContent
                   side="right"
-                  className="w-[300px] sm:w-[400px]"
+                  className="w-full max-w-[480px] overflow-hidden border-l bg-background/95 p-0 backdrop-blur-xl"
                 >
-                  <SheetHeader className='border-t-transparent border-r-transparent border-l-transparent border-2 border-b-muted'>
-                    <SheetTitle className="flex items-center gap-2">
-                      <LogoSymbolic className='text-primary dark:text-secondary' />
-                      <span className='text-xl font-bold'>UpSpace</span>
-                    </SheetTitle>
-                  </SheetHeader>
-                  <div className="mt-6">
-                    { resolvedMenuItems.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <Link
-                          key={ item.href }
-                          href={ item.href }
-                          onClick={ (event) => handleNavLinkClick(event, item.href, true) }
-                          className="flex rounded-md items-center gap-3 px-4 py-3 bg-transparent text-sm font-medium transition-colors active:bg-secondary/20 active:text-primary dark:active:bg-secondary/10 dark:active:text-secondary group outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-                        >
-                          { Icon && (
-                            <Icon className="h-5 w-5 group-active:scale-110 transition-transform" />
-                          ) }
-                          <span>{ item.label }</span>
-                        </Link>
-                      );
-                    }) }
+                  <div className="relative flex h-full flex-col">
+                    <div className="pointer-events-none absolute inset-0">
+                      <div className="absolute -left-10 top-6 size-44 rounded-full bg-primary/12 blur-3xl" />
+                      <div className="absolute right-[-56px] top-24 size-48 rounded-full bg-secondary/10 blur-3xl" />
+                    </div>
+
+                    <div className="relative border-b border-border/60 bg-gradient-to-br from-background/95 via-background/80 to-secondary/5 px-5 pb-6 pt-8 shadow-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <LogoSymbolic className="text-primary dark:text-secondary" />
+                          <div className="flex flex-col">
+                            <span className="text-base font-semibold">
+                              UpSpace
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              Find your next workspace
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                        Book inspiring coworking spaces and stay close to your
+                        team, wherever you are.
+                      </p>
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <Button asChild size="sm">
+                          <Link
+                            href="/#features"
+                            onClick={ (event) =>
+                              handleNavLinkClick(event, '/#features', true)
+                            }
+                            aria-label="Explore featured workspaces"
+                          >
+                            Book a space
+                          </Link>
+                        </Button>
+                        <Button asChild size="sm" variant="outline">
+                          <Link
+                            href="/#faqs"
+                            onClick={ (event) =>
+                              handleNavLinkClick(event, '/#faqs', true)
+                            }
+                            aria-label="Browse frequently asked questions"
+                          >
+                            FAQs
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+
+                    <nav
+                      aria-label="Mobile primary navigation"
+                      className="relative flex-1 overflow-y-auto px-4 py-4"
+                    >
+                      <div className="flex flex-col gap-2">
+                        { resolvedMenuItems.map((item) => {
+                          const Icon = item.icon;
+                          return (
+                            <Link
+                              key={ item.href }
+                              href={ item.href }
+                              onClick={ (event) =>
+                                handleNavLinkClick(event, item.href, true)
+                              }
+                              className="group flex items-center gap-3 rounded-lg border border-border/70 bg-card/80 px-4 py-3 text-sm font-semibold text-foreground shadow-sm transition hover:-translate-x-1 hover:border-primary/50 hover:bg-card focus-visible:ring-ring/50 focus-visible:ring-[3px] active:scale-[0.995]"
+                            >
+                              { Icon && (
+                                <span className="rounded-md bg-muted/60 p-2 text-primary transition group-hover:bg-primary/10 group-hover:text-primary">
+                                  <Icon
+                                    className="h-5 w-5"
+                                    aria-hidden="true"
+                                  />
+                                </span>
+                              ) }
+                              <div className="flex flex-1 flex-col items-start">
+                                <span>{ item.label }</span>
+                                <span className="text-xs font-normal text-muted-foreground">
+                                  Jump to the { item.label.toLowerCase() } section
+                                </span>
+                              </div>
+                              <FiChevronRight
+                                className="size-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary"
+                                aria-hidden="true"
+                              />
+                            </Link>
+                          );
+                        }) }
+                      </div>
+                    </nav>
+
+                    <div className="relative border-t border-border/60 bg-card/80 px-4 py-5">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-foreground">
+                            Need a space today?
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            Chat with our team for tailored options.
+                          </span>
+                        </div>
+                        <Button size="sm" variant="secondary" asChild>
+                          <Link
+                            href="/#team"
+                            onClick={ (event) =>
+                              handleNavLinkClick(event, '/#team', true)
+                            }
+                            aria-label="Meet the UpSpace team"
+                          >
+                            Meet the team
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </SheetContent>
               </Sheet>

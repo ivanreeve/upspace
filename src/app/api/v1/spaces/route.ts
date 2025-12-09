@@ -9,6 +9,14 @@ import { richTextPlainTextLength, sanitizeRichText } from '@/lib/rich-text';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { buildPublicObjectUrl, isAbsoluteUrl, resolveSignedImageUrls } from '@/lib/spaces/image-urls';
 import { deriveSpaceStatus } from '@/lib/spaces/partner-serializer';
+import { computeStartingPriceFromAreas } from '@/lib/spaces/pricing';
+import {
+  SPACES_LIST_CACHE_TTL_SECONDS,
+  buildSpacesListCacheKey,
+  invalidateSpacesListCache,
+  readSpacesListCache,
+  setSpacesListCache
+} from '@/lib/cache/redis';
 
 // JSON-safe replacer: BigInt->string, Date->ISO
 const replacer = (_k: string, v: unknown) =>
@@ -18,7 +26,6 @@ const replacer = (_k: string, v: unknown) =>
 
 const TIME_24H_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const MIN_DESCRIPTION_CHARS = 20;
-const MAX_DESCRIPTION_CHARS = 500;
 
 const weekdayEnum = z.enum(WEEKDAY_ORDER);
 
@@ -115,7 +122,7 @@ const verificationDocumentSchema = z.object({
   requirement_id: z.enum(VERIFICATION_REQUIREMENT_IDS),
   slot_id: z.string().trim().min(1).max(100).optional(),
   mime_type: z.string().trim().min(1).max(255),
-  file_size_bytes: z.number().int().positive().max(10 * 1024 * 1024),
+  file_size_bytes: z.number().int().positive().max(50 * 1024 * 1024),
 });
 
 const spaceCreateSchema = z.object({
@@ -171,25 +178,6 @@ const DAY_NAME_TO_INDEX: Record<WeekdayName, number> = {
 
 const padTime = (value: number) => value.toString().padStart(2, '0');
 const formatTime = (value: Date) => `${padTime(value.getUTCHours())}:${padTime(value.getUTCMinutes())}`;
-const summarizeRates = (
-  areas: {
-    price_rate: {
-      price: Prisma.Decimal | number;
-      time_unit: string;
-    }[];
-  }[]
-) => {
-  const allRates = areas.flatMap((area) => area.price_rate ?? []);
-  if (!allRates.length) {
-    return null;
-  }
-  const numericPrices = allRates.map((rate) => Number(rate.price));
-  return {
-    min: Math.min(...numericPrices),
-    max: Math.max(...numericPrices),
-    unit: allRates[0]?.time_unit ?? null,
-  };
-};
 
 const serializeAvailabilitySlots = (
   slots: {
@@ -304,14 +292,9 @@ export async function GET(req: NextRequest) {
       // relational filters
       amenities: z.string().optional(), // comma-separated list of names
       amenities_mode: z.enum(['all', 'any']).optional(),
-      min_capacity: z.coerce.number().int().min(0).optional(),
+      amenities_negate: z.coerce.boolean().optional().default(false),
       bookmark_user_id: z.string().regex(/^\d+$/).optional(),
       available_days: z.string().optional(), // comma-separated day_of_week
-
-      // rate-based filters through areas->rates
-      rate_time_unit: z.string().min(1).optional(),
-      min_rate_price: z.coerce.number().nonnegative().optional(),
-      max_rate_price: z.coerce.number().nonnegative().optional(),
       available_from: z.string().regex(TIME_24H_PATTERN).optional(),
       available_to: z.string().regex(TIME_24H_PATTERN).optional(),
       include_pending: z.coerce.boolean().optional().default(false),
@@ -339,12 +322,9 @@ export async function GET(req: NextRequest) {
       space_ids: searchParams.get('space_ids') ?? undefined,
       amenities: searchParams.get('amenities') ?? undefined,
       amenities_mode: searchParams.get('amenities_mode') ?? undefined,
-      min_capacity: searchParams.get('min_capacity') ?? undefined,
+      amenities_negate: searchParams.get('amenities_negate') ?? undefined,
       bookmark_user_id: searchParams.get('bookmark_user_id') ?? undefined,
       available_days: searchParams.get('available_days') ?? undefined,
-      rate_time_unit: searchParams.get('rate_time_unit') ?? undefined,
-      min_rate_price: searchParams.get('min_rate_price') ?? undefined,
-      max_rate_price: searchParams.get('max_rate_price') ?? undefined,
       available_from: searchParams.get('available_from') ?? undefined,
       available_to: searchParams.get('available_to') ?? undefined,
       include_pending: searchParams.get('include_pending') ?? undefined,
@@ -374,12 +354,9 @@ export async function GET(req: NextRequest) {
       space_ids,
       amenities,
       amenities_mode,
-      min_capacity,
+      amenities_negate,
       bookmark_user_id,
       available_days,
-      rate_time_unit,
-      min_rate_price,
-      max_rate_price,
       available_from,
       available_to,
       include_pending,
@@ -485,6 +462,7 @@ mode: 'insensitive' as const,
       : ['approved'];
 
     and.push({ verification: { some: { status: { in: verificationStatuses, }, }, }, });
+    and.push({ is_published: true, });
 
     // Created/updated range filters
     if (created_from || created_to) {
@@ -506,7 +484,18 @@ mode: 'insensitive' as const,
       .map((s) => s.trim())
       .filter(Boolean);
     if (amenityNames.length > 0) {
-      if ((amenities_mode ?? 'any') === 'all') {
+      if (amenities_negate) {
+        and.push({
+          amenity: {
+            none: {
+              name: {
+                in: amenityNames,
+                mode: 'insensitive' as const,
+              },
+            },
+          },
+        });
+      } else if ((amenities_mode ?? 'any') === 'all') {
         for (const name of amenityNames) {
           and.push({
  amenity: {
@@ -536,10 +525,6 @@ mode: 'insensitive' as const,
     }
 
     // Minimum capacity via related areas
-    if (typeof min_capacity === 'number') {
-      and.push({ area: { some: { min_capacity: { gte: BigInt(min_capacity), }, }, }, });
-    }
-
     // Bookmarked by a specific user
     if (bookmark_user_id) {
       and.push({ bookmark: { some: { user_id: BigInt(bookmark_user_id), }, }, });
@@ -577,19 +562,82 @@ mode: 'insensitive' as const,
       and.push({ space_availability: { some: availabilityClause, }, });
     }
 
-    // Rate-based price/time-unit filter via areas -> rates
-    if (rate_time_unit || typeof min_rate_price === 'number' || typeof max_rate_price === 'number') {
-      const priceCond: any = {};
-      if (typeof min_rate_price === 'number') priceCond.gte = min_rate_price;
-      if (typeof max_rate_price === 'number') priceCond.lte = max_rate_price;
-      const rateCond: any = {};
-      if (rate_time_unit) rateCond.time_unit = rate_time_unit;
-      if (Object.keys(priceCond).length > 0) rateCond.price = priceCond;
+    const where = and.length > 0 ? { AND: and, } : {};
 
-      and.push({ area: { some: { rate_rate_area_idToarea: { some: rateCond, }, }, }, });
+    const uniqueSpaceIds = candidateSpaceIds.length > 0
+      ? Array.from(new Set(candidateSpaceIds)).sort()
+      : null;
+    const uniqueAmenityNames = amenityNames.length > 0
+      ? Array.from(new Set(amenityNames)).sort((a, b) => a.localeCompare(b))
+      : null;
+    const canonicalAvailableDays = normalizedDays.length > 0
+      ? Array.from(new Set(normalizedDays)).sort((a, b) => a - b)
+      : null;
+
+    const cacheSignature = {
+      limit,
+      cursor: cursor ?? null,
+      city: city ?? null,
+      region: region ?? null,
+      country: country ?? null,
+      postal_code: postal_code ?? null,
+      barangay: barangay ?? null,
+      street: street ?? null,
+      user_id: user_id ?? null,
+      q: q ?? null,
+      created_from: created_from ?? null,
+      created_to: created_to ?? null,
+      updated_from: updated_from ?? null,
+      updated_to: updated_to ?? null,
+      space_ids: uniqueSpaceIds,
+      amenities: uniqueAmenityNames,
+      amenities_mode: amenities_mode ?? null,
+      amenities_negate: amenities_negate ?? false,
+      available_days: canonicalAvailableDays,
+      available_from: available_from ?? null,
+      available_to: available_to ?? null,
+      include_pending,
+      sort: sort ?? null,
+      order: order ?? null,
+      bookmark_user_id: bookmark_user_id ?? null,
+    };
+
+    const cacheKey = buildSpacesListCacheKey(cacheSignature);
+
+    let supabaseUserId: string | null = null;
+    let supabaseLookupFailed = false;
+
+    if (!bookmark_user_id) {
+      try {
+        const supabase = await createSupabaseServerClient();
+        const {
+          data: authData,
+          error: authError,
+        } = await supabase.auth.getUser();
+        if (!authError && authData?.user) {
+          supabaseUserId = authData.user.id;
+        }
+      } catch (error) {
+        supabaseLookupFailed = true;
+        console.warn('Failed to resolve Supabase session for caching', error);
+      }
     }
 
-    const where = and.length > 0 ? { AND: and, } : {};
+    const cacheEnabled = SPACES_LIST_CACHE_TTL_SECONDS > 0;
+    const shouldCacheResponse =
+      cacheEnabled &&
+      !bookmark_user_id &&
+      !supabaseUserId &&
+      !supabaseLookupFailed;
+
+    if (shouldCacheResponse) {
+      const cachedBody = await readSpacesListCache(cacheKey);
+      if (cachedBody) {
+        const response = new NextResponse(cachedBody);
+        response.headers.set('content-type', 'application/json');
+        return response;
+      }
+    }
 
     // Pagination and sorting
     const take = limit + 1; // read one extra to know if there's a next page
@@ -619,17 +667,6 @@ mode: 'insensitive' as const,
           },
           take: 2,
         },
-        area: {
-          select: {
-            id: true,
-            price_rate: {
-              select: {
-                price: true,
-                time_unit: true,
-              },
-            },
-          },
-        },
         verification: {
           orderBy: { created_at: 'desc' as const, },
           take: 1,
@@ -643,6 +680,7 @@ mode: 'insensitive' as const,
           },
           orderBy: { day_of_week: 'asc' as const, },
         },
+        area: { select: { price_rule: { select: { definition: true, }, }, }, },
       },
     });
 
@@ -651,11 +689,60 @@ mode: 'insensitive' as const,
     const hasNext = rows.length > limit;
     const items = hasNext ? rows.slice(0, limit) : rows;
     const nextCursor = hasNext ? items[items.length - 1].id : null;
+    const spaceIds = items.map((space) => space.id);
+
+    // Preload rating aggregates for listed spaces to avoid N+1 queries
+    const ratingAggregates = spaceIds.length > 0
+      ? await prisma.review.groupBy({
+        by: ['space_id'],
+        where: { space_id: { in: spaceIds, }, },
+        _avg: { rating_star: true, },
+        _count: { rating_star: true, },
+      })
+      : [];
+
+    const ratingMap = new Map<string, { average_rating: number; total_reviews: number }>();
+    for (const aggregate of ratingAggregates) {
+      const avg = aggregate._avg.rating_star ?? null;
+      const count = aggregate._count.rating_star ?? 0;
+      ratingMap.set(aggregate.space_id, {
+        average_rating: avg === null ? 0 : Number(avg),
+        total_reviews: count,
+      });
+    }
+
+    const startingPriceMap = new Map<string, number | null>();
+    for (const space of items) {
+      const startingPrice = computeStartingPriceFromAreas(space.area ?? []);
+      startingPriceMap.set(space.id, startingPrice);
+    }
+
+    let bookmarkLookupUserId: bigint | null = null;
+    if (bookmark_user_id) {
+      bookmarkLookupUserId = BigInt(bookmark_user_id);
+    } else if (spaceIds.length > 0 && supabaseUserId) {
+      const dbUser = await prisma.user.findFirst({
+        where: { auth_user_id: supabaseUserId, },
+        select: { user_id: true, },
+      });
+      bookmarkLookupUserId = dbUser?.user_id ?? null;
+    }
+
+    const bookmarkedSpaceIds = bookmarkLookupUserId && spaceIds.length > 0
+      ? new Set(
+        (await prisma.bookmark.findMany({
+          where: {
+            user_id: bookmarkLookupUserId,
+            space_id: { in: spaceIds, },
+          },
+          select: { space_id: true, },
+        })).map((bookmark) => bookmark.space_id)
+      )
+      : null;
 
     const payload = items.map((space) => {
       const base = serializeSpace(space);
       const primaryImage = space.space_image[0];
-      const priceSummary = summarizeRates(space.area);
       const resolvedImageUrl = (() => {
         const path = primaryImage?.path ?? null;
         if (!path) return null;
@@ -663,14 +750,26 @@ mode: 'insensitive' as const,
         return signedImageUrlMap.get(path) ?? buildPublicObjectUrl(path);
       })();
 
+      const ratingSummary = ratingMap.get(space.id) ?? {
+        average_rating: 0,
+        total_reviews: 0,
+      };
+
       return {
         ...base,
-        status: deriveSpaceStatus(space.verification[0]?.status ?? null),
+        status: deriveSpaceStatus({
+          verification: space.verification,
+          is_published: space.is_published,
+        }),
         image_url: resolvedImageUrl,
-        min_rate_price: priceSummary?.min ?? null,
-        max_rate_price: priceSummary?.max ?? null,
-        rate_time_unit: priceSummary?.unit ?? null,
+        min_rate_price: null,
+        max_rate_price: null,
+        rate_time_unit: null,
+        starting_price: startingPriceMap.get(space.id) ?? null,
         availability: serializeAvailabilitySlots(space.space_availability),
+        isBookmarked: bookmarkedSpaceIds?.has(space.id) ?? false,
+        average_rating: ratingSummary.average_rating,
+        total_reviews: ratingSummary.total_reviews,
       };
     });
 
@@ -678,6 +777,10 @@ mode: 'insensitive' as const,
       data: payload,
       nextCursor,
     }, replacer);
+
+    if (shouldCacheResponse) {
+      await setSpacesListCache(cacheKey, body, cacheSignature, nextCursor);
+    }
 
     return new NextResponse(body, {
       headers: { 'content-type': 'application/json', },
@@ -730,9 +833,9 @@ export async function POST(req: NextRequest) {
   const sanitizedDescription = sanitizeRichText(parsed.data.description ?? '');
   const plainTextLength = richTextPlainTextLength(sanitizedDescription);
 
-  if (plainTextLength < MIN_DESCRIPTION_CHARS || plainTextLength > MAX_DESCRIPTION_CHARS) {
+  if (plainTextLength < MIN_DESCRIPTION_CHARS) {
     return NextResponse.json(
-      { error: `Description must be between ${MIN_DESCRIPTION_CHARS} and ${MAX_DESCRIPTION_CHARS} characters.`, },
+      { error: `Description must be at least ${MIN_DESCRIPTION_CHARS} characters.`, },
       { status: 422, }
     );
   }
@@ -860,6 +963,7 @@ export async function POST(req: NextRequest) {
     });
 
     const responsePayload = serializeSpace(created);
+    await invalidateSpacesListCache();
     const res = NextResponse.json({ data: responsePayload, }, { status: 201, });
     res.headers.set('Location', `/api/v1/spaces/${responsePayload.space_id}`);
     return res;

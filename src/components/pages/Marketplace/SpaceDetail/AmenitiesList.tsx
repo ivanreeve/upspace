@@ -63,9 +63,11 @@ const FALLBACK_AMENITIES: SpaceAmenityDisplay[] = [
 export default function AmenitiesList({
   amenities,
   features,
+  onAskHost,
 }: {
   amenities: SpaceAmenityDisplay[];
   features: Feature[];
+  onAskHost?: () => void;
 }) {
   const normalizedAmenities = amenities.length > 0 ? amenities : FALLBACK_AMENITIES;
   const amenitiesWithIcons: AmenityWithIcon[] = normalizedAmenities.map((amenity) => ({
@@ -81,7 +83,7 @@ export default function AmenitiesList({
 
       <div className="space-y-6">
         { features.length > 0 ? (
-          <ul className="grid gap-3.5 text-sm text-foreground/80">
+          <ul className="grid gap-3.5 text-sm">
             { features.map((feature) => (
               <li
                 key={ feature.name }
@@ -98,8 +100,8 @@ export default function AmenitiesList({
             const Icon = amenity.Icon;
             return (
               <li key={ amenity.id } className="flex items-center gap-3.5">
-                <Icon className="size-4 text-muted-foreground" aria-hidden="true" />
-                <span>{ amenity.name }</span>
+                <Icon className="size-4 text-foreground" aria-hidden="true" />
+                <span className="text-foreground">{ amenity.name }</span>
               </li>
             );
           }) }
@@ -107,19 +109,22 @@ export default function AmenitiesList({
 
         <Dialog>
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm" aria-label="Show all amenities">
+            <Button variant="outline" size="sm" aria-label="Show all amenities" className="hover:text-white hover:[&_svg]:text-white">
               Show all amenities
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-2xl">
-            <DialogHeader className="space-y-1">
+        <DialogContent
+          mobileFullScreen
+          className="overflow-hidden rounded-none sm:rounded-2xl sm:max-w-2xl sm:max-h-[90vh]"
+        >
+            <DialogHeader className="space-y-1 mb-4">
               <DialogTitle>All amenities</DialogTitle>
               <DialogDescription>Grouped by category for this space.</DialogDescription>
             </DialogHeader>
             { groupedAmenities.length === 0 ? (
               <p className="text-sm text-muted-foreground">No amenities listed yet.</p>
             ) : (
-              <ScrollArea className="max-h-[60vh] pr-3">
+              <ScrollArea className="h-[60vh] max-h-[60vh] pr-3">
                 <div className="space-y-6 pr-2">
                   { groupedAmenities.map((group) => (
                     <section key={ group.key } className="space-y-2.5">
@@ -151,6 +156,7 @@ export default function AmenitiesList({
         <button
           type="button"
           className="font-medium text-foreground underline underline-offset-4 hover:text-primary"
+          onClick={ onAskHost }
         >
           Ask the host
         </button>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { WEEKDAY_ORDER, type WeekdayName } from '@/data/spaces';
 import { prisma } from '@/lib/prisma';
+import { invalidateSpacesListCache } from '@/lib/cache/redis';
 import { PartnerSessionError, requirePartnerSession } from '@/lib/auth/require-partner-session';
 import { partnerSpaceInclude, serializePartnerSpace } from '@/lib/spaces/partner-serializer';
 import { updateSpaceLocationPoint } from '@/lib/spaces/location';
@@ -18,7 +19,6 @@ type RouteParams = {
 };
 
 const MIN_DESCRIPTION_CHARS = 20;
-const MAX_DESCRIPTION_CHARS = 500;
 
 type AvailabilitySlot = {
   dayIndex: number;
@@ -111,9 +111,9 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
     const sanitizedDescription = sanitizeRichText(parsed.data.description ?? '');
     const plainTextLength = richTextPlainTextLength(sanitizedDescription);
 
-    if (plainTextLength < MIN_DESCRIPTION_CHARS || plainTextLength > MAX_DESCRIPTION_CHARS) {
+    if (plainTextLength < MIN_DESCRIPTION_CHARS) {
       return NextResponse.json(
-        { error: `Description must be between ${MIN_DESCRIPTION_CHARS} and ${MAX_DESCRIPTION_CHARS} characters.`, },
+        { error: `Description must be at least ${MIN_DESCRIPTION_CHARS} characters.`, },
         { status: 422, }
       );
     }
@@ -211,6 +211,7 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
     }
 
     const payload = await serializePartnerSpace(updatedSpace);
+    await invalidateSpacesListCache();
     return NextResponse.json({ data: payload, });
   } catch (error) {
     if (error instanceof PartnerSessionError) {

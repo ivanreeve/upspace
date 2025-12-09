@@ -55,6 +55,15 @@ export type SendOtpEmailOptions = {
   validForMinutes?: number;
 };
 
+export type SendBookingEmailOptions = {
+  to: string;
+  spaceName: string;
+  areaName: string;
+  bookingHours: number;
+  price?: number | null;
+  link?: string | null;
+};
+
 export async function sendOtpEmail({
   to,
   otp,
@@ -142,6 +151,127 @@ export async function sendOtpEmail({
     from,
     to,
     subject: subject ?? `${brand} verification code`,
+    text,
+    html,
+  });
+}
+
+const BOOKING_PRICE_FORMATTER = new Intl.NumberFormat('en-PH', {
+  style: 'currency',
+  currency: 'PHP',
+  maximumFractionDigits: 0,
+});
+
+export async function sendBookingNotificationEmail({
+  to,
+  spaceName,
+  areaName,
+  bookingHours,
+  price,
+  link,
+}: SendBookingEmailOptions) {
+  if (!DEFAULT_FROM) {
+    throw new Error('EMAIL_FROM or EMAIL_SMTP_USER must be defined to send emails.');
+  }
+
+  const transporter = getTransporter();
+  const from = EMAIL_FROM_NAME ? `${EMAIL_FROM_NAME} <${DEFAULT_FROM}>` : DEFAULT_FROM;
+  const priceLabel =
+    typeof price === 'number'
+      ? `Total: ${BOOKING_PRICE_FORMATTER.format(price)}`
+      : 'Pricing confirmed';
+  const durationLabel = `Duration: ${bookingHours} hour${bookingHours === 1 ? '' : 's'}`;
+  const subject = `Booking confirmed for ${spaceName}`;
+  const ctaLink = link ?? `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/marketplace`;
+
+  const text = [
+    `Your booking at ${spaceName} is confirmed.`,
+    `Area: ${areaName}`,
+    durationLabel,
+    priceLabel,
+    `View booking: ${ctaLink}`
+  ].join('\n');
+
+  const html = `
+    <div style="font-family:'Inter','Segoe UI',system-ui,sans-serif;background-color:#f8f9fb;padding:24px;color:#111827;">
+      <div style="max-width:620px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+        <div style="background:#111827;color:#fff;padding:16px 20px;">
+          <h2 style="margin:0;font-size:18px;font-weight:700;">Booking confirmed</h2>
+        </div>
+        <div style="padding:20px;">
+          <p style="margin:0 0 8px;">Hi there,</p>
+          <p style="margin:0 0 16px;">Your booking at <strong>${spaceName}</strong> is confirmed.</p>
+          <div style="margin:0 0 12px;padding:12px 14px;border:1px solid #e5e7eb;border-radius:10px;background:#f9fafb;">
+            <p style="margin:0 0 6px;"><strong>Area:</strong> ${areaName}</p>
+            <p style="margin:0 0 6px;"><strong>${durationLabel}</strong></p>
+            <p style="margin:0;">${priceLabel}</p>
+          </div>
+          <a href="${ctaLink}" style="display:inline-block;margin-top:8px;padding:12px 16px;background:#2563eb;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;">View space</a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from,
+    to,
+    subject,
+    text,
+    html,
+  });
+}
+
+export type SendDeactivationRejectionEmailOptions = {
+  to: string;
+  reason: string;
+  name?: string;
+};
+
+export async function sendDeactivationRejectionEmail({
+  to,
+  reason,
+  name,
+}: SendDeactivationRejectionEmailOptions) {
+  if (!DEFAULT_FROM) {
+    throw new Error('EMAIL_FROM or EMAIL_SMTP_USER must be defined to send emails.');
+  }
+
+  const transporter = getTransporter();
+  const from = EMAIL_FROM_NAME ? `${EMAIL_FROM_NAME} <${DEFAULT_FROM}>` : DEFAULT_FROM;
+  const brand = process.env.NEXT_PUBLIC_APP_NAME ?? 'UpSpace';
+  const safeName = (name && name.trim()) || 'UpSpace member';
+  const validatedReason = reason.trim() || 'The request could not be granted.';
+
+  const subject = `${brand} deactivation request update`;
+  const text = `Hi ${safeName},\n\nThanks for reaching out about deactivating your account. After reviewing your request, we are unable to process it at this time for the following reason:\n\n${validatedReason}\n\nIf you have other questions, feel free to contact support.\n\n— The ${brand} team`;
+  const html = `
+    <div style="font-family:'Inter','Segoe UI',system-ui,sans-serif;background-color:#f8f9fb;padding:24px;color:#111827;">
+      <div style="max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+        <div style="background:#111827;color:#fff;padding:16px 20px;">
+          <h2 style="margin:0;font-size:20px;font-weight:700;">Deactivation request update</h2>
+        </div>
+        <div style="padding:20px 24px 28px;">
+          <p style="margin:0 0 1rem;">Hi ${safeName},</p>
+          <p style="margin:0 0 1rem;">
+            We reviewed your deactivation request and were unable to process it at this time for the following reason:
+          </p>
+          <p style="margin:0 0 1rem;font-weight:600;color:#dc2626;">${validatedReason}</p>
+          <p style="margin:0 0 1rem;">
+            If you believe this is an error or would like to share more context, please contact support.
+          </p>
+          <p style="margin:0;">Thanks for being part of ${brand}.</p>
+        </div>
+        <div style="background:#f3f4f6;padding:16px 20px;color:#6b7280;font-size:12px;text-align:center;">
+          © ${new Date().getFullYear()} ${brand}. All rights reserved.
+        </div>
+      </div>
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from,
+    to,
+    subject,
     text,
     html,
   });

@@ -7,6 +7,7 @@ import {
   IGNORED_PREFIXES,
   ONBOARDING_PATH,
   PUBLIC_PATHS,
+  PUBLIC_PATH_PREFIXES,
   ROLE_ACCESS_MAP,
   ROLE_REDIRECT_MAP
 } from '@/lib/constants';
@@ -21,6 +22,13 @@ export async function middleware(request: NextRequest) {
   }
 
   const response = NextResponse.next();
+
+  const isPathPublic = (path: string) => (
+    PUBLIC_PATHS.has(path)
+    || PUBLIC_PATH_PREFIXES.some((prefix) =>
+      path === prefix || path.startsWith(`${prefix}/`)
+    )
+  );
 
   try {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -65,7 +73,7 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(homeUrl);
       }
 
-      if (PUBLIC_PATHS.has(pathname)) {
+      if (isPathPublic(pathname)) {
         return response;
       }
 

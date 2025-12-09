@@ -30,12 +30,11 @@ import {
   DialogTrigger
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-
-type Rating = { score: number; count: number };
+import { cn } from '@/lib/utils';
+import { useSession } from '@/components/auth/SessionProvider';
 
 type SpaceHeaderProps = {
   name: string;
-  rating: Rating;
   location: string;
   spaceId: string;
   isBookmarked?: boolean;
@@ -49,11 +48,13 @@ type ShareOption = {
 
 export default function SpaceHeader({
   name,
-  rating,
   location,
   spaceId,
   isBookmarked = false,
 }: SpaceHeaderProps) {
+  const { session, } = useSession();
+  const isGuest = !session;
+
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(isBookmarked);
   const [isCopying, setIsCopying] = useState(false);
@@ -184,9 +185,7 @@ icon: FaTelegramPlane,
       <div className="flex flex-col gap-1.5 md:flex-row md:items-center md:justify-between">
         <div className="space-y-2">
           <h1 className="text-3xl font-semibold text-foreground">{ name }</h1>
-          <p className="text-sm text-muted-foreground">
-            * { rating.score.toFixed(1) } - { rating.count } reviews - { location }
-          </p>
+          <p className="text-sm text-muted-foreground">{ location }</p>
         </div>
         <div className="flex items-center gap-2 text-sm text-foreground">
           <Dialog>
@@ -194,7 +193,7 @@ icon: FaTelegramPlane,
               <button
                 type="button"
                 aria-haspopup="dialog"
-                className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium cursor-pointer transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium cursor-pointer transition hover:bg-accent hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed"
               >
                 <FiShare2 className="size-4" aria-hidden="true" />
                 Share
@@ -203,7 +202,7 @@ icon: FaTelegramPlane,
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>Share this space</DialogTitle>
-                <DialogDescription>
+                <DialogDescription className="mb-4">
                   Send { name } to your favorite apps or copy the link below.
                 </DialogDescription>
               </DialogHeader>
@@ -215,7 +214,7 @@ icon: FaTelegramPlane,
                         key={ option.label }
                         type="button"
                         variant="outline"
-                        className="justify-start"
+                        className="justify-start hover:!text-white hover:[&_svg]:!text-white"
                         onClick={ () => openShareLink(option.href) }
                         disabled={ !shareUrl }
                         aria-label={ `Share on ${option.label}` }
@@ -246,7 +245,7 @@ icon: FaTelegramPlane,
                       onClick={ handleCopyLink }
                       disabled={ !shareUrl || isCopying }
                       aria-busy={ isCopying }
-                      className="sm:w-auto"
+                      className="sm:w-auto hover:!text-white hover:[&_svg]:!text-white"
                     >
                       { isCopying ? (
                         <>
@@ -265,23 +264,30 @@ icon: FaTelegramPlane,
               </div>
             </DialogContent>
           </Dialog>
-          <button
-            type="button"
+          { !isGuest && (
+            <button
+              type="button"
             onClick={ handleSave }
             disabled={ isSaving }
             aria-busy={ isSaving }
             aria-pressed={ isSaved }
-            className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium cursor-pointer transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed"
+            className={ cn(
+              'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium cursor-pointer transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed',
+              isSaved
+                ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100'
+                : 'border-border hover:bg-accent hover:text-white hover:[&_svg]:text-white'
+            ) }
           >
             { isSaving ? (
               <CgSpinner className="size-4 animate-spin" aria-hidden="true" />
             ) : isSaved ? (
-              <FaHeart className="size-4" aria-hidden="true" />
+              <FaHeart className="size-4 text-rose-600 fill-rose-600" aria-hidden="true" />
             ) : (
               <FaRegHeart className="size-4" aria-hidden="true" />
             ) }
             { isSaving ? (isSaved ? 'Removing…' : 'Saving…') : isSaved ? 'Saved' : 'Save' }
           </button>
+          ) }
         </div>
       </div>
     </header>

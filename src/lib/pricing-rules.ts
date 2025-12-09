@@ -1,0 +1,171 @@
+import { z } from 'zod';
+
+export const PRICE_RULE_CONNECTORS = ['and', 'or'] as const;
+export type PriceRuleConditionConnector = (typeof PRICE_RULE_CONNECTORS)[number];
+
+export const PRICE_RULE_COMPARATORS = ['<', '<=', '>', '>=', '=', '!='] as const;
+export type PriceRuleComparator = (typeof PRICE_RULE_COMPARATORS)[number];
+
+export const PRICE_RULE_LITERAL_TYPES = ['text', 'number', 'datetime', 'date', 'time'] as const;
+export type PriceRuleLiteralType = (typeof PRICE_RULE_LITERAL_TYPES)[number];
+
+export type PriceRuleVariableType = 'text' | 'number' | 'date' | 'time';
+
+export type PriceRuleOperand =
+  | { kind: 'variable'; key: string; }
+  | { kind: 'literal'; value: string; valueType: PriceRuleLiteralType; };
+
+export type PriceRuleCondition = {
+  id: string;
+  connector?: PriceRuleConditionConnector;
+  negated?: boolean;
+  comparator: PriceRuleComparator;
+  left: PriceRuleOperand;
+  right: PriceRuleOperand;
+};
+
+export type PriceRuleVariable = {
+  key: string;
+  label: string;
+  type: PriceRuleVariableType;
+  initialValue?: string;
+  userInput?: boolean;
+};
+
+export type PriceRuleDefinition = {
+  variables: PriceRuleVariable[];
+  conditions: PriceRuleCondition[];
+  formula: string;
+};
+
+export type PriceRuleRecord = {
+  id: string;
+  name: string;
+  description: string | null;
+  definition: PriceRuleDefinition;
+  linked_area_count: number;
+  created_at: string;
+  updated_at: string | null;
+};
+
+const priceRuleLiteralTypeSchema = z.enum(PRICE_RULE_LITERAL_TYPES);
+const priceRuleComparatorSchema = z.enum(PRICE_RULE_COMPARATORS);
+
+export const priceRuleOperandSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('variable'),
+    key: z.string().min(1),
+  }),
+  z.object({
+    kind: z.literal('literal'),
+    value: z.string().min(1),
+    valueType: priceRuleLiteralTypeSchema,
+  })
+]);
+
+export const priceRuleConditionSchema = z.object({
+  id: z.string().uuid(),
+  connector: z.enum(PRICE_RULE_CONNECTORS).optional(),
+  negated: z.boolean().optional(),
+  comparator: priceRuleComparatorSchema,
+  left: priceRuleOperandSchema,
+  right: priceRuleOperandSchema,
+});
+
+export const priceRuleDefinitionSchema = z.object({
+  variables: z.array(
+    z.object({
+      key: z.string().min(1),
+      label: z.string().min(1),
+      type: z.enum(['text', 'number', 'date', 'time']),
+      initialValue: z.string().optional(),
+      userInput: z.boolean().optional(),
+    })
+  ),
+  conditions: z.array(priceRuleConditionSchema),
+  formula: z.string().min(1, 'Add a formula to determine the price action.'),
+});
+
+export const priceRuleSchema = z.object({
+  name: z.string().min(1, 'Name is required.'),
+  description: z.string().max(500).optional(),
+  definition: priceRuleDefinitionSchema,
+}).superRefine((value, ctx) => {
+  const formula = value.definition.formula.trim();
+  if (!formula) {
+    return;
+  }
+  const hasIfClause = /\bif\b/i.test(formula);
+  if (!hasIfClause) {
+    return;
+  }
+  const elseMatches = formula.toLowerCase().match(/\belse\b/g) ?? [];
+  if (elseMatches.length !== 1) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Conditions that use IF statements must include exactly one ELSE clause.',
+      path: ['definition', 'formula'],
+    });
+  }
+});
+
+export type PriceRuleFormValues = z.infer<typeof priceRuleSchema>;
+
+export const BOOKING_DURATION_VARIABLE_KEYS = [
+  'booking_hours',
+  'booking_days',
+  'booking_weeks',
+  'booking_months'
+] as const;
+
+export const BOOKING_DURATION_VARIABLE_REFERENCE_TEXT =
+  'booking_hours, booking_days, booking_weeks, or booking_months';
+
+export const PRICE_RULE_INITIAL_VARIABLES: PriceRuleVariable[] = [
+  {
+    key: 'booking_hours',
+    label: 'booking hours',
+    type: 'number',
+    initialValue: '1',
+    userInput: false,
+  },
+  {
+    key: 'booking_days',
+    label: 'booking days',
+    type: 'number',
+    initialValue: '0',
+    userInput: false,
+  },
+  {
+    key: 'booking_weeks',
+    label: 'booking weeks',
+    type: 'number',
+    initialValue: '0',
+    userInput: false,
+  },
+  {
+    key: 'booking_months',
+    label: 'booking months',
+    type: 'number',
+    initialValue: '0',
+    userInput: false,
+  },
+  {
+    key: 'date',
+    label: 'current date',
+    type: 'date',
+    userInput: false,
+  },
+  {
+    key: 'time',
+    label: 'current time',
+    type: 'time',
+    userInput: false,
+  },
+  {
+    key: 'day_of_week',
+    label: 'day of week',
+    type: 'number',
+    userInput: false,
+  }
+];

@@ -26,7 +26,6 @@ export async function GET(_req: NextRequest, { params, }: Params) {
         id: true,
         space_id: true,
         name: true,
-        min_capacity: true,
         max_capacity: true,
       },
     });
@@ -36,7 +35,6 @@ export async function GET(_req: NextRequest, { params, }: Params) {
         area_id: r.id,
         space_id: r.space_id,
         name: r.name,
-        min_capacity: r.min_capacity.toString(),
         max_capacity: r.max_capacity?.toString() ?? null,
       })),
     });
@@ -72,7 +70,6 @@ export async function POST(req: NextRequest, { params, }: Params) {
       data: {
         space_id,
         name: parsed.data.name,
-        min_capacity: capacityValue,
         max_capacity: capacityValue,
       },
     });
@@ -81,7 +78,6 @@ export async function POST(req: NextRequest, { params, }: Params) {
       area_id: created.id,
       space_id: created.space_id,
       name: created.name,
-      min_capacity: created.min_capacity.toString(),
       max_capacity: created.max_capacity?.toString() ?? null,
     };
 

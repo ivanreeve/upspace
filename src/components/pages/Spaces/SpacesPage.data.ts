@@ -2,7 +2,7 @@ export type PartnerSpace = {
   id: string;
   name: string;
   city: string;
-  status: 'Live' | 'Pending' | 'Draft';
+  status: 'Live' | 'Pending' | 'Draft' | 'Unpublished';
   occupancy: number;
   occupancyDelta: number;
   nextBooking: string;

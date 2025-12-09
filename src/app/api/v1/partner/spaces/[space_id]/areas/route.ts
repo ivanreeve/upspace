@@ -43,28 +43,53 @@ export async function POST(req: NextRequest, { params, }: RouteParams) {
       return NextResponse.json({ error: 'Space not found.', }, { status: 404, });
     }
 
+    if (parsed.data.price_rule_id) {
+      const rule = await prisma.price_rule.findFirst({
+        where: {
+          id: parsed.data.price_rule_id,
+          space_id: spaceIdParam,
+        },
+        select: { id: true, },
+      });
+
+      if (!rule) {
+        return NextResponse.json({ error: 'Selected pricing rule is invalid.', }, { status: 400, });
+      }
+    }
+
+    const bookingNotesEnabled = parsed.data.booking_notes_enabled;
+    const bookingNotes = bookingNotesEnabled ? parsed.data.booking_notes?.trim() || null : null;
+    const advanceBookingEnabled = parsed.data.advance_booking_enabled;
+    const advanceBookingValue = advanceBookingEnabled ? parsed.data.advance_booking_value ?? null : null;
+    const advanceBookingUnit = advanceBookingEnabled ? parsed.data.advance_booking_unit ?? null : null;
+
     const result = await prisma.$transaction(async (tx): Promise<PartnerSpaceRow['area'][number]> => {
       const createdArea = await tx.area.create({
         data: {
           space_id: spaceIdParam,
           name: parsed.data.name.trim(),
-          min_capacity: BigInt(parsed.data.min_capacity),
           max_capacity: BigInt(parsed.data.max_capacity),
+          automatic_booking_enabled: parsed.data.automatic_booking_enabled,
+          request_approval_at_capacity: parsed.data.request_approval_at_capacity,
+          advance_booking_enabled: advanceBookingEnabled,
+          advance_booking_value: advanceBookingValue,
+          advance_booking_unit: advanceBookingUnit,
+          booking_notes_enabled: bookingNotesEnabled,
+          booking_notes: bookingNotes,
+          ...(parsed.data.price_rule_id !== undefined ? { price_rule_id: parsed.data.price_rule_id, } : {}),
         },
       });
 
-      const createdRate = await tx.price_rate.create({
-        data: {
-          area_id: createdArea.id,
-          time_unit: parsed.data.rate_time_unit,
-          price: parsed.data.rate_amount.toString(),
-        },
+      const areaWithRelations = await tx.area.findFirst({
+        where: { id: createdArea.id, },
+        include: { price_rule: { include: { _count: { select: { area: true, }, }, }, }, },
       });
 
-      return {
-        ...createdArea,
-        price_rate: [createdRate],
-      };
+      if (!areaWithRelations) {
+        throw new Error('Created area could not be retrieved.');
+      }
+
+      return areaWithRelations;
     });
 
     return NextResponse.json({ data: serializeArea(result), }, { status: 201, });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -8,6 +8,7 @@ import { createSpaceFormDefaults } from '@/components/pages/Spaces/SpaceForms';
 import type { SpaceFormValues } from '@/lib/validations/spaces';
 
 const STORAGE_KEY = 'upspace.space_create_form_draft';
+export type SpaceDraftStep = 1 | 2 | 3 | 4 | 5 | 6;
 
 const availabilityDraftSchema = z.record(
   z.string(),
@@ -36,9 +37,45 @@ const spaceFormDraftSchema = z.object({
 
 type SpaceFormDraft = z.infer<typeof spaceFormDraftSchema>;
 
+const draftEnvelopeSchema = z.object({
+  values: spaceFormDraftSchema,
+  saved_at: z.string().optional(),
+  step: z.number().int().min(1).max(6).optional(),
+});
+
+type SpaceFormDraftEnvelope = z.infer<typeof draftEnvelopeSchema>;
+
+type ParsedSpaceDraft = {
+  values: SpaceFormDraft;
+  savedAt: string | null;
+  step?: SpaceDraftStep;
+};
+
 const canUseStorage = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 
-const readDraft = (): SpaceFormDraft | null => {
+const parseDraft = (raw: unknown): ParsedSpaceDraft | null => {
+  const envelope = draftEnvelopeSchema.safeParse(raw);
+  if (envelope.success) {
+    return {
+      values: envelope.data.values,
+      savedAt: envelope.data.saved_at ?? null,
+      step: envelope.data.step as SpaceDraftStep | undefined,
+    };
+  }
+
+  const legacy = spaceFormDraftSchema.safeParse(raw);
+  if (legacy.success) {
+    return {
+      values: legacy.data,
+      savedAt: null,
+      step: undefined,
+    };
+  }
+
+  return null;
+};
+
+const readDraft = (): ParsedSpaceDraft | null => {
   if (!canUseStorage()) {
     return null;
   }
@@ -50,20 +87,24 @@ const readDraft = (): SpaceFormDraft | null => {
     }
 
     const parsed = JSON.parse(raw);
-    const result = spaceFormDraftSchema.safeParse(parsed);
-    return result.success ? result.data : null;
+    return parseDraft(parsed);
   } catch {
     return null;
   }
 };
 
-const writeDraft = (values: SpaceFormValues) => {
+const writeDraft = (values: SpaceFormValues, step?: SpaceDraftStep) => {
   if (!canUseStorage()) {
     return;
   }
 
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(values));
+    const payload: SpaceFormDraftEnvelope = {
+      values,
+      saved_at: new Date().toISOString(),
+      step,
+    };
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   } catch {
     /* no-op: storage quota might be exceeded */
   }
@@ -128,13 +169,78 @@ const mergeDraftWithDefaults = (draft: SpaceFormDraft | null): SpaceFormValues =
   };
 };
 
-export const useSpaceFormPersistence = (form: UseFormReturn<SpaceFormValues>) => {
+export type SpaceDraftSummary = {
+  name: string;
+  city?: string;
+  region?: string;
+  savedAt: string;
+  step?: SpaceDraftStep;
+};
+
+export const readSpaceDraftSummary = (): SpaceDraftSummary | null => {
+  const parsed = readDraft();
+  if (!parsed) {
+    return null;
+  }
+
+  const name = (parsed.values.name ?? '').trim();
+  const city = (parsed.values.city ?? '').trim();
+  const region = (parsed.values.region ?? '').trim();
+
+  return {
+    name: name || 'Untitled space',
+    city: city || undefined,
+    region: region || undefined,
+    savedAt: parsed.savedAt ?? new Date().toISOString(),
+    step: parsed.step,
+  };
+};
+
+export const useSpaceDraftSummary = () => {
+  const [summary, setSummary] = useState<SpaceDraftSummary | null>(null);
+
+  useEffect(() => {
+    if (!canUseStorage()) {
+      return;
+    }
+
+    const refresh = () => setSummary(readSpaceDraftSummary());
+    refresh();
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key && event.key !== STORAGE_KEY) {
+        return;
+      }
+      refresh();
+    };
+
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
+
+  const refresh = useCallback(() => {
+    setSummary(readSpaceDraftSummary());
+  }, []);
+
+  return {
+    summary,
+    refresh,
+  };
+};
+
+export const useSpaceFormPersistence = (
+  form: UseFormReturn<SpaceFormValues>,
+  currentStep?: SpaceDraftStep
+) => {
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
     const draft = readDraft();
     if (draft) {
-      form.reset(mergeDraftWithDefaults(draft));
+      form.reset(mergeDraftWithDefaults(draft.values));
     }
     setIsHydrated(true);
   }, [form]);
@@ -145,14 +251,21 @@ export const useSpaceFormPersistence = (form: UseFormReturn<SpaceFormValues>) =>
     }
 
     const subscription = form.watch((values) => {
-      writeDraft(values as SpaceFormValues);
+      writeDraft(values as SpaceFormValues, currentStep);
     });
 
     return () => subscription.unsubscribe();
-  }, [form, isHydrated]);
+  }, [form, isHydrated, currentStep]);
+
+  const saveDraft = useCallback(() => {
+    const values = form.getValues();
+    writeDraft(values as SpaceFormValues, currentStep);
+    return readSpaceDraftSummary();
+  }, [form, currentStep]);
 
   return {
     clearDraft: clearSpaceFormDraft,
+    saveDraft,
     isHydrated,
   };
 };
