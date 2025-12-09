@@ -4,9 +4,12 @@ import { useEffect, useState } from 'react';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { toast } from 'sonner';
 
+import { AdminRowActions } from './AdminRowActions';
+
 import { useAdminDisableUserMutation, useAdminUsersQuery } from '@/hooks/api/useAdminUsers';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -256,21 +259,14 @@ export function AdminUsersPage() {
                         { dateFormatter.format(new Date(user.created_at)) }
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end">
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="rounded-md"
-                            onClick={ () => handleDisable(user.id) }
-                            disabled={
-                              user.status !== 'active'
-                              || processingUserId === user.id
-                              || disableMutation.isLoading
-                            }
+                        <AdminRowActions disabled={ disableMutation.isLoading && processingUserId === user.id }>
+                          <DropdownMenuItem
+                            onSelect={ () => handleDisable(user.id) }
+                            disabled={ user.status !== 'active' || processingUserId === user.id }
                           >
-                            { processingUserId === user.id ? 'Disabling…' : 'Disable account' }
-                          </Button>
-                        </div>
+                            Disable account
+                          </DropdownMenuItem>
+                        </AdminRowActions>
                       </TableCell>
                     </TableRow>
                   )) }
