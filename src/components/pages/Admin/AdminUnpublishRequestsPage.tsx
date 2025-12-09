@@ -98,7 +98,7 @@ const formatBadgeVariant = (status: UnpublishRequest['status']) => {
 
 export function AdminUnpublishRequestsPage() {
   const [activeTab, setActiveTab] = useState<RequestTab>('pending');
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
+  const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(PAGE_SIZE_OPTIONS[1]);
   const [pageIndex, setPageIndex] = useState(0);
   const [pageCursors, setPageCursors] = useState<(string | null)[]>([null]);
   const cursor = pageCursors[pageIndex] ?? null;
@@ -222,10 +222,20 @@ export function AdminUnpublishRequestsPage() {
   };
 
   const handlePageSizeChange = (value: string) => {
-    const parsed = Number(value);
-    if (Number.isNaN(parsed) || parsed === pageSize) {
+    const parsedNumber = Number(value);
+    if (Number.isNaN(parsedNumber)) {
       return;
     }
+
+    if (!PAGE_SIZE_OPTIONS.includes(parsedNumber as typeof PAGE_SIZE_OPTIONS[number])) {
+      return;
+    }
+
+    const parsed = parsedNumber as typeof PAGE_SIZE_OPTIONS[number];
+    if (parsed === pageSize) {
+      return;
+    }
+
     setPageSize(parsed);
     setPageIndex(0);
     setPageCursors([null]);
@@ -357,7 +367,7 @@ export function AdminUnpublishRequestsPage() {
                         <>
                           <Button
                             size="sm"
-                            variant="success"
+                            variant="secondary"
                             onClick={ () => handleApprove(request) }
                             disabled={ approveMutation.isPending }
                           >
@@ -427,7 +437,7 @@ export function AdminUnpublishRequestsPage() {
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button
                       size="sm"
-                      variant="success"
+                      variant="secondary"
                       onClick={ () => handleApprove(request) }
                       disabled={ approveMutation.isPending }
                     >

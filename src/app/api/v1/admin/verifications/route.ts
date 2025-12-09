@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import type { Prisma, verification_status } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
 import { AdminSessionError, requireAdminSession } from '@/lib/auth/require-admin-session';
@@ -30,21 +31,21 @@ export async function GET(req: NextRequest) {
  status, limit, cursor, 
 } = parsed.data;
     const now = new Date();
-    const where =
+    const where: Prisma.verificationWhereInput =
       status === 'expired'
         ? {
           subject_type: 'space',
           OR: [
-            { status: 'expired', },
+            { status: 'expired' as verification_status, },
             {
-              status: 'approved',
+              status: 'approved' as verification_status,
               valid_until: { lt: now, },
             }
           ],
         }
         : {
           subject_type: 'space',
-          status,
+          status: status as verification_status,
         };
 
     const verifications = await prisma.verification.findMany({

@@ -118,10 +118,7 @@ export async function POST(req: NextRequest) {
     if (isTestingModeEnabled()) {
       const confirmedBooking = await prisma.booking.update({
         where: { id: bookingRow.id, },
-        data: {
-          status: 'confirmed',
-          updated_at: new Date(),
-        },
+        data: { status: 'confirmed', },
       });
 
       const booking = mapBookingRowToRecord(confirmedBooking);
@@ -165,9 +162,12 @@ export async function POST(req: NextRequest) {
 
         if (userError) {
           console.warn('Unable to read customer email for booking notification', userError);
-        } else if (userData?.email) {
+        }
+
+        const userEmail = userData?.user?.email;
+        if (userEmail) {
           await sendBookingNotificationEmail({
-            to: userData.email,
+            to: userEmail,
             spaceName: booking.spaceName,
             areaName: booking.areaName,
             bookingHours: booking.bookingHours,

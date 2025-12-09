@@ -22,12 +22,13 @@ const patchSchema = z.object({
 
 export async function PATCH(
   req: NextRequest,
-  { params, }: { params: { request_id?: string } }
+  { params, }: { params: Promise<{ request_id: string }> }
 ) {
+  const resolvedParams = await params;
   try {
     const session = await requireAdminSession(req);
 
-    const parsedId = z.string().uuid().safeParse(params.request_id);
+    const parsedId = z.string().uuid().safeParse(resolvedParams.request_id);
     if (!parsedId.success) {
       return NextResponse.json({ error: 'Invalid request identifier.', }, { status: 400, });
     }

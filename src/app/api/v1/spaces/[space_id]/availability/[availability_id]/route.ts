@@ -65,6 +65,9 @@ export async function PUT(req: NextRequest, { params, }: Params) {
     return NextResponse.json({ error: 'Invalid day_of_week', }, { status: 422, });
   }
 
+  const dayIndex =
+    nextDay !== undefined ? mondayFirstDays.indexOf(nextDay) : undefined;
+
   const openDate = nextOpenStr ? parseTimeToUTCDate(nextOpenStr) : existing.opening;
   const closeDate = nextCloseStr ? parseTimeToUTCDate(nextCloseStr) : existing.closing;
 
@@ -83,7 +86,7 @@ export async function PUT(req: NextRequest, { params, }: Params) {
   const updated = await prisma.space_availability.update({
     where: { id: availability_id, },
     data: {
-      ...(nextDay !== undefined ? { day_of_week: nextDay, } : {}),
+      ...(dayIndex !== undefined ? { day_of_week: dayIndex, } : {}),
       ...(nextOpenStr !== undefined ? { opening: openDate, } : {}),
       ...(nextCloseStr !== undefined ? { closing: closeDate, } : {}),
     },

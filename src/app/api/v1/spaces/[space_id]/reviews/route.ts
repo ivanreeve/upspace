@@ -64,6 +64,7 @@ export async function GET(req: NextRequest, { params, }: Params) {
     prisma.review.groupBy({
       where: { space_id, },
       by: ['rating_star'],
+      orderBy: { rating_star: 'desc', },
       _count: { _all: true, },
     }),
     prisma.review.findMany({
@@ -130,7 +131,11 @@ export async function GET(req: NextRequest, { params, }: Params) {
   const ratingCounts = ratingBreakdown.reduce<Record<number, number>>((counts, entry) => {
     const rating = Number(entry.rating_star);
     if (rating >= 1 && rating <= 5) {
-      counts[rating] = entry._count._all;
+      const countValue =
+        typeof entry._count === 'object' && entry._count !== null
+          ? entry._count._all ?? 0
+          : 0;
+      counts[rating] = countValue;
     }
     return counts;
   }, {

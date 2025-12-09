@@ -23,22 +23,37 @@ export async function POST(req: NextRequest, { params, }: Params) {
   }
 
   try {
+    const amenityChoice = await prisma.amenity_choice.findUnique({
+      where: { name: parsed.data.name, },
+      select: {
+ id: true,
+name: true, 
+},
+    });
+
+    if (!amenityChoice) {
+      return NextResponse.json(
+        { error: 'Amenity choice not found.', },
+        { status: 400, }
+      );
+    }
+
     const created = await prisma.amenity.create({
       data: {
-        space_id,
-        name: parsed.data.name,
+        space: { connect: { id: space_id, }, },
+        amenity_choice: { connect: { id: amenityChoice.id, }, },
       },
       select: {
         id: true,
         space_id: true,
-        name: true,
+        amenity_choice: { select: { name: true, }, },
       },
     });
 
     const payload = {
       amenity_id: created.id,
       space_id: created.space_id,
-      name: created.name,
+      name: created.amenity_choice.name,
     };
 
     const res = NextResponse.json({ data: payload, }, { status: 201, });
@@ -68,21 +83,21 @@ export async function GET(_req: NextRequest, { params, }: Params) {
     return NextResponse.json({ error: 'space_id is required and must be a valid UUID', }, { status: 400, });
   }
 
-  const rows = await prisma.amenity.findMany({
-    where: { space_id, },
-    orderBy: { name: 'asc', },
-    select: {
-      id: true,
-      space_id: true,
-      name: true,
-    },
-  });
+    const rows = await prisma.amenity.findMany({
+      where: { space_id, },
+      orderBy: { amenity_choice: { name: 'asc', }, },
+      select: {
+        id: true,
+        space_id: true,
+        amenity_choice: { select: { name: true, }, },
+      },
+    });
 
-  return NextResponse.json({
-    data: rows.map(r => ({
-      amenity_id: r.id,
-      space_id: r.space_id,
-      name: r.name,
-    })),
-  });
+    return NextResponse.json({
+      data: rows.map((r) => ({
+        amenity_id: r.id,
+        space_id: r.space_id,
+        name: r.amenity_choice.name,
+      })),
+    });
 }

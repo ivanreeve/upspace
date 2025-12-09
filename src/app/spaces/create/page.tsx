@@ -11,7 +11,12 @@ import {
 import Image from 'next/image';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
-import { useForm, useWatch, type FieldPathValues } from 'react-hook-form';
+import {
+  useForm,
+  useWatch,
+  type FieldPathValues,
+  type Resolver
+} from 'react-hook-form';
 import {
   FiArrowLeft,
   FiArrowRight,
@@ -281,7 +286,7 @@ export default function SpaceCreateRoute() {
               ? 6
               : 1;
   const form = useForm<SpaceFormValues>({
-    resolver: zodResolver(spaceSchema),
+    resolver: zodResolver(spaceSchema) as Resolver<SpaceFormValues>,
     defaultValues: createSpaceFormDefaults(),
   });
   const {
@@ -297,16 +302,9 @@ export default function SpaceCreateRoute() {
     [listingChecklistState]
   );
 
-  const watchedDefaults = useMemo(
-    () =>
-      WATCHED_FIELD_NAMES.map((fieldName) => form.getValues(fieldName)) as WatchedFieldValues,
-    [form]
-  );
-
   const watchedArray = useWatch<SpaceFormValues, WatchedFieldNames>({
     control: form.control,
     name: WATCHED_FIELD_NAMES,
-    defaultValue: watchedDefaults,
   });
 
   const [

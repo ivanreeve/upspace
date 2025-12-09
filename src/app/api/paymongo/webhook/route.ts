@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
 import { mapBookingRowToRecord } from '@/lib/bookings/serializer';
@@ -25,7 +26,7 @@ const walletEventSchema = z.object({
           currency: z.string(),
           description: z.string().nullable(),
           external_reference: z.string().nullable(),
-          metadata: z.record(z.any()).nullable(),
+          metadata: z.record(z.string(), z.any()).nullable(),
           booking_id: z.string().uuid().nullable(),
           created_at: z.union([z.number(), z.string()]),
         }),
@@ -46,7 +47,7 @@ const checkoutEventSchema = z.object({
           id: z.string(),
           amount: z.number(),
           currency: z.string(),
-          metadata: z.record(z.string()).nullable(),
+          metadata: z.record(z.string(), z.string()).nullable(),
           status: z.string(),
         }),
       }),
@@ -126,13 +127,14 @@ async function handleWalletEvent(event: WalletEvent) {
     : null;
   const recordedAt = normalizeTimestamp(walletObject.created_at);
   const status = walletObject.status as 'pending' | 'succeeded' | 'failed';
+  const metadataPayload = (walletObject.metadata ?? null) as Prisma.InputJsonValue;
 
   const balanceDelta =
     status === 'succeeded'
       ? (transactionType === 'cash_in' || transactionType === 'refund'
         ? amountMinor
-        : amountMinor * -1n)
-      : 0n;
+        : -amountMinor)
+      : BigInt(0);
 
   await prisma.$transaction(async (tx) => {
     await tx.wallet_transaction.create({
@@ -145,14 +147,14 @@ async function handleWalletEvent(event: WalletEvent) {
         currency: walletObject.currency || walletRow.currency,
         description: walletObject.description ?? null,
         external_reference: walletObject.id,
-        metadata: walletObject.metadata ?? null,
+        metadata: metadataPayload,
         booking_id: walletObject.booking_id ?? null,
         created_at: recordedAt,
         updated_at: recordedAt,
       },
     });
 
-    if (balanceDelta !== 0n) {
+    if (balanceDelta !== BigInt(0)) {
       await tx.wallet.update({
         where: { id: walletRow.id, },
         data: {
@@ -190,13 +192,10 @@ async function handleCheckoutEvent(event: CheckoutEvent) {
     return RECEIVED_RESPONSE;
   }
 
-  const updatedBooking = await prisma.booking.update({
-    where: { id: bookingId, },
-    data: {
-      status: 'confirmed',
-      updated_at: new Date(),
-    },
-  });
+    const updatedBooking = await prisma.booking.update({
+      where: { id: bookingId, },
+      data: { status: 'confirmed', },
+    });
 
   const booking = mapBookingRowToRecord(updatedBooking);
   const bookingHref = `/marketplace/${booking.spaceId}`;
@@ -241,9 +240,10 @@ async function handleCheckoutEvent(event: CheckoutEvent) {
       console.warn('Unable to read customer email for booking notification', userError);
     }
 
-    if (userData?.email) {
+    const userEmail = userData?.user?.email;
+    if (userEmail) {
       await sendBookingNotificationEmail({
-        to: userData.email,
+        to: userEmail,
         spaceName: booking.spaceName,
         areaName: booking.areaName,
         bookingHours: booking.bookingHours,
@@ -318,7 +318,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return handleWalletEvent(validation.data.attributes);
+    return handleWalletEvent(validation.data.data.attributes);
   }
 
   if (eventType.includes('checkout')) {
@@ -328,7 +328,7 @@ export async function POST(req: NextRequest) {
       return RECEIVED_RESPONSE;
     }
 
-    return handleCheckoutEvent(validation.data.attributes);
+    return handleCheckoutEvent(validation.data.data.attributes);
   }
 
   return RECEIVED_RESPONSE;

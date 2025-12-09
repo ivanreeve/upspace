@@ -899,7 +899,10 @@ function AccountLockOverlay({ profile, }: AccountLockOverlayProps) {
     }
   };
 
-  const actionLabel = metadata.actionLabel ?? '';
+  const actionLabel =
+    typeof metadata === 'object' && 'actionLabel' in metadata
+      ? metadata.actionLabel ?? ''
+      : '';
 
   return (
     <div className="absolute inset-0 z-40 flex items-center justify-center">

@@ -185,23 +185,38 @@ const spaceSearchFiltersBaseSchema = z.object({
 });
 
 // Apply shared range validations without blocking schema extension.
+type RangeFilterValues = {
+  min_price?: number;
+  max_price?: number;
+  min_rating?: number;
+  max_rating?: number;
+};
+
 const withRangeRefinements = <T extends z.ZodTypeAny>(schema: T) =>
   schema
     .refine(
-      (value) =>
-        value.max_price === undefined ||
-        value.min_price === undefined ||
-        value.max_price >= value.min_price,
+      (value) => {
+        const filters = value as RangeFilterValues;
+        return (
+          filters.max_price === undefined ||
+          filters.min_price === undefined ||
+          filters.max_price >= filters.min_price
+        );
+      },
       {
         message: 'max_price must be greater than or equal to min_price.',
         path: ['max_price'],
       }
     )
     .refine(
-      (value) =>
-        value.max_rating === undefined ||
-        value.min_rating === undefined ||
-        value.max_rating >= value.min_rating,
+      (value) => {
+        const filters = value as RangeFilterValues;
+        return (
+          filters.max_rating === undefined ||
+          filters.min_rating === undefined ||
+          filters.max_rating >= filters.min_rating
+        );
+      },
       {
         message: 'max_rating must be greater than or equal to min_rating.',
         path: ['max_rating'],
@@ -259,13 +274,37 @@ type ConversationMessage = {
   content: string;
 };
 
-const buildConversationContents = (messages: ConversationMessage[]) =>
+type AgentConversationPart =
+  | { text: string }
+  | {
+      functionCall: {
+        name: string;
+        args?: Record<string, unknown>;
+        id?: string;
+      };
+    }
+  | {
+      functionResponse: {
+        name: string;
+        id?: string;
+        response: Record<string, unknown>;
+      };
+    };
+
+type AgentConversationContent = {
+  role: 'user' | 'model';
+  parts: AgentConversationPart[];
+};
+
+const buildConversationContents = (messages: ConversationMessage[]): AgentConversationContent[] =>
   messages.map((message) => ({
     role: message.role === 'assistant' ? 'model' : 'user',
     parts: [{ text: message.content.trim(), }],
   }));
 
-const createLocationContext = (location: z.infer<typeof coordinateSchema>) => ({
+const createLocationContext = (
+  location: z.infer<typeof coordinateSchema>
+): AgentConversationContent => ({
   role: 'user', // Gemini expects only 'user' or 'model'; embed context as user-provided note
   parts: [
     {
@@ -366,27 +405,30 @@ const isReferenceDataTool = (name: string): name is ReferenceDataToolName =>
   referenceDataToolSet.has(name as ReferenceDataToolName);
 
 const createFunctionCallContent = (
-  name: string,
-  id?: string,
-  args?: Record<string, unknown>
-) => ({
-  role: 'model',
-  parts: [
-    {
-      functionCall: {
-        name,
-        args,
-        id,
-      },
-    }
-  ],
-});
+  functionCall: FunctionCall,
+  args: Record<string, unknown>
+): AgentConversationContent => {
+  const name = functionCall.name ?? 'unknown';
+
+  return {
+    role: 'model',
+    parts: [
+      {
+        functionCall: {
+          name,
+          args,
+          id: functionCall.id,
+        },
+      }
+    ],
+  };
+};
 
 const createFunctionResponseContent = (
   name: string,
   id: string | undefined,
   responsePayload: Record<string, unknown>
-) => ({
+): AgentConversationContent => ({
   role: 'model',
   parts: [
     {
@@ -422,7 +464,7 @@ const parseFunctionCallArgs = (value?: FunctionCall['args']) => {
 const buildReferenceContents = (data: SearchReferenceData) => {
   const MAX_ITEMS = 50;
 
-  const formatList = (label: string, items: string[]) => {
+  const formatList = (label: string, items: string[]): AgentConversationContent | null => {
     if (!items.length) return null;
 
     const trimmed = items.slice(0, MAX_ITEMS);
@@ -433,7 +475,7 @@ const buildReferenceContents = (data: SearchReferenceData) => {
         : '';
 
     return {
-      role: 'user' as const,
+      role: 'user',
       parts: [{ text: `${label} (${items.length}):\n${summary}${extra}`, }],
     };
   };
@@ -443,7 +485,7 @@ const buildReferenceContents = (data: SearchReferenceData) => {
     formatList('Regions with spaces', data.regions),
     formatList('Cities with spaces', data.cities),
     formatList('Barangays with spaces', data.barangays)
-  ].filter(Boolean) as Array<{ role: 'user'; parts: [{ text: string }] }>;
+  ].filter(Boolean) as AgentConversationContent[];
 };
 
 export async function POST(request: NextRequest) {
@@ -492,7 +534,7 @@ export async function POST(request: NextRequest) {
     }
 
     const ai = new GoogleGenAI({ apiKey, });
-    const conversation =
+    const conversation: ConversationMessage[] =
       messages && messages.length
         ? messages
         : trimmedQuery
@@ -523,7 +565,7 @@ export async function POST(request: NextRequest) {
       ],
     };
 
-    const historyContents = [
+    const historyContents: AgentConversationContent[] = [
       ...contextContents,
       ...referenceContents,
       ...conversationContents
@@ -550,12 +592,11 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      const functionCallName = functionCall.name ?? 'unknown';
       const callArgs = parseFunctionCallArgs(functionCall.args);
-      historyContents.push(
-        createFunctionCallContent(functionCall.name, functionCall.id, callArgs)
-      );
+      historyContents.push(createFunctionCallContent(functionCall, callArgs));
 
-      if (functionCall.name === 'get_user_location') {
+      if (functionCallName === 'get_user_location') {
         const locationPayload = location
           ? {
               location: {
@@ -567,7 +608,7 @@ export async function POST(request: NextRequest) {
 
         historyContents.push(
           createFunctionResponseContent(
-            functionCall.name,
+            functionCallName,
             functionCall.id,
             locationPayload
           )
@@ -576,12 +617,12 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      if (isReferenceDataTool(functionCall.name)) {
+        if (isReferenceDataTool(functionCallName)) {
         try {
-          const items = await referenceToolFetchers[functionCall.name]();
+          const items = await referenceToolFetchers[functionCallName]();
 
           historyContents.push(
-            createFunctionResponseContent(functionCall.name, functionCall.id, {
+            createFunctionResponseContent(functionCallName, functionCall.id, {
               items,
               count: items.length,
             })
@@ -593,14 +634,14 @@ export async function POST(request: NextRequest) {
               : 'Unable to fetch reference data.';
           console.error('Reference tool error', message);
           historyContents.push(
-            createFunctionResponseContent(functionCall.name, functionCall.id, { error: message, })
+            createFunctionResponseContent(functionCallName, functionCall.id, { error: message, })
           );
         }
 
         continue;
       }
 
-      if (!isSpaceSearchFunction(functionCall.name)) {
+        if (!isSpaceSearchFunction(functionCallName)) {
         finalText = responseText ?? finalText;
         break;
       }
@@ -608,7 +649,7 @@ export async function POST(request: NextRequest) {
       let validatedToolInput: FindSpacesToolInput;
       try {
         validatedToolInput = buildSpaceSearchToolInput(
-          functionCall.name,
+          functionCallName,
           callArgs,
           location,
           user_id
@@ -618,7 +659,7 @@ export async function POST(request: NextRequest) {
           return NextResponse.json(
             {
               error: 'Unable to interpret the search parameters.',
-              issues: error.errors,
+              issues: error.issues,
             },
             { status: 400, }
           );
@@ -643,7 +684,7 @@ export async function POST(request: NextRequest) {
 
       historyContents.push(
         createFunctionResponseContent(
-          functionCall.name,
+          functionCallName,
           functionCall.id,
           toolResponsePayload
         )
@@ -684,7 +725,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: 'Invalid request.',
-          issues: error.errors,
+          issues: error.issues,
         },
         { status: 400, }
       );

@@ -10,15 +10,16 @@ const isUuid = (value: string | undefined): value is string =>
   typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
 type RouteParams = {
-  params: {
-    space_id?: string;
-  };
+  params: Promise<{
+    space_id: string;
+  }>;
 };
 
 export async function POST(req: NextRequest, { params, }: RouteParams) {
   try {
     const { userId, } = await requirePartnerSession();
-    const spaceIdParam = params?.space_id;
+    const resolvedParams = await params;
+    const spaceIdParam = resolvedParams.space_id;
 
     if (!isUuid(spaceIdParam)) {
       return NextResponse.json({ error: 'space_id must be a valid UUID.', }, { status: 400, });
