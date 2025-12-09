@@ -1,27 +1,21 @@
 'use client';
 
-import { useMemo, useState, type FormEvent } from 'react';
-import { toast } from 'sonner';
+import { useMemo } from 'react';
 
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   type WalletTransactionStatus,
   type WalletTransactionType,
-  useWallet,
-  useWalletTopUp
+  useWallet
 } from '@/hooks/use-wallet';
 import { formatCurrencyMinor } from '@/lib/wallet';
 import { useUserProfile } from '@/hooks/use-user-profile';
@@ -54,9 +48,6 @@ export default function WalletPage() {
     isLoading,
     isFetching,
   } = useWallet({ enabled: isPartnerRole, });
-  const topUpMutation = useWalletTopUp();
-  const [amount, setAmount] = useState('');
-
   const transactions = useMemo(
     () => data?.transactions ?? [],
     [data?.transactions]
@@ -105,30 +96,8 @@ export default function WalletPage() {
     );
   }
 
-  const handleTopUp = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const parsedAmount = Number(amount);
-
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      toast.error('Enter a valid amount greater than zero.');
-      return;
-    }
-
-    try {
-      await topUpMutation.mutateAsync({ amount: parsedAmount, });
-      toast.success('Wallet topped up.');
-      setAmount('');
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Unable to top up your wallet right now.';
-      toast.error(message);
-    }
-  };
-
   return (
-  <div className="flex flex-col gap-6 px-4 py-2 sm:px-6">
+    <div className="flex flex-col gap-6 px-4 py-2 sm:px-6">
     { /* Wallet Balance */ }
     <Card className="rounded-lg border border-[#FFFFFF] dark:border-neutral-600 bg-card p-4 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.05)] mt-8">
       <CardHeader className="p-0 mb-2">
@@ -145,51 +114,25 @@ export default function WalletPage() {
         </p>
       </CardContent>
     </Card>
-
       <Card className="rounded-lg border border-[#FFFFFF] dark:border-neutral-600 bg-card shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
         <CardHeader>
-          <CardTitle>Top up partner wallet</CardTitle>
+          <CardTitle>Withdrawals handled in PayMongo</CardTitle>
           <CardDescription>
-            Use your linked PayMongo payment method to add funds to this partner wallet. Receipts are recorded automatically.
+            Booking payouts land directly in your partner wallet automatically.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form className="space-y-4" onSubmit={ handleTopUp }>
-            <div className="space-y-1">
-              <Label htmlFor="wallet-top-up-amount">Amount (PHP)</Label>
-              <Input
-                id="wallet-top-up-amount"
-                type="number"
-                min="0.01"
-                step="0.01"
-                placeholder="500.00"
-                value={ amount }
-                onChange={ (event) => setAmount(event.target.value) }
-                aria-describedby="wallet-top-up-help"
-              />
-              <p id="wallet-top-up-help" className="text-xs text-muted-foreground">
-                The amount will be charged through PayMongo before being credited to this wallet.
-              </p>
-            </div>
-            <Button
-              type="submit"
-              className="w-full rounded-md"
-              disabled={ topUpMutation.isPending }
-            >
-              { topUpMutation.isPending ? 'Processing…' : 'Top up wallet' }
-            </Button>
-          </form>
+        <CardContent className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Top-ups are disabled—this balance represents funds collected from bookings that PayMongo released to you. To move money out, initiate payouts or withdrawals from the PayMongo dashboard you linked during onboarding.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            If you need help withdrawing, contact PayMongo support or reach out to our team so we can guide you through the process.
+          </p>
         </CardContent>
-        <CardFooter>
-        <p className="text-xs text-muted-foreground">
-          Need to change your default payment method? Update it in the PayMongo dashboard to keep this partner wallet in sync.
-        </p>
-      </CardFooter>
-    </Card>
+      </Card>
 
     { /* Recent Activity */ }
-    <Card className="rounded-lg border border-[#FFFFFF] dark:border-neutral-600 bg-card p-4 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.05)]
-">
+    <Card className="rounded-lg border border-[#FFFFFF] dark:border-neutral-600 bg-card p-4 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
       <CardHeader className="p-0 mb-2">
         <CardTitle>Recent activity</CardTitle>
         <CardDescription>

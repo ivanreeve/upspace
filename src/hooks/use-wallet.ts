@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 
 export type WalletTransactionType = 'cash_in' | 'charge' | 'refund' | 'payout';
 export type WalletTransactionStatus = 'pending' | 'succeeded' | 'failed';
@@ -58,31 +58,5 @@ export function useWallet(options?: { enabled?: boolean }) {
     enabled,
     retry: 1,
     staleTime: 1000 * 30,
-  });
-}
-
-export function useWalletTopUp() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ amount, }: { amount: number }) => {
-      const response = await fetch('/api/v1/wallet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', },
-        credentials: 'same-origin',
-        body: JSON.stringify({ amount, }),
-      });
-
-      const payload = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(payload?.message ?? 'Unable to top up your wallet.');
-      }
-
-      return payload;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: walletQueryKey, });
-    },
   });
 }
