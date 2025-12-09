@@ -38,7 +38,10 @@ const unavailableSpaceResponse = NextResponse.json(
   { status: 410, }
 );
 
-const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000').replace(/\/+$/, '');
+const DEFAULT_APP_URL = 'http://localhost:3000';
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_URL.trim().length > 0
+  ? process.env.NEXT_PUBLIC_APP_URL
+  : DEFAULT_APP_URL).replace(/\/+$/, '');
 
 export async function POST(req: NextRequest) {
   try {
@@ -116,6 +119,7 @@ export async function POST(req: NextRequest) {
       amountMinor: priceMinor,
       currency: bookingRow.currency,
       description: `${area.space.name} · ${area.name}`,
+      lineItemName: area.name,
       successUrl,
       cancelUrl,
       metadata,

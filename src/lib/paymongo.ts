@@ -1,10 +1,21 @@
-'use server';
-
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { isPaymongoSignatureFresh as isPaymongoSignatureFreshShared, parsePaymongoSignatureHeader as parsePaymongoSignatureHeaderShared, verifyPaymongoSignatureWithSecret } from '../../supabase/functions/_shared/paymongo-signature.ts';
+import type { PaymongoWebhookSignature } from '../../supabase/functions/_shared/paymongo-signature.ts';
 
 const PAYMONGO_API_URL = process.env.PAYMONGO_API_URL?.replace(/\/+$/u, '') ?? 'https://api.paymongo.com/v1';
 const PAYMONGO_SECRET_KEY = process.env.PAYMONGO_SECRET_KEY;
 const PAYMONGO_WEBHOOK_SECRET = process.env.PAYMONGO_WEBHOOK_SECRET;
+function resolveDefaultPaymentMethods() {
+  const raw = process.env.PAYMONGO_CHECKOUT_PAYMENT_METHODS ??
+    'card,gcash,grab_pay,paymaya';
+  const methods = raw
+    .split(',')
+    .map((method) => method.trim())
+    .filter((method) => method.length > 0);
+
+  return methods.length > 0 ? methods : ['card'];
+}
+
+const PAYMONGO_DEFAULT_PAYMENT_METHODS = resolveDefaultPaymentMethods();
 
 if (!PAYMONGO_SECRET_KEY) {
   console.warn('PayMongo secret key is missing (PAYMONGO_SECRET_KEY).');
@@ -21,8 +32,9 @@ export type PaymongoRefundReason =
 
 export type PaymongoError = {
   type: string;
-  message: string;
+  message?: string;
   code?: string;
+  detail?: string;
 };
 
 export type PaymongoRefundResponse = {
@@ -61,11 +73,20 @@ async function paymongoFetch<T>(path: string, options: RequestInit) {
 
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    const error: PaymongoError = payload?.errors?.[0] ?? {
-      type: 'unknown_error',
-      message: 'PayMongo request failed.',
-    };
-    throw new Error(`PayMongo ${path} failed: ${error.message}`);
+    const error: PaymongoError | undefined = payload?.errors?.[0];
+    const detail =
+      error?.message ??
+      // Some PayMongo responses use `detail` instead of `message`.
+      (typeof error?.['detail'] === 'string' ? error['detail'] : null) ??
+      (payload ? JSON.stringify(payload) : 'PayMongo request failed.');
+
+    console.error('PayMongo request failed', {
+      path,
+      status: response.status,
+      payload,
+    });
+
+    throw new Error(`PayMongo ${path} failed: ${detail}`);
   }
 
   return payload as T;
@@ -116,6 +137,7 @@ export async function createPaymongoCheckoutSession(opts: {
   successUrl: string;
   cancelUrl: string;
   description: string;
+  lineItemName: string;
   metadata: Record<string, string>;
   paymentMethodTypes?: string[];
 }) {
@@ -128,7 +150,16 @@ export async function createPaymongoCheckoutSession(opts: {
         cancel_url: opts.cancelUrl,
         description: opts.description,
         metadata: opts.metadata,
-        payment_method_types: opts.paymentMethodTypes ?? ['card'],
+        payment_method_types: opts.paymentMethodTypes ?? PAYMONGO_DEFAULT_PAYMENT_METHODS,
+        line_items: [
+          {
+            amount: opts.amountMinor,
+            currency: opts.currency,
+            name: opts.lineItemName,
+            description: opts.description,
+            quantity: 1,
+          }
+        ],
       },
     },
   };
@@ -142,38 +173,10 @@ export async function createPaymongoCheckoutSession(opts: {
   );
 }
 
-export type PaymongoWebhookSignature = {
-  timestamp: number;
-  te?: string;
-  li?: string;
-};
+export { isPaymongoSignatureFreshShared as isPaymongoSignatureFresh, parsePaymongoSignatureHeaderShared as parsePaymongoSignatureHeader };
+export type { PaymongoWebhookSignature };
 
-export function parsePaymongoSignatureHeader(header: string | null): PaymongoWebhookSignature | null {
-  if (!header) return null;
-
-  const normalized = header.split(',').map((part) => part.trim());
-  const result: PaymongoWebhookSignature = { timestamp: 0, };
-
-  for (const part of normalized) {
-    const [key, value] = part.split('\=').map((segment) => segment.trim());
-    if (!key || !value) continue;
-    if (key === 't') {
-      result.timestamp = Number(value);
-    } else if (key === 'te') {
-      result.te = value;
-    } else if (key === 'li') {
-      result.li = value;
-    }
-  }
-
-  if (!result.timestamp) {
-    return null;
-  }
-
-  return result;
-}
-
-export function verifyPaymongoSignature({
+export async function verifyPaymongoSignature({
   payload,
   signature,
   secret = PAYMONGO_WEBHOOK_SECRET,
@@ -183,29 +186,16 @@ export function verifyPaymongoSignature({
   signature: PaymongoWebhookSignature;
   secret?: string | null;
   useLiveSignature?: boolean;
-}) {
-  if (!secret) {
+}): Promise<boolean> {
+  const resolvedSecret = secret ?? PAYMONGO_WEBHOOK_SECRET;
+  if (!resolvedSecret) {
     throw new Error('PAYMONGO_WEBHOOK_SECRET is not configured.');
   }
 
-  const signatureValue = useLiveSignature ? signature.li : signature.te;
-  if (!signatureValue) {
-    return false;
-  }
-
-  const unsignedString = `${signature.timestamp}.${payload}`;
-  const hmac = createHmac('sha256', secret).update(unsignedString).digest('hex');
-  const incoming = Buffer.from(signatureValue, 'hex');
-  const computed = Buffer.from(hmac, 'hex');
-
-  try {
-    return timingSafeEqual(incoming, computed);
-  } catch (error) {
-    return false;
-  }
-}
-
-export function isPaymongoSignatureFresh(signature: PaymongoWebhookSignature, toleranceSeconds = 300) {
-  const nowSeconds = Math.floor(Date.now() / 1000);
-  return Math.abs(nowSeconds - signature.timestamp) <= toleranceSeconds;
+  return verifyPaymongoSignatureWithSecret({
+    payload,
+    signature,
+    secret: resolvedSecret,
+    useLiveSignature,
+  });
 }
