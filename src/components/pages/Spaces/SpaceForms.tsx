@@ -10,11 +10,13 @@ import {
 } from 'react';
 import type { KeyboardEvent } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
+import { useForm, useWatch } from 'react-hook-form';
+import type {
   ControllerRenderProps,
-  useForm,
-  useWatch,
-  type UseFormReturn
+  FieldValues,
+  Path,
+  Resolver,
+  UseFormReturn
 } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -49,7 +51,25 @@ import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import TextAlign from '@tiptap/extension-text-align';
 import Link from '@tiptap/extension-link';
+import type { Level } from '@tiptap/extension-heading';
 import { zipcodes as philippineZipcodes } from 'ph-zipcode-lookup';
+
+type Coordinates = {
+  lat: number;
+  lng: number;
+};
+
+const DEFAULT_MAP_CENTER: Coordinates = {
+  lat: 14.5847,
+  lng: 120.9775,
+};
+
+type AddressPrediction = {
+  placeId: string;
+  description: string;
+  mainText: string;
+  secondaryText?: string;
+};
 
 import { SPACE_DESCRIPTION_EDITOR_CLASSNAME } from './space-description-rich-text';
 
@@ -219,7 +239,13 @@ const TEXT_ALIGNMENT_OPTIONS: ReadonlyArray<{
   }
 ];
 
-const HEADING_OPTIONS = [
+type HeadingOption = {
+  title: string;
+  label: string;
+  level?: Level;
+};
+
+const HEADING_OPTIONS: ReadonlyArray<HeadingOption> = [
   {
     title: 'Normal',
     label: 'Normal text',
@@ -240,7 +266,7 @@ const HEADING_OPTIONS = [
     label: 'Heading 3',
     level: 3,
   }
-] as const;
+];
 
 const TABLE_INSERT_DEFAULTS = {
   rows: 2,
@@ -267,9 +293,9 @@ export const createSpaceFormDefaults = (): SpaceFormValues => ({
   availability: disableWeeklyAvailability(cloneWeeklyAvailability(SPACE_INPUT_DEFAULT.availability)),
 });
 
-export const createAreaFormDefaults = (): AreaFormValues => ({
+export const createAreaFormDefaults = (priceRuleId: string | null = null): AreaFormValues => ({
   ...AREA_INPUT_DEFAULT,
-  price_rule_id: null,
+  price_rule_id: priceRuleId,
 });
 
 export const spaceRecordToFormValues = (space: SpaceRecord): SpaceFormValues => ({
@@ -302,8 +328,10 @@ export const areaRecordToFormValues = (area: AreaRecord): AreaFormValues => ({
   price_rule_id: area.price_rule?.id ?? null,
 });
 
-export type DescriptionEditorProps<TFieldValues extends { description: string }> = {
-  field: ControllerRenderProps<TFieldValues, 'description'>;
+export type DescriptionEditorProps<
+  TFieldValues extends FieldValues & { description: string }
+> = {
+  field: ControllerRenderProps<TFieldValues, Path<TFieldValues>>;
 };
 
 export function DescriptionEditor<TFieldValues extends { description: string }>(props: DescriptionEditorProps<TFieldValues>) {
@@ -377,7 +405,7 @@ export function DescriptionEditor<TFieldValues extends { description: string }>(
     }
 
     if (normalizedValue) {
-      editor.commands.setContent(normalizedValue, false);
+      editor.commands.setContent(normalizedValue);
     } else {
       editor.commands.clearContent();
     }
@@ -459,7 +487,7 @@ export function DescriptionEditor<TFieldValues extends { description: string }>(
     execute(chain).run();
   };
 
-  const toggleHeading = (level?: number) => {
+const toggleHeading = (level?: Level) => {
     runBlockCommand((chain) => (level ? chain.toggleHeading({ level, }) : chain.setParagraph()));
   };
 
@@ -554,7 +582,7 @@ export function DescriptionEditor<TFieldValues extends { description: string }>(
     editor.chain().focus().unsetAllMarks().clearNodes().run();
   };
 
-  const isHeadingActive = (level?: number) =>
+  const isHeadingActive = (level?: Level) =>
     level ? editor.isActive('heading', { level, }) : editor.isActive('paragraph');
 
   const isTableActive = editor.isActive('table');
@@ -1972,36 +2000,13 @@ export function SpaceDialog({
   isSubmitting = false,
 }: SpaceDialogProps) {
   const form = useForm<SpaceFormValues>({
-    resolver: zodResolver(spaceSchema),
+    resolver: zodResolver(spaceSchema) as Resolver<SpaceFormValues>,
     defaultValues: initialValues,
   });
 
   useEffect(() => {
     form.reset(initialValues);
   }, [initialValues, form]);
-
-  /* eslint-disable react-hooks/exhaustive-deps */
-  useEffect(() => {
-    if (!automaticBookingEnabled) {
-      form.setValue('request_approval_at_capacity', false, FORM_SET_OPTIONS);
-    }
-  }, [automaticBookingEnabled, form]);
-
-  useEffect(() => {
-    if (!advanceBookingEnabled) {
-      form.setValue('advance_booking_value', null, FORM_SET_OPTIONS);
-      form.setValue('advance_booking_unit', null, FORM_SET_OPTIONS);
-    } else if (!form.getValues('advance_booking_unit')) {
-      form.setValue('advance_booking_unit', 'days', FORM_SET_OPTIONS);
-    }
-  }, [advanceBookingEnabled, form]);
-
-  useEffect(() => {
-    if (!bookingNotesEnabled) {
-      form.setValue('booking_notes', null, FORM_SET_OPTIONS);
-    }
-  }, [bookingNotesEnabled, form]);
-  /* eslint-enable react-hooks/exhaustive-deps */
 
   const close = () => onOpenChange(false);
 
@@ -2054,7 +2059,7 @@ export function AreaDialog({
   pricingRules,
 }: AreaDialogProps) {
   const form = useForm<AreaFormValues>({
-    resolver: zodResolver(areaSchema),
+    resolver: zodResolver(areaSchema) as Resolver<AreaFormValues>,
     defaultValues: initialValues,
   });
   const automaticBookingEnabled = useWatch({

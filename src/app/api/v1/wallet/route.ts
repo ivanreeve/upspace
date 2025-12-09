@@ -19,7 +19,7 @@ const walletTopUpSchema = z.object({
       return value;
     },
     z
-      .number({ invalid_type_error: 'Amount must be a number.', })
+      .number()
       .positive('Amount should be greater than zero.')
       .max(1_000_000, 'Amount exceeds the current top-up limit.')
   ),

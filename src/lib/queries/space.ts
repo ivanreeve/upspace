@@ -189,13 +189,17 @@ const buildAvailabilityDisplay = (
   }));
 
 const buildAreaSummaries = (areas: MarketplaceSpaceRow['area']): SpaceAreaWithRates[] =>
-  areas.map((area) => ({
-    id: area.id,
-    name: area.name,
-    maxCapacity: area.max_capacity === null ? null : Number(area.max_capacity),
-    pricingRuleName: area.price_rule?.name ?? null,
-    pricingRuleId: area.price_rule?.id ?? null,
-  }));
+  areas.map((area) => {
+    const normalizedMaxCapacity = area.max_capacity === null ? null : Number(area.max_capacity);
+    return {
+      id: area.id,
+      name: area.name,
+      minCapacity: normalizedMaxCapacity ?? 0,
+      maxCapacity: normalizedMaxCapacity,
+      pricingRuleName: area.price_rule?.name ?? null,
+      pricingRuleId: area.price_rule?.id ?? null,
+    };
+  });
 
 const serializeMarketplacePriceRule = (
   rule: MarketplaceSpaceRow['price_rule'][number]
@@ -209,19 +213,22 @@ const serializeMarketplacePriceRule = (
   updated_at: rule.updated_at instanceof Date ? rule.updated_at.toISOString() : null,
 });
 
-const buildAmenities = (amenities: MarketplaceSpaceRow['amenity']): SpaceAmenityDisplay[] =>
-  amenities
-    .map((entry) => {
-      if (!entry.amenity_choice) {
-        return null;
-      }
-      return {
-        id: entry.amenity_choice.id,
-        name: entry.amenity_choice.name,
-        category: entry.amenity_choice.category ?? null,
-      } satisfies SpaceAmenityDisplay;
-    })
-    .filter((value): value is SpaceAmenityDisplay => Boolean(value));
+const buildAmenities = (amenities: MarketplaceSpaceRow['amenity']): SpaceAmenityDisplay[] => {
+  const result: SpaceAmenityDisplay[] = [];
+
+  for (const entry of amenities) {
+    if (!entry.amenity_choice) {
+      continue;
+    }
+    result.push({
+      id: entry.amenity_choice.id,
+      name: entry.amenity_choice.name,
+      category: entry.amenity_choice.category ?? null,
+    });
+  }
+
+  return result;
+};
 
 const buildGallery = async (
   images: MarketplaceSpaceRow['space_image']

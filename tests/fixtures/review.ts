@@ -63,7 +63,7 @@ _count: { _all: 1, },
     reviews: [
       {
         id: 'review-1',
-        user_id: 'user-0001',
+        user_id: BigInt(1001),
         rating_star: BigInt(5),
         description: 'Loved the bright, quiet work areas.',
         created_at: new Date('2024-11-01T10:00:00.000Z'),
@@ -80,7 +80,7 @@ _count: { _all: 1, },
       },
       {
         id: 'review-2',
-        user_id: 'user-0002',
+        user_id: BigInt(1002),
         rating_star: BigInt(4),
         description: 'Solid space with reliable internet and helpful staff.',
         created_at: new Date('2024-11-02T14:00:00.000Z'),

@@ -432,7 +432,7 @@ export default function SpacePhotos({
                     <section
                       key={ group.anchor }
                       ref={ (node) => {
-                        categoryRefs.current[group.anchor] = node;
+                        categoryRefs.current[group.anchor] = node as HTMLDivElement | null;
                       } }
                       className="space-y-3 scroll-m-16"
                       id={ group.anchor }
@@ -504,7 +504,7 @@ export default function SpacePhotos({
               <div className="relative h-full w-full max-h-[85vh] max-w-6xl">
                 <Image
                   src={ activeCarouselImage.url }
-                  alt={ `${spaceName} ${activeCarouselCategoryLabel} ${activeCarouselIndex + 1}` }
+                  alt={ `${spaceName} ${activeCarouselCategoryLabel} ${(activeCarouselIndex ?? 0) + 1}` }
                   fill
                   sizes="100vw"
                   className="object-contain"

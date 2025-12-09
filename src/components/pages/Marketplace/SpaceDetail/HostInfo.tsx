@@ -11,6 +11,7 @@ type HostInfoProps = {
   onMessageHost?: () => void;
   isMessagingDisabled?: boolean;
   messagingDisabledReason?: string;
+  messageButtonRef?: RefObject<HTMLButtonElement | null>;
 };
 
 export default function HostInfo({
@@ -21,15 +22,7 @@ export default function HostInfo({
   isMessagingDisabled,
   messageButtonRef,
   messagingDisabledReason,
-}: {
-  hostName?: string | null;
-  avatarUrl?: string | null;
-  spaceName?: string | null;
-  onMessageHost?: () => void;
-  isMessagingDisabled?: boolean;
-  messageButtonRef?: RefObject<HTMLButtonElement>;
-  messagingDisabledReason?: string;
-}) {
+}: HostInfoProps) {
   const resolvedName = spaceName?.trim() || hostName?.trim() || 'Your host';
   const fallbackLabel = (spaceName ?? hostName ?? 'US').slice(0, 2).toUpperCase();
   const avatarAlt = spaceName?.trim()

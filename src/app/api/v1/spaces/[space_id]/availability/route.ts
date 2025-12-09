@@ -44,7 +44,7 @@ export async function GET(_req: NextRequest, { params, }: Params) {
     const data = rows.map((r) => ({
       availability_id: r.id,
       space_id: r.space_id,
-      day_of_week: String(r.day_of_week),
+      day_of_week: mondayFirstDays[r.day_of_week],
       opening_time: r.opening instanceof Date ? r.opening.toISOString() : String(r.opening),
       closing_time: r.closing instanceof Date ? r.closing.toISOString() : String(r.closing),
     }));
@@ -107,18 +107,27 @@ export async function POST(req: NextRequest, { params, }: Params) {
 
   try {
     const created = await prisma.$transaction(async (tx) => {
-      const createdRows: Array<{ id: string; space_id: string; day_of_week: string; opening: Date; closing: Date; }> = [];
+      const createdRows: Array<{
+        id: string;
+        space_id: string | null;
+        day_of_week: number;
+        opening: Date;
+        closing: Date;
+      }> = [];
       for (const s of inputs) {
+        const dayIndex = mondayFirstDays.indexOf(
+          s.day_of_week as MondayFirstDay
+        );
         await tx.space_availability.deleteMany({
- where: {
- space_id: spaceId,
-day_of_week: s.day_of_week, 
-}, 
-});
+        where: {
+          space_id: spaceId,
+          day_of_week: dayIndex,
+        },
+        });
         const row = await tx.space_availability.create({
           data: {
             space_id: spaceId,
-            day_of_week: s.day_of_week,
+            day_of_week: dayIndex,
             opening: parseTimeToUTCDate(s.opening_time)!,
             closing: parseTimeToUTCDate(s.closing_time)!,
           },
@@ -138,8 +147,8 @@ day_of_week: s.day_of_week,
     // Normalize response: day name + ISO times
     const data = created.map((r) => ({
       availability_id: r.id,
-      space_id: r.space_id,
-      day_of_week: String(r.day_of_week),
+      space_id: r.space_id ?? '',
+      day_of_week: mondayFirstDays[r.day_of_week],
       opening_time: r.opening instanceof Date ? r.opening.toISOString() : String(r.opening),
       closing_time: r.closing instanceof Date ? r.closing.toISOString() : String(r.closing),
     }));

@@ -1,8 +1,23 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
+
+import { isPaymongoSignatureFresh as isPaymongoSignatureFreshShared, parsePaymongoSignatureHeader as parsePaymongoSignatureHeaderShared, verifyPaymongoSignatureWithSecret } from '../../supabase/functions/_shared/paymongo-signature';
+import type { PaymongoWebhookSignature } from '../../supabase/functions/_shared/paymongo-signature';
 
 const PAYMONGO_API_URL = process.env.PAYMONGO_API_URL?.replace(/\/+$/u, '') ?? 'https://api.paymongo.com/v1';
 const PAYMONGO_SECRET_KEY = process.env.PAYMONGO_SECRET_KEY;
 const PAYMONGO_WEBHOOK_SECRET = process.env.PAYMONGO_WEBHOOK_SECRET;
+function resolveDefaultPaymentMethods() {
+  const raw = process.env.PAYMONGO_CHECKOUT_PAYMENT_METHODS ??
+    'card,gcash,grab_pay,paymaya';
+  const methods = raw
+    .split(',')
+    .map((method) => method.trim())
+    .filter((method) => method.length > 0);
+
+  return methods.length > 0 ? methods : ['card'];
+}
+
+const PAYMONGO_DEFAULT_PAYMENT_METHODS = resolveDefaultPaymentMethods();
 
 if (!PAYMONGO_SECRET_KEY) {
   console.warn('PayMongo secret key is missing (PAYMONGO_SECRET_KEY).');
@@ -19,8 +34,9 @@ export type PaymongoRefundReason =
 
 export type PaymongoError = {
   type: string;
-  message: string;
+  message?: string;
   code?: string;
+  detail?: string;
 };
 
 export type PaymongoRefundResponse = {
@@ -59,11 +75,20 @@ async function paymongoFetch<T>(path: string, options: RequestInit) {
 
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    const errorDetail = payload?.errors?.[0];
-    const errorMessage = errorDetail?.message || response.statusText || 'PayMongo request failed.';
-    const errorType = errorDetail?.type ? `${errorDetail.type}: ` : '';
-    const context = payload ? ` payload=${JSON.stringify(payload)}` : '';
-    throw new Error(`PayMongo ${path} failed (${response.status}): ${errorType}${errorMessage}${context}`);
+    const error: PaymongoError | undefined = payload?.errors?.[0];
+    const detail =
+      error?.message ??
+      // Some PayMongo responses use `detail` instead of `message`.
+      (typeof error?.['detail'] === 'string' ? error['detail'] : null) ??
+      (payload ? JSON.stringify(payload) : 'PayMongo request failed.');
+
+    console.error('PayMongo request failed', {
+      path,
+      status: response.status,
+      payload,
+    });
+
+    throw new Error(`PayMongo ${path} failed: ${detail}`);
   }
 
   return payload as T;
@@ -106,6 +131,14 @@ export type PaymongoCheckoutLineItem = {
   };
 };
 
+type PaymongoCheckoutLineItemPayload = {
+  amount: number;
+  currency: string;
+  name: string;
+  description?: string | null;
+  quantity: number;
+};
+
 export type PaymongoCheckoutSessionResponse = {
   id: string;
   attributes: {
@@ -126,35 +159,65 @@ export async function createPaymongoCheckoutSession(opts: {
   successUrl: string;
   cancelUrl: string;
   description: string;
+  lineItemName: string;
   metadata: Record<string, string>;
   paymentMethodTypes?: string[];
   lineItems?: PaymongoCheckoutLineItem[];
 }) {
+  const resolvedLineItems: PaymongoCheckoutLineItemPayload[] =
+    opts.lineItems && opts.lineItems.length > 0
+      ? opts.lineItems.map((item) => {
+        const quantity = Number.isFinite(item.quantity) && (item.quantity ?? 0) > 0
+          ? Math.trunc(item.quantity ?? 1)
+          : 1;
+        return {
+          amount: Math.max(0, Math.trunc(item.price_data.unit_amount)),
+          currency: item.price_data.currency,
+          name: item.price_data.product_data.name,
+          description: item.price_data.product_data.description ?? null,
+          quantity,
+        };
+      })
+      : [
+        {
+          amount: Math.max(0, Math.trunc(opts.amountMinor)),
+          currency: opts.currency,
+          name: opts.lineItemName,
+          description: opts.description,
+          quantity: 1,
+        }
+      ];
+
+  const resolvedAmount = resolvedLineItems.reduce<number>((total, item) => {
+    const quantity = Number.isFinite(item.quantity) && item.quantity > 0 ? item.quantity : 1;
+    return total + item.amount * quantity;
+  }, 0);
+
   const payload = {
     data: {
       attributes: {
-        amount: opts.amountMinor,
+        amount: resolvedAmount,
         currency: opts.currency,
         success_url: opts.successUrl,
         cancel_url: opts.cancelUrl,
         description: opts.description,
         metadata: opts.metadata,
-        payment_method_types: opts.paymentMethodTypes ?? ['card'],
-        line_items:
-          opts.lineItems ??
-          [
-            {
-              quantity: 1,
-              price_data: {
-                currency: opts.currency,
-                unit_amount: opts.amountMinor,
-                product_data: { name: opts.description, },
-              },
-            }
-          ],
+        payment_method_types: opts.paymentMethodTypes ?? PAYMONGO_DEFAULT_PAYMENT_METHODS,
+        line_items: resolvedLineItems,
       },
     },
   };
+
+  console.info('Creating PayMongo checkout session', {
+    amount: resolvedAmount,
+    currency: opts.currency,
+    successUrl: opts.successUrl,
+    cancelUrl: opts.cancelUrl,
+    description: opts.description,
+    metadata: opts.metadata,
+    paymentMethodTypes: opts.paymentMethodTypes ?? PAYMONGO_DEFAULT_PAYMENT_METHODS,
+    lineItems: resolvedLineItems,
+  });
 
   return paymongoFetch<{ data: PaymongoCheckoutSessionResponse }>(
     'checkout_sessions',
@@ -165,38 +228,10 @@ export async function createPaymongoCheckoutSession(opts: {
   );
 }
 
-export type PaymongoWebhookSignature = {
-  timestamp: number;
-  te?: string;
-  li?: string;
-};
+export { isPaymongoSignatureFreshShared as isPaymongoSignatureFresh, parsePaymongoSignatureHeaderShared as parsePaymongoSignatureHeader };
+export type { PaymongoWebhookSignature };
 
-export function parsePaymongoSignatureHeader(header: string | null): PaymongoWebhookSignature | null {
-  if (!header) return null;
-
-  const normalized = header.split(',').map((part) => part.trim());
-  const result: PaymongoWebhookSignature = { timestamp: 0, };
-
-  for (const part of normalized) {
-    const [key, value] = part.split('\=').map((segment) => segment.trim());
-    if (!key || !value) continue;
-    if (key === 't') {
-      result.timestamp = Number(value);
-    } else if (key === 'te') {
-      result.te = value;
-    } else if (key === 'li') {
-      result.li = value;
-    }
-  }
-
-  if (!result.timestamp) {
-    return null;
-  }
-
-  return result;
-}
-
-export function verifyPaymongoSignature({
+export async function verifyPaymongoSignature({
   payload,
   signature,
   secret = PAYMONGO_WEBHOOK_SECRET,
@@ -206,8 +241,9 @@ export function verifyPaymongoSignature({
   signature: PaymongoWebhookSignature;
   secret?: string | null;
   useLiveSignature?: boolean;
-}) {
-  if (!secret) {
+}): Promise<boolean> {
+  const resolvedSecret = secret ?? PAYMONGO_WEBHOOK_SECRET;
+  if (!resolvedSecret) {
     throw new Error('PAYMONGO_WEBHOOK_SECRET is not configured.');
   }
 
@@ -217,7 +253,7 @@ export function verifyPaymongoSignature({
   }
 
   const unsignedString = `${signature.timestamp}.${payload}`;
-  const hmac = createHmac('sha256', secret).update(unsignedString).digest('hex');
+  const hmac = createHmac('sha256', resolvedSecret).update(unsignedString).digest('hex');
   const incoming = Buffer.from(signatureValue, 'hex');
   const computed = Buffer.from(hmac, 'hex');
 
@@ -226,9 +262,4 @@ export function verifyPaymongoSignature({
   } catch (error) {
     return false;
   }
-}
-
-export async function isPaymongoSignatureFresh(signature: PaymongoWebhookSignature, toleranceSeconds = 300) {
-  const nowSeconds = Math.floor(Date.now() / 1000);
-  return Math.abs(nowSeconds - signature.timestamp) <= toleranceSeconds;
 }

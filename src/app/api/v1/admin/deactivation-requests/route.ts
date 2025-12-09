@@ -40,10 +40,7 @@ export async function GET(req: NextRequest) {
     const typeClause = type
       ? { type, }
       : {};
-    const cursorClause = cursor
-      ? { cursor: { id: cursor, }, }
-      : {};
-
+    const cursorValue = cursor ? { id: cursor, } : undefined;
     const requests = await prisma.deactivation_request.findMany({
       where: {
         status,
@@ -51,7 +48,7 @@ export async function GET(req: NextRequest) {
       },
       take: limit + 1,
       skip: cursor ? 1 : 0,
-      ...cursorClause,
+      cursor: cursorValue,
       orderBy: { created_at: 'asc', },
       include: {
         user_deactivation_request_user_idTouser: {

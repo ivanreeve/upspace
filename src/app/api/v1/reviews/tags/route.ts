@@ -16,13 +16,13 @@ export async function GET() {
       SELECT unnest(enum_range(NULL::common_comment)) AS value;
     `;
 
-    const validValues = new Set(Object.values(common_comment));
+    const validValues = new Set<keyof typeof common_comment>(Object.values(common_comment));
 
     const tags = rows
       .map((row) => {
         if (!row.value) return null;
 
-        const normalizedValue = normalizeEnumValue(row.value);
+        const normalizedValue = normalizeEnumValue(row.value) as keyof typeof common_comment;
         if (!validValues.has(normalizedValue)) return null;
 
         return {
@@ -30,7 +30,10 @@ export async function GET() {
           label: formatEnumLabel(row.value),
         };
       })
-      .filter((tag): tag is { value: string; label: string } => Boolean(tag));
+      .filter(
+        (tag): tag is { value: keyof typeof common_comment; label: string } =>
+          Boolean(tag)
+      );
 
     return NextResponse.json({ data: tags, });
   } catch (error) {

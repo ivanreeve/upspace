@@ -16,11 +16,12 @@ const bodySchema = z.object({ reason: z.string().trim().max(500).optional(), });
 
 export async function PATCH(
   req: NextRequest,
-  context: { params: { user_id: string } }
+  context: { params: Promise<{ user_id: string }> }
 ) {
+  const params = await context.params;
   try {
     await requireAdminSession(req);
-    const parsedParams = paramsSchema.safeParse(context.params);
+    const parsedParams = paramsSchema.safeParse(params);
 
     if (!parsedParams.success) {
       return NextResponse.json(

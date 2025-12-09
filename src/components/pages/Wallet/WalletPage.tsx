@@ -122,9 +122,9 @@ export default function WalletPage() {
             <Button
               type="submit"
               className="w-full rounded-md"
-              disabled={ topUpMutation.isLoading }
+              disabled={ topUpMutation.isPending }
             >
-              { topUpMutation.isLoading ? 'Processing…' : 'Top up wallet' }
+              { topUpMutation.isPending ? 'Processing…' : 'Top up wallet' }
             </Button>
           </form>
         </CardContent>

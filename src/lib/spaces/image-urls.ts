@@ -14,7 +14,8 @@ export const buildPublicObjectUrl = (path: string | null | undefined) => {
   if (isAbsoluteUrl(path)) {
     return path;
   }
-  const normalized = path.replace(/^\/+/u, '');
+  const safePath = path as string;
+  const normalized = safePath.replace(/^\/+/u, '');
   if (!SUPABASE_BASE_URL) {
     return null;
   }
@@ -32,7 +33,8 @@ const parseStoragePath = (path: string | null | undefined): StoragePathParts | n
     return null;
   }
 
-  const normalized = path.replace(/^\/+/u, '');
+  const safePath = path as string;
+  const normalized = safePath.replace(/^\/+/u, '');
   const segments = normalized.split('/').filter(Boolean);
   if (segments.length < 2) {
     return null;
@@ -122,6 +124,7 @@ export const resolveImageUrl = (
   if (isAbsoluteUrl(path)) {
     return path;
   }
-  const normalized = path.replace(/^\/+/u, '');
+  const safePath = path as string;
+  const normalized = safePath.replace(/^\/+/u, '');
   return signedUrlMap?.get(path) ?? signedUrlMap?.get(normalized) ?? buildPublicObjectUrl(normalized);
 };

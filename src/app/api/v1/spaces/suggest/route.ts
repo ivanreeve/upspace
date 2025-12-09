@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import type { Prisma, verification_status } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
     include_pending,
   } = parsed.data;
   const normalizedQuery = q.toLowerCase();
-  const verificationStatuses: Prisma.verificationStatus[] = include_pending
+  const verificationStatuses: verification_status[] = include_pending
     ? ['approved', 'in_review']
     : ['approved'];
 

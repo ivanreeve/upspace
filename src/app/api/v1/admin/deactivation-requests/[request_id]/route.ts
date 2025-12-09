@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { deactivation_request_type, user_status } from '@prisma/client';
+import type { PrismaPromise } from '@prisma/client';
 import { z } from 'zod';
 
 import { AdminSessionError, requireAdminSession } from '@/lib/auth/require-admin-session';
@@ -27,8 +28,9 @@ const patchSchema = z
 
 export async function PATCH(
   req: NextRequest,
-  { params, }: { params: { request_id: string } }
+  { params, }: { params: Promise<{ request_id: string }> }
 ) {
+  const resolvedParams = await params;
   try {
     const session = await requireAdminSession(req);
 
@@ -40,7 +42,7 @@ export async function PATCH(
       );
     }
 
-    const parsedId = z.string().uuid().safeParse(params.request_id);
+    const parsedId = z.string().uuid().safeParse(resolvedParams.request_id);
     if (!parsedId.success) {
       return NextResponse.json(
         { error: 'Invalid request identifier.', },
@@ -70,7 +72,7 @@ export async function PATCH(
     const now = new Date();
 
     if (parsedBody.data.action === 'approve') {
-      const updates = [
+      const updates: Array<PrismaPromise<unknown>> = [
         prisma.deactivation_request.update({
           where: { id: request.id, },
           data: {

@@ -147,7 +147,7 @@ const HIGHLIGHT_CONNECTORS = new Set(['and', 'or', 'not']);
 const HIGHLIGHT_OPERATORS = new Set(['+', '-', '*', '/']);
 const HIGHLIGHT_PUNCTUATION = new Set(['(', ')', ',']);
 const HIGHLIGHT_NUMBER_REGEX = /^\d+(?:\.\d+)?$/;
-const COMPARATOR_SET = new Set(PRICE_RULE_COMPARATORS);
+const COMPARATOR_SET = new Set<PriceRuleComparator>(PRICE_RULE_COMPARATORS);
 
 const classifyHighlightToken = (value: string): HighlightTokenType => {
   if (/^\s+$/.test(value)) {
@@ -161,7 +161,8 @@ const classifyHighlightToken = (value: string): HighlightTokenType => {
   if (HIGHLIGHT_CONNECTORS.has(lower)) {
     return 'connector';
   }
-  if (COMPARATOR_SET.has(trimmed)) {
+  const comparatorCandidate = trimmed as PriceRuleComparator;
+  if (COMPARATOR_SET.has(comparatorCandidate)) {
     return 'comparator';
   }
   if (HIGHLIGHT_OPERATORS.has(trimmed)) {
@@ -296,7 +297,7 @@ const createVariableValueMap = (definition: PriceRuleDefinition): VariableValueM
 
 const validatePriceExpression = (
   expression: string,
-  label: 'THEN' | 'ELSE',
+  label: 'Operand' | 'Formula' | 'THEN' | 'ELSE',
   variableMap: VariableValueMap,
   definition: PriceRuleDefinition
 ) => {
@@ -520,7 +521,7 @@ const parseOperandReference = (token: string, definition: PriceRuleDefinition): 
     };
   }
 
-  const textMatch = trimmed.match(/^'(.*)'$|^"(.*)"$/s);
+  const textMatch = trimmed.match(/^'([\s\S]*)'$|^"([\s\S]*)"$/);
   if (textMatch) {
     const value = textMatch[1] ?? textMatch[2] ?? '';
     return {
@@ -942,7 +943,7 @@ const parseComparableValue = (
     return Number.isFinite(parsed) ? parsed : null;
   }
 
-  if (variableType === 'date' || variableType === 'datetime') {
+  if (variableType === 'date') {
     const parsed = Date.parse(value);
     return Number.isFinite(parsed) ? parsed : null;
   }
@@ -1674,8 +1675,8 @@ type RuleLanguageEditorProps = {
   definition: PriceRuleDefinition;
   newVariableLabel: string;
   setNewVariableLabel: Dispatch<SetStateAction<string>>;
-  newVariableType: 'text' | 'number';
-  setNewVariableType: Dispatch<SetStateAction<'text' | 'number'>>;
+  newVariableType: DataType;
+  setNewVariableType: Dispatch<SetStateAction<DataType>>;
   newVariableValue: string;
   setNewVariableValue: Dispatch<SetStateAction<string>>;
   newVariableUserInput: boolean;
@@ -1788,7 +1789,7 @@ function RuleLanguageEditor({
     "datetime('2024-01-01T08:30:00Z')"
   ], []);
 
-  const variableSuggestions = useMemo(() => definition.variables.map((variable) => {
+  const variableSuggestions = useMemo<Suggestion[]>(() => definition.variables.map((variable) => {
     const normalizedKey = variable.key.toLowerCase();
     const normalizedLabel = variable.label.toLowerCase();
     return {
@@ -1932,7 +1933,7 @@ function RuleLanguageEditor({
     setExpressionError(validateClause(expressionField));
   }, [expressionField, validateClause]);
 
-  const allSuggestions = useMemo(() => {
+  const allSuggestions = useMemo<Suggestion[]>(() => {
     const connectors: Suggestion[] = connectorTokens.map((token) => ({
       id: `connector-${token.label}`,
       label: token.label,
