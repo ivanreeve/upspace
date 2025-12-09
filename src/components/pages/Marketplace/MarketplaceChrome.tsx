@@ -1063,25 +1063,35 @@ export function MarketplaceChrome({
       ];
     }
 
-    const actions: MobileBottomNavAction[] = [
-      {
-        label: 'Home',
-        href: '/marketplace',
-        icon: FiHome,
-      }
-    ];
+    const actions: MobileBottomNavAction[] = [];
+
+    actions.push({
+      label: 'Home',
+      href: '/marketplace',
+      icon: FiHome,
+    });
+
+    if (!isGuest) {
+      actions.push({
+        label: 'Wallet',
+        href: '/account/wallet',
+        icon: PiWalletLight,
+      });
+    }
 
     if (isCustomerRole) {
+      const aiSearchAction: MobileBottomNavAction = {
+        label: 'AI Search',
+        href: '/marketplace/ai-search',
+        icon: GradientSparklesIcon,
+      };
+
       actions.push({
         label: 'Bookmarks',
         href: '/bookmarks',
         icon: FiBookmark,
       });
-      actions.push({
-        label: 'AI Search',
-        href: '/marketplace/ai-search',
-        icon: GradientSparklesIcon,
-      });
+      actions.push(aiSearchAction);
     } else {
       actions.push({
         label: 'Search',
@@ -1106,11 +1116,21 @@ export function MarketplaceChrome({
       });
     }
 
+    if (isCustomerRole) {
+      const aiIndex = actions.findIndex((action) => action.label === 'AI Search');
+      if (aiIndex >= 0) {
+        const [aiAction] = actions.splice(aiIndex, 1);
+        const middleIndex = Math.floor((actions.length + 1) / 2);
+        actions.splice(middleIndex, 0, aiAction);
+      }
+    }
+
     return actions;
   }, [
     handleSearch,
     isAdminRole,
     isCustomerRole,
+    isGuest,
     resolvedMessageHref,
     shouldShowNotifications
   ]);

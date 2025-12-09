@@ -1,11 +1,11 @@
 'use client';
 
 import {
-useCallback,
-useEffect,
-useMemo,
-useRef,
-useState
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
 } from 'react';
 import {
   FiChevronDown,
@@ -18,6 +18,7 @@ import {
 } from 'react-icons/fi';
 import { CgSpinner } from 'react-icons/cg';
 import { toast } from 'sonner';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import SpaceHeader from './SpaceHeader';
 import SpacePhotos from './SpacePhotos';
@@ -118,6 +119,9 @@ type SpaceDetailProps = {
 
 export default function SpaceDetail({ space, }: SpaceDetailProps) {
   const { session, } = useSession();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const isGuest = !session;
   const {
  data: userBookings = [], isLoading: isBookingsLoading, 
@@ -131,7 +135,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
       ),
     [space.id, userBookings]
   );
-  const canMessageHost = !isGuest && hasConfirmedBooking;
+  const canMessageHost = !isGuest;
   const canLeaveReview = hasConfirmedBooking;
 
   const locationParts = [space.city, space.region, space.countryCode].filter(
@@ -203,6 +207,26 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     initializeBookingSelection();
     setIsBookingOpen(true);
   }, [hasAreas, initializeBookingSelection]);
+
+  useEffect(() => {
+    const paymentStatus = searchParams.get('payment');
+    if (!paymentStatus) {
+      return;
+    }
+
+    const bookingId = searchParams.get('booking_id');
+    if (paymentStatus === 'success') {
+      const preview = bookingId ? ` (#${bookingId.slice(0, 8)})` : '';
+      toast.success(`Payment confirmed${preview}. Your booking is locked in.`);
+    } else if (paymentStatus === 'cancel') {
+      toast.error('Payment was cancelled. You can retry whenever you are ready.');
+    }
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('payment');
+    const nextUrl = `${pathname}${params.toString() ? `?${params}` : ''}`;
+    router.replace(nextUrl, { scroll: false, });
+  }, [pathname, router, searchParams]);
   const handleCloseBooking = useCallback(() => {
     resetBookingState();
     setIsBookingOpen(false);

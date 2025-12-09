@@ -536,7 +536,7 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
             { renderMessages() }
             { activeRoom ? (
               <form
-                className="sticky bottom-0 z-10 border-t bg-card/80 px-3 py-3"
+                className="sticky bottom-[calc(var(--safe-area-bottom)+3.25rem)] z-10 border-t bg-card/80 px-3 py-3 md:bottom-0"
                 onSubmit={ handleSend }
                 noValidate
               >

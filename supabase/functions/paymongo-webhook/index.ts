@@ -377,6 +377,15 @@ Deno.serve(async (req) => {
     return RECEIVED_RESPONSE;
   }
 
+  console.info('PayMongo webhook received', {
+    type: eventType,
+    id: (parsedPayload?.data as { id?: string } | undefined)?.id ?? null,
+    livemode: attributes?.livemode === true,
+    created_at: attributes?.created_at ?? null,
+    pending_webhooks: attributes?.pending_webhooks ?? null,
+    payload: parsedPayload,
+  });
+
   if (eventType.startsWith('wallet.transaction')) {
     const validation = walletEventSchema.safeParse(parsedPayload);
     if (!validation.success) {

@@ -206,6 +206,17 @@ export async function createPaymongoCheckoutSession(opts: {
     },
   };
 
+  console.info('Creating PayMongo checkout session', {
+    amount: resolvedAmount,
+    currency: opts.currency,
+    successUrl: opts.successUrl,
+    cancelUrl: opts.cancelUrl,
+    description: opts.description,
+    metadata: opts.metadata,
+    paymentMethodTypes: opts.paymentMethodTypes ?? PAYMONGO_DEFAULT_PAYMENT_METHODS,
+    lineItems: resolvedLineItems,
+  });
+
   return paymongoFetch<{ data: PaymongoCheckoutSessionResponse }>(
     'checkout_sessions',
     {
