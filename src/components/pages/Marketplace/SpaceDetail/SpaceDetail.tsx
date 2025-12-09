@@ -1047,7 +1047,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
             <Button
               type="button"
               variant="outline"
-              className="w-full lg:w-auto"
+              className="w-full lg:w-auto hover:text-white"
               onClick={ handleCloseBooking }
             >
               Cancel
@@ -1076,7 +1076,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
             <Button
               type="button"
               variant="outline"
-              className="w-full"
+              className="w-full hover:text-white"
               onClick={ handleCloseBooking }
             >
               Cancel
