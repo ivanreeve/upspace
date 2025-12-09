@@ -470,7 +470,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
           >
             <SelectTrigger
               aria-label="Choose an area"
-              className="w-full justify-between rounded-md"
+              className="w-full justify-between rounded-md "
             >
               <SelectValue placeholder="Select an area" />
             </SelectTrigger>
@@ -484,9 +484,10 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                     key={ area.id }
                     value={ area.id }
                     disabled={ !hasPricingRule }
+                    className="hover:!text-white"
                   >
-                    <div className="flex w-full flex-col gap-0.5">
-                      <span className="text-sm font-semibold leading-tight text-foreground">
+                    <div className="flex w-full flex-col gap-0.5 ">
+                      <span className="text-sm font-semibold leading-tight group-hover:text-white">
                         { area.name }
                       </span>
                     </div>
@@ -520,7 +521,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                     type="button"
                     variant="outline"
                     size="icon"
-                    className="h-10 w-10 rounded-full"
+                    className="h-10 w-10 rounded-full hover:text-white"
                     onClick={ handlePreviousDurationUnit }
                     disabled={ isPricingLoading }
                   >
@@ -534,7 +535,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                     type="button"
                     variant="outline"
                     size="icon"
-                    className="h-10 w-10 rounded-full"
+                    className="h-10 w-10 rounded-full hover:text-white"
                     onClick={ handleNextDurationUnit }
                     disabled={ isPricingLoading }
                   >
@@ -547,7 +548,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                     type="button"
                     variant="outline"
                     size="icon"
-                    className="h-12 w-12 rounded-full"
+                    className="h-12 w-12 rounded-full hover:text-white"
                     onClick={ decreaseBookingUnitValue }
                     disabled={
                       bookingUnitValue <= DEFAULT_BOOKING_UNIT_VALUE ||
@@ -570,7 +571,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                     type="button"
                     variant="outline"
                     size="icon"
-                    className="h-12 w-12 rounded-full"
+                    className="h-12 w-12 rounded-full hover:text-white"
                     onClick={ increaseBookingUnitValue }
                     disabled={
                       bookingUnitValue >= bookingUnitMax || isPricingLoading
@@ -853,7 +854,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
             <Button
               type="button"
               variant="outline"
-              className="w-full lg:w-auto"
+              className="w-full lg:w-auto hover:text-white"
               onClick={ handleCloseBooking }
             >
               Cancel
@@ -882,7 +883,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
             <Button
               type="button"
               variant="outline"
-              className="w-full"
+              className="w-full hover:text-white"
               onClick={ handleCloseBooking }
             >
               Cancel
