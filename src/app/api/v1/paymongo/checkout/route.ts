@@ -9,7 +9,7 @@ import { sendBookingNotificationEmail } from '@/lib/email';
 import { createPaymongoCheckoutSession } from '@/lib/paymongo';
 import { prisma } from '@/lib/prisma';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
-import { getTestingMode } from '@/lib/testing-mode';
+import { isTestingModeEnabled } from '@/lib/testing-mode';
 import { resolveAuthenticatedUserForWallet } from '@/lib/wallet-server';
 
 const checkoutPayloadSchema = z.object({
@@ -115,8 +115,7 @@ export async function POST(req: NextRequest) {
       internal_user_id: auth.dbUser!.user_id.toString(),
     } satisfies Record<string, string>;
 
-    const isTestingMode = await getTestingMode();
-    if (isTestingMode) {
+    if (isTestingModeEnabled()) {
       const confirmedBooking = await prisma.booking.update({
         where: { id: bookingRow.id, },
         data: {
