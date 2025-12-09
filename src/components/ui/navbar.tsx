@@ -269,7 +269,7 @@ export default function NavBar({
       return;
     }
 
-    router.refresh();
+    await router.replace('/');
   }, [router]);
 
   return (

@@ -107,12 +107,12 @@ export async function middleware(request: NextRequest) {
 
     if (!profileResponse.ok) {
       console.error('Failed to fetch user profile in middleware', profileResponse.status, profileResponse.statusText);
-      if (pathname === '/signin' || pathname.startsWith('/api/auth')) {
+      if (pathname.startsWith('/api/auth')) {
         return response;
       }
 
-      const signinUrl = new URL('/signin', request.url);
-      return NextResponse.redirect(signinUrl);
+      const landingUrl = new URL('/', request.url);
+      return NextResponse.redirect(landingUrl);
     }
 
     const profilePayload = await profileResponse.json().catch(() => null);
@@ -122,12 +122,12 @@ export async function middleware(request: NextRequest) {
 
     if (!profile) {
       console.error('Malformed profile payload in middleware');
-      if (pathname === '/signin' || pathname.startsWith('/api/auth')) {
+      if (pathname.startsWith('/api/auth')) {
         return response;
       }
 
-      const signinUrl = new URL('/signin', request.url);
-      return NextResponse.redirect(signinUrl);
+      const landingUrl = new URL('/', request.url);
+      return NextResponse.redirect(landingUrl);
     }
 
     const isOnboard = Boolean(profile?.isOnboard);

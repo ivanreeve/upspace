@@ -751,7 +751,7 @@ function useMarketplaceNavData() {
       return;
     }
 
-    router.refresh();
+    await router.replace('/');
   }, [router]);
 
   const metadataRole = session?.user?.user_metadata?.role as
@@ -835,7 +835,7 @@ function AccountLockOverlay({ profile, }: AccountLockOverlayProps) {
       return;
     }
 
-    router.refresh();
+    await router.replace('/');
   }, [router]);
 
   if (!profile || profile.status === 'active') {

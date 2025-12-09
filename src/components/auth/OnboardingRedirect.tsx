@@ -40,8 +40,7 @@ export function OnboardingRedirect() {
 
     const isRestrictedRoute =
       pathname === ONBOARDING_PATH ||
-      pathname.startsWith(`${ONBOARDING_PATH}/`) ||
-      pathname === '/signin';
+      pathname.startsWith(`${ONBOARDING_PATH}/`);
 
     if (isRestrictedRoute) {
       router.replace(redirectTarget);
