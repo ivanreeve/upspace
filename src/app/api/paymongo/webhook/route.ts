@@ -25,7 +25,7 @@ const walletEventSchema = z.object({
           currency: z.string(),
           description: z.string().nullable(),
           external_reference: z.string().nullable(),
-          metadata: z.record(z.any()).nullable(),
+          metadata: z.record(z.string(), z.any()).nullable(),
           booking_id: z.string().uuid().nullable(),
           created_at: z.union([z.number(), z.string()]),
         }),
@@ -46,7 +46,7 @@ const checkoutEventSchema = z.object({
           id: z.string(),
           amount: z.number(),
           currency: z.string(),
-          metadata: z.record(z.string()).nullable(),
+          metadata: z.record(z.string(), z.string()).nullable(),
           status: z.string(),
         }),
       }),
@@ -145,7 +145,7 @@ async function handleWalletEvent(event: WalletEvent) {
         currency: walletObject.currency || walletRow.currency,
         description: walletObject.description ?? null,
         external_reference: walletObject.id,
-        metadata: walletObject.metadata ?? null,
+        metadata: (walletObject.metadata as any) ?? null,
         booking_id: walletObject.booking_id ?? null,
         created_at: recordedAt,
         updated_at: recordedAt,
@@ -192,10 +192,7 @@ async function handleCheckoutEvent(event: CheckoutEvent) {
 
   const updatedBooking = await prisma.booking.update({
     where: { id: bookingId, },
-    data: {
-      status: 'confirmed',
-      updated_at: new Date(),
-    },
+    data: { status: 'confirmed', },
   });
 
   const booking = mapBookingRowToRecord(updatedBooking);
@@ -241,9 +238,9 @@ async function handleCheckoutEvent(event: CheckoutEvent) {
       console.warn('Unable to read customer email for booking notification', userError);
     }
 
-    if (userData?.email) {
+    if (userData?.user?.email) {
       await sendBookingNotificationEmail({
-        to: userData.email,
+        to: userData.user.email,
         spaceName: booking.spaceName,
         areaName: booking.areaName,
         bookingHours: booking.bookingHours,
@@ -318,7 +315,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return handleWalletEvent(validation.data.attributes);
+    return handleWalletEvent(validation.data.data.attributes);
   }
 
   if (eventType.includes('checkout')) {
@@ -328,7 +325,7 @@ export async function POST(req: NextRequest) {
       return RECEIVED_RESPONSE;
     }
 
-    return handleCheckoutEvent(validation.data.attributes);
+    return handleCheckoutEvent(validation.data.data.attributes);
   }
 
   return RECEIVED_RESPONSE;
