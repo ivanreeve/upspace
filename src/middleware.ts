@@ -91,7 +91,11 @@ export async function middleware(request: NextRequest) {
 
     if (error) {
       console.error('Failed to fetch user profile in middleware', error);
-      return response;
+      if (pathname === '/signin' || pathname.startsWith('/api/auth')) {
+        return response;
+      }
+      const signinUrl = new URL('/signin', request.url);
+      return NextResponse.redirect(signinUrl);
     }
 
     if (!profile?.is_onboard) {
