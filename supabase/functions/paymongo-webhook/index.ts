@@ -1,6 +1,13 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { createClient } from '@supabase/supabase-js';
+
+declare const Deno: {
+  env: {
+    get(name: string): string | null;
+  };
+  serve(callback: (req: Request) => Promise<Response> | Response): void;
+};
 
 import {
   checkoutEventSchema,
@@ -12,8 +19,8 @@ import {
   type CheckoutEventAttributes,
   type PaymentEventAttributes,
   type WalletEventAttributes
-} from '../_shared/paymongo-webhook.ts';
-import { isPaymongoSignatureFresh, parsePaymongoSignatureHeader, verifyPaymongoSignatureWithSecret } from '../_shared/paymongo-signature.ts';
+} from '../_shared/paymongo-webhook';
+import { isPaymongoSignatureFresh, parsePaymongoSignatureHeader, verifyPaymongoSignatureWithSecret } from '../_shared/paymongo-signature';
 
 type SupabaseClient = ReturnType<typeof createClient>;
 type PaymentEvent = PaymentEventAttributes;
@@ -244,8 +251,8 @@ async function handleWalletEvent(event: WalletEventAttributes) {
     status === 'succeeded'
       ? (transactionType === 'cash_in' || transactionType === 'refund'
         ? amountMinor
-        : amountMinor * -1n)
-      : 0n;
+        : amountMinor * BigInt(-1))
+      : BigInt(0);
 
   const { error: transactionError, } = await supabase
     .from('wallet_transaction')
@@ -273,7 +280,7 @@ async function handleWalletEvent(event: WalletEventAttributes) {
     return;
   }
 
-  if (balanceDelta === 0n) {
+    if (balanceDelta === BigInt(0)) {
     return;
   }
 
@@ -395,7 +402,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    await handleWalletEvent(validation.data.attributes);
+    await handleWalletEvent(validation.data.data.attributes);
     return RECEIVED_RESPONSE;
   }
 
@@ -406,7 +413,7 @@ Deno.serve(async (req) => {
       return RECEIVED_RESPONSE;
     }
 
-    await handleCheckoutEvent(validation.data.attributes);
+    await handleCheckoutEvent(validation.data.data.attributes);
     return RECEIVED_RESPONSE;
   }
 
@@ -416,7 +423,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ message: 'Unexpected payment webhook payload.', }, { status: 400, });
     }
 
-    await handlePaymentEvent(validation.data.attributes);
+    await handlePaymentEvent(validation.data.data.attributes);
     return RECEIVED_RESPONSE;
   }
 

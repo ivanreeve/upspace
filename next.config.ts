@@ -10,7 +10,7 @@ const SUPABASE_HOSTNAME = (() => {
   }
 })();
 
-const remotePatterns = [
+const remotePatterns: NonNullable<NextConfig['images']>['remotePatterns'] = [
   {
     protocol: 'https',
     hostname: SUPABASE_HOSTNAME,

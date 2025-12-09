@@ -488,9 +488,9 @@ status,
                     variant="outline"
                     size="sm"
                     className="gap-2"
-                    disabled={ selectedIds.size === 0 || bulkUpdate.isLoading }
+                    disabled={ selectedIds.size === 0 || bulkUpdate.isPending }
                   >
-                    { bulkUpdate.isLoading ? (
+                    { bulkUpdate.isPending ? (
                       <>
                         <FiLoader className="size-4 animate-spin" aria-hidden="true" />
                         Applying...

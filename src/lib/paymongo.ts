@@ -1,5 +1,7 @@
-import { isPaymongoSignatureFresh as isPaymongoSignatureFreshShared, parsePaymongoSignatureHeader as parsePaymongoSignatureHeaderShared, verifyPaymongoSignatureWithSecret } from '../../supabase/functions/_shared/paymongo-signature.ts';
-import type { PaymongoWebhookSignature } from '../../supabase/functions/_shared/paymongo-signature.ts';
+import { createHmac, timingSafeEqual } from 'crypto';
+
+import { isPaymongoSignatureFresh as isPaymongoSignatureFreshShared, parsePaymongoSignatureHeader as parsePaymongoSignatureHeaderShared, verifyPaymongoSignatureWithSecret } from '../../supabase/functions/_shared/paymongo-signature';
+import type { PaymongoWebhookSignature } from '../../supabase/functions/_shared/paymongo-signature';
 
 const PAYMONGO_API_URL = process.env.PAYMONGO_API_URL?.replace(/\/+$/u, '') ?? 'https://api.paymongo.com/v1';
 const PAYMONGO_SECRET_KEY = process.env.PAYMONGO_SECRET_KEY;
@@ -251,7 +253,7 @@ export async function verifyPaymongoSignature({
   }
 
   const unsignedString = `${signature.timestamp}.${payload}`;
-  const hmac = createHmac('sha256', secret).update(unsignedString).digest('hex');
+  const hmac = createHmac('sha256', resolvedSecret).update(unsignedString).digest('hex');
   const incoming = Buffer.from(signatureValue, 'hex');
   const computed = Buffer.from(hmac, 'hex');
 
@@ -260,9 +262,4 @@ export async function verifyPaymongoSignature({
   } catch (error) {
     return false;
   }
-}
-
-export async function isPaymongoSignatureFresh(signature: PaymongoWebhookSignature, toleranceSeconds = 300) {
-  const nowSeconds = Math.floor(Date.now() / 1000);
-  return Math.abs(nowSeconds - signature.timestamp) <= toleranceSeconds;
 }

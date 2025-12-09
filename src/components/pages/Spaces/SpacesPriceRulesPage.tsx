@@ -473,7 +473,7 @@ export function SpacesPriceRulesPage() {
                     Pricing rules with per-row selection for bulk deletion
                   </TableCaption>
                   <TableHeader>
-                    <TableRow>
+                    <TableRow className="hover:bg-transparent">
                       <TableHead className="w-10">
                         <Checkbox
                           aria-label="Select all pricing rules"
@@ -540,6 +540,7 @@ export function SpacesPriceRulesPage() {
                                 type="button"
                                 variant="outline"
                                 size="sm"
+                                className="hover:text-white"
                                 onClick={ () => handlePriceRuleDialogOpen(rule) }
                                 disabled={ isAnyDeletePending }
                               >

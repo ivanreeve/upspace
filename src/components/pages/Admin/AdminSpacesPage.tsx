@@ -46,7 +46,7 @@ const mapPublishedVariant = (isPublished: boolean) =>
 export function AdminSpacesPage() {
   const queryClient = useQueryClient();
   const [searchValue, setSearchValue] = useState('');
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
+  const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(PAGE_SIZE_OPTIONS[1]);
   const [pageIndex, setPageIndex] = useState(0);
   const [pageCursors, setPageCursors] = useState<(string | null)[]>([null]);
   const cursor = pageCursors[pageIndex] ?? null;
@@ -92,10 +92,20 @@ export function AdminSpacesPage() {
   }, [pageSize, searchParam]);
 
   const handlePageSizeChange = (value: string) => {
-    const parsed = Number(value);
-    if (Number.isNaN(parsed) || parsed === pageSize) {
+    const parsedNumber = Number(value);
+    if (Number.isNaN(parsedNumber)) {
       return;
     }
+
+    if (!PAGE_SIZE_OPTIONS.includes(parsedNumber as typeof PAGE_SIZE_OPTIONS[number])) {
+      return;
+    }
+
+    const parsed = parsedNumber as typeof PAGE_SIZE_OPTIONS[number];
+    if (parsed === pageSize) {
+      return;
+    }
+
     setPageSize(parsed);
   };
 
@@ -266,7 +276,7 @@ export function AdminSpacesPage() {
                             const actionLabel = space.isPublished ? 'Hide space' : 'Show space';
                             const processingLabel = currentAction === 'hide' ? 'Hiding…' : 'Showing…';
                             return (
-                              <AdminRowActions disabled={ visibilityMutation.isLoading && isProcessingSpace }>
+                              <AdminRowActions disabled={ visibilityMutation.status === 'pending' && isProcessingSpace }>
                                 <DropdownMenuItem
                                   onSelect={ () => handleToggleVisibility(space.id, space.isPublished ? 'hide' : 'show') }
                                   disabled={ isProcessingSpace }

@@ -1,9 +1,11 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma, verification_status } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
 import type { Space } from '@/lib/api/spaces';
 import { buildPublicObjectUrl, isAbsoluteUrl, resolveSignedImageUrls } from '@/lib/spaces/image-urls';
 import { computeStartingPriceFromAreas } from '@/lib/spaces/pricing';
+import type { AreaPricingPayload } from '@/lib/spaces/pricing';
+import type { PriceRuleDefinition } from '@/lib/pricing-rules';
 
 const DEFAULT_LIMIT = 5;
 const MAX_LIMIT = 10;
@@ -172,9 +174,9 @@ export async function findSpacesAgent(
   const distanceSortDirection = resolveSortDirection('asc');
   const ratingSortDirection = resolveSortDirection('desc');
 
-  const verificationStatuses = includePending
-    ? (['approved', 'in_review'] as const)
-    : (['approved'] as const);
+  const verificationStatuses: verification_status[] = includePending
+    ? ['approved', 'in_review']
+    : ['approved'];
 
   const clauses: Prisma.spaceWhereInput[] = [
     { is_published: true, },
@@ -288,7 +290,9 @@ mode: 'insensitive',
       select: { space_id: true, },
     });
     for (const bookmark of bookmarks) {
-      bookmarkedSpaceIds.add(bookmark.space_id);
+      if (bookmark.space_id) {
+        bookmarkedSpaceIds.add(bookmark.space_id);
+      }
     }
   }
 
@@ -307,7 +311,15 @@ mode: 'insensitive',
       total_reviews: 0,
     };
 
-    const startingPrice = computeStartingPriceFromAreas(space.area ?? []);
+    const areaPricingPayloads: AreaPricingPayload[] = (space.area ?? []).map((area) => ({
+      price_rule: area.price_rule
+        ? {
+            definition:
+              (area.price_rule.definition as PriceRuleDefinition) ?? null,
+          }
+        : null,
+    }));
+    const startingPrice = computeStartingPriceFromAreas(areaPricingPayloads);
     const lat = typeof space.lat === 'number' ? space.lat : Number(space.lat);
     const lon = typeof space.long === 'number' ? space.long : Number(space.long);
 

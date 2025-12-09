@@ -144,13 +144,23 @@ export function SignUpFormCard() {
 
     const parsed = credentialsSchema.safeParse(formValues);
     if (!parsed.success) {
-      const nextErrors = Object.fromEntries(
-        Object.entries(parsed.error.format()).flatMap(([key, value]) => {
-          if (key === '_errors') return [];
-          const message = Array.isArray(value?._errors) ? value?._errors[0] : undefined;
-          return message ? [[key, message] as const] : [];
-        })
-      ) as FormErrors;
+      const nextErrors = parsed.error.issues.reduce<FormErrors>((acc, issue) => {
+        const field = issue.path[0];
+        if (
+          field !== 'email' &&
+          field !== 'password' &&
+          field !== 'confirmPassword'
+        ) {
+          return acc;
+        }
+
+        const key = field as keyof FormErrors;
+        if (!acc[key]) {
+          acc[key] = issue.message;
+        }
+
+        return acc;
+      }, {});
 
       setFieldErrors(nextErrors);
       toast.error('Fix the highlighted fields before continuing.');

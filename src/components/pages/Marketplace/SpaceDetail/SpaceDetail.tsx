@@ -289,7 +289,10 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
       return undefined;
     }
 
-    const mediaQuery = window.matchMedia(DESKTOP_BREAKPOINT_QUERY);
+    const mediaQuery = window.matchMedia(DESKTOP_BREAKPOINT_QUERY) as MediaQueryList & {
+      addListener?: (listener: (event: MediaQueryListEvent) => void) => void;
+      removeListener?: (listener: (event: MediaQueryListEvent) => void) => void;
+    };
     const updateDesktopState = () => {
       setIsDesktopViewport(mediaQuery.matches);
     };
@@ -300,13 +303,8 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
       setIsDesktopViewport(event.matches);
     };
 
-    if ('addEventListener' in mediaQuery) {
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
-    }
-
-    mediaQuery.addListener(handleChange);
-    return () => mediaQuery.removeListener(handleChange);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
   const overviewFallback =

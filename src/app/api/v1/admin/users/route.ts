@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
 import { AdminSessionError, requireAdminSession } from '@/lib/auth/require-admin-session';
@@ -38,30 +39,30 @@ export async function GET(req: NextRequest) {
     const {
  search, limit, cursor, 
 } = parsed.data;
-    const searchClause = search
+    const searchClause: Prisma.userWhereInput | undefined = search
       ? {
           OR: [
             {
- handle: {
- contains: search,
-mode: 'insensitive', 
-}, 
-},
+              handle: {
+                contains: search,
+                mode: 'insensitive' as Prisma.QueryMode,
+              },
+            },
             {
- first_name: {
- contains: search,
-mode: 'insensitive', 
-}, 
-},
+              first_name: {
+                contains: search,
+                mode: 'insensitive' as Prisma.QueryMode,
+              },
+            },
             {
- last_name: {
- contains: search,
-mode: 'insensitive', 
-}, 
-}
+              last_name: {
+                contains: search,
+                mode: 'insensitive' as Prisma.QueryMode,
+              },
+            }
           ],
         }
-      : {};
+      : undefined;
 
     const users = await prisma.user.findMany({
       where: searchClause,

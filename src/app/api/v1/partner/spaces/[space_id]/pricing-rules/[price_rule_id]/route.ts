@@ -24,17 +24,18 @@ type PrismaPriceRuleRow = Prisma.price_ruleGetPayload<{
 }>;
 
 type RouteParams = {
-  params: {
-    space_id?: string;
-    price_rule_id?: string;
-  };
+  params: Promise<{
+    space_id: string;
+    price_rule_id: string;
+  }>;
 };
 
 export async function PUT(req: NextRequest, { params, }: RouteParams) {
   try {
     const { userId, } = await requirePartnerSession();
-    const spaceIdParam = params?.space_id;
-    const priceRuleIdParam = params?.price_rule_id;
+    const resolvedParams = await params;
+    const spaceIdParam = resolvedParams.space_id;
+    const priceRuleIdParam = resolvedParams.price_rule_id;
 
     if (!isUuid(spaceIdParam) || !isUuid(priceRuleIdParam)) {
       return NextResponse.json({ error: 'space_id and price_rule_id must be valid UUIDs.', }, { status: 400, });
@@ -75,7 +76,7 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
       where: { id: priceRuleIdParam, },
       data: {
         name: parsed.data.name.trim(),
-        description: parsed.data.description?.trim() ?? null,
+        description: parsed.data.description?.trim() ?? undefined,
         definition: parsed.data.definition,
         updated_at: new Date(),
       },
@@ -95,8 +96,9 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
 export async function DELETE(_req: NextRequest, { params, }: RouteParams) {
   try {
     const { userId, } = await requirePartnerSession();
-    const spaceIdParam = params?.space_id;
-    const priceRuleIdParam = params?.price_rule_id;
+    const resolvedParams = await params;
+    const spaceIdParam = resolvedParams.space_id;
+    const priceRuleIdParam = resolvedParams.price_rule_id;
 
     if (!isUuid(spaceIdParam) || !isUuid(priceRuleIdParam)) {
       return NextResponse.json({ error: 'space_id and price_rule_id must be valid UUIDs.', }, { status: 400, });

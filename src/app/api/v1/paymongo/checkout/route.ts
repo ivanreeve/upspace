@@ -165,9 +165,12 @@ export async function POST(req: NextRequest) {
 
         if (userError) {
           console.warn('Unable to read customer email for booking notification', userError);
-        } else if (userData?.email) {
+        }
+
+        const userEmail = userData?.user?.email;
+        if (userEmail) {
           await sendBookingNotificationEmail({
-            to: userData.email,
+            to: userEmail,
             spaceName: booking.spaceName,
             areaName: booking.areaName,
             bookingHours: booking.bookingHours,
