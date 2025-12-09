@@ -297,7 +297,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (!isPaymongoSignatureFresh(signature)) {
+  if (!(await isPaymongoSignatureFresh(signature))) {
     return NextResponse.json(
       { message: 'Stale PayMongo signature.', },
       { status: 400, }

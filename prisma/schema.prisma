@@ -110,6 +110,7 @@ model booking {
   user_auth_id      String         @db.Uuid
   partner_auth_id   String?        @db.Uuid
   area_max_capacity BigInt?
+  expires_at        DateTime       @db.Timestamptz(6)
   area              area           @relation(fields: [area_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "booking_area_fk")
   space             space          @relation(fields: [space_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "booking_space_fk")
   transaction       transaction[]

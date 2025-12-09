@@ -1,5 +1,3 @@
-'use server';
-
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 const PAYMONGO_API_URL = process.env.PAYMONGO_API_URL?.replace(/\/+$/u, '') ?? 'https://api.paymongo.com/v1';
@@ -61,11 +59,11 @@ async function paymongoFetch<T>(path: string, options: RequestInit) {
 
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    const error: PaymongoError = payload?.errors?.[0] ?? {
-      type: 'unknown_error',
-      message: 'PayMongo request failed.',
-    };
-    throw new Error(`PayMongo ${path} failed: ${error.message}`);
+    const errorDetail = payload?.errors?.[0];
+    const errorMessage = errorDetail?.message || response.statusText || 'PayMongo request failed.';
+    const errorType = errorDetail?.type ? `${errorDetail.type}: ` : '';
+    const context = payload ? ` payload=${JSON.stringify(payload)}` : '';
+    throw new Error(`PayMongo ${path} failed (${response.status}): ${errorType}${errorMessage}${context}`);
   }
 
   return payload as T;
@@ -96,6 +94,18 @@ export async function createPaymongoRefund(opts: {
   });
 }
 
+export type PaymongoCheckoutLineItem = {
+  quantity?: number;
+  price_data: {
+    currency: string;
+    unit_amount: number;
+    product_data: {
+      name: string;
+      description?: string | null;
+    };
+  };
+};
+
 export type PaymongoCheckoutSessionResponse = {
   id: string;
   attributes: {
@@ -118,6 +128,7 @@ export async function createPaymongoCheckoutSession(opts: {
   description: string;
   metadata: Record<string, string>;
   paymentMethodTypes?: string[];
+  lineItems?: PaymongoCheckoutLineItem[];
 }) {
   const payload = {
     data: {
@@ -129,6 +140,18 @@ export async function createPaymongoCheckoutSession(opts: {
         description: opts.description,
         metadata: opts.metadata,
         payment_method_types: opts.paymentMethodTypes ?? ['card'],
+        line_items:
+          opts.lineItems ??
+          [
+            {
+              quantity: 1,
+              price_data: {
+                currency: opts.currency,
+                unit_amount: opts.amountMinor,
+                product_data: { name: opts.description, },
+              },
+            }
+          ],
       },
     },
   };
@@ -205,7 +228,7 @@ export function verifyPaymongoSignature({
   }
 }
 
-export function isPaymongoSignatureFresh(signature: PaymongoWebhookSignature, toleranceSeconds = 300) {
+export async function isPaymongoSignatureFresh(signature: PaymongoWebhookSignature, toleranceSeconds = 300) {
   const nowSeconds = Math.floor(Date.now() / 1000);
   return Math.abs(nowSeconds - signature.timestamp) <= toleranceSeconds;
 }

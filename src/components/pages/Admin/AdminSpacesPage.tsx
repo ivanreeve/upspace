@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { AdminRowActions } from './AdminRowActions';
 
@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -44,6 +45,7 @@ const mapPublishedVariant = (isPublished: boolean) =>
   isPublished ? 'success' : 'destructive';
 
 export function AdminSpacesPage() {
+  const queryClient = useQueryClient();
   const [searchValue, setSearchValue] = useState('');
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
   const [pageIndex, setPageIndex] = useState(0);
@@ -51,7 +53,47 @@ export function AdminSpacesPage() {
   const cursor = pageCursors[pageIndex] ?? null;
   const trimmedSearch = searchValue.trim();
   const searchParam = trimmedSearch.length ? trimmedSearch : undefined;
-  const queryClient = useQueryClient();
+  const testingModeKey = ['admin', 'testing-mode'] as const;
+
+  const testingModeQuery = useQuery({
+    queryKey: testingModeKey,
+    queryFn: async () => {
+      const response = await fetch('/api/v1/admin/testing-mode', { cache: 'no-store', });
+      if (!response.ok) {
+        throw new Error('Unable to load testing mode.');
+      }
+      const data = await response.json();
+      return Boolean(data?.enabled);
+    },
+  });
+
+  const testingModeMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const response = await fetch('/api/v1/admin/testing-mode', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify({ enabled, }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        const message =
+          typeof payload?.error === 'string'
+            ? payload.error
+            : 'Unable to update testing mode.';
+        throw new Error(message);
+      }
+      const payload = await response.json();
+      return Boolean(payload?.enabled);
+    },
+    onSuccess: (enabled) => {
+      queryClient.setQueryData(testingModeKey, enabled);
+      toast.success(enabled ? 'Testing mode enabled.' : 'Testing mode disabled.');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Unable to update testing mode.';
+      toast.error(message);
+    },
+  });
 
   const {
     data: page,
@@ -156,6 +198,23 @@ export function AdminSpacesPage() {
               onChange={ (event) => setSearchValue(event.currentTarget.value) }
               className="max-w-md"
             />
+            <div className="flex items-center gap-3 rounded-md border border-border/60 bg-background/80 px-3 py-2 shadow-sm">
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold text-foreground">
+                  Testing mode
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  Auto-accept bookings (skip PayMongo)
+                </span>
+              </div>
+              <Switch
+                id="admin-testing-mode"
+                aria-label="Toggle testing mode"
+                checked={ testingModeQuery.data ?? false }
+                disabled={ testingModeQuery.isLoading || testingModeMutation.isPending }
+                onCheckedChange={ (checked) => testingModeMutation.mutate(checked) }
+              />
+            </div>
             <div className="flex items-center gap-2">
               <Label htmlFor="admin-spaces-page-size">Rows per page</Label>
               <Select

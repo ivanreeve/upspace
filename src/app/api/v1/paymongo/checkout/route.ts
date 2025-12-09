@@ -3,10 +3,13 @@ import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { BOOKING_PRICE_MINOR_FACTOR, normalizeNumeric } from '@/lib/bookings/serializer';
+import { BOOKING_PRICE_MINOR_FACTOR, mapBookingRowToRecord, normalizeNumeric } from '@/lib/bookings/serializer';
 import { MAX_BOOKING_HOURS, MIN_BOOKING_HOURS } from '@/lib/bookings/constants';
+import { sendBookingNotificationEmail } from '@/lib/email';
 import { createPaymongoCheckoutSession } from '@/lib/paymongo';
 import { prisma } from '@/lib/prisma';
+import { getSupabaseAdminClient } from '@/lib/supabase/admin';
+import { getTestingMode } from '@/lib/testing-mode';
 import { resolveAuthenticatedUserForWallet } from '@/lib/wallet-server';
 
 const checkoutPayloadSchema = z.object({
@@ -112,6 +115,81 @@ export async function POST(req: NextRequest) {
       internal_user_id: auth.dbUser!.user_id.toString(),
     } satisfies Record<string, string>;
 
+    const isTestingMode = await getTestingMode();
+    if (isTestingMode) {
+      const confirmedBooking = await prisma.booking.update({
+        where: { id: bookingRow.id, },
+        data: {
+          status: 'confirmed',
+          updated_at: new Date(),
+        },
+      });
+
+      const booking = mapBookingRowToRecord(confirmedBooking);
+      const bookingHref = `/marketplace/${booking.spaceId}`;
+
+      await prisma.app_notification.create({
+        data: {
+          user_auth_id: booking.customerAuthId,
+          title: 'Booking confirmed',
+          body: `${booking.areaName} at ${booking.spaceName} is confirmed.`,
+          href: bookingHref,
+          type: 'booking_confirmed',
+          booking_id: booking.id,
+          space_id: booking.spaceId,
+          area_id: booking.areaId,
+        },
+      });
+
+      if (booking.partnerAuthId) {
+        await prisma.app_notification.create({
+          data: {
+            user_auth_id: booking.partnerAuthId,
+            title: 'New booking received',
+            body: `${booking.areaName} in ${booking.spaceName} was just booked.`,
+            href: bookingHref,
+            type: 'booking_received',
+            booking_id: booking.id,
+            space_id: booking.spaceId,
+            area_id: booking.areaId,
+          },
+        });
+      }
+
+      try {
+        const adminClient = getSupabaseAdminClient();
+        const {
+ data: userData, error: userError, 
+} = await adminClient.auth.admin.getUserById(
+          booking.customerAuthId
+        );
+
+        if (userError) {
+          console.warn('Unable to read customer email for booking notification', userError);
+        } else if (userData?.email) {
+          await sendBookingNotificationEmail({
+            to: userData.email,
+            spaceName: booking.spaceName,
+            areaName: booking.areaName,
+            bookingHours: booking.bookingHours,
+            price: booking.price,
+            link: `${APP_URL}${bookingHref}`,
+          });
+        }
+      } catch (notifyError) {
+        console.error('Failed to send booking notification email', notifyError);
+      }
+
+      return NextResponse.json(
+        {
+          bookingId: booking.id,
+          checkoutUrl: successUrl,
+          testingMode: true,
+        },
+        { status: 201, }
+      );
+    }
+
     const checkoutSession = await createPaymongoCheckoutSession({
       amountMinor: priceMinor,
       currency: bookingRow.currency,
@@ -119,6 +197,16 @@ export async function POST(req: NextRequest) {
       successUrl,
       cancelUrl,
       metadata,
+      lineItems: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: bookingRow.currency,
+            unit_amount: priceMinor,
+            product_data: { name: `${area.space.name} · ${area.name}`, },
+          },
+        }
+      ],
     });
 
     return NextResponse.json(

@@ -22,7 +22,7 @@ function parseTtlEnvValue(): number {
 
 export const SPACES_LIST_CACHE_TTL_SECONDS = parseTtlEnvValue();
 
-async function getRedisClient(): Promise<RedisClientType | null> {
+export async function getRedisClient(): Promise<RedisClientType | null> {
   const url = process.env.REDIS_URL;
   if (!url) {
     return null;
