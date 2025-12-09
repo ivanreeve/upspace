@@ -67,7 +67,10 @@ export function AdminSpacesPage() {
   const spaces = page?.data ?? [];
   const nextCursor = page?.nextCursor ?? null;
   const visibilityMutation = useAdminSpaceVisibilityMutation();
-  const [processingSpaceId, setProcessingSpaceId] = useState<string | null>(null);
+  const [processingSpaceId, setProcessingSpaceId] = useState<{
+    spaceId: string;
+    action: 'hide' | 'show';
+  } | null>(null);
 
   useEffect(() => {
     if (!page) {
@@ -115,18 +118,21 @@ export function AdminSpacesPage() {
     setPageIndex((prev) => prev + 1);
   };
 
-  const handleUnpublish = async (spaceId: string) => {
-    setProcessingSpaceId(spaceId);
+  const handleToggleVisibility = async (spaceId: string, action: 'hide' | 'show') => {
+    setProcessingSpaceId({
+      spaceId,
+      action,
+    });
     try {
       await visibilityMutation.mutateAsync({
         spaceId,
-        action: 'hide',
-        reason: 'Hidden from admin spaces table.',
+        action,
+        reason: action === 'hide' ? 'Hidden from admin spaces table.' : 'Shown from admin spaces table.',
       });
       await queryClient.invalidateQueries({ queryKey: adminSpacesKeys.all, });
-      toast.success('Space unpublished.');
+      toast.success(action === 'hide' ? 'Space hidden from marketplace.' : 'Space visible in marketplace.');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to unpublish space.';
+      const message = err instanceof Error ? err.message : 'Unable to update space visibility.';
       toast.error(message);
     } finally {
       setProcessingSpaceId(null);
@@ -254,14 +260,22 @@ export function AdminSpacesPage() {
                           { space.updatedAt ? dateFormatter.format(new Date(space.updatedAt)) : '—' }
                         </TableCell>
                         <TableCell className="text-right">
-                          <AdminRowActions disabled={ visibilityMutation.isLoading && processingSpaceId === space.id }>
-                            <DropdownMenuItem
-                              onSelect={ () => handleUnpublish(space.id) }
-                              disabled={ !space.isPublished || processingSpaceId === space.id }
-                            >
-                              Unpublish space
-                            </DropdownMenuItem>
-                          </AdminRowActions>
+                          { (() => {
+                            const isProcessingSpace = processingSpaceId?.spaceId === space.id;
+                            const currentAction = isProcessingSpace ? processingSpaceId?.action : space.isPublished ? 'hide' : 'show';
+                            const actionLabel = space.isPublished ? 'Hide space' : 'Show space';
+                            const processingLabel = currentAction === 'hide' ? 'Hiding…' : 'Showing…';
+                            return (
+                              <AdminRowActions disabled={ visibilityMutation.isLoading && isProcessingSpace }>
+                                <DropdownMenuItem
+                                  onSelect={ () => handleToggleVisibility(space.id, space.isPublished ? 'hide' : 'show') }
+                                  disabled={ isProcessingSpace }
+                                >
+                                  { isProcessingSpace ? processingLabel : actionLabel }
+                                </DropdownMenuItem>
+                              </AdminRowActions>
+                            );
+                          })() }
                         </TableCell>
                       </TableRow>
                     );
