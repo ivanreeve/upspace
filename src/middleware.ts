@@ -12,7 +12,16 @@ import {
   ROLE_REDIRECT_MAP
 } from '@/lib/constants';
 
+type MiddlewareProfile = {
+  isOnboard?: boolean;
+  role?: string | null;
+};
+
 export async function middleware(request: NextRequest) {
+  if (request.headers.get('x-upspace-internal-call') === '1') {
+    return NextResponse.next();
+  }
+
   const { pathname, } = request.nextUrl;
   const isOnboardingPath =
     pathname === ONBOARDING_PATH || pathname.startsWith(`${ONBOARDING_PATH}/`);
@@ -81,24 +90,48 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(homeUrl);
     }
 
-    const {
-      data: profile, error,
-    } = await supabase
-      .from('user')
-      .select('is_onboard, role')
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
+    const profileUrl = new URL('/api/v1/auth/profile', request.url);
+    const profileHeaders = new Headers();
+    const cookieHeader = request.headers.get('cookie');
 
-    if (error) {
-      console.error('Failed to fetch user profile in middleware', error);
+    if (cookieHeader) {
+      profileHeaders.set('cookie', cookieHeader);
+    }
+
+    profileHeaders.set('x-upspace-internal-call', '1');
+
+    const profileResponse = await fetch(profileUrl, {
+      headers: profileHeaders,
+      cache: 'no-store',
+    });
+
+    if (!profileResponse.ok) {
+      console.error('Failed to fetch user profile in middleware', profileResponse.status, profileResponse.statusText);
       if (pathname === '/signin' || pathname.startsWith('/api/auth')) {
         return response;
       }
+
       const signinUrl = new URL('/signin', request.url);
       return NextResponse.redirect(signinUrl);
     }
 
-    if (!profile?.is_onboard) {
+    const profilePayload = await profileResponse.json().catch(() => null);
+    const profile = profilePayload && typeof profilePayload === 'object'
+      ? (profilePayload as MiddlewareProfile)
+      : null;
+
+    if (!profile) {
+      console.error('Malformed profile payload in middleware');
+      if (pathname === '/signin' || pathname.startsWith('/api/auth')) {
+        return response;
+      }
+
+      const signinUrl = new URL('/signin', request.url);
+      return NextResponse.redirect(signinUrl);
+    }
+
+    const isOnboard = Boolean(profile?.isOnboard);
+    if (!isOnboard) {
       if (isOnboardingPath) {
         return response;
       }
