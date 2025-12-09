@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
+import { enforceRateLimit, RateLimitExceededError } from '@/lib/rate-limit';
 import { resolveImageUrl, resolveSignedImageUrls } from '@/lib/spaces/image-urls';
 
 const SIMILARITY_THRESHOLD = 0.12;
@@ -47,6 +48,29 @@ export async function GET(req: NextRequest) {
   const verificationStatuses: verification_status[] = include_pending
     ? ['approved', 'in_review']
     : ['approved'];
+
+    try {
+      await enforceRateLimit({
+        scope: 'spaces-suggest',
+        request: req,
+      });
+    } catch (error) {
+      if (error instanceof RateLimitExceededError) {
+        return NextResponse.json(
+          { error: error.message, },
+          {
+            status: 429,
+            headers: { 'Retry-After': error.retryAfter.toString(), },
+          }
+        );
+      }
+
+      console.error('Space suggestion rate limit check failed', error);
+      return NextResponse.json(
+        { error: 'Failed to fetch space suggestions', },
+        { status: 500, }
+      );
+    }
 
   try {
     const rows = await prisma.$queryRaw<SuggestionRow[]>`

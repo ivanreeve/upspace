@@ -507,7 +507,7 @@ export default function SpaceCreateRoute() {
       const params = new URLSearchParams(serializedSearchParams);
       params.set('step', String(nextStep));
       const query = params.toString();
-      const target = query ? `/spaces/create?${query}` : '/spaces/create';
+      const target = query ? `/partner/spaces/create?${query}` : '/partner/spaces/create';
 
       if (options?.replace) {
         router.replace(target);
@@ -1153,7 +1153,7 @@ export default function SpaceCreateRoute() {
       clearDraft();
       clearImages();
       resetVerificationRequirements();
-      router.replace('/spaces');
+      router.replace('/partner/spaces');
     } catch (error) {
       console.error('Failed to submit space', error);
       toast.error(error instanceof Error ? error.message : 'Failed to submit the space. Please try again.');
@@ -1448,7 +1448,7 @@ export default function SpaceCreateRoute() {
                         clearDraft();
                         clearImages();
                         resetVerificationRequirements();
-                        router.push('/spaces');
+                        router.push('/partner/spaces');
                       } }
                       className="hover:text-white"
                     >

@@ -117,15 +117,15 @@ function AccountMenu({
           </div>
         </div>
         <DropdownMenuSeparator className="my-1" />
-        <DropdownMenuItem onSelect={ () => onNavigate('/account') }>
+        <DropdownMenuItem onSelect={ () => onNavigate('/customer/account') }>
           <FiUser className="size-4" aria-hidden="true" />
           <span>Account</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={ () => onNavigate('/settings') }>
+        <DropdownMenuItem onSelect={ () => onNavigate('/customer/settings') }>
           <FiSettings className="size-4" aria-hidden="true" />
           <span>Settings</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={ () => onNavigate('/notifications') }>
+        <DropdownMenuItem onSelect={ () => onNavigate('/customer/notifications') }>
           <FiBell className="size-4" aria-hidden="true" />
           <span>Notifications</span>
         </DropdownMenuItem>
@@ -269,7 +269,7 @@ export default function NavBar({
       return;
     }
 
-    router.refresh();
+    await router.replace('/');
   }, [router]);
 
   return (

@@ -2,16 +2,7 @@ import type { Prisma, verification_status } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-class HttpError extends Error {
-  public readonly status: number;
-
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-    this.name = 'HttpError';
-  }
-}
-
+import { enforceRateLimit, RateLimitExceededError } from '@/lib/rate-limit';
 import { WEEKDAY_ORDER, type WeekdayName } from '@/data/spaces';
 import { prisma } from '@/lib/prisma';
 import { updateSpaceLocationPoint } from '@/lib/spaces/location';
@@ -28,6 +19,16 @@ import {
   readSpacesListCache,
   setSpacesListCache
 } from '@/lib/cache/redis';
+
+class HttpError extends Error {
+  public readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+    this.name = 'HttpError';
+  }
+}
 
 // JSON-safe replacer: BigInt->string, Date->ISO
 const replacer = (_k: string, v: unknown) =>
@@ -375,6 +376,11 @@ export async function GET(req: NextRequest) {
       order,
     } = parsed.data;
 
+    await enforceRateLimit({
+      scope: 'spaces-list',
+      request: req,
+    });
+
     if (available_from && available_to) {
       const startMinutes = timeStringToMinutes(available_from);
       const endMinutes = timeStringToMinutes(available_to);
@@ -400,41 +406,41 @@ export async function GET(req: NextRequest) {
       and.push({
         OR: [
           {
- name: {
- contains: q,
-mode: 'insensitive' as const, 
-}, 
-},
+            name: {
+              contains: q,
+              mode: 'insensitive' as const,
+            },
+          },
           {
- street: {
- contains: q,
-mode: 'insensitive' as const, 
-}, 
-},
+            street: {
+              contains: q,
+              mode: 'insensitive' as const,
+            },
+          },
           {
- address_subunit: {
- contains: q,
-mode: 'insensitive' as const, 
-}, 
-},
+            address_subunit: {
+              contains: q,
+              mode: 'insensitive' as const,
+            },
+          },
           {
- unit_number: {
- contains: q,
-mode: 'insensitive' as const, 
-}, 
-},
+            unit_number: {
+              contains: q,
+              mode: 'insensitive' as const,
+            },
+          },
           {
- city: {
- contains: q,
-mode: 'insensitive' as const, 
-}, 
-},
+            city: {
+              contains: q,
+              mode: 'insensitive' as const,
+            },
+          },
           {
- region: {
- contains: q,
-mode: 'insensitive' as const, 
-}, 
-},
+            region: {
+              contains: q,
+              mode: 'insensitive' as const,
+            },
+          },
           {
             country_code: {
               contains: q,
@@ -442,11 +448,11 @@ mode: 'insensitive' as const,
             },
           },
           {
- postal_code: {
- contains: q,
-mode: 'insensitive' as const, 
-}, 
-}
+            postal_code: {
+              contains: q,
+              mode: 'insensitive' as const,
+            },
+          }
         ],
       });
     }
@@ -803,9 +809,22 @@ mode: 'insensitive' as const,
       headers: { 'content-type': 'application/json', },
       status: 200, // per catalog
     });
-  } catch (err) {
-    // Typical errors in the catalog include 401/403/429; those are usually enforced by middleware.
-    return NextResponse.json({ error: 'Failed to list spaces', }, { status: 500, });
+  } catch (error) {
+    if (error instanceof RateLimitExceededError) {
+      return NextResponse.json(
+        { error: error.message, },
+        {
+          status: 429,
+          headers: { 'Retry-After': error.retryAfter.toString(), },
+        }
+      );
+    }
+
+    console.error('Failed to list spaces', error);
+    return NextResponse.json(
+      { error: 'Failed to list spaces', },
+      { status: 500, }
+    );
   }
 }
 

@@ -298,7 +298,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
             return (
               <Link
                 key={ room.id }
-                href={ `/messages/${room.id}` }
+                href={ `/customer/messages/${room.id}` }
                 aria-current={ isActive ? 'true' : undefined }
                 className={ cn(
                   'relative flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition',

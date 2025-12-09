@@ -1,6 +1,5 @@
 export const PUBLIC_PATHS = new Set<string>([
   '/',
-  '/signin',
   '/signup',
   '/forgot-password',
   '/docs',
@@ -14,12 +13,26 @@ export const IGNORED_PREFIXES = ['/api', '/_next', '/static', '/assets', '/img',
 export const ONBOARDING_PATH = '/onboarding';
 export const ROLE_REDIRECT_MAP: Record<string, string> = {
   customer: '/marketplace',
-  partner: '/spaces',
+  partner: '/partner/spaces',
   admin: '/admin',
 };
 
 export const ROLE_ACCESS_MAP: Record<string, string[]> = {
-  customer: ['/marketplace', '/messages', '/account', '/bookmarks', '/notifications'],
-  partner: ['/spaces', '/marketplace', '/account', '/notifications'],
+  customer: [
+    '/marketplace',
+    '/customer',
+    '/customer/account',
+    '/customer/bookmarks',
+    '/customer/messages',
+    '/customer/notifications'
+  ],
+  partner: [
+    '/marketplace',
+    '/partner',
+    '/partner/spaces',
+    '/partner/messages',
+    '/customer/account',
+    '/customer/notifications'
+  ],
   admin: ['/marketplace', '/admin'],
 };

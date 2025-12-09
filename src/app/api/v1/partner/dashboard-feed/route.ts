@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { mapBookingsWithProfiles, type BookingRow } from '@/lib/bookings/serializer';
 import { PartnerSessionError, requirePartnerSession } from '@/lib/auth/require-partner-session';
 import { prisma } from '@/lib/prisma';
+import { enforceRateLimit, RateLimitExceededError } from '@/lib/rate-limit';
 import type { DashboardFeedItem } from '@/types/dashboard-feed';
 
 const querySchema = z.object({ limit: z.coerce.number().min(5).max(200).default(25), });
@@ -11,6 +12,11 @@ const querySchema = z.object({ limit: z.coerce.number().min(5).max(200).default(
 export async function GET(req: NextRequest) {
   try {
     const { authUserId, } = await requirePartnerSession();
+    await enforceRateLimit({
+      scope: 'partner-dashboard-feed',
+      request: req,
+      identity: authUserId,
+    });
     const searchParams = Object.fromEntries(new URL(req.url).searchParams.entries());
     const { limit, } = querySchema.parse(searchParams);
 
@@ -104,6 +110,16 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     if (error instanceof PartnerSessionError) {
       return NextResponse.json({ error: error.message, }, { status: error.status, });
+    }
+
+    if (error instanceof RateLimitExceededError) {
+      return NextResponse.json(
+        { error: error.message, },
+        {
+          status: 429,
+          headers: { 'Retry-After': error.retryAfter.toString(), },
+        }
+      );
     }
 
     console.error('Failed to build partner dashboard feed', error);

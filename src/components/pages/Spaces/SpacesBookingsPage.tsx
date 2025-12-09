@@ -436,14 +436,14 @@ status,
               Live bookings with per-area capacity signals, search, and bulk edits.
             </p>
           </div>
-          <Button
-            type="button"
-            asChild
-            variant="outline"
-            size="sm"
-            className="gap-2"
-          >
-            <Link href="/spaces/dashboard" className="hover:!text-white">
+            <Button
+              type="button"
+              asChild
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <Link href="/partner/spaces/dashboard" className="hover:!text-white">
               View analytics
               <FiArrowUpRight className="size-4" aria-hidden="true" />
             </Link>
