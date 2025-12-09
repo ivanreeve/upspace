@@ -129,6 +129,14 @@ export type PaymongoCheckoutLineItem = {
   };
 };
 
+type PaymongoCheckoutLineItemPayload = {
+  amount: number;
+  currency: string;
+  name: string;
+  description?: string | null;
+  quantity: number;
+};
+
 export type PaymongoCheckoutSessionResponse = {
   id: string;
   attributes: {
@@ -154,25 +162,46 @@ export async function createPaymongoCheckoutSession(opts: {
   paymentMethodTypes?: string[];
   lineItems?: PaymongoCheckoutLineItem[];
 }) {
+  const resolvedLineItems: PaymongoCheckoutLineItemPayload[] =
+    opts.lineItems && opts.lineItems.length > 0
+      ? opts.lineItems.map((item) => {
+        const quantity = Number.isFinite(item.quantity) && (item.quantity ?? 0) > 0
+          ? Math.trunc(item.quantity ?? 1)
+          : 1;
+        return {
+          amount: Math.max(0, Math.trunc(item.price_data.unit_amount)),
+          currency: item.price_data.currency,
+          name: item.price_data.product_data.name,
+          description: item.price_data.product_data.description ?? null,
+          quantity,
+        };
+      })
+      : [
+        {
+          amount: Math.max(0, Math.trunc(opts.amountMinor)),
+          currency: opts.currency,
+          name: opts.lineItemName,
+          description: opts.description,
+          quantity: 1,
+        }
+      ];
+
+  const resolvedAmount = resolvedLineItems.reduce<number>((total, item) => {
+    const quantity = Number.isFinite(item.quantity) && item.quantity > 0 ? item.quantity : 1;
+    return total + item.amount * quantity;
+  }, 0);
+
   const payload = {
     data: {
       attributes: {
-        amount: opts.amountMinor,
+        amount: resolvedAmount,
         currency: opts.currency,
         success_url: opts.successUrl,
         cancel_url: opts.cancelUrl,
         description: opts.description,
         metadata: opts.metadata,
         payment_method_types: opts.paymentMethodTypes ?? PAYMONGO_DEFAULT_PAYMENT_METHODS,
-        line_items: [
-          {
-            amount: opts.amountMinor,
-            currency: opts.currency,
-            name: opts.lineItemName,
-            description: opts.description,
-            quantity: 1,
-          }
-        ],
+        line_items: resolvedLineItems,
       },
     },
   };

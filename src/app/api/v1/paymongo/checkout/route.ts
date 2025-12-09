@@ -123,7 +123,6 @@ export async function POST(req: NextRequest) {
         where: { id: bookingRow.id, },
         data: {
           status: 'confirmed',
-          updated_at: new Date(),
         },
       });
 

@@ -296,6 +296,41 @@ const extractTextFromResponse = (response: {
   return text;
 };
 
+type FunctionCallPart = {
+  call: FunctionCall;
+  thoughtSignature?: string;
+};
+
+const extractFirstFunctionCallPart = (response: {
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{ functionCall?: FunctionCall; thoughtSignature?: string }>;
+    };
+  }>;
+  functionCalls?: FunctionCall[];
+}): FunctionCallPart | null => {
+  for (const candidate of response.candidates ?? []) {
+    for (const part of candidate.content?.parts ?? []) {
+      if (part.functionCall) {
+        return {
+          call: part.functionCall,
+          thoughtSignature: part.thoughtSignature,
+        };
+      }
+    }
+  }
+
+  const fallbackCall = response.functionCalls?.[0];
+  if (fallbackCall) {
+    return {
+      call: fallbackCall,
+      thoughtSignature: undefined,
+    };
+  }
+
+  return null;
+};
+
 const getUserLocationFunctionDeclaration: FunctionDeclaration = {
   name: 'get_user_location',
   description:
@@ -368,7 +403,8 @@ const isReferenceDataTool = (name: string): name is ReferenceDataToolName =>
 const createFunctionCallContent = (
   name: string,
   id?: string,
-  args?: Record<string, unknown>
+  args?: Record<string, unknown>,
+  thoughtSignature?: string
 ) => ({
   role: 'model',
   parts: [
@@ -378,6 +414,7 @@ const createFunctionCallContent = (
         args,
         id,
       },
+      ...(thoughtSignature ? { thoughtSignature, } : {}),
     }
   ],
 });
@@ -541,7 +578,8 @@ export async function POST(request: NextRequest) {
         config: toolConfig,
       });
 
-      const functionCall = response.functionCalls?.[0];
+      const functionCallPart = extractFirstFunctionCallPart(response);
+      const functionCall = functionCallPart?.call;
       const responseText = extractTextFromResponse(response);
 
       if (!functionCall) {
@@ -552,7 +590,12 @@ export async function POST(request: NextRequest) {
 
       const callArgs = parseFunctionCallArgs(functionCall.args);
       historyContents.push(
-        createFunctionCallContent(functionCall.name, functionCall.id, callArgs)
+        createFunctionCallContent(
+          functionCall.name,
+          functionCall.id,
+          callArgs,
+          functionCallPart?.thoughtSignature
+        )
       );
 
       if (functionCall.name === 'get_user_location') {
