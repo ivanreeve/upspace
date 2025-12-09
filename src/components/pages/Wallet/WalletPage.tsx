@@ -24,6 +24,7 @@ import {
   useWalletTopUp
 } from '@/hooks/use-wallet';
 import { formatCurrencyMinor } from '@/lib/wallet';
+import { useUserProfile } from '@/hooks/use-user-profile';
 
 const TRANSACTION_TYPE_LABELS: Record<WalletTransactionType, string> = {
   cash_in: 'Top-up',
@@ -43,8 +44,16 @@ const STATUS_BADGE_VARIANTS: Record<
 
 export default function WalletPage() {
   const {
- data, isError, isLoading, isFetching, 
-} = useWallet();
+    data: userProfile,
+    isLoading: isProfileLoading,
+  } = useUserProfile();
+  const isPartnerRole = userProfile?.role === 'partner';
+  const {
+    data,
+    isError,
+    isLoading,
+    isFetching,
+  } = useWallet({ enabled: isPartnerRole, });
   const topUpMutation = useWalletTopUp();
   const [amount, setAmount] = useState('');
 
@@ -56,6 +65,45 @@ export default function WalletPage() {
   const availableBalance = data
     ? formatCurrencyMinor(data.wallet.balanceMinor, data.wallet.currency)
     : '₱0.00';
+
+  if (isProfileLoading) {
+    return (
+      <div className="flex flex-col gap-6 px-4 py-2 sm:px-6">
+        <Card className="rounded-lg border border-[#FFFFFF] dark:border-neutral-600 bg-card p-4 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.05)] mt-8">
+          <CardHeader className="p-0 mb-2">
+            <CardTitle>Checking wallet access</CardTitle>
+            <CardDescription>
+              Verifying your partner role before showing your PayMongo wallet.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Skeleton className="h-6 rounded-md" />
+            <Skeleton className="h-6 rounded-md w-3/4" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!isPartnerRole) {
+    return (
+      <div className="flex flex-col gap-6 px-4 py-2 sm:px-6">
+        <Card className="rounded-lg border border-[#FFFFFF] dark:border-neutral-600 bg-card p-4 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.05)] mt-8">
+          <CardHeader className="p-0 mb-2">
+            <CardTitle>Partner wallet only</CardTitle>
+            <CardDescription>
+              Wallets are reserved for partners. Customers pay through the booking checkout, and funds are credited directly to the partner’s PayMongo balance.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Need help or think you should have access? Contact your workspace admin or support to review your role.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const handleTopUp = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -84,25 +132,25 @@ export default function WalletPage() {
     { /* Wallet Balance */ }
     <Card className="rounded-lg border border-[#FFFFFF] dark:border-neutral-600 bg-card p-4 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.05)] mt-8">
       <CardHeader className="p-0 mb-2">
-        <CardTitle>Wallet balance</CardTitle>
+        <CardTitle>Partner wallet balance</CardTitle>
         <CardDescription>
-          Funds stay in your PayMongo wallet until you book.
+          Funds stay in your PayMongo partner wallet until bookings settle.
         </CardDescription>
       </CardHeader>
 
       <CardContent className="p-0 space-y-2">
         <p className="text-4xl font-semibold">{ availableBalance }</p>
         <p className="text-sm text-muted-foreground">
-          Top-ups are mirrored with PayMongo ledger entries so bookings can be charged instantly.
+          Top-ups and booking charges are tracked through PayMongo ledger entries so your partner balance stays in sync.
         </p>
       </CardContent>
     </Card>
 
       <Card className="rounded-lg border border-[#FFFFFF] dark:border-neutral-600 bg-card shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
         <CardHeader>
-          <CardTitle>Top up wallet</CardTitle>
+          <CardTitle>Top up partner wallet</CardTitle>
           <CardDescription>
-            Use your linked PayMongo payment method to add funds. We’ll record the receipt automatically.
+            Use your linked PayMongo payment method to add funds to this partner wallet. Receipts are recorded automatically.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -133,11 +181,11 @@ export default function WalletPage() {
           </form>
         </CardContent>
         <CardFooter>
-          <p className="text-xs text-muted-foreground">
-            Need to change your default payment method? Update it in the PayMongo dashboard to keep this wallet in sync.
-          </p>
-        </CardFooter>
-      </Card>
+        <p className="text-xs text-muted-foreground">
+          Need to change your default payment method? Update it in the PayMongo dashboard to keep this partner wallet in sync.
+        </p>
+      </CardFooter>
+    </Card>
 
     { /* Recent Activity */ }
     <Card className="rounded-lg border border-[#FFFFFF] dark:border-neutral-600 bg-card p-4 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.05)]
@@ -145,7 +193,7 @@ export default function WalletPage() {
       <CardHeader className="p-0 mb-2">
         <CardTitle>Recent activity</CardTitle>
         <CardDescription>
-          Synced with your PayMongo wallet ledger.
+          Synced with your PayMongo partner wallet ledger.
         </CardDescription>
       </CardHeader>
 

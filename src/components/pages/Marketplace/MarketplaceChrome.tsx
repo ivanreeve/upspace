@@ -93,6 +93,7 @@ type SidebarFooterContentProps = {
   isSidebarLoading: boolean;
   showNotifications?: boolean;
   showAccount?: boolean;
+  showWallet?: boolean;
 };
 
 function GradientSparklesIcon({
@@ -221,6 +222,7 @@ function SidebarFooterContent({
   isSidebarLoading,
   showNotifications = true,
   showAccount = true,
+  showWallet = false,
 }: SidebarFooterContentProps) {
   const {
  state, isMobile, 
@@ -359,7 +361,7 @@ function SidebarFooterContent({
                     <span>Account</span>
                   </DropdownMenuItem>
                 ) }
-                { showAccount && (
+                { showWallet && (
                   <DropdownMenuItem
                     onSelect={ () => onNavigate('/account/wallet') }
                     className="hover:!text-white hover:[&_svg]:!text-white"
@@ -1074,7 +1076,7 @@ export function MarketplaceChrome({
       icon: FiHome,
     });
 
-    if (!isGuest) {
+    if (isPartnerRole) {
       actions.push({
         label: 'Wallet',
         href: '/account/wallet',
@@ -1133,7 +1135,7 @@ export function MarketplaceChrome({
     handleSearch,
     isAdminRole,
     isCustomerRole,
-    isGuest,
+    isPartnerRole,
     resolvedMessageHref,
     shouldShowNotifications
   ]);
@@ -1252,7 +1254,7 @@ export function MarketplaceChrome({
                       iconProps={ { strokeWidth: 2, } }
                     />
                   ) }
-                  { shouldShowNotifications && (
+                  { isPartnerRole && (
                     <SidebarLinkItem
                       href="/account/wallet"
                       label="Wallet"
@@ -1364,6 +1366,7 @@ export function MarketplaceChrome({
               isSidebarLoading={ navData.isSidebarLoading }
               showNotifications={ shouldShowNotifications }
               showAccount={ !isAdminRole }
+              showWallet={ isPartnerRole }
             />
           </SidebarFooter>
           <SidebarRail />

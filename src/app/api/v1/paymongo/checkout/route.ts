@@ -111,11 +111,23 @@ export async function POST(req: NextRequest) {
     const cancelUrl = parsed.data.cancelUrl ??
       `${APP_URL}/marketplace/${area.space.id}?booking_id=${bookingRow.id}&payment=cancel`;
 
+    const partnerWalletOwner = partnerAuthId
+      ? await prisma.user.findUnique({
+          where: { auth_user_id: partnerAuthId, },
+          select: { user_id: true, },
+        })
+      : null;
+    const partnerInternalUserId = partnerWalletOwner?.user_id?.toString() ?? null;
+
     const metadata = {
       booking_id: bookingRow.id,
       space_id: bookingRow.space_id,
       area_id: bookingRow.area_id,
       internal_user_id: auth.dbUser!.user_id.toString(),
+      customer_internal_user_id: auth.dbUser!.user_id.toString(),
+      ...(partnerInternalUserId
+        ? { partner_internal_user_id: partnerInternalUserId, }
+        : {}),
     } satisfies Record<string, string>;
 
     if (isTestingModeEnabled()) {

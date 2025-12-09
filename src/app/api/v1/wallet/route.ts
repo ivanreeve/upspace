@@ -64,7 +64,7 @@ function mapWalletTransaction(transaction: wallet_transaction) {
 
 export async function GET() {
   try {
-    const auth = await resolveAuthenticatedUserForWallet();
+    const auth = await resolveAuthenticatedUserForWallet({ requirePartner: true, });
     if (auth.response) {
       return auth.response;
     }
@@ -91,7 +91,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = await resolveAuthenticatedUserForWallet();
+    const auth = await resolveAuthenticatedUserForWallet({ requirePartner: true, });
     if (auth.response) {
       return auth.response;
     }

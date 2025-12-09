@@ -35,7 +35,9 @@ export type WalletData = {
 
 export const walletQueryKey = ['wallet'];
 
-export function useWallet() {
+export function useWallet(options?: { enabled?: boolean }) {
+  const enabled = options?.enabled ?? true;
+
   return useQuery<WalletData>({
     queryKey: walletQueryKey,
     queryFn: async () => {
@@ -44,12 +46,16 @@ export function useWallet() {
         cache: 'no-store',
       });
 
+      const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error('Unable to load wallet information.');
+        throw new Error(
+          payload?.message ?? 'Unable to load wallet information.'
+        );
       }
 
-      return response.json();
+      return payload as WalletData;
     },
+    enabled,
     retry: 1,
     staleTime: 1000 * 30,
   });
