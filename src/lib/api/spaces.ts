@@ -7,6 +7,7 @@ export type SpaceAvailabilitySlot = {
 export type Space = {
   space_id: string;
   name: string;
+  description?: string | null;
   unit_number?: string | null;
   street?: string | null;
   address_subunit?: string | null;

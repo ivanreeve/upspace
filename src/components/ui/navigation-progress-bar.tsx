@@ -33,19 +33,19 @@ export function NavigationProgressBar() {
   const pathname = usePathname();
   const [visible, setVisible] = useState(false);
   const [progress, setProgress] = useState(0);
-  const incrementRef = useRef<NodeJS.Timeout | null>(null);
-  const hideRef = useRef<NodeJS.Timeout | null>(null);
+  const incrementRef = useRef<number | null>(null);
+  const hideRef = useRef<number | null>(null);
   const lastPathnameRef = useRef(pathname);
 
   const startProgress = useCallback(() => {
     if (hideRef.current) {
-      clearTimeout(hideRef.current);
+      window.clearTimeout(hideRef.current);
       hideRef.current = null;
     }
     setVisible(true);
     setProgress((prev) => (prev === 0 ? 12 : Math.max(prev, 12)));
     if (!incrementRef.current) {
-      incrementRef.current = setInterval(() => {
+      incrementRef.current = window.setInterval(() => {
         setProgress((prev) => Math.min(prev + getRandomIncrement(), 90));
       }, 200);
     }
@@ -53,7 +53,7 @@ export function NavigationProgressBar() {
 
   const finishProgress = useCallback(() => {
     if (incrementRef.current) {
-      clearInterval(incrementRef.current);
+      window.clearInterval(incrementRef.current);
       incrementRef.current = null;
     }
     setProgress(100);
@@ -106,16 +106,22 @@ export function NavigationProgressBar() {
     router.push = (...args) => {
       startProgress();
       const result = originalPush.apply(router, args);
-      if (result && typeof result.finally === 'function') {
-        result.finally(finishProgress);
+      if (
+        result != null &&
+        typeof (result as Promise<unknown>).finally === 'function'
+      ) {
+        (result as Promise<unknown>).finally(finishProgress);
       }
       return result;
     };
     router.replace = (...args) => {
       startProgress();
       const result = originalReplace.apply(router, args);
-      if (result && typeof result.finally === 'function') {
-        result.finally(finishProgress);
+      if (
+        result != null &&
+        typeof (result as Promise<unknown>).finally === 'function'
+      ) {
+        (result as Promise<unknown>).finally(finishProgress);
       }
       return result;
     };

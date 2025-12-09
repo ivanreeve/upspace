@@ -46,6 +46,8 @@ type SortKey =
   | 'cancellationRate'
   | 'lastUpdated';
 
+type NumericSortKey = Exclude<SortKey, 'lastUpdated'>;
+
 const DATE_RANGE_PRESETS: {
   label: string;
   value: DateRangeKey;
@@ -670,8 +672,16 @@ hourLabel: '—',
 
     const comparator = (a: (typeof rows)[number], b: (typeof rows)[number]) => {
       const direction = sortDirection === 'asc' ? 1 : -1;
-      const valueA = a[sortKey] ?? 0;
-      const valueB = b[sortKey] ?? 0;
+
+      if (sortKey === 'lastUpdated') {
+        const valueA = Date.parse(a.lastUpdated ?? '') || 0;
+        const valueB = Date.parse(b.lastUpdated ?? '') || 0;
+        return (valueA - valueB) * direction;
+      }
+
+      const numericSortKey = sortKey as NumericSortKey;
+      const valueA = (a[numericSortKey] ?? 0) as number;
+      const valueB = (b[numericSortKey] ?? 0) as number;
       return (valueA - valueB) * direction;
     };
 

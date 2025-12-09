@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma, verification_status } from '@prisma/client';
 
 import {
   AREA_INPUT_DEFAULT,
@@ -183,14 +183,14 @@ const serializeImage = (
 
 type VerificationLike =
   | {
-    verification: { status: Prisma.verificationStatus | null }[];
+    verification: { status: verification_status | null }[];
     is_published?: boolean;
   }
-  | (Prisma.verificationStatus | null | undefined)
   | {
-    status: Prisma.verificationStatus | null;
+    status: verification_status | null;
     is_published?: boolean;
-  };
+  }
+  | (verification_status | null | undefined);
 
 export const deriveSpaceStatus = (source: VerificationLike): SpaceStatus => {
   const isPublished = typeof source === 'object' && source !== null && 'is_published' in source
@@ -201,11 +201,14 @@ export const deriveSpaceStatus = (source: VerificationLike): SpaceStatus => {
     return 'Unpublished';
   }
 
-  const latest = typeof source === 'string' || source === null || source === undefined
-    ? source ?? null
-    : 'status' in source && typeof source.status === 'string'
-      ? source.status
-      : source.verification[0]?.status ?? null;
+  let latest: verification_status | null = null;
+  if (typeof source === 'string' || source === null || source === undefined) {
+    latest = source ?? null;
+  } else if ('status' in source && typeof source.status === 'string') {
+    latest = source.status;
+  } else if ('verification' in source && Array.isArray(source.verification)) {
+    latest = source.verification[0]?.status ?? null;
+  }
   if (latest === 'approved') {
     return 'Live';
   }

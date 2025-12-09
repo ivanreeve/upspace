@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import {
   ChangeEvent,
   useCallback,
@@ -34,7 +36,7 @@ import {
 } from 'react-icons/fi';
 import { CgSpinner } from 'react-icons/cg';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { MdOutlineMailOutline } from 'react-icons/md';
 import type { IconType } from 'react-icons';
@@ -265,12 +267,23 @@ const normalizeMimeType = (mime: string) => {
 
 export default function SpaceCreateRoute() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const [searchParamsString, setSearchParamsString] = useState('');
+  useEffect(() => {
+    const update = () => {
+      setSearchParamsString(window.location.search.replace(/^\?/, ''));
+    };
+    update();
+    window.addEventListener('popstate', update);
+    return () => {
+      window.removeEventListener('popstate', update);
+    };
+  }, []);
+  const searchParams = useMemo(() => new URLSearchParams(searchParamsString), [searchParamsString]);
   const { session, } = useSession();
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const queryClient = useQueryClient();
   const storageOwnerId = session?.user?.id ?? 'anonymous';
-  const serializedSearchParams = searchParams.toString();
+  const serializedSearchParams = searchParamsString;
   const stepParam = searchParams.get('step');
   const authenticatedFetch = useAuthenticatedFetch();
   const currentStep: SpaceFormStep =
@@ -498,6 +511,7 @@ export default function SpaceCreateRoute() {
       } else {
         router.push(target);
       }
+      setSearchParamsString(query);
     },
     [router, serializedSearchParams]
   );

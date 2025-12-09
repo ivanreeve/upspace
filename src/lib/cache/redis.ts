@@ -130,19 +130,36 @@ export async function setSpacesListCache(
 async function deleteKeysByPattern(pattern: string) {
   await withRedisClient(async (client) => {
     const buffer: string[] = [];
+
+    const flushBuffer = async () => {
+      if (!buffer.length) {
+        return;
+      }
+
+      const keys = buffer.splice(0, buffer.length);
+      for (const key of keys) {
+        await client.del(key);
+      }
+      buffer.length = 0;
+    };
+
     for await (const key of client.scanIterator({
       MATCH: pattern,
       COUNT: 100,
     })) {
-      buffer.push(key);
-      if (buffer.length >= 100) {
-        await client.del(...buffer);
-        buffer.length = 0;
+      const keys = Array.isArray(key) ? key : [key];
+      for (const normalizedKey of keys) {
+        if (!normalizedKey) {
+          continue;
+        }
+        buffer.push(normalizedKey);
+        if (buffer.length >= 100) {
+          await flushBuffer();
+        }
       }
     }
-    if (buffer.length) {
-      await client.del(...buffer);
-    }
+
+    await flushBuffer();
   });
 }
 

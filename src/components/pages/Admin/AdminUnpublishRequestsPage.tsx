@@ -387,7 +387,7 @@ export function AdminUnpublishRequestsPage() {
                       <>
                         <Button
                           size="sm"
-                          variant="success"
+                          variant="default"
                           onClick={ () => handleApprove(request) }
                           disabled={ approveMutation.isPending }
                         >

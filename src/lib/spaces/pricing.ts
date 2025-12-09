@@ -3,7 +3,7 @@ import type { PriceRuleDefinition } from '@/lib/pricing-rules';
 
 const STARTING_PRICE_DEFAULT_BOOKING_HOURS = 1;
 
-type AreaPricingPayload = {
+export type AreaPricingPayload = {
   price_rule: {
     definition: PriceRuleDefinition | null;
   } | null;

@@ -444,7 +444,7 @@ const createFunctionCallContent = (
   id?: string,
   args?: Record<string, unknown>,
   thoughtSignature?: string
-) => ({
+): AgentConversationContent => ({
   role: 'model',
   parts: [
     {
@@ -631,7 +631,7 @@ export async function POST(request: NextRequest) {
       const callArgs = parseFunctionCallArgs(functionCall.args);
       historyContents.push(
         createFunctionCallContent(
-          functionCall.name,
+          functionCallName,
           functionCall.id,
           callArgs,
           functionCallPart?.thoughtSignature
