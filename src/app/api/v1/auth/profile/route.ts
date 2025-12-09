@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import type { PrismaClientKnownRequestError } from '@prisma/client/runtime';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 

@@ -57,7 +57,7 @@ export default async function SpacesMessagesPage() {
     redirect(`/spaces/messages/${sorted[0]?.id}`);
   }
 
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const sidebarCookie = cookieStore.get(SIDEBAR_STATE_COOKIE)?.value;
   const initialSidebarOpen = parseSidebarState(sidebarCookie);
 
