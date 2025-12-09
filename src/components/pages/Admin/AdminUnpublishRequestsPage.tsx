@@ -383,7 +383,6 @@ export function AdminUnpublishRequestsPage() {
                       ) }
                     </TableCell>
                     <TableCell className="text-right space-x-2">
-<<<<<<< HEAD
                     { row.status === 'pending' ? (
                       <>
                         <Button
@@ -422,32 +421,6 @@ export function AdminUnpublishRequestsPage() {
                     ) : (
                       <span className="text-xs text-muted-foreground">No actions</span>
                     ) }
-=======
-                      { row.status === 'pending' ? (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={ () => handleApprove(request) }
-                            disabled={ approveMutation.isPending }
-                          >
-                            <FiCheck className="size-4" aria-hidden="true" />
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={ () => handleReject(request) }
-                            disabled={ rejectMutation.isPending }
-                          >
-                            <FiX className="size-4" aria-hidden="true" />
-                            Reject
-                          </Button>
-                        </>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">No actions</span>
-                      ) }
->>>>>>> b30ccc5888a5ce00256ab21fa24a06f6c3c2bdf9
                     </TableCell>
                   </TableRow>
                 );
