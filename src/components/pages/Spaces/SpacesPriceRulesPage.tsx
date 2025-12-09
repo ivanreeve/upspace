@@ -313,7 +313,7 @@ export function SpacesPriceRulesPage() {
           <Button
             type="button"
             variant="outline"
-            onClick={ () => router.push('/spaces/pricing-rules/new') }
+            onClick={ () => router.push('/partner/spaces/pricing-rules/new') }
             disabled={ !selectedSpaceId }
             className="hover:text-white"
           >

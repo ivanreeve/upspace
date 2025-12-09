@@ -54,7 +54,7 @@ export default async function SpacesMessagesPage() {
       return aKey > bKey ? -1 : 1;
     });
 
-    redirect(`/spaces/messages/${sorted[0]?.id}`);
+    redirect(`/partner/messages/${sorted[0]?.id}`);
   }
 
   const cookieStore = await cookies();
@@ -85,7 +85,7 @@ export default async function SpacesMessagesPage() {
             Keep your listings updated to spark new conversations.
           </p>
           <Button asChild variant="secondary" className="mt-2 text-white hover:bg-[#0A5057]">
-            <Link href="/spaces">
+            <Link href="/partner/spaces">
               View your spaces
             </Link>
           </Button>
