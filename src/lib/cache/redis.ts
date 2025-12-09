@@ -22,8 +22,17 @@ function parseTtlEnvValue(): number {
 
 export const SPACES_LIST_CACHE_TTL_SECONDS = parseTtlEnvValue();
 
-async function getRedisClient(): Promise<RedisClientType | null> {
-  const url = process.env.REDIS_URL;
+function normalizeRedisUrl(url: string): string {
+  // Upstash requires TLS; auto-upgrade redis:// to rediss:// when we detect an Upstash host.
+  if (url.startsWith('redis://') && url.includes('.upstash.io')) {
+    return url.replace(/^redis:\/\//, 'rediss://');
+  }
+  return url;
+}
+
+export async function getRedisClient(): Promise<RedisClientType | null> {
+  const rawUrl = process.env.REDIS_URL;
+  const url = rawUrl ? normalizeRedisUrl(rawUrl) : undefined;
   if (!url) {
     return null;
   }

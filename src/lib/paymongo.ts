@@ -117,6 +117,18 @@ export async function createPaymongoRefund(opts: {
   });
 }
 
+export type PaymongoCheckoutLineItem = {
+  quantity?: number;
+  price_data: {
+    currency: string;
+    unit_amount: number;
+    product_data: {
+      name: string;
+      description?: string | null;
+    };
+  };
+};
+
 export type PaymongoCheckoutSessionResponse = {
   id: string;
   attributes: {
@@ -140,6 +152,7 @@ export async function createPaymongoCheckoutSession(opts: {
   lineItemName: string;
   metadata: Record<string, string>;
   paymentMethodTypes?: string[];
+  lineItems?: PaymongoCheckoutLineItem[];
 }) {
   const payload = {
     data: {
@@ -192,10 +205,24 @@ export async function verifyPaymongoSignature({
     throw new Error('PAYMONGO_WEBHOOK_SECRET is not configured.');
   }
 
-  return verifyPaymongoSignatureWithSecret({
-    payload,
-    signature,
-    secret: resolvedSecret,
-    useLiveSignature,
-  });
+  const signatureValue = useLiveSignature ? signature.li : signature.te;
+  if (!signatureValue) {
+    return false;
+  }
+
+  const unsignedString = `${signature.timestamp}.${payload}`;
+  const hmac = createHmac('sha256', secret).update(unsignedString).digest('hex');
+  const incoming = Buffer.from(signatureValue, 'hex');
+  const computed = Buffer.from(hmac, 'hex');
+
+  try {
+    return timingSafeEqual(incoming, computed);
+  } catch (error) {
+    return false;
+  }
+}
+
+export async function isPaymongoSignatureFresh(signature: PaymongoWebhookSignature, toleranceSeconds = 300) {
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  return Math.abs(nowSeconds - signature.timestamp) <= toleranceSeconds;
 }

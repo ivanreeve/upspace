@@ -44,6 +44,7 @@ const mapPublishedVariant = (isPublished: boolean) =>
   isPublished ? 'success' : 'destructive';
 
 export function AdminSpacesPage() {
+  const queryClient = useQueryClient();
   const [searchValue, setSearchValue] = useState('');
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
   const [pageIndex, setPageIndex] = useState(0);
@@ -51,7 +52,6 @@ export function AdminSpacesPage() {
   const cursor = pageCursors[pageIndex] ?? null;
   const trimmedSearch = searchValue.trim();
   const searchParam = trimmedSearch.length ? trimmedSearch : undefined;
-  const queryClient = useQueryClient();
 
   const {
     data: page,
@@ -65,9 +65,13 @@ export function AdminSpacesPage() {
     search: searchParam,
   });
   const spaces = page?.data ?? [];
+  const approvedSpaces = spaces.filter((space) => space.isPublished);
   const nextCursor = page?.nextCursor ?? null;
   const visibilityMutation = useAdminSpaceVisibilityMutation();
-  const [processingSpaceId, setProcessingSpaceId] = useState<string | null>(null);
+  const [processingSpaceId, setProcessingSpaceId] = useState<{
+    spaceId: string;
+    action: 'hide' | 'show';
+  } | null>(null);
 
   useEffect(() => {
     if (!page) {
@@ -115,18 +119,21 @@ export function AdminSpacesPage() {
     setPageIndex((prev) => prev + 1);
   };
 
-  const handleUnpublish = async (spaceId: string) => {
-    setProcessingSpaceId(spaceId);
+  const handleToggleVisibility = async (spaceId: string, action: 'hide' | 'show') => {
+    setProcessingSpaceId({
+      spaceId,
+      action,
+    });
     try {
       await visibilityMutation.mutateAsync({
         spaceId,
-        action: 'hide',
-        reason: 'Hidden from admin spaces table.',
+        action,
+        reason: action === 'hide' ? 'Hidden from admin spaces table.' : 'Shown from admin spaces table.',
       });
       await queryClient.invalidateQueries({ queryKey: adminSpacesKeys.all, });
-      toast.success('Space unpublished.');
+      toast.success(action === 'hide' ? 'Space hidden from marketplace.' : 'Space visible in marketplace.');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to unpublish space.';
+      const message = err instanceof Error ? err.message : 'Unable to update space visibility.';
       toast.error(message);
     } finally {
       setProcessingSpaceId(null);
@@ -209,7 +216,7 @@ export function AdminSpacesPage() {
                           <Skeleton className="h-4 w-24" />
                         </TableCell>
                         <TableCell className="text-right">
-                          <Skeleton className="h-8 w-8" />
+                          <Skeleton className="h-9 w-9 rounded-full" />
                         </TableCell>
                       </TableRow>
                     )) }
@@ -236,7 +243,7 @@ export function AdminSpacesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  { spaces.map((space) => {
+                  { approvedSpaces.map((space) => {
                     const location = [space.city, space.region].filter(Boolean).join(', ');
                     return (
                       <TableRow key={ space.id }>
@@ -254,22 +261,30 @@ export function AdminSpacesPage() {
                           { space.updatedAt ? dateFormatter.format(new Date(space.updatedAt)) : '—' }
                         </TableCell>
                         <TableCell className="text-right">
-                          <AdminRowActions disabled={ visibilityMutation.isLoading && processingSpaceId === space.id }>
-                            <DropdownMenuItem
-                              onSelect={ () => handleUnpublish(space.id) }
-                              disabled={ !space.isPublished || processingSpaceId === space.id }
-                            >
-                              Unpublish space
-                            </DropdownMenuItem>
-                          </AdminRowActions>
+                          { (() => {
+                            const isProcessingSpace = processingSpaceId?.spaceId === space.id;
+                            const currentAction = isProcessingSpace ? processingSpaceId?.action : space.isPublished ? 'hide' : 'show';
+                            const actionLabel = space.isPublished ? 'Hide space' : 'Show space';
+                            const processingLabel = currentAction === 'hide' ? 'Hiding…' : 'Showing…';
+                            return (
+                              <AdminRowActions disabled={ visibilityMutation.isLoading && isProcessingSpace }>
+                                <DropdownMenuItem
+                                  onSelect={ () => handleToggleVisibility(space.id, space.isPublished ? 'hide' : 'show') }
+                                  disabled={ isProcessingSpace }
+                                >
+                                  { isProcessingSpace ? processingLabel : actionLabel }
+                                </DropdownMenuItem>
+                              </AdminRowActions>
+                            );
+                          })() }
                         </TableCell>
                       </TableRow>
                     );
                   }) }
-                  { spaces.length === 0 && (
+                  { approvedSpaces.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={ 6 } className="py-8 text-center text-sm text-muted-foreground">
-                        No spaces matched your search.
+                        No approved spaces matched your search.
                       </TableCell>
                     </TableRow>
                   ) }
@@ -279,7 +294,7 @@ export function AdminSpacesPage() {
           </div>
 
           <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>{ isFetching ? 'Updating…' : `${spaces.length} space${spaces.length === 1 ? '' : 's'}` }</span>
+            <span>{ isFetching ? 'Updating…' : `${approvedSpaces.length} approved space${approvedSpaces.length === 1 ? '' : 's'}` }</span>
             <div className="flex items-center gap-2">
               <Button
                 type="button"

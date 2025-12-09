@@ -6,12 +6,12 @@ import { toast } from 'sonner';
 
 import { AdminRowActions } from './AdminRowActions';
 
-import { useAdminDisableUserMutation, useAdminUsersQuery } from '@/hooks/api/useAdminUsers';
+import { useAdminDisableUserMutation, useAdminEnableUserMutation, useAdminUsersQuery } from '@/hooks/api/useAdminUsers';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import {
   Select,
   SelectContent,
@@ -78,7 +78,11 @@ export function AdminUsersPage() {
   const users = page?.data ?? [];
   const nextCursor = page?.nextCursor ?? null;
   const disableMutation = useAdminDisableUserMutation();
-  const [processingUserId, setProcessingUserId] = useState<string | null>(null);
+  const enableMutation = useAdminEnableUserMutation();
+  const [processingState, setProcessingState] = useState<{
+    userId: string;
+    type: 'disable' | 'enable';
+  } | null>(null);
 
   useEffect(() => {
     if (!page) {
@@ -127,7 +131,10 @@ export function AdminUsersPage() {
   };
 
   const handleDisable = async (userId: string) => {
-    setProcessingUserId(userId);
+    setProcessingState({
+      userId,
+      type: 'disable',
+    });
     try {
       await disableMutation.mutateAsync({
         userId,
@@ -138,7 +145,26 @@ export function AdminUsersPage() {
       const message = err instanceof Error ? err.message : 'Unable to disable user.';
       toast.error(message);
     } finally {
-      setProcessingUserId(null);
+      setProcessingState(null);
+    }
+  };
+
+  const handleEnable = async (userId: string) => {
+    setProcessingState({
+      userId,
+      type: 'enable',
+    });
+    try {
+      await enableMutation.mutateAsync({
+        userId,
+        reason: 'Enabled via admin users table.',
+      });
+      toast.success('User enabled.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to enable user.';
+      toast.error(message);
+    } finally {
+      setProcessingState(null);
     }
   };
 
@@ -218,7 +244,7 @@ export function AdminUsersPage() {
                           <Skeleton className="h-4 w-28" />
                         </TableCell>
                         <TableCell className="text-right">
-                          <Skeleton className="h-8 w-8" />
+                          <Skeleton className="h-9 w-9 rounded-full" />
                         </TableCell>
                       </TableRow>
                     )) }
@@ -259,14 +285,34 @@ export function AdminUsersPage() {
                         { dateFormatter.format(new Date(user.created_at)) }
                       </TableCell>
                       <TableCell className="text-right">
-                        <AdminRowActions disabled={ disableMutation.isLoading && processingUserId === user.id }>
-                          <DropdownMenuItem
-                            onSelect={ () => handleDisable(user.id) }
-                            disabled={ user.status !== 'active' || processingUserId === user.id }
-                          >
-                            Disable account
-                          </DropdownMenuItem>
-                        </AdminRowActions>
+                        { (() => {
+                          const isProcessingUser = processingState?.userId === user.id;
+                          const isDisabling = processingState?.type === 'disable';
+                          const isEnabling = processingState?.type === 'enable';
+                          const showEnableAction = user.status !== 'active';
+                          const isActionLoading = showEnableAction ? enableMutation.isLoading : disableMutation.isLoading;
+                          const canToggleUser = user.role !== 'admin';
+                          const actionLabel = showEnableAction ? 'Enable account' : 'Disable account';
+                          const processingLabel = showEnableAction ? 'Enabling…' : 'Disabling…';
+
+                          return (
+                            <AdminRowActions disabled={ isProcessingUser || !canToggleUser }>
+                              <DropdownMenuItem
+                                onSelect={ () => {
+                                  if (!canToggleUser) return;
+                                  return showEnableAction ? handleEnable(user.id) : handleDisable(user.id);
+                                } }
+                                disabled={ isProcessingUser || isActionLoading || !canToggleUser }
+                              >
+                                { !canToggleUser
+                                  ? 'Administrators cannot be modified'
+                                  : isProcessingUser
+                                    ? processingLabel
+                                    : actionLabel }
+                              </DropdownMenuItem>
+                            </AdminRowActions>
+                          );
+                        })() }
                       </TableCell>
                     </TableRow>
                   )) }

@@ -111,3 +111,33 @@ export function useAdminDisableUserMutation() {
     },
   });
 }
+
+export function useAdminEnableUserMutation() {
+  const authFetch = useAuthenticatedFetch();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      userId,
+      reason,
+    }: {
+      userId: string;
+      reason?: string;
+    }) => {
+      const response = await authFetch(`/api/v1/admin/users/${userId}/enable`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify({ reason, }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminUserKeys.all, });
+    },
+  });
+}
