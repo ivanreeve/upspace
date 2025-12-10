@@ -43,8 +43,20 @@ const formatTimestamp = (value?: string | null) =>
 const formatOutcome = (value?: string | null) =>
   value ? value.replace(/^"|"$/g, '') : 'unknown';
 
-const formatStatusLabel = (value: string) =>
-  value.replace(/_/g, ' ');
+const formatStatusLabel = (value: string) => {
+  const overrides: Record<string, string> = {
+    new_last7days: 'Last 7 Days',
+  };
+
+  if (overrides[value]) {
+    return overrides[value];
+  }
+
+  return value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+    .replace(/([a-z])([0-9]+)/gi, '$1 $2');
+};
 
 const TableSkeleton = () => (
   <div className="space-y-2">
