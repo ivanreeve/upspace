@@ -9,8 +9,10 @@ export type BookingRow = {
   area_id: string;
   area_name: string;
   booking_hours: bigint | number;
+  start_at: Date;
   price_minor: bigint | number | null;
   currency: string;
+  guest_count: number;
   status: BookingRecord['status'];
   created_at: Date;
   user_auth_id: string;
@@ -38,12 +40,16 @@ export const mapBookingRowToRecord = (row: BookingRow): BookingRecord => ({
   areaId: row.area_id,
   areaName: row.area_name,
   bookingHours: normalizeNumeric(row.booking_hours) ?? 0,
+  startAt: (row.start_at ?? row.created_at).toISOString(),
   price: (() => {
     const priceMinor = normalizeNumeric(row.price_minor);
     return typeof priceMinor === 'number'
       ? priceMinor / BOOKING_PRICE_MINOR_FACTOR
       : null;
   })(),
+  guestCount: typeof row.guest_count === 'number' && Number.isFinite(row.guest_count)
+    ? row.guest_count
+    : 1,
   status: row.status,
   createdAt: row.created_at.toISOString(),
   customerAuthId: row.user_auth_id,

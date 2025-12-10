@@ -94,3 +94,55 @@ export async function ensureWalletRow(dbUserId: bigint) {
     update: {},
   });
 }
+
+export type RecordTestModeBookingWalletChargeOptions = {
+  walletOwnerUserId: bigint;
+  bookingId: string;
+  amountMinor: number;
+  currency: string;
+  description?: string | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+export async function recordTestModeBookingWalletCharge(
+  options: RecordTestModeBookingWalletChargeOptions
+) {
+  const amountMinor = Math.trunc(options.amountMinor);
+  if (!Number.isFinite(amountMinor) || amountMinor <= 0) {
+    return null;
+  }
+
+  const walletRow = await ensureWalletRow(options.walletOwnerUserId);
+  const metadata = {
+    ...(options.metadata ?? {}),
+    booking_id: options.bookingId,
+    testing_mode: true,
+  };
+  const amount = BigInt(amountMinor);
+
+  return prisma.$transaction(async (tx) => {
+    const transaction = await tx.wallet_transaction.create({
+      data: {
+        wallet_id: walletRow.id,
+        type: 'charge',
+        status: 'succeeded',
+        amount_minor: amount,
+        net_amount_minor: amount,
+        currency: options.currency ?? walletRow.currency,
+        description: options.description ?? null,
+        booking_id: options.bookingId,
+        metadata,
+      },
+    });
+
+    await tx.wallet.update({
+      where: { id: walletRow.id, },
+      data: {
+        balance_minor: { increment: amount, },
+        updated_at: new Date(),
+      },
+    });
+
+    return transaction;
+  });
+}

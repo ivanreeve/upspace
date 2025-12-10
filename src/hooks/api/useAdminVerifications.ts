@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
+import { adminUnpublishRequestKeys } from '@/hooks/api/useAdminUnpublishRequests';
 
 export type VerificationDocument = {
   id: string;
@@ -165,6 +166,7 @@ export function useApproveVerificationMutation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminVerificationKeys.all, });
+      queryClient.invalidateQueries({ queryKey: adminUnpublishRequestKeys.all, });
     },
   });
 }
