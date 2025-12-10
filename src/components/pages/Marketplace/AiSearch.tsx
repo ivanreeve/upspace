@@ -39,11 +39,11 @@ const getFriendlyAiErrorMessage = (error: Error) => {
   if (/can't reach database server/i.test(message)) {
     return 'Sorry, we cannot reach our workspace database right now. Please try again in a moment.';
   }
-  if (/unable to reach gemini/i.test(message)) {
-    return 'Gemini is currently unavailable. Please try again in a few seconds.';
+  if (/unable to reach openrouter/i.test(message)) {
+    return 'OpenRouter is currently unavailable. Please try again in a few seconds.';
   }
   if (/unexpected response/i.test(message)) {
-    return 'We received an unexpected response while talking to Gemini. Please try again.';
+    return 'We received an unexpected response from OpenRouter. Please try again.';
   }
 
   return 'UpSpace could not complete that request right now. Please try again shortly.';
@@ -200,7 +200,7 @@ function MessageBubble({
           className="relative z-10 mt-0.5 flex size-12 items-center justify-center rounded-full bg-cyan-100 text-cyan-900 dark:bg-cyan-900/30 dark:text-cyan-100"
         >
           <GradientSparklesIcon isThinking={ isThinking } />
-          <span className="sr-only">Gemini</span>
+          <span className="sr-only">OpenRouter assistant</span>
         </div>
       ) }
       { shouldShowBubble ? (
@@ -329,13 +329,13 @@ export function AiSearch() {
         const message =
           data?.error && typeof data.error === 'string'
             ? data.error
-            : 'Unable to reach Gemini right now.';
+            : 'Unable to reach OpenRouter right now.';
         const combined = detail ? `${message} (${detail})` : message;
         throw new Error(combined);
       }
 
       if (!data || typeof data.reply !== 'string') {
-        throw new Error('Unexpected response from Gemini.');
+        throw new Error('Unexpected response from OpenRouter.');
       }
 
       return {

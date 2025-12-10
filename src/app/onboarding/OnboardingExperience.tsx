@@ -262,8 +262,16 @@ export default function OnboardingExperience() {
                 className="w-full justify-center gap-2"
                 disabled={ isSubmitting }
               >
-                { isSubmitting && <CgSpinner className="h-4 w-4 animate-spin" aria-hidden="true" /> }
-                <span>{ isSubmitting ? 'Saving...' : 'Save profile details' }</span>
+                <CgSpinner
+                  className={ cn(
+                    'h-4 w-4 transition-opacity',
+                    isSubmitting ? 'animate-spin opacity-100' : 'opacity-0'
+                  ) }
+                  aria-hidden="true"
+                />
+                <span className="inline-block min-w-[14rem] text-center">
+                  { isSubmitting ? 'Saving...' : 'Save profile details' }
+                </span>
               </Button>
             </div>
           </form>
