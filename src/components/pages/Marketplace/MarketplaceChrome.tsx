@@ -10,6 +10,7 @@ import {
   FiBell,
   FiBookmark,
   FiCommand,
+  FiCreditCard,
   FiHome,
   FiLogOut,
   FiMenu,
@@ -386,6 +387,13 @@ function SidebarFooterContent({
                     <span>Notifications</span>
                   </DropdownMenuItem>
                 ) }
+                <DropdownMenuItem
+                  onSelect={ () => onNavigate('/customer/transactions') }
+                  className="hover:!text-white hover:[&_svg]:!text-white"
+                >
+                  <FiCreditCard className="size-4" aria-hidden="true" />
+                  <span>Transaction history</span>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
                   className="text-destructive focus-visible:text-destructive hover:!text-white hover:[&_svg]:!text-white"
@@ -617,6 +625,10 @@ function MobileTopNav({
                 <DropdownMenuItem onSelect={ () => onNavigate('/customer/notifications') }>
                   <FiBell className="size-4" aria-hidden="true" />
                   <span>Notifications</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={ () => onNavigate('/customer/transactions') }>
+                  <FiCreditCard className="size-4" aria-hidden="true" />
+                  <span>Transaction history</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
@@ -1177,7 +1189,7 @@ export function MarketplaceChrome({
           showThemeSwitcher={ isCustomerRole || isAdminRole }
         />
       ) }
-      <div className="flex min-h-screen w-full">
+      <div className="flex min-h-screen w-full gap-5">
         <Sidebar
           collapsible="icon"
           className="hidden md:flex border-1 border-r-muted"
@@ -1243,6 +1255,15 @@ export function MarketplaceChrome({
                       icon={ FiBell }
                       tooltip="Notifications"
                       iconProps={ { strokeWidth: 2, } }
+                    />
+                  ) }
+                  { isCustomerRole && (
+                    <SidebarLinkItem
+                      href="/customer/bookings"
+                      label="Bookings"
+                      icon={ LuTicket }
+                      tooltip="Bookings"
+                      iconProps={ { strokeWidth: 1.5, } }
                     />
                   ) }
                   { shouldShowNotifications && (
@@ -1374,7 +1395,7 @@ export function MarketplaceChrome({
 
         <SidebarInset
           className={ cn(
-            'relative flex-1 bg-background w-full pb-0 pt-0 md:pt-0',
+            'relative flex-1 bg-background w-full pb-0 pt-0 md:pt-0 px-4 md:px-6',
             insetClassName
           ) }
           style={
