@@ -36,12 +36,17 @@ import {
 } from 'react-icons/fi';
 import { CgSpinner } from 'react-icons/cg';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { MdOutlineMailOutline } from 'react-icons/md';
 import type { IconType } from 'react-icons';
 
-import { SpaceAddressFields, SpaceDetailsFields, createSpaceFormDefaults } from '@/components/pages/Spaces/SpaceForms';
+import {
+  SpaceAddressFields,
+  SpaceDetailsFields,
+  createSpaceFormDefaults,
+  spaceRecordToFormValues
+} from '@/components/pages/Spaces/SpaceForms';
 import { SpaceAmenitiesStep } from '@/components/pages/Spaces/SpaceAmenitiesStep';
 import { SpaceAvailabilityStep } from '@/components/pages/Spaces/SpaceAvailabilityStep';
 import { SpaceVerificationRequirementsStep, VERIFICATION_REQUIREMENTS, type VerificationRequirementId } from '@/components/pages/Spaces/SpaceVerificationRequirementsStep';
@@ -58,7 +63,7 @@ import { useSpaceFormPersistence } from '@/hooks/useSpaceFormPersistence';
 import { usePersistentSpaceImages } from '@/hooks/usePersistentSpaceImages';
 import { WEEKDAY_ORDER } from '@/data/spaces';
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
-import { partnerSpacesKeys } from '@/hooks/api/usePartnerSpaces';
+import { partnerSpacesKeys, usePartnerSpaceQuery, useSpaceVerificationQuery } from '@/hooks/api/usePartnerSpaces';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { spaceSchema, type SpaceFormValues } from '@/lib/validations/spaces';
 import { cn } from '@/lib/utils';
@@ -122,7 +127,25 @@ const STEP_SIDEBAR_ITEMS: StepSidebarItem[] = [
     icon: FiShield,
   }
 ];
-type VerificationRequirementsState = Record<VerificationRequirementId, (File | null)[]>;
+type ExistingVerificationFile = {
+  kind: 'existing';
+  path: string;
+  mimeType: string;
+  fileSize: number;
+  name: string;
+};
+type VerificationSlot = File | ExistingVerificationFile | null;
+type VerificationRequirementsState = Record<VerificationRequirementId, VerificationSlot[]>;
+
+const isExistingVerificationFile = (
+  value: VerificationSlot
+): value is ExistingVerificationFile =>
+  Boolean(
+    value &&
+    typeof value === 'object' &&
+    'kind' in value &&
+    (value as { kind?: unknown }).kind === 'existing'
+  );
 
 const createEmptyVerificationRequirementsState = (): VerificationRequirementsState =>
   VERIFICATION_REQUIREMENTS.reduce((state, requirement) => {
@@ -158,6 +181,12 @@ const SPACE_IMAGES_BUCKET = process.env.NEXT_PUBLIC_SPACE_IMAGES_BUCKET ?? 'upsp
 const VERIFICATION_DOCS_BUCKET = process.env.NEXT_PUBLIC_VERIFICATION_DOCS_BUCKET ?? 'upspace-verification-documents';
 const SPACE_IMAGES_PREFIX = 'space-images';
 const VERIFICATION_DOCS_PREFIX = 'verification-documents';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '') ?? null;
+const DOCUMENT_TYPE_TO_REQUIREMENT: Record<string, VerificationRequirementId> = {
+  dti_registration: 'dti_registration',
+  bir_cor: 'tax_registration',
+  authorized_rep_id: 'representative_id',
+};
 
 const sanitizeFileName = (value: string) =>
   value
@@ -185,6 +214,26 @@ const SPACE_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg'] as const;
 const SPACE_IMAGE_MAX_BYTES = 50 * 1024 * 1024;
 const VERIFICATION_DOC_MIME_TYPES = ['image/png', 'image/jpeg', 'application/pdf'] as const;
 const VERIFICATION_DOC_MAX_BYTES = 50 * 1024 * 1024;
+
+const resolveSupabasePublicUrl = (path: string | null | undefined) => {
+  if (!path || !SUPABASE_URL) {
+    return null;
+  }
+  return `${SUPABASE_URL}/storage/v1/object/public/${path.replace(/^\/+/, '')}`;
+};
+
+const fileFromUrl = async (url: string, filename: string) => {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error('Unable to load remote file.');
+  }
+  const blob = await response.blob();
+  const inferredName = filename || 'file';
+  return new File([blob], inferredName, {
+    type: blob.type || 'application/octet-stream',
+    lastModified: Date.now(),
+  });
+};
 
 type UploadedSpaceImagePayload = {
   path: string;
@@ -267,26 +316,18 @@ const normalizeMimeType = (mime: string) => {
 
 export default function SpaceCreateRoute() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const spaceImageMaxLabel = formatBytes(SPACE_IMAGE_MAX_BYTES);
   const verificationDocMaxLabel = formatBytes(VERIFICATION_DOC_MAX_BYTES);
-  const [searchParamsString, setSearchParamsString] = useState('');
-  useEffect(() => {
-    const update = () => {
-      setSearchParamsString(window.location.search.replace(/^\?/, ''));
-    };
-    update();
-    window.addEventListener('popstate', update);
-    return () => {
-      window.removeEventListener('popstate', update);
-    };
-  }, []);
-  const searchParams = useMemo(() => new URLSearchParams(searchParamsString), [searchParamsString]);
   const { session, } = useSession();
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const queryClient = useQueryClient();
   const storageOwnerId = session?.user?.id ?? 'anonymous';
-  const serializedSearchParams = searchParamsString;
   const stepParam = searchParams.get('step');
+  const spaceIdParam = searchParams.get('spaceId');
+  const editingSpaceId = spaceIdParam && /^[0-9a-f-]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(spaceIdParam)
+    ? spaceIdParam
+    : null;
   const authenticatedFetch = useAuthenticatedFetch();
   const currentStep: SpaceFormStep =
     stepParam === '2'
@@ -308,9 +349,15 @@ export default function SpaceCreateRoute() {
     clearDraft,
     saveDraft,
     isHydrated: isFormHydrated,
-  } = useSpaceFormPersistence(form, currentStep);
+  } = useSpaceFormPersistence(form, currentStep, { enabled: !editingSpaceId, });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [hasPrefilledSpaceAssets, setHasPrefilledSpaceAssets] = useState(false);
+  const {
+    data: existingSpace,
+    isLoading: isLoadingExistingSpace,
+    isError: isExistingSpaceError,
+  } = usePartnerSpaceQuery(editingSpaceId);
 
   const [listingChecklistState, setListingChecklistState] = useState<Record<string, boolean>>(createListingChecklistState);
   const isListingChecklistComplete = useMemo(
@@ -364,7 +411,162 @@ export default function SpaceCreateRoute() {
   const [verificationRequirements, setVerificationRequirements] = useState<VerificationRequirementsState>(() =>
     createEmptyVerificationRequirementsState()
   );
-  const isPersistenceHydrated = isFormHydrated && areImagesHydrated;
+  const [hasPrefilledVerificationDocs, setHasPrefilledVerificationDocs] = useState(false);
+  const { data: verificationData, } = useSpaceVerificationQuery(editingSpaceId);
+  const isPrefillingExistingSpace = Boolean(
+    editingSpaceId &&
+    (isLoadingExistingSpace || !existingSpace || !hasPrefilledSpaceAssets || !hasPrefilledVerificationDocs)
+  );
+  const isPersistenceHydrated = isFormHydrated && areImagesHydrated && !isPrefillingExistingSpace;
+
+  const isEditing = Boolean(editingSpaceId);
+  const spaceDisplayName = useMemo(() => {
+    const name = existingSpace?.name?.trim();
+    if (name) {
+      return name;
+    }
+    if (isEditing && isLoadingExistingSpace) {
+      return 'space';
+    }
+    return 'space';
+  }, [existingSpace?.name, isEditing, isLoadingExistingSpace]);
+
+  const breadcrumbLabel = isEditing ? 'Edit space' : 'Add space';
+  const pageHeading = isEditing ? `Edit ${spaceDisplayName}` : 'Add a coworking space';
+  const pageSubheading = isEditing
+    ? 'Update your listing details, photos, amenities, and verification docs before re-submitting.'
+    : 'Provide the source-of-truth location details so your listing stays accurate across UpSpace.';
+
+  useEffect(() => {
+    if (!editingSpaceId || !existingSpace || !areImagesHydrated || hasPrefilledSpaceAssets) {
+      return;
+    }
+
+    const resolveImageUrl = (image: (typeof existingSpace)['images'][number]) =>
+      image.public_url ?? resolveSupabasePublicUrl(image.path) ?? image.path;
+
+    const preloadAssets = async () => {
+      try {
+        clearImages();
+
+        const primary =
+          existingSpace.images.find((image) => image.is_primary) ??
+          existingSpace.images[0] ??
+          null;
+
+        if (primary) {
+          const primaryUrl = resolveImageUrl(primary);
+          if (primaryUrl) {
+            const primaryFileName = primary.path.split('/').pop() ?? 'featured.jpg';
+            const file = await fileFromUrl(primaryUrl, primaryFileName);
+            setFeaturedImage(file);
+          }
+        }
+
+        const nonPrimary = existingSpace.images.filter((image) => image !== primary);
+        const grouped = new Map<string, typeof nonPrimary>();
+        nonPrimary.forEach((image) => {
+          const key = (image.category ?? 'Gallery').trim() || 'Gallery';
+          grouped.set(key, [ ...(grouped.get(key) ?? []), image ]);
+        });
+
+        const categories = await Promise.all(
+          Array.from(grouped.entries()).map(async ([categoryName, images]) => {
+            const files: File[] = [];
+            for (const image of images) {
+              const url = resolveImageUrl(image);
+              if (!url) {
+                continue;
+              }
+              try {
+                const name = image.path.split('/').pop() ?? `${categoryName}.jpg`;
+                const file = await fileFromUrl(url, name);
+                files.push(file);
+              } catch (error) {
+                console.error('Failed to preload space image', error);
+              }
+            }
+            return {
+              id: generateCategoryId(),
+              name: categoryName || 'Gallery',
+              images: files,
+            };
+          })
+        );
+
+        const normalizedCategories = categories.filter((category) => category.name.trim().length > 0);
+        if (normalizedCategories.length > 0) {
+          setPhotoCategories(normalizedCategories);
+        } else {
+          setPhotoCategories([
+            {
+              id: generateCategoryId(),
+              name: 'Gallery',
+              images: [],
+            }
+          ]);
+        }
+      } catch (error) {
+        console.error('Failed to preload existing space assets', error);
+      } finally {
+        setHasPrefilledSpaceAssets(true);
+      }
+    };
+
+    void preloadAssets();
+  }, [
+    areImagesHydrated,
+    clearImages,
+    editingSpaceId,
+    existingSpace,
+    hasPrefilledSpaceAssets,
+    setFeaturedImage,
+    setPhotoCategories
+  ]);
+
+  useEffect(() => {
+    if (!editingSpaceId || !existingSpace) {
+      return;
+    }
+
+    form.reset(spaceRecordToFormValues(existingSpace));
+  }, [editingSpaceId, existingSpace, form]);
+
+  useEffect(() => {
+    if (isExistingSpaceError) {
+      toast.error('Unable to load this draft space. Please try again.');
+    }
+  }, [isExistingSpaceError]);
+
+  useEffect(() => {
+    if (!editingSpaceId || !verificationData || hasPrefilledVerificationDocs) {
+      return;
+    }
+
+    const preload = async () => {
+      const next = createEmptyVerificationRequirementsState();
+
+      for (const doc of verificationData.documents) {
+        const requirement = DOCUMENT_TYPE_TO_REQUIREMENT[doc.document_type];
+        if (!requirement) {
+          continue;
+        }
+
+        next[requirement][0] = {
+          kind: 'existing',
+          path: doc.path,
+          mimeType: doc.mime_type,
+          fileSize: doc.file_size_bytes ?? 0,
+          name: doc.path.split('/').pop() ?? `${requirement}.pdf`,
+        };
+      }
+
+      setVerificationRequirements(next);
+      setHasPrefilledVerificationDocs(true);
+    };
+
+    void preload();
+  }, [editingSpaceId, hasPrefilledVerificationDocs, verificationData]);
 
   const handleRequirementUpload = (requirementId: VerificationRequirementId, slotIndex: number, file: File) => {
     setVerificationRequirements((prev) => {
@@ -504,7 +706,7 @@ export default function SpaceCreateRoute() {
 
   const navigateToStep = useCallback(
     (nextStep: SpaceFormStep, options?: { replace?: boolean; }) => {
-      const params = new URLSearchParams(serializedSearchParams);
+      const params = new URLSearchParams(searchParams.toString());
       params.set('step', String(nextStep));
       const query = params.toString();
       const target = query ? `/partner/spaces/create?${query}` : '/partner/spaces/create';
@@ -514,9 +716,8 @@ export default function SpaceCreateRoute() {
       } else {
         router.push(target);
       }
-      setSearchParamsString(query);
     },
-    [router, serializedSearchParams]
+    [router, searchParams]
   );
 
   const renderStepButton = (item: StepSidebarItem, variant: 'vertical' | 'horizontal') => {
@@ -1082,16 +1283,27 @@ export default function SpaceCreateRoute() {
           throw new Error(`Missing required document for ${requirement.label}.`);
         }
 
+        if (isExistingVerificationFile(file)) {
+          uploads.push({
+            path: file.path,
+            requirement_id: requirement.id,
+            slot_id: slot.id,
+            mime_type: file.mimeType,
+            file_size_bytes: file.fileSize,
+          });
+          continue;
+        }
+
         const {
           path,
           mimeType,
-        } = await uploadVerificationDocumentFile(requirement.id, file);
+        } = await uploadVerificationDocumentFile(requirement.id, file as File);
         uploads.push({
           path,
           requirement_id: requirement.id,
           slot_id: slot.id,
           mime_type: mimeType,
-          file_size_bytes: file.size,
+          file_size_bytes: (file as File).size,
         });
       }
     }
@@ -1126,7 +1338,10 @@ export default function SpaceCreateRoute() {
     try {
       const assets = await uploadSubmissionAssets();
       const requestPayload = buildCreateSpacePayload(values, assets);
-      const response = await authenticatedFetch('/api/v1/spaces', {
+      const submitUrl = editingSpaceId
+        ? `/api/v1/partner/spaces/${editingSpaceId}/verification/resubmit`
+        : '/api/v1/spaces';
+      const response = await authenticatedFetch(submitUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', },
         body: JSON.stringify(requestPayload),
@@ -1140,17 +1355,26 @@ export default function SpaceCreateRoute() {
         throw new Error(message);
       }
 
-      const payload = responseBody as CreateSpaceApiResponse;
-      const spaceId = payload?.data?.space_id;
+      if (editingSpaceId) {
+        toast.success(`${values.name} resubmitted for review.`);
+        queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
+        queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(editingSpaceId), });
+        queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.verification(editingSpaceId), });
+      } else {
+        const payload = responseBody as CreateSpaceApiResponse;
+        const spaceId = payload?.data?.space_id;
 
-      if (!spaceId) {
-        throw new Error('Space submission succeeded but no ID was returned.');
+        if (!spaceId) {
+          throw new Error('Space submission succeeded but no ID was returned.');
+        }
+
+        toast.success(`${values.name} submitted for review.`);
+        queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
       }
-
-      toast.success(`${values.name} submitted for review.`);
-      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
       setHasSubmitted(true);
-      clearDraft();
+      if (!editingSpaceId) {
+        clearDraft();
+      }
       clearImages();
       resetVerificationRequirements();
       router.replace('/partner/spaces');
@@ -1163,6 +1387,11 @@ export default function SpaceCreateRoute() {
   };
 
   const handleSaveDraft = useCallback(() => {
+    if (editingSpaceId) {
+      toast.info('This server draft is already saved. Update fields and submit when ready.');
+      return;
+    }
+
     const summary = saveDraft();
     if (!summary) {
       toast.error('Drafts can only be saved in browsers that support local storage.');
@@ -1171,17 +1400,17 @@ export default function SpaceCreateRoute() {
 
     const name = summary.name.trim() || 'Space draft';
     toast.success(`${name} saved as draft.`);
-  }, [saveDraft]);
+  }, [editingSpaceId, saveDraft]);
 
   return (
     <>
       <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">
-            <SpacesBreadcrumbs currentPage="Add space" className="justify-start" />
-            <h1 className="text-3xl font-semibold tracking-tight">Add a coworking space</h1>
+            <SpacesBreadcrumbs currentPage={ breadcrumbLabel } className="justify-start" />
+            <h1 className="text-3xl font-semibold tracking-tight">{ pageHeading }</h1>
             <p className="text-base text-muted-foreground">
-              Provide the source-of-truth location details so your listing stays accurate across UpSpace.
+              { pageSubheading }
             </p>
           </div>
         </div>
@@ -1569,12 +1798,12 @@ export default function SpaceCreateRoute() {
                           { isSubmitting ? (
                             <>
                               <CgSpinner className="h-4 w-4 animate-spin" aria-hidden="true" />
-                              <span>Submitting...</span>
+                              <span>{ editingSpaceId ? 'Re-submitting...' : 'Submitting...' }</span>
                             </>
                           ) : (
                             <>
                               <MdOutlineMailOutline className="size-4" aria-hidden="true" />
-                              <span>Submit for Review</span>
+                              <span>{ editingSpaceId ? 'Re-submit for Review' : 'Submit for Review' }</span>
                             </>
                           ) }
                         </Button>

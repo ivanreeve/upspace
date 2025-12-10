@@ -58,9 +58,11 @@ export const VERIFICATION_REQUIREMENTS = [
 export type VerificationRequirement = (typeof VERIFICATION_REQUIREMENTS)[number];
 export type VerificationRequirementId = VerificationRequirement['id'];
 type VerificationRequirementSlot = VerificationRequirement['slots'][number];
+type ExistingUpload = { kind: 'existing'; name: string };
+type VerificationSlot = File | ExistingUpload | null;
 
 type SpaceVerificationRequirementsStepProps = {
-  uploads: Record<VerificationRequirementId, (File | null)[]>;
+  uploads: Record<VerificationRequirementId, VerificationSlot[]>;
   onUpload: (requirementId: VerificationRequirementId, slotIndex: number, file: File) => void;
   onRemove: (requirementId: VerificationRequirementId, slotIndex: number) => void;
   maxFileSizeBytes: number;
@@ -137,6 +139,12 @@ export function SpaceVerificationRequirementsStep({
               <div className="mt-4 space-y-3">
                 { requirement.slots.map((slot, slotIndex) => {
                   const slotFile = slotFiles[slotIndex];
+                  const slotFileName =
+                    slotFile && 'name' in slotFile
+                      ? slotFile.name
+                      : slotFile instanceof File
+                        ? slotFile.name
+                        : null;
                   const inputKey = getInputKey(requirement.id, slot);
                   const inputId = `requirement-upload-${inputKey}`;
 
@@ -158,7 +166,7 @@ export function SpaceVerificationRequirementsStep({
                       <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
                           <p className="text-sm font-medium text-foreground">
-                            { slotFile ? slotFile.name : 'No file uploaded yet' }
+                          { slotFileName ?? 'No file uploaded yet' }
                           </p>
                           <p className="text-sm text-muted-foreground">
                             { slotFile ? 'Replace the file if you need to refresh it.' : 'Make sure the file is clear and legible.' }
