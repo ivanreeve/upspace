@@ -494,3 +494,6 @@ export async function POST(req: NextRequest) {
 
   return RECEIVED_RESPONSE;
 }
+
+// Exposed for unit tests
+export const __test__ = { handleCheckoutEventForTest: handleCheckoutEvent, };

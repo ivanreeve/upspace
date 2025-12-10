@@ -16,6 +16,7 @@ import {
 } from 'react-icons/fi';
 
 import { useBulkUpdateBookingStatusMutation, usePartnerBookingsQuery } from '@/hooks/api/useBookings';
+import { usePartnerStuckBookingsQuery } from '@/hooks/api/usePartnerStuckBookings';
 import type { BookingStatus } from '@/lib/bookings/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -103,6 +104,10 @@ export function SpacesBookingsPage() {
     isError,
     error,
   } = usePartnerBookingsQuery();
+  const {
+    data: stuckData,
+    isLoading: isStuckLoading,
+  } = usePartnerStuckBookingsQuery();
   const bulkUpdate = useBulkUpdateBookingStatusMutation();
   const headingId = useId();
   const descriptionId = useId();
@@ -475,6 +480,19 @@ export function SpacesBookingsPage() {
         <Badge variant="secondary" className="text-xs">
           { activeCount } active
         </Badge>
+      </div>
+
+      <div className="space-y-2">
+        <Badge variant="outline" className="text-xs">
+          { isStuckLoading
+            ? 'Checking paid-but-pending bookings...'
+            : `${ stuckData?.pendingPaid ?? 0 } paid bookings need review` }
+        </Badge>
+        { stuckData && stuckData.pendingPaid > 0 ? (
+          <div className="rounded-md border border-amber-500/60 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
+            Some bookings were paid but are still pending. Open the table below to resolve them.
+          </div>
+        ) : null }
       </div>
 
       <section

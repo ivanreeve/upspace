@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma';
 const CRON_SECRET = process.env.CRON_SECRET;
 const TEN_MINUTES_MS = 10 * 60 * 1000;
 const THIRTY_MINUTES_MS = 30 * 60 * 1000;
+const START_WINDOW_MS = 15 * 60 * 1000;
 
 const unauthorizedResponse = NextResponse.json(
   { message: 'Unauthorized', },
@@ -70,9 +71,11 @@ export async function GET(request: Request) {
   const now = Date.now();
   const stalePaidCutoff = new Date(now - TEN_MINUTES_MS);
   const staleUnpaidCutoff = new Date(now - THIRTY_MINUTES_MS);
+  const nearStart = new Date(now + START_WINDOW_MS);
 
   let autoConfirmed = 0;
   let expired = 0;
+  let capacityWarnings = 0;
 
   // Auto-confirm paid bookings that are still pending
   const paidPending = await prisma.booking.findMany({
@@ -110,6 +113,77 @@ export async function GET(request: Request) {
     autoConfirmed += 1;
   }
 
+  // Warn about capacity conflicts close to start time
+  const nearStartPending = await prisma.booking.findMany({
+    where: {
+      status: 'pending',
+      start_at: {
+        lte: nearStart,
+        gte: new Date(now),
+      },
+      transaction: { some: {}, },
+    },
+  });
+
+  for (const row of nearStartPending) {
+    const maxCap = row.area_max_capacity === null ? null : Number(row.area_max_capacity);
+    if (maxCap === null || !Number.isFinite(maxCap)) continue;
+
+    const activeCount = await countActiveBookingsOverlap(
+      prisma,
+      row.area_id,
+      row.start_at,
+      row.expires_at,
+      row.id
+    );
+    const projected = activeCount + row.guest_count;
+    if (projected <= maxCap) continue;
+
+    const booking = mapBookingRowToRecord(row);
+    const bookingHref = `/marketplace/${booking.spaceId}`;
+
+    const existing = await prisma.app_notification.findFirst({
+      where: {
+        booking_id: booking.id,
+        type: 'system',
+        title: 'Booking capacity warning',
+      },
+      select: { id: true, },
+    });
+
+    if (!existing) {
+      await prisma.app_notification.create({
+        data: {
+          user_auth_id: booking.customerAuthId,
+          title: 'Booking capacity warning',
+          body: `${booking.areaName} at ${booking.spaceName} may be over capacity. Please contact the host.`,
+          href: bookingHref,
+          type: 'system',
+          booking_id: booking.id,
+          space_id: booking.spaceId,
+          area_id: booking.areaId,
+        },
+      });
+
+      if (booking.partnerAuthId) {
+        await prisma.app_notification.create({
+          data: {
+            user_auth_id: booking.partnerAuthId,
+            title: 'Capacity conflict to review',
+            body: `${booking.areaName} in ${booking.spaceName} exceeds capacity within 15 minutes. Approve, adjust, or refund.`,
+            href: bookingHref,
+            type: 'system',
+            booking_id: booking.id,
+            space_id: booking.spaceId,
+            area_id: booking.areaId,
+          },
+        });
+      }
+
+      capacityWarnings += 1;
+    }
+  }
+
   // Expire stale unpaid or past-start pending bookings
   const expireResult = await prisma.booking.updateMany({
     where: {
@@ -131,6 +205,7 @@ export async function GET(request: Request) {
     data: {
       autoConfirmed,
       expired,
+      capacityWarnings,
       checked: { paidPending: paidPending.length, },
     },
   });
