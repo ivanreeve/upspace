@@ -1215,7 +1215,7 @@ export default function SpaceCreateRoute() {
                   { currentStep === 1 ? (
                     <SpaceDetailsFields form={ form } />
                   ) : currentStep === 2 ? (
-                    <div className="space-y-6">
+                    <div className="space-y-6 lg:mx-auto lg:max-w-5xl">
                       <div className="rounded-md border border-border/70 bg-background/50 p-4">
                         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                           <div>
@@ -1228,19 +1228,19 @@ export default function SpaceCreateRoute() {
                         </div>
                         <div className="mt-4">
                           { featuredImagePreview ? (
-                            <div className="relative">
+                            <div className="relative overflow-hidden rounded-md border border-border/70 bg-muted/20">
                               <Image
                                 src={ featuredImagePreview }
                                 alt={ featuredImage?.name ? `Preview of ${featuredImage.name}` : 'Featured image preview' }
                                 width={ 960 }
                                 height={ 540 }
-                                className="h-56 w-full rounded-md object-cover"
+                                className="aspect-[16/9] h-auto w-full object-cover"
                                 sizes="(max-width: 640px) 100vw, 50vw"
                                 unoptimized
                               />
                             </div>
                           ) : (
-                            <div className="flex h-48 items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/20 text-sm text-muted-foreground">
+                            <div className="flex min-h-[12rem] items-center justify-center rounded-md border border-dashed border-border/70 bg-muted/20 text-sm text-muted-foreground">
                               Upload a featured image to preview it here.
                             </div>
                           ) }
@@ -1267,7 +1267,12 @@ export default function SpaceCreateRoute() {
                             </Button>
                           ) }
                           { featuredImage && (
-                            <span className="truncate text-sm text-muted-foreground">{ featuredImage.name }</span>
+                            <span
+                              className="min-w-0 flex-1 truncate text-sm text-muted-foreground"
+                              title={ featuredImage.name }
+                            >
+                              { featuredImage.name }
+                            </span>
                           ) }
                         </div>
                       </div>
@@ -1318,11 +1323,7 @@ export default function SpaceCreateRoute() {
                                     { previews.length === 0 ? (
                                       <p className="text-xs text-muted-foreground">No photos in this category yet.</p>
                                     ) : (
-                                      <div
-                                        className="flex gap-3 overflow-x-auto pb-2 pt-4"
-                                        tabIndex={ 0 }
-                                        aria-label="Scroll through category photos"
-                                      >
+                                      <div className="grid grid-cols-2 gap-3 pb-2 pt-4 sm:grid-cols-3 lg:grid-cols-4">
                                         { previews.map((url, imageIndex) => (
                                           <div
                                             key={ `${category.id}-${imageIndex}` }
@@ -1345,7 +1346,12 @@ export default function SpaceCreateRoute() {
                                               sizes="(max-width: 640px) 75vw, 20vw"
                                               unoptimized
                                             />
-                                            <span className="truncate text-[11px] text-muted-foreground">{ category.images[imageIndex]?.name }</span>
+                                            <span
+                                              className="max-w-[10rem] truncate text-[11px] text-muted-foreground"
+                                              title={ category.images[imageIndex]?.name }
+                                            >
+                                              { category.images[imageIndex]?.name }
+                                            </span>
                                           </div>
                                         )) }
                                       </div>
@@ -1377,7 +1383,7 @@ export default function SpaceCreateRoute() {
                                     </Button>
                                     <span className="text-xs text-muted-foreground">
                                       { category.images.length } / { MAX_CATEGORY_IMAGES } selected
-                                      { !canAddMore ? ' · Remove a photo to add another.' : '' }
+                                      { !canAddMore ? ' Remove a photo to add another.' : '' }
                                     </span>
                                   </div>
                                 </div>
