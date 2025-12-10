@@ -7,9 +7,18 @@ export const mockAdminDashboardPayload: AdminDashboardPayload = {
     bookings: {
       total: 312,
       statusCounts: [
-        { status: 'confirmed', count: 204 },
-        { status: 'pending', count: 68 },
-        { status: 'cancelled', count: 40 },
+        {
+ status: 'confirmed',
+count: 204, 
+},
+        {
+ status: 'pending',
+count: 68, 
+},
+        {
+ status: 'cancelled',
+count: 40, 
+}
       ],
     },
     spaces: {
@@ -28,9 +37,18 @@ export const mockAdminDashboardPayload: AdminDashboardPayload = {
     verifications: {
       total: 69,
       statusCounts: [
-        { status: 'approved', count: 45 },
-        { status: 'pending_review', count: 13 },
-        { status: 'rejected', count: 11 },
+        {
+ status: 'approved',
+count: 45, 
+},
+        {
+ status: 'pending_review',
+count: 13, 
+},
+        {
+ status: 'rejected',
+count: 11, 
+}
       ],
     },
   },
@@ -100,7 +118,7 @@ export const mockAdminDashboardPayload: AdminDashboardPayload = {
         expires_at: new Date('2025-12-03T17:18:00.000Z').toISOString(),
         user_auth_id: 'auth-x8c71',
         partner_auth_id: 'auth-partner-23',
-      },
+      }
     ],
     spaces: [
       {
@@ -167,7 +185,7 @@ export const mockAdminDashboardPayload: AdminDashboardPayload = {
         unpublished_by_admin: false,
         created_at: new Date('2025-12-01T18:24:00.000Z').toISOString(),
         updated_at: new Date('2025-12-02T06:00:00.000Z').toISOString(),
-      },
+      }
     ],
     clients: [
       {
@@ -219,7 +237,7 @@ export const mockAdminDashboardPayload: AdminDashboardPayload = {
         handle: 'rsharma',
         created_at: new Date('2025-12-02T09:02:00.000Z').toISOString(),
         updated_at: new Date('2025-12-02T09:02:00.000Z').toISOString(),
-      },
+      }
     ],
     verifications: [
       {
@@ -281,7 +299,7 @@ export const mockAdminDashboardPayload: AdminDashboardPayload = {
         rejected_at: new Date('2025-12-01T15:15:00.000Z').toISOString(),
         created_at: new Date('2025-12-01T10:03:00.000Z').toISOString(),
         updated_at: new Date('2025-12-01T15:15:00.000Z').toISOString(),
-      },
+      }
     ],
   },
   auditLog: [
@@ -297,9 +315,9 @@ export const mockAdminDashboardPayload: AdminDashboardPayload = {
       request_id: 'req-701',
       outcome: '"success"',
       reason: null,
-      extra: { note: 'Added same-day request' },
+      extra: { note: 'Added same-day request', },
       old_value: null,
-      new_value: { status: 'confirmed' },
+      new_value: { status: 'confirmed', },
     },
     {
       audit_id: 'audit-5230',
@@ -314,8 +332,8 @@ export const mockAdminDashboardPayload: AdminDashboardPayload = {
       outcome: '"success"',
       reason: 'Updated handle after onboarding',
       extra: null,
-      old_value: { handle: 'lenam' },
-      new_value: { handle: 'lmiyazaki' },
+      old_value: { handle: 'lenam', },
+      new_value: { handle: 'lmiyazaki', },
     },
     {
       audit_id: 'audit-5229',
@@ -329,9 +347,9 @@ export const mockAdminDashboardPayload: AdminDashboardPayload = {
       request_id: 'req-702',
       outcome: '"success"',
       reason: null,
-      extra: { channel: 'partner-portal' },
+      extra: { channel: 'partner-portal', },
       old_value: null,
-      new_value: { status: 'pending_review' },
+      new_value: { status: 'pending_review', },
     },
     {
       audit_id: 'audit-5222',
@@ -347,7 +365,7 @@ export const mockAdminDashboardPayload: AdminDashboardPayload = {
       reason: null,
       extra: null,
       old_value: null,
-      new_value: { status: 'active' },
+      new_value: { status: 'active', },
     },
     {
       audit_id: 'audit-5221',
@@ -361,9 +379,9 @@ export const mockAdminDashboardPayload: AdminDashboardPayload = {
       request_id: 'req-613',
       outcome: '"success"',
       reason: null,
-      extra: { note: 'Confirmed recurring workspace' },
-      old_value: { status: 'pending' },
-      new_value: { status: 'confirmed' },
+      extra: { note: 'Confirmed recurring workspace', },
+      old_value: { status: 'pending', },
+      new_value: { status: 'confirmed', },
     },
     {
       audit_id: 'audit-5223',
@@ -380,6 +398,6 @@ export const mockAdminDashboardPayload: AdminDashboardPayload = {
       extra: null,
       old_value: null,
       new_value: null,
-    },
+    }
   ],
 };

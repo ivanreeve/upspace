@@ -28,38 +28,52 @@ export async function GET(_req: NextRequest) {
       recentSpaces,
       recentClients,
       recentVerifications,
-      auditEvents,
+      auditEvents
     ] = await Promise.all([
       prisma.booking.count(),
       prisma.booking.groupBy({
         by: ['status'],
-        _count: {
-          status: true,
-        },
+        _count: { status: true, },
       }),
       prisma.space.count(),
-      prisma.space.count({ where: { is_published: true }, }),
-      prisma.user.count({ where: { role: 'customer' }, }),
-      prisma.user.count({ where: { role: 'customer', status: 'active' }, }),
-      prisma.user.count({ where: { role: 'customer', status: 'deactivated' }, }),
-      prisma.user.count({ where: { role: 'customer', status: 'pending_deletion' }, }),
-      prisma.user.count({ where: { role: 'customer', status: 'deleted' }, }),
+      prisma.space.count({ where: { is_published: true, }, }),
+      prisma.user.count({ where: { role: 'customer', }, }),
+      prisma.user.count({
+ where: {
+ role: 'customer',
+status: 'active', 
+}, 
+}),
+      prisma.user.count({
+ where: {
+ role: 'customer',
+status: 'deactivated', 
+}, 
+}),
+      prisma.user.count({
+ where: {
+ role: 'customer',
+status: 'pending_deletion', 
+}, 
+}),
+      prisma.user.count({
+ where: {
+ role: 'customer',
+status: 'deleted', 
+}, 
+}),
       prisma.user.count({
         where: {
           role: 'customer',
-          created_at: {
-            gte: sevenDaysAgo,
-          },
+          created_at: { gte: sevenDaysAgo, },
         },
       }),
       prisma.verification.groupBy({
         by: ['status'],
-        _count: {
-          status: true,
-        },
+        _count: { status: true, },
       }),
       prisma.booking.findMany({
-        orderBy: { created_at: 'desc' },
+        orderBy: { created_at: 'desc', },
         take: 5,
         select: {
           id: true,
@@ -76,7 +90,7 @@ export async function GET(_req: NextRequest) {
         },
       }),
       prisma.space.findMany({
-        orderBy: { updated_at: 'desc' },
+        orderBy: { updated_at: 'desc', },
         take: 5,
         select: {
           id: true,
@@ -93,8 +107,8 @@ export async function GET(_req: NextRequest) {
         },
       }),
       prisma.user.findMany({
-        where: { role: 'customer' },
-        orderBy: { created_at: 'desc' },
+        where: { role: 'customer', },
+        orderBy: { created_at: 'desc', },
         take: 5,
         select: {
           user_id: true,
@@ -108,7 +122,7 @@ export async function GET(_req: NextRequest) {
         },
       }),
       prisma.verification.findMany({
-        orderBy: { submitted_at: 'desc' },
+        orderBy: { submitted_at: 'desc', },
         take: 5,
         select: {
           id: true,
@@ -124,12 +138,8 @@ export async function GET(_req: NextRequest) {
         },
       }),
       prisma.audit_event.findMany({
-        where: {
-          object_table: {
-            in: AUDIT_TABLES,
-          },
-        },
-        orderBy: { occured_at: 'desc' },
+        where: { object_table: { in: AUDIT_TABLES, }, },
+        orderBy: { occured_at: 'desc', },
         take: 12,
         select: {
           audit_id: true,
@@ -148,7 +158,7 @@ export async function GET(_req: NextRequest) {
           old_value: true,
           new_value: true,
         },
-      }),
+      })
     ]);
 
     const totalVerifications = verificationStatusCounts.reduce(
@@ -254,19 +264,19 @@ export async function GET(_req: NextRequest) {
       })),
     };
 
-    return NextResponse.json({ data: payload });
+    return NextResponse.json({ data: payload, });
   } catch (error) {
     if (error instanceof AdminSessionError) {
       return NextResponse.json(
-        { error: error.message },
-        { status: error.status }
+        { error: error.message, },
+        { status: error.status, }
       );
     }
 
     console.error('Failed to load admin dashboard data', error);
     return NextResponse.json(
-      { error: 'Unable to load admin dashboard data.' },
-      { status: 500 }
+      { error: 'Unable to load admin dashboard data.', },
+      { status: 500, }
     );
   }
 }

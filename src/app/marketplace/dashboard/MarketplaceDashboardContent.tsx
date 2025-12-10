@@ -7,7 +7,9 @@ import { mockAdminDashboardPayload } from '@/data/admin-dashboard-mock';
 import { useUserProfile } from '@/hooks/use-user-profile';
 
 export function MarketplaceDashboardContent() {
-  const { data: profile, isLoading, isError } = useUserProfile();
+  const {
+ data: profile, isLoading, isError, 
+} = useUserProfile();
 
   if (isError) {
     return (
@@ -55,7 +57,7 @@ export function MarketplaceDashboardContent() {
             The preview renders a representative dataset so you can evaluate layout density immediately.
           </p>
         </header>
-        <AdminDashboard mockPayload={mockAdminDashboardPayload} />
+        <AdminDashboard mockPayload={ mockAdminDashboardPayload } />
       </section>
     );
   }

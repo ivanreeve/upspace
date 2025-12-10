@@ -108,9 +108,7 @@ export type AdminDashboardPayload = {
   auditLog: AdminDashboardAuditEvent[];
 };
 
-export const adminDashboardKeys = {
-  all: ['admin-dashboard'] as const,
-};
+export const adminDashboardKeys = { all: ['admin-dashboard'] as const, };
 
 type AdminDashboardQueryOptions = Omit<
   UseQueryOptions<AdminDashboardPayload>,

@@ -1,8 +1,9 @@
 import { cookies } from 'next/headers';
 
+import { MarketplaceDashboardContent } from './MarketplaceDashboardContent';
+
 import { MarketplaceChrome } from '@/components/pages/Marketplace/MarketplaceChrome';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
-import { MarketplaceDashboardContent } from './MarketplaceDashboardContent';
 
 export const metadata = {
   title: 'Admin Dashboard | UpSpace',
