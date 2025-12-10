@@ -1,6 +1,7 @@
 import { OpenRouter } from '@openrouter/sdk';
 import type {
   AssistantMessage,
+  ChatMessageContentItem,
   ChatMessageContentItemText,
   ChatMessageToolCall,
   Message,
@@ -328,7 +329,7 @@ const buildReferenceMessages = (data: SearchReferenceData): Message[] => {
 };
 
 const flattenMessageContent = (
-  content?: string | Array<ChatMessageContentItemText>
+  content?: string | Array<ChatMessageContentItem> | null
 ): string | null => {
   if (!content) {
     return null;
@@ -340,7 +341,10 @@ const flattenMessageContent = (
   }
 
   const text = content
-    .map((item) => (item.type === 'text' ? item.text.trim() : ''))
+    .filter(
+      (item): item is ChatMessageContentItemText => item.type === 'text'
+    )
+    .map((item) => item.text.trim())
     .filter(Boolean)
     .join(' ');
 
