@@ -43,6 +43,7 @@ model app_notification {
   space_id     String?           @db.Uuid
   area_id      String?           @db.Uuid
   area         area?             @relation(fields: [area_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "app_notification_area_fk")
+  booking      booking?          @relation(fields: [booking_id], references: [id], onUpdate: NoAction, map: "app_notification_booking_fk")
   space        space?            @relation(fields: [space_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "app_notification_space_fk")
 
   @@index([booking_id], map: "idx_app_notification_booking")
@@ -97,22 +98,23 @@ model audit_event {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model booking {
-  id                String         @id(map: "booking_pkey1") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  space_id          String         @db.Uuid
+  id                String             @id(map: "booking_pkey1") @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  space_id          String             @db.Uuid
   space_name        String
-  area_id           String         @db.Uuid
+  area_id           String             @db.Uuid
   area_name         String
   booking_hours     BigInt
   price_minor       BigInt?
-  currency          String         @default("PHP") @db.Char(3)
-  status            booking_status @default(confirmed)
-  created_at        DateTime       @default(now()) @db.Timestamptz(6)
-  user_auth_id      String         @db.Uuid
-  partner_auth_id   String?        @db.Uuid
+  currency          String             @default("PHP") @db.Char(3)
+  status            booking_status     @default(confirmed)
+  created_at        DateTime           @default(now()) @db.Timestamptz(6)
+  user_auth_id      String             @db.Uuid
+  partner_auth_id   String?            @db.Uuid
   area_max_capacity BigInt?
-  expires_at        DateTime       @db.Timestamptz(6)
-  area              area           @relation(fields: [area_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "booking_area_fk")
-  space             space          @relation(fields: [space_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "booking_space_fk")
+  expires_at        DateTime           @db.Timestamptz(6)
+  app_notification  app_notification[]
+  area              area               @relation(fields: [area_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "booking_area_fk")
+  space             space              @relation(fields: [space_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "booking_space_fk")
   transaction       transaction[]
 
   @@index([partner_auth_id, created_at(sort: Desc)], map: "idx_booking_partner_created")
@@ -244,7 +246,7 @@ model space {
   barangay             String?
   id                   String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   location             Unsupported("geography")?
-  is_published         Boolean                   @default(true)
+  is_published         Boolean                   @default(false)
   unpublished_at       DateTime?                 @db.Timestamptz(6)
   unpublished_reason   String?
   unpublished_by_admin Boolean                   @default(false)

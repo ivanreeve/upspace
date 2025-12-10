@@ -13,7 +13,8 @@ import {
   FiEdit3,
   FiFileText,
   FiPlus,
-  FiTrash2
+  FiTrash2,
+  FiXCircle
 } from 'react-icons/fi';
 import { toast } from 'sonner';
 
@@ -43,7 +44,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { usePartnerSpacesQuery } from '@/hooks/api/usePartnerSpaces';
+import { usePartnerSpacesQuery, useWithdrawSpaceVerificationMutation } from '@/hooks/api/usePartnerSpaces';
 import { clearSpaceFormDraft, useSpaceDraftSummary } from '@/hooks/useSpaceFormPersistence';
 import { clearStoredPhotoState } from '@/hooks/usePersistentSpaceImages';
 import type { SpaceStatus } from '@/data/spaces';
@@ -69,6 +70,9 @@ const SPACE_STATUS_VALUES: SpaceStatus[] = [
   'Draft',
   'Unpublished'
 ];
+
+const WITHDRAW_CONFIRMATION_MESSAGE =
+  'Withdraw this application from review? The space will revert to a draft so you can update details and resubmit.';
 type StatusFilterValue = SpaceStatus | 'all';
 type StatusFilterOption = {
   value: StatusFilterValue;
@@ -90,12 +94,18 @@ export function SpacesInventoryForm() {
   const [pageIndex, setPageIndex] = useState(0);
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>('all');
   const {
- data: spaces, isLoading, isError, error, 
-} = usePartnerSpacesQuery();
+    data: spaces,
+    isLoading,
+    isError,
+    error,
+  } = usePartnerSpacesQuery();
   const {
- summary: draftSummary, refresh: refreshDraftSummary, 
-} =
-    useSpaceDraftSummary();
+    summary: draftSummary,
+    refresh: refreshDraftSummary,
+  } = useSpaceDraftSummary();
+
+  const withdrawMutation = useWithdrawSpaceVerificationMutation();
+  const [withdrawingSpaceId, setWithdrawingSpaceId] = useState<string | null>(null);
 
   const supabaseUrl =
     process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '') ?? null;
@@ -199,6 +209,29 @@ export function SpacesInventoryForm() {
     refreshDraftSummary();
     toast.success('Draft cleared.');
   }, [refreshDraftSummary]);
+
+  const handleWithdrawApplication = useCallback(
+    async (spaceId: string) => {
+      if (!window.confirm(WITHDRAW_CONFIRMATION_MESSAGE)) {
+        return;
+      }
+
+      setWithdrawingSpaceId(spaceId);
+      try {
+        await withdrawMutation.mutateAsync(spaceId);
+        toast.success('Application withdrawn from review.');
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Unable to withdraw the application. Please try again.'
+        );
+      } finally {
+        setWithdrawingSpaceId(null);
+      }
+    },
+    [withdrawMutation]
+  );
 
   const renderDraftCard = () => {
     if (!draftSummary) {
@@ -484,9 +517,32 @@ export function SpacesInventoryForm() {
                   </TableCell>
                   <TableCell>{ row.areas }</TableCell>
                   <TableCell className="text-right">
-                    <Button asChild size="sm" variant="outline" className="hover:text-white">
-                      <Link href={ `/spaces/${row.id}` }>Open</Link>
-                    </Button>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      { row.status === 'Pending' && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-rose-500 hover:text-rose-600"
+                          onClick={ () => void handleWithdrawApplication(row.id) }
+                          disabled={ withdrawingSpaceId === row.id }
+                          aria-label="Withdraw application from review"
+                        >
+                          <FiXCircle className="size-4" aria-hidden="true" />
+                          Withdraw
+                        </Button>
+                      ) }
+                      <Button asChild size="sm" variant="outline" className="hover:text-white">
+                        <Link
+                          href={
+                            row.status === 'Draft'
+                              ? `/partner/spaces/edit?spaceId=${row.id}&step=1`
+                              : `/spaces/${row.id}`
+                          }
+                        >
+                          Open
+                        </Link>
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               )) }
@@ -557,9 +613,30 @@ export function SpacesInventoryForm() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    { row.status === 'Pending' && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-rose-500 hover:text-rose-600"
+                        onClick={ () => void handleWithdrawApplication(row.id) }
+                        disabled={ withdrawingSpaceId === row.id }
+                        aria-label="Withdraw application from review"
+                      >
+                        <FiXCircle className="size-4" aria-hidden="true" />
+                        Withdraw
+                      </Button>
+                    ) }
                     <Button asChild size="sm" variant="outline">
-                      <Link href={ `/spaces/${row.id}` }>Open</Link>
+                      <Link
+                        href={
+                          row.status === 'Draft'
+                            ? `/partner/spaces/edit?spaceId=${row.id}&step=1`
+                            : `/spaces/${row.id}`
+                        }
+                      >
+                        Open
+                      </Link>
                     </Button>
                   </div>
                 </div>

@@ -16,6 +16,7 @@ export const partnerSpacesKeys = {
   all: ['partner-spaces'] as const,
   list: () => ['partner-spaces', 'list'] as const,
   detail: (spaceId: string) => ['partner-spaces', 'detail', spaceId] as const,
+  verification: (spaceId: string) => ['partner-spaces', 'verification', spaceId] as const,
 };
 
 const parseErrorMessage = async (response: Response) => {
@@ -50,6 +51,47 @@ export function usePartnerSpacesQuery(
       return payload.data;
     },
     ...options,
+  });
+}
+
+export type SpaceVerificationDocument = {
+  id: string;
+  document_type: string;
+  mime_type: string;
+  file_size_bytes: number;
+  url: string | null;
+  path: string;
+};
+
+export type SpaceVerificationPayload = {
+  id: string;
+  status: string;
+  submitted_at: string | null;
+  documents: SpaceVerificationDocument[];
+};
+
+export function useSpaceVerificationQuery(spaceId: string | null) {
+  const authFetch = useAuthenticatedFetch();
+
+  return useQuery<SpaceVerificationPayload | null>({
+    queryKey: partnerSpacesKeys.verification(spaceId ?? ''),
+    enabled: Boolean(spaceId),
+    queryFn: async () => {
+      if (!spaceId) {
+        return null;
+      }
+
+      const response = await authFetch(`/api/v1/partner/spaces/${spaceId}/verification`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null;
+        }
+        throw new Error(await parseErrorMessage(response));
+      }
+
+      const payload = (await response.json()) as { data: SpaceVerificationPayload | null };
+      return payload.data ?? null;
+    },
   });
 }
 
@@ -296,6 +338,34 @@ export function useRequestUnpublishSpaceMutation(spaceId: string) {
       return response.json() as Promise<{ data: { id: string; status: string; created_at: string } }>;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), });
+    },
+  });
+}
+
+export function useWithdrawSpaceVerificationMutation() {
+  const authFetch = useAuthenticatedFetch();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (spaceId: string) => {
+      if (!spaceId) {
+        throw new Error('Space ID is required to withdraw the application.');
+      }
+
+      const response = await authFetch(`/api/v1/partner/spaces/${spaceId}/verification/withdraw`, { method: 'POST', });
+
+      if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+      }
+
+      const payload = (await response.json()) as {
+        data: { id: string; status: string; updated_at: string };
+      };
+      return payload.data;
+    },
+    onSuccess: (_data, spaceId) => {
       queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
       queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), });
     },
