@@ -95,6 +95,8 @@ type SidebarFooterContentProps = {
   showNotifications?: boolean;
   showAccount?: boolean;
   showWallet?: boolean;
+  showTransactionHistory?: boolean;
+  showSettings?: boolean;
 };
 
 function GradientSparklesIcon({
@@ -224,6 +226,8 @@ function SidebarFooterContent({
   showNotifications = true,
   showAccount = true,
   showWallet = false,
+  showTransactionHistory = true,
+  showSettings = true,
 }: SidebarFooterContentProps) {
   const {
  state, isMobile, 
@@ -352,7 +356,13 @@ function SidebarFooterContent({
                     </span>
                   </div>
                 </div>
-                <DropdownMenuSeparator className="my-1" />
+                { (showAccount ||
+                  showWallet ||
+                  showSettings ||
+                  showNotifications ||
+                  showTransactionHistory) && (
+                  <DropdownMenuSeparator className="my-1" />
+                ) }
                 { showAccount && (
                   <DropdownMenuItem
                     onSelect={ () => onNavigate('/customer/account') }
@@ -371,13 +381,15 @@ function SidebarFooterContent({
                     <span>Wallet</span>
                   </DropdownMenuItem>
                 ) }
-                <DropdownMenuItem
-                  onSelect={ () => onNavigate('/customer/settings') }
-                  className="hover:!text-white hover:[&_svg]:!text-white"
-                >
-                  <FiSettings className="size-4" aria-hidden="true" />
-                  <span>Settings</span>
-                </DropdownMenuItem>
+                { showSettings && (
+                  <DropdownMenuItem
+                    onSelect={ () => onNavigate('/customer/settings') }
+                    className="hover:!text-white hover:[&_svg]:!text-white"
+                  >
+                    <FiSettings className="size-4" aria-hidden="true" />
+                    <span>Settings</span>
+                  </DropdownMenuItem>
+                ) }
                 { showNotifications && (
                   <DropdownMenuItem
                     onSelect={ () => onNavigate('/customer/notifications') }
@@ -387,13 +399,15 @@ function SidebarFooterContent({
                     <span>Notifications</span>
                   </DropdownMenuItem>
                 ) }
-                <DropdownMenuItem
-                  onSelect={ () => onNavigate('/customer/transactions') }
-                  className="hover:!text-white hover:[&_svg]:!text-white"
-                >
-                  <FiCreditCard className="size-4" aria-hidden="true" />
-                  <span>Transaction history</span>
-                </DropdownMenuItem>
+                { showTransactionHistory && (
+                  <DropdownMenuItem
+                    onSelect={ () => onNavigate('/customer/transactions') }
+                    className="hover:!text-white hover:[&_svg]:!text-white"
+                  >
+                    <FiCreditCard className="size-4" aria-hidden="true" />
+                    <span>Transaction history</span>
+                  </DropdownMenuItem>
+                ) }
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
                   className="text-destructive focus-visible:text-destructive hover:!text-white hover:[&_svg]:!text-white"
@@ -493,6 +507,9 @@ function MobileTopNav({
   showSidebarToggle = false,
   showSearchButton = true,
   showThemeSwitcher = false,
+  showNotifications = true,
+  showTransactionHistory = true,
+  showAccountLinks = true,
 }: {
   avatarUrl: string | null;
   avatarFallback: string;
@@ -505,8 +522,13 @@ function MobileTopNav({
   showSidebarToggle?: boolean;
   showSearchButton?: boolean;
   showThemeSwitcher?: boolean;
+  showNotifications?: boolean;
+  showTransactionHistory?: boolean;
+  showAccountLinks?: boolean;
 }) {
   const { toggleSidebar, } = useSidebar();
+  const hasAdditionalLinks =
+    showAccountLinks || showNotifications || showTransactionHistory;
 
   return (
     <header
@@ -528,7 +550,7 @@ function MobileTopNav({
           </span>
         </Link>
         <div className="flex items-center gap-2">
-          { !isGuest && (
+          { showNotifications && !isGuest && (
             <Link
               href="/customer/notifications"
               aria-label="Notifications"
@@ -613,23 +635,31 @@ function MobileTopNav({
                     </span>
                   </div>
                 </div>
-                <DropdownMenuSeparator className="my-1" />
-                <DropdownMenuItem onSelect={ () => onNavigate('/customer/account') }>
-                  <FiUser className="size-4" aria-hidden="true" />
-                  <span>Account</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={ () => onNavigate('/customer/settings') }>
-                  <FiSettings className="size-4" aria-hidden="true" />
-                  <span>Settings</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={ () => onNavigate('/customer/notifications') }>
-                  <FiBell className="size-4" aria-hidden="true" />
-                  <span>Notifications</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={ () => onNavigate('/customer/transactions') }>
-                  <FiCreditCard className="size-4" aria-hidden="true" />
-                  <span>Transaction history</span>
-                </DropdownMenuItem>
+                { hasAdditionalLinks && <DropdownMenuSeparator className="my-1" /> }
+                { showAccountLinks && (
+                  <>
+                    <DropdownMenuItem onSelect={ () => onNavigate('/customer/account') }>
+                      <FiUser className="size-4" aria-hidden="true" />
+                      <span>Account</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={ () => onNavigate('/customer/settings') }>
+                      <FiSettings className="size-4" aria-hidden="true" />
+                      <span>Settings</span>
+                    </DropdownMenuItem>
+                  </>
+                ) }
+                { showNotifications && (
+                  <DropdownMenuItem onSelect={ () => onNavigate('/customer/notifications') }>
+                    <FiBell className="size-4" aria-hidden="true" />
+                    <span>Notifications</span>
+                  </DropdownMenuItem>
+                ) }
+                { showTransactionHistory && (
+                  <DropdownMenuItem onSelect={ () => onNavigate('/customer/transactions') }>
+                    <FiCreditCard className="size-4" aria-hidden="true" />
+                    <span>Transaction history</span>
+                  </DropdownMenuItem>
+                ) }
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
                   className="text-destructive focus-visible:text-destructive"
@@ -1010,6 +1040,7 @@ export function MarketplaceChrome({
   const isCustomerRole = effectiveRole === 'customer';
   const isPartnerRole = effectiveRole === 'partner';
   const isAdminRole = effectiveRole === 'admin';
+  const showTransactionHistory = isCustomerRole || isPartnerRole;
   const shouldShowAiSearch = isCustomerRole || isPartnerRole || isAdminRole;
   const shouldShowNotifications = isCustomerRole || isPartnerRole;
   const resolvedMessageHref = messageHref ?? '/customer/messages';
@@ -1187,6 +1218,9 @@ export function MarketplaceChrome({
           isGuest={ navData.isGuest }
           showSidebarToggle={ isPartnerRole }
           showThemeSwitcher={ isCustomerRole || isAdminRole }
+          showNotifications={ shouldShowNotifications }
+          showTransactionHistory={ showTransactionHistory }
+          showAccountLinks={ !isAdminRole }
         />
       ) }
       <div className="flex min-h-screen w-full gap-5">
@@ -1388,6 +1422,8 @@ export function MarketplaceChrome({
               showNotifications={ shouldShowNotifications }
               showAccount={ !isAdminRole }
               showWallet={ isPartnerRole }
+              showTransactionHistory={ showTransactionHistory }
+              showSettings={ !isAdminRole }
             />
           </SidebarFooter>
           <SidebarRail />
