@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
+import { countActiveBookingsOverlap } from '@/lib/bookings/occupancy';
 import { mapBookingRowToRecord } from '@/lib/bookings/serializer';
 import { prisma } from '@/lib/prisma';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
@@ -285,6 +286,62 @@ async function handleCheckoutEvent(event: CheckoutEvent) {
     }
 
     return RECEIVED_RESPONSE;
+  }
+
+  if (bookingRow.area_max_capacity !== null) {
+    const areaMaxCap = Number(bookingRow.area_max_capacity);
+    const activeCount = await countActiveBookingsOverlap(
+      prisma,
+      bookingRow.area_id,
+      bookingRow.start_at,
+      bookingRow.expires_at,
+      bookingRow.id
+    );
+    const projected = activeCount + bookingRow.guest_count;
+    if (Number.isFinite(areaMaxCap) && projected > areaMaxCap) {
+      const booking = mapBookingRowToRecord(bookingRow);
+      const bookingHref = `/marketplace/${booking.spaceId}`;
+
+      const existingPendingNotice = await prisma.app_notification.findFirst({
+        where: {
+          booking_id: booking.id,
+          type: 'system',
+        },
+        select: { id: true, },
+      });
+
+      if (!existingPendingNotice) {
+        await prisma.app_notification.create({
+          data: {
+            user_auth_id: booking.customerAuthId,
+            title: 'Booking awaiting review',
+            body: `${booking.areaName} at ${booking.spaceName} needs host review due to capacity.`,
+            href: bookingHref,
+            type: 'system',
+            booking_id: booking.id,
+            space_id: booking.spaceId,
+            area_id: booking.areaId,
+          },
+        });
+
+        if (booking.partnerAuthId) {
+          await prisma.app_notification.create({
+            data: {
+              user_auth_id: booking.partnerAuthId,
+              title: 'Review booking capacity',
+              body: `${booking.areaName} in ${booking.spaceName} was paid but exceeds capacity. Approve or refund.`,
+              href: bookingHref,
+              type: 'system',
+              booking_id: booking.id,
+              space_id: booking.spaceId,
+              area_id: booking.areaId,
+            },
+          });
+        }
+      }
+
+      return RECEIVED_RESPONSE;
+    }
   }
 
   const updatedBooking = await prisma.booking.update({

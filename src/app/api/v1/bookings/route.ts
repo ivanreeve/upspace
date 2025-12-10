@@ -316,11 +316,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const priceEvaluation = evaluatePriceRule(priceRule.definition, {
-    bookingHours: parsed.data.bookingHours,
-    now: bookingStartAt,
-    variableOverrides: { guest_count: guestCount, },
-  });
+  const priceEvaluation = (() => {
+    try {
+      return evaluatePriceRule(priceRule.definition, {
+        bookingHours: parsed.data.bookingHours,
+        now: bookingStartAt,
+        variableOverrides: { guest_count: guestCount, },
+      });
+    } catch (error) {
+      console.error('Invalid price rule definition', {
+        areaId: area.id,
+        error,
+      });
+      return { price: null, };
+    }
+  })();
 
   const priceMinor =
     typeof priceEvaluation.price === 'number'

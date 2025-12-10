@@ -16,13 +16,17 @@ export async function countActiveBookingsOverlap(
   tx: BookingQueryable,
   areaId: string,
   windowStart: Date,
-  windowEnd: Date
+  windowEnd: Date,
+  excludeBookingId?: string
 ) {
   const aggregates = await tx.booking.aggregate({
     _sum: { guest_count: true, },
     where: {
       area_id: areaId,
       status: { in: ACTIVE_OCCUPANCY_BOOKING_STATUSES, },
+      ...(excludeBookingId
+        ? { NOT: { id: excludeBookingId, }, }
+        : {}),
       NOT: [
         { expires_at: { lte: windowStart, }, },
         { start_at: { gte: windowEnd, }, }
