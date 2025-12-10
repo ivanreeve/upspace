@@ -11,10 +11,7 @@ import { createPaymongoCheckoutSession } from '@/lib/paymongo';
 import { prisma } from '@/lib/prisma';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { isTestingModeEnabled } from '@/lib/testing-mode';
-import {
-  recordTestModeBookingWalletCharge,
-  resolveAuthenticatedUserForWallet
-} from '@/lib/wallet-server';
+import { recordTestModeBookingWalletCharge, resolveAuthenticatedUserForWallet } from '@/lib/wallet-server';
 import { evaluatePriceRule } from '@/lib/pricing-rules-evaluator';
 import type { PriceRuleRecord } from '@/lib/pricing-rules';
 
@@ -356,9 +353,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (partnerWalletOwner?.user_id) {
-        const walletMetadata: Record<string, unknown> = {
-          customer_internal_user_id: auth.dbUser!.user_id.toString(),
-        };
+        const walletMetadata: Record<string, unknown> = { customer_internal_user_id: auth.dbUser!.user_id.toString(), };
 
         if (partnerInternalUserId) {
           walletMetadata.partner_internal_user_id = partnerInternalUserId;
