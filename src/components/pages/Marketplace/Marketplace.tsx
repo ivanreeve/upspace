@@ -750,7 +750,9 @@ export default function Marketplace({ initialSidebarOpen, }: MarketplaceProps) {
         { searchResultsSection }
       </div>
 
-      <BackToTopButton />
+      <div className="hidden md:block">
+        <BackToTopButton />
+      </div>
       <BottomGradientOverlay />
     </section>
   );
