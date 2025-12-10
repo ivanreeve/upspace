@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 
+import { useSession } from '@/components/auth/SessionProvider';
 import SignInCard from '@/components/auth/SignInCard';
 
 const CAROUSEL_INTERVAL_MS = 5000;
@@ -43,6 +44,12 @@ export function Hero() {
 
     return () => window.clearInterval(intervalId);
   }, [heroImages]);
+
+  const { session, } = useSession();
+
+  if (session) {
+    return null;
+  }
 
   return (
     <div id="home" className="flex flex-col lg:flex-row h-auto lg:h-[900px] items-center py-8 lg:py-0">
