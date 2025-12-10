@@ -1577,7 +1577,7 @@ export type PriceRuleFormState = {
   usedVariables: Set<string>;
   conditionExpression: string;
   conditionError: string | null;
-  handleConditionExpressionChange: (value: string) => void;
+  handleConditionExpressionChange: (value: string, definitionOverride?: PriceRuleDefinition) => string;
   updateDefinition: (updater: (definition: PriceRuleDefinition) => PriceRuleDefinition) => void;
 };
 
@@ -1679,9 +1679,13 @@ export function usePriceRuleFormState(
     }));
   };
 
-  const handleConditionExpressionChange = (nextExpression: string) => {
+  const handleConditionExpressionChange = (
+    nextExpression: string,
+    definitionOverride?: PriceRuleDefinition
+  ) => {
     const normalizedExpression = normalizeConditionKeywords(nextExpression);
     setConditionExpression(normalizedExpression);
+    const activeDefinition = definitionOverride ?? values.definition;
     const trimmedExpression = normalizedExpression.trim();
     if (!trimmedExpression) {
       updateDefinition((definition) => ({
@@ -1702,8 +1706,8 @@ export function usePriceRuleFormState(
     const lowerExpression = trimmedExpression.toLowerCase();
     if (!/^if\b/.test(lowerExpression)) {
       try {
-        const variableMap = createVariableValueMap(values.definition);
-        validatePriceExpression(trimmedExpression, 'Formula', variableMap, values.definition);
+        const variableMap = createVariableValueMap(activeDefinition);
+        validatePriceExpression(trimmedExpression, 'Formula', variableMap, activeDefinition);
         updateDefinition((definition) => ({
           ...definition,
           conditions: [],
@@ -1739,19 +1743,19 @@ export function usePriceRuleFormState(
         throw new Error('Add a price expression after THEN.');
       }
 
-      const duplicateConditionKey = findDuplicateConditionTargetKey(trimmedExpression, values.definition);
+      const duplicateConditionKey = findDuplicateConditionTargetKey(trimmedExpression, activeDefinition);
       if (duplicateConditionKey) {
         throw new Error('This condition already exists.');
       }
 
-      const variableMap = createVariableValueMap(values.definition);
-      validatePriceExpression(thenFormula, 'THEN', variableMap, values.definition);
+      const variableMap = createVariableValueMap(activeDefinition);
+      validatePriceExpression(thenFormula, 'THEN', variableMap, activeDefinition);
       if (elseFormula) {
-        validatePriceExpression(elseFormula, 'ELSE', variableMap, values.definition);
+        validatePriceExpression(elseFormula, 'ELSE', variableMap, activeDefinition);
       }
 
-      const parsedConditions = parseConditionExpression(condition, values.definition);
-      const collisionError = detectConditionCollisions(parsedConditions, values.definition);
+      const parsedConditions = parseConditionExpression(condition, activeDefinition);
+      const collisionError = detectConditionCollisions(parsedConditions, activeDefinition);
       if (collisionError) {
         throw new Error(collisionError);
       }
@@ -1805,7 +1809,7 @@ type RuleLanguageEditorProps = {
   removeVariable: (key: string) => void;
   conditionExpression: string;
   conditionError: string | null;
-  handleConditionExpressionChange: (value: string) => void;
+  handleConditionExpressionChange: (value: string, definitionOverride?: PriceRuleDefinition) => string;
 };
 
 type SuggestionCategory = 'connector' | 'comparator' | 'literal' | 'variable';
@@ -2634,7 +2638,8 @@ export function PriceRuleFormShell({
     setValues(nextValues);
     setErrorMessage(null);
     handleConditionExpressionChange(
-      buildConditionExpressionFromDefinition(nextValues.definition)
+      buildConditionExpressionFromDefinition(nextValues.definition),
+      nextValues.definition
     );
   };
 
