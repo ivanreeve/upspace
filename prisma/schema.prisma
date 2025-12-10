@@ -104,21 +104,22 @@ model booking {
   area_id           String             @db.Uuid
   area_name         String
   booking_hours     BigInt
-  start_at          DateTime           @default(now()) @db.Timestamptz(6)
   price_minor       BigInt?
   currency          String             @default("PHP") @db.Char(3)
-  guest_count       Int                @default(1)
   status            booking_status     @default(confirmed)
   created_at        DateTime           @default(now()) @db.Timestamptz(6)
   user_auth_id      String             @db.Uuid
   partner_auth_id   String?            @db.Uuid
   area_max_capacity BigInt?
   expires_at        DateTime           @db.Timestamptz(6)
+  start_at          DateTime           @default(now()) @db.Timestamptz(6)
+  guest_count       Int                @default(1)
   app_notification  app_notification[]
   area              area               @relation(fields: [area_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "booking_area_fk")
   space             space              @relation(fields: [space_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "booking_space_fk")
   transaction       transaction[]
 
+  @@index([area_id, start_at, expires_at], map: "idx_booking_area_window")
   @@index([partner_auth_id, created_at(sort: Desc)], map: "idx_booking_partner_created")
   @@index([space_id, created_at(sort: Desc)], map: "idx_booking_space_created")
   @@index([user_auth_id, created_at(sort: Desc)], map: "idx_booking_user_created")
