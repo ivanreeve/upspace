@@ -383,7 +383,10 @@ status,
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={ () => bulkUpdate.mutate({ ids: [booking.id], status: 'cancelled' }) }
+                      onClick={ () => bulkUpdate.mutate({
+ ids: [booking.id],
+status: 'cancelled', 
+}) }
                       disabled={ bulkUpdate.isPending }
                     >
                       Cancel
