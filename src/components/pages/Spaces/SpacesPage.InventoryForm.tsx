@@ -620,7 +620,7 @@ export function SpacesInventoryForm() {
                       </Button>
                     ) }
                     <Button asChild size="sm" variant="outline">
-                      <Link href={ `/spaces/${row.id}` }>Open</Link>
+                      <Link href={ `/partner/spaces/${row.id}` }>Open</Link>
                     </Button>
                   </div>
                 </div>
