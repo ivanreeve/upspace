@@ -233,20 +233,28 @@ export const useSpaceDraftSummary = () => {
 
 export const useSpaceFormPersistence = (
   form: UseFormReturn<SpaceFormValues>,
-  currentStep?: SpaceDraftStep
+  currentStep?: SpaceDraftStep,
+  options?: {
+    enabled?: boolean;
+  }
 ) => {
-  const [isHydrated, setIsHydrated] = useState(false);
+  const enabled = options?.enabled ?? true;
+  const [isHydrated, setIsHydrated] = useState(!enabled);
 
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     const draft = readDraft();
     if (draft) {
       form.reset(mergeDraftWithDefaults(draft.values));
     }
     setIsHydrated(true);
-  }, [form]);
+  }, [enabled, form]);
 
   useEffect(() => {
-    if (!isHydrated) {
+    if (!enabled || !isHydrated) {
       return;
     }
 
@@ -255,16 +263,20 @@ export const useSpaceFormPersistence = (
     });
 
     return () => subscription.unsubscribe();
-  }, [form, isHydrated, currentStep]);
+  }, [enabled, form, isHydrated, currentStep]);
 
   const saveDraft = useCallback(() => {
+    if (!enabled) {
+      return null;
+    }
+
     const values = form.getValues();
     writeDraft(values as SpaceFormValues, currentStep);
     return readSpaceDraftSummary();
-  }, [form, currentStep]);
+  }, [enabled, form, currentStep]);
 
   return {
-    clearDraft: clearSpaceFormDraft,
+    clearDraft: enabled ? clearSpaceFormDraft : () => {},
     saveDraft,
     isHydrated,
   };

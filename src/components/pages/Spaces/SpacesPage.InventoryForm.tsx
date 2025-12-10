@@ -532,7 +532,15 @@ export function SpacesInventoryForm() {
                         </Button>
                       ) }
                       <Button asChild size="sm" variant="outline" className="hover:text-white">
-                        <Link href={ `/spaces/${row.id}` }>Open</Link>
+                        <Link
+                          href={
+                            row.status === 'Draft'
+                              ? `/partner/spaces/edit?spaceId=${row.id}&step=1`
+                              : `/spaces/${row.id}`
+                          }
+                        >
+                          Open
+                        </Link>
                       </Button>
                     </div>
                   </TableCell>
@@ -620,7 +628,15 @@ export function SpacesInventoryForm() {
                       </Button>
                     ) }
                     <Button asChild size="sm" variant="outline">
-                      <Link href={ `/partner/spaces/${row.id}` }>Open</Link>
+                      <Link
+                        href={
+                          row.status === 'Draft'
+                            ? `/partner/spaces/edit?spaceId=${row.id}&step=1`
+                            : `/spaces/${row.id}`
+                        }
+                      >
+                        Open
+                      </Link>
                     </Button>
                   </div>
                 </div>
