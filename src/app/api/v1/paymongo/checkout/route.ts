@@ -11,7 +11,10 @@ import { createPaymongoCheckoutSession } from '@/lib/paymongo';
 import { prisma } from '@/lib/prisma';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { isTestingModeEnabled } from '@/lib/testing-mode';
-import { resolveAuthenticatedUserForWallet } from '@/lib/wallet-server';
+import {
+  recordTestModeBookingWalletCharge,
+  resolveAuthenticatedUserForWallet
+} from '@/lib/wallet-server';
 import { evaluatePriceRule } from '@/lib/pricing-rules-evaluator';
 import type { PriceRuleRecord } from '@/lib/pricing-rules';
 
@@ -350,6 +353,36 @@ export async function POST(req: NextRequest) {
         }
       } catch (notifyError) {
         console.error('Failed to send booking notification email', notifyError);
+      }
+
+      if (partnerWalletOwner?.user_id) {
+        const walletMetadata: Record<string, unknown> = {
+          customer_internal_user_id: auth.dbUser!.user_id.toString(),
+        };
+
+        if (partnerInternalUserId) {
+          walletMetadata.partner_internal_user_id = partnerInternalUserId;
+        }
+
+        if (partnerAuthId) {
+          walletMetadata.partner_auth_id = partnerAuthId;
+        }
+
+        try {
+          await recordTestModeBookingWalletCharge({
+            walletOwnerUserId: partnerWalletOwner.user_id,
+            bookingId: booking.id,
+            amountMinor: priceMinor,
+            currency: confirmedBooking.currency,
+            description: `${booking.areaName} · ${booking.spaceName}`,
+            metadata: walletMetadata,
+          });
+        } catch (walletError) {
+          console.error('Failed to record wallet activity in testing mode', {
+            bookingId: booking.id,
+            error: walletError,
+          });
+        }
       }
 
       return NextResponse.json(
