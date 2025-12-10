@@ -44,9 +44,7 @@ const formatOutcome = (value?: string | null) =>
   value ? value.replace(/^"|"$/g, '') : 'unknown';
 
 const formatStatusLabel = (value: string) => {
-  const overrides: Record<string, string> = {
-    new_last7days: 'Last 7 Days',
-  };
+  const overrides: Record<string, string> = { new_last7days: 'Last 7 Days', };
 
   if (overrides[value]) {
     return overrides[value];
