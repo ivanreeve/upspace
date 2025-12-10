@@ -10,13 +10,10 @@ import {
 } from 'react';
 import {
   FiChevronDown,
-  FiChevronLeft,
-  FiChevronRight,
   FiChevronUp,
   FiMessageSquare,
   FiMinus,
-  FiPlus,
-  FiUsers
+  FiPlus
 } from 'react-icons/fi';
 import { CgSpinner } from 'react-icons/cg';
 import { toast } from 'sonner';
@@ -47,6 +44,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
 import { useSession } from '@/components/auth/SessionProvider';
 import {
   Dialog,
@@ -65,7 +63,7 @@ import {
   SheetTitle
 } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
-import { MAX_BOOKING_HOURS } from '@/lib/bookings/constants';
+import { MAX_BOOKING_HOURS, MIN_BOOKING_HOURS } from '@/lib/bookings/constants';
 import { BOOKING_DURATION_VARIABLE_KEYS, type PriceRuleOperand, type PriceRuleRecord } from '@/lib/pricing-rules';
 import { evaluatePriceRule, type PriceRuleEvaluationResult } from '@/lib/pricing-rules-evaluator';
 import { useUserBookingsQuery, useCreateCheckoutSessionMutation } from '@/hooks/api/useBookings';
@@ -77,43 +75,7 @@ const PRICE_FORMATTER = new Intl.NumberFormat('en-PH', {
   currency: 'PHP',
   maximumFractionDigits: 0,
 });
-type BookingDurationUnitKey = 'hours' | 'days' | 'weeks' | 'months';
-type BookingDurationUnit = {
-  key: BookingDurationUnitKey;
-  label: string;
-  pluralLabel: string;
-  multiplier: number;
-};
-
-const BOOKING_DURATION_UNITS: BookingDurationUnit[] = [
-  {
-    key: 'hours',
-    label: 'Hour',
-    pluralLabel: 'Hours',
-    multiplier: 1,
-  },
-  {
-    key: 'days',
-    label: 'Day',
-    pluralLabel: 'Days',
-    multiplier: 24,
-  },
-  {
-    key: 'weeks',
-    label: 'Week',
-    pluralLabel: 'Weeks',
-    multiplier: 24 * 7,
-  },
-  {
-    key: 'months',
-    label: 'Month',
-    pluralLabel: 'Months',
-    multiplier: 24 * 30,
-  }
-];
-
-const DEFAULT_BOOKING_UNIT_INDEX = 0;
-const DEFAULT_BOOKING_UNIT_VALUE = 1;
+const DEFAULT_BOOKING_HOURS = MIN_BOOKING_HOURS;
 const MIN_GUEST_COUNT = 1;
 const MAX_GUEST_COUNT = 99;
 
@@ -126,8 +88,6 @@ const clampGuestCount = (value: number, maxLimit: number | null = null) => {
   return Math.min(Math.max(normalized, MIN_GUEST_COUNT), upperLimit);
 };
 
-const getMaxUnitsForDurationUnit = (multiplier: number) =>
-  Math.max(1, Math.floor(MAX_BOOKING_HOURS / multiplier));
 type SpaceDetailProps = {
   space: MarketplaceSpaceDetail;
 };
@@ -162,10 +122,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
 
   const defaultHostName = 'Trisha M.';
   const [isBookingOpen, setIsBookingOpen] = useState(false);
-  const [bookingDurationUnitIndex, setBookingDurationUnitIndex] = useState(
-    DEFAULT_BOOKING_UNIT_INDEX
-  );
-  const [bookingUnitValue, setBookingUnitValue] = useState(DEFAULT_BOOKING_UNIT_VALUE);
+  const [bookingHours, setBookingHours] = useState(DEFAULT_BOOKING_HOURS);
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
   const [isPricingLoading, setIsPricingLoading] = useState(false);
   const [guestCount, setGuestCount] = useState(MIN_GUEST_COUNT);
@@ -173,6 +130,17 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     const today = new Date();
     return today.toISOString().split('T')[0];
   });
+  const bookingStartAtIso = useMemo(() => {
+    const candidate = new Date(`${scheduledDate}T23:00:00`);
+    const now = new Date();
+    if (!Number.isFinite(candidate.getTime())) {
+      return now.toISOString();
+    }
+    if (candidate.getTime() <= now.getTime()) {
+      return new Date(now.getTime() + 60 * 60 * 1000).toISOString();
+    }
+    return candidate.toISOString();
+  }, [scheduledDate]);
   const earliestScheduleDate = useMemo(() => {
     const today = new Date();
     return today.toISOString().split('T')[0];
@@ -202,14 +170,6 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     }
   }, [canMessageHost]);
 
-  const resetBookingState = useCallback(() => {
-    setBookingDurationUnitIndex(DEFAULT_BOOKING_UNIT_INDEX);
-    setBookingUnitValue(DEFAULT_BOOKING_UNIT_VALUE);
-    setSelectedAreaId(null);
-    setIsPricingLoading(false);
-    setGuestCount(MIN_GUEST_COUNT);
-  }, []);
-
   const findFirstPricedAreaId = useCallback(() => {
     const areaWithPricing = space.areas.find(
       (area) => area.pricingRuleId && area.pricingRuleName
@@ -217,10 +177,23 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     return areaWithPricing?.id ?? null;
   }, [space.areas]);
 
+  const resetBookingState = useCallback(() => {
+    const defaultAreaId = findFirstPricedAreaId();
+    setBookingHours(DEFAULT_BOOKING_HOURS);
+    setSelectedAreaId(defaultAreaId);
+    setIsPricingLoading(Boolean(defaultAreaId));
+    setGuestCount(MIN_GUEST_COUNT);
+    setScheduledDate(earliestScheduleDate);
+  }, [earliestScheduleDate, findFirstPricedAreaId]);
+
+  const handleResetBookingForm = useCallback(() => {
+    resetBookingState();
+    toast.success('Booking form reset.');
+  }, [resetBookingState]);
+
   const initializeBookingSelection = useCallback(() => {
     const defaultAreaId = findFirstPricedAreaId();
-    setBookingDurationUnitIndex(DEFAULT_BOOKING_UNIT_INDEX);
-    setBookingUnitValue(DEFAULT_BOOKING_UNIT_VALUE);
+    setBookingHours(DEFAULT_BOOKING_HOURS);
     setSelectedAreaId(defaultAreaId);
     setIsPricingLoading(Boolean(defaultAreaId));
   }, [findFirstPricedAreaId]);
@@ -260,58 +233,12 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     resetBookingState();
     setIsBookingOpen(false);
   }, [resetBookingState]);
-  const currentDurationUnit = BOOKING_DURATION_UNITS[bookingDurationUnitIndex];
-  const bookingUnitMax = getMaxUnitsForDurationUnit(currentDurationUnit.multiplier);
-  const bookingHours = bookingUnitValue * currentDurationUnit.multiplier;
-  const bookingUnitLabel =
-    bookingUnitValue === 1 ? currentDurationUnit.label : currentDurationUnit.pluralLabel;
-  const increaseBookingUnitValue = useCallback(() => {
-    setBookingUnitValue((prev) =>
-      Math.min(
-        prev + 1,
-        getMaxUnitsForDurationUnit(
-          BOOKING_DURATION_UNITS[bookingDurationUnitIndex].multiplier
-        )
-      )
-    );
-  }, [bookingDurationUnitIndex]);
-  const decreaseBookingUnitValue = useCallback(() => {
-    setBookingUnitValue((prev) => Math.max(prev - 1, DEFAULT_BOOKING_UNIT_VALUE));
-  }, []);
   const handleSelectArea = useCallback((areaId: string) => {
     setSelectedAreaId(areaId);
-    setBookingUnitValue(DEFAULT_BOOKING_UNIT_VALUE);
+    setBookingHours(DEFAULT_BOOKING_HOURS);
     setIsPricingLoading(true);
   }, []);
 
-  const cycleBookingDurationUnit = useCallback((direction: 1 | -1) => {
-    setBookingDurationUnitIndex((prevIndex) => {
-      const totalUnits = BOOKING_DURATION_UNITS.length;
-      const nextIndex =
-        (prevIndex + direction + totalUnits) % totalUnits;
-      const currentUnit = BOOKING_DURATION_UNITS[prevIndex];
-      const nextUnit = BOOKING_DURATION_UNITS[nextIndex];
-      const nextMax = getMaxUnitsForDurationUnit(nextUnit.multiplier);
-      setBookingUnitValue((prevValue) => {
-        const currentHours = prevValue * currentUnit.multiplier;
-        const nextValue = Math.max(
-          DEFAULT_BOOKING_UNIT_VALUE,
-          Math.ceil(currentHours / nextUnit.multiplier)
-        );
-        return Math.min(nextValue, nextMax);
-      });
-      return nextIndex;
-    });
-  }, []);
-
-  const handlePreviousDurationUnit = useCallback(
-    () => cycleBookingDurationUnit(-1),
-    [cycleBookingDurationUnit]
-  );
-  const handleNextDurationUnit = useCallback(
-    () => cycleBookingDurationUnit(1),
-    [cycleBookingDurationUnit]
-  );
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -459,6 +386,12 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     () => doesRuleUseBookingDurationVariables(activePriceRule),
     [activePriceRule]
   );
+  const defaultPricedAreaId = findFirstPricedAreaId();
+  const isBookingFormPristine =
+    selectedAreaId === defaultPricedAreaId &&
+    guestCount === MIN_GUEST_COUNT &&
+    bookingHours === MIN_BOOKING_HOURS &&
+    scheduledDate === earliestScheduleDate;
 
   const variableOverrides = useMemo(() => {
     const overrides: Record<string, number> = { guest_count: guestCount, };
@@ -503,8 +436,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
         : `${remainingCapacity} slot${remainingCapacity === 1 ? '' : 's'} remaining`
     : 'Select an area to view capacity limits.';
 
-  const basePrice = priceEvaluation?.price ?? null;
-  const totalPrice = basePrice === null ? null : basePrice * guestCount;
+  const totalPrice = priceEvaluation?.price ?? null;
   const pricePreviewLabel = (() => {
     if (!selectedArea) {
       return 'Select an area to preview pricing';
@@ -638,73 +570,42 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                 Duration
               </Label>
               <span className="text-xs text-muted-foreground">
-                { bookingHours } hour{ bookingHours === 1 ? '' : 's' } total
+                { bookingHours === MAX_BOOKING_HOURS
+                  ? '1 day (24 hours) total'
+                  : `${bookingHours} hour${bookingHours === 1 ? '' : 's'} total` }
               </span>
             </div>
-            <div className="flex items-center justify-between rounded-xl border border-border/70 bg-muted/40 px-2 py-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={ decreaseBookingUnitValue }
-                disabled={
-                  bookingUnitValue <= DEFAULT_BOOKING_UNIT_VALUE ||
-                  isPricingLoading ||
-                  !selectedAreaId
-                }
-                aria-label="Decrease booking duration"
-              >
-                <FiMinus className="size-4" aria-hidden="true" />
-              </Button>
+            <div className="space-y-3 rounded-2xl border border-border/70 bg-muted/40 px-4 py-4 shadow-sm">
               <div className="text-center">
-                <p className="text-2xl font-semibold text-foreground">
-                  { bookingUnitValue }
+                <p className="text-3xl font-semibold text-foreground">
+                  { bookingHours === MAX_BOOKING_HOURS
+                    ? '1 day'
+                    : `${bookingHours} hr${bookingHours === 1 ? '' : 's'}` }
                 </p>
-                <p className="text-xs uppercase text-muted-foreground">
-                  { bookingUnitLabel }
+                <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                  { bookingHours === MAX_BOOKING_HOURS ? 'Max duration' : 'Hourly booking' }
                 </p>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={ increaseBookingUnitValue }
-                disabled={
-                  bookingUnitValue >= bookingUnitMax ||
-                  isPricingLoading ||
-                  !selectedAreaId
-                }
-                aria-label="Increase booking duration"
-              >
-                <FiPlus className="size-4" aria-hidden="true" />
-              </Button>
-            </div>
-            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={ handlePreviousDurationUnit }
+              <Slider
+                value={ [bookingHours] }
+                min={ MIN_BOOKING_HOURS }
+                max={ MAX_BOOKING_HOURS }
+                step={ 1 }
+                onValueChange={ ([value]) => {
+                  const nextValue = value ?? MIN_BOOKING_HOURS;
+                  setBookingHours(nextValue);
+                } }
                 disabled={ isPricingLoading || !selectedAreaId }
-                aria-label="Switch to the previous duration unit"
-              >
-                <FiChevronLeft className="size-4" aria-hidden="true" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={ handleNextDurationUnit }
-                disabled={ isPricingLoading || !selectedAreaId }
-                aria-label="Switch to the next duration unit"
-              >
-                <FiChevronRight className="size-4" aria-hidden="true" />
-              </Button>
-              <span>
-                { shouldShowHourSelector
-                  ? 'Dynamic pricing'
-                  : 'Fixed rate' }
-              </span>
+                className="h-5"
+                aria-label="Pick booking duration in hours"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>{ MIN_BOOKING_HOURS } hr</span>
+                <span>24 hrs / 1 day</span>
+              </div>
+              <p className="text-center text-xs font-medium text-muted-foreground">
+                { shouldShowHourSelector ? 'Dynamic pricing' : 'Fixed rate' }
+              </p>
             </div>
           </div>
           <div className="space-y-2">
@@ -788,6 +689,17 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
           </p>
         ) }
       </div>
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={ handleResetBookingForm }
+          disabled={ isBookingFormPristine }
+        >
+          Reset form
+        </Button>
+      </div>
       { !selectedAreaId && (
         <div className="rounded-lg border border-dashed border-border/70 bg-muted/30 px-4 py-2 text-xs text-muted-foreground">
           Select an area to unlock pricing and confirm your preferred date.
@@ -830,7 +742,8 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     activePriceRule &&
     totalPrice !== null &&
     !isGuest &&
-    !createCheckoutSession.isPending
+    !createCheckoutSession.isPending &&
+    !isOverCapacity
   );
 
   const handleConfirmBooking = useCallback(async () => {
@@ -844,6 +757,8 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
         areaId: selectedArea.id,
         bookingHours,
         price: totalPrice ?? 0,
+        startAt: bookingStartAtIso,
+        guestCount,
       });
       resetBookingState();
       setIsBookingOpen(false);
@@ -857,11 +772,13 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     bookingHours,
     canConfirmBooking,
     createCheckoutSession,
+    bookingStartAtIso,
     resetBookingState,
     selectedArea,
     session,
     space.id,
-    totalPrice
+    totalPrice,
+    guestCount
   ]);
 
   return (

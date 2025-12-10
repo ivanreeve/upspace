@@ -7,6 +7,8 @@ import {
   type UseQueryOptions
 } from '@tanstack/react-query';
 
+import { customerBookingsKeys } from './useCustomerBookings';
+
 import type { BookingRecord, BookingStatus } from '@/lib/bookings/types';
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
 
@@ -134,6 +136,8 @@ type CreateCheckoutSessionInput = {
   areaId: string;
   bookingHours: number;
   price: number;
+  startAt: string;
+  guestCount: number;
 };
 
 type CreateCheckoutSessionResponse = {
@@ -154,6 +158,8 @@ export function useCreateCheckoutSessionMutation() {
           areaId: payload.areaId,
           bookingHours: payload.bookingHours,
           price: payload.price,
+          startAt: payload.startAt,
+          guestCount: payload.guestCount,
         }),
       });
 
@@ -195,6 +201,8 @@ export function useBulkUpdateBookingStatusMutation() {
         bookingKeys.user(),
         (existing) => mergeUpdatedBookings(existing, updatedBookings)
       );
+      queryClient.invalidateQueries({ queryKey: customerBookingsKeys.all, });
+      queryClient.invalidateQueries({ queryKey: ['notifications'], });
     },
   });
 }

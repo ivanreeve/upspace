@@ -36,8 +36,16 @@ export async function GET(req: NextRequest) {
  status, limit, cursor, 
 } = parsed.data;
 
+    const whereClause = status === 'approved'
+      ? {
+          status,
+          // Once a space is republished we no longer want it to appear in the approved list.
+          space: { is_published: false, },
+        }
+      : { status, };
+
     const requests = await prisma.unpublish_request.findMany({
-      where: { status, },
+      where: whereClause,
       take: limit + 1,
       skip: cursor ? 1 : 0,
       ...(cursor ? { cursor: { id: cursor, }, } : {}),

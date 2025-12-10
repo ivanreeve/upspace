@@ -9,13 +9,14 @@ import {
   type ComponentProps
 } from 'react';
 import {
-FiAlertCircle,
-FiArrowUpRight,
-FiLoader,
-FiSearch
+  FiAlertCircle,
+  FiArrowUpRight,
+  FiLoader,
+  FiSearch
 } from 'react-icons/fi';
 
 import { useBulkUpdateBookingStatusMutation, usePartnerBookingsQuery } from '@/hooks/api/useBookings';
+import { usePartnerStuckBookingsQuery } from '@/hooks/api/usePartnerStuckBookings';
 import type { BookingStatus } from '@/lib/bookings/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -52,29 +53,33 @@ const bookingPriceFormatter = new Intl.NumberFormat('en-PH', {
   maximumFractionDigits: 0,
 });
 
-const ACTIVE_BOOKING_STATUSES = new Set<BookingStatus>(['confirmed', 'checkedin']);
+const ACTIVE_BOOKING_STATUSES = new Set<BookingStatus>([
+  'confirmed',
+  'checkedin',
+  'pending'
+]);
 
 const BULK_STATUS_OPTIONS: { label: string; status: BookingStatus }[] = [
   {
- label: 'Mark as confirmed',
-status: 'confirmed', 
-},
+    label: 'Mark as confirmed',
+    status: 'confirmed',
+  },
   {
- label: 'Mark as checked-in',
-status: 'checkedin', 
-},
+    label: 'Mark as checked-in',
+    status: 'checkedin',
+  },
   {
- label: 'Mark as checked-out',
-status: 'checkedout', 
-},
+    label: 'Mark as checked-out',
+    status: 'checkedout',
+  },
   {
- label: 'Mark as cancelled',
-status: 'cancelled', 
-},
+    label: 'Mark as cancelled',
+    status: 'cancelled',
+  },
   {
- label: 'Mark as no-show',
-status: 'noshow', 
-}
+    label: 'Mark as no-show',
+    status: 'noshow',
+  }
 ];
 
 const statusVariantMap: Record<
@@ -99,6 +104,10 @@ export function SpacesBookingsPage() {
     isError,
     error,
   } = usePartnerBookingsQuery();
+  const {
+    data: stuckData,
+    isLoading: isStuckLoading,
+  } = usePartnerStuckBookingsQuery();
   const bulkUpdate = useBulkUpdateBookingStatusMutation();
   const headingId = useId();
   const descriptionId = useId();
@@ -106,14 +115,16 @@ export function SpacesBookingsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const activeBookings = useMemo(
-    () => bookings.filter((booking) => ACTIVE_BOOKING_STATUSES.has(booking.status)),
+    () =>
+      bookings.filter((booking) => ACTIVE_BOOKING_STATUSES.has(booking.status)),
     [bookings]
   );
 
   const sortedBookings = useMemo(
     () =>
       [...activeBookings].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       ),
     [activeBookings]
   );
@@ -163,11 +174,17 @@ export function SpacesBookingsPage() {
   }, [sortedBookings]);
 
   const activeCount = sortedBookings.length;
-  const visibleSelectedCount = filteredBookings.filter((booking) => selectedIds.has(booking.id)).length;
+  const visibleSelectedCount = filteredBookings.filter((booking) =>
+    selectedIds.has(booking.id)
+  ).length;
   const allVisibleSelected =
-    filteredBookings.length > 0 && visibleSelectedCount === filteredBookings.length;
-  const selectionState: boolean | 'indeterminate' =
-    allVisibleSelected ? true : visibleSelectedCount > 0 ? 'indeterminate' : false;
+    filteredBookings.length > 0 &&
+    visibleSelectedCount === filteredBookings.length;
+  const selectionState: boolean | 'indeterminate' = allVisibleSelected
+    ? true
+    : visibleSelectedCount > 0
+      ? 'indeterminate'
+      : false;
 
   const handleSelectAll = (checked: boolean) => {
     setSelectedIds((current) => {
@@ -203,9 +220,9 @@ export function SpacesBookingsPage() {
 
     bulkUpdate.mutate(
       {
- ids,
-status, 
-},
+        ids,
+        status,
+      },
       {
         onSuccess: () => {
           setSelectedIds(new Set());
@@ -217,7 +234,8 @@ status,
   const renderCapacity = (booking: (typeof bookings)[number]) => {
     const used = areaBookingCounts.get(booking.areaId) ?? 0;
     const maxCap = booking.areaMaxCapacity ?? null;
-    const remaining = typeof maxCap === 'number' ? Math.max(maxCap - used, 0) : null;
+    const remaining =
+      typeof maxCap === 'number' ? Math.max(maxCap - used, 0) : null;
     const status =
       maxCap === null ? 'unbounded' : remaining === 0 ? 'full' : 'available';
 
@@ -226,7 +244,10 @@ status,
       maxCap,
       remaining,
       status,
-      label: maxCap === null ? `${used} booking${used === 1 ? '' : 's'}` : `${used}/${maxCap}`,
+      label:
+        maxCap === null
+          ? `${used} booking${used === 1 ? '' : 's'}`
+          : `${used}/${maxCap}`,
       helper:
         maxCap === null
           ? 'No capacity set'
@@ -279,7 +300,9 @@ status,
         <TableBody>
           <TableRow>
             <TableCell colSpan={ 8 } className="text-sm text-destructive">
-              { error instanceof Error ? error.message : 'Unable to load bookings.' }
+              { error instanceof Error
+                ? error.message
+                : 'Unable to load bookings.' }
             </TableCell>
           </TableRow>
         </TableBody>
@@ -293,7 +316,10 @@ status,
             <TableCell colSpan={ 8 }>
               <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
                 <FiAlertCircle className="size-5" aria-hidden="true" />
-                <p>No bookings yet. Once guests book an area, you will see them here.</p>
+                <p>
+                  No bookings yet. Once guests book an area, you will see them
+                  here.
+                </p>
               </div>
             </TableCell>
           </TableRow>
@@ -353,13 +379,19 @@ status,
                 <Checkbox
                   aria-label={ `Select booking for ${booking.areaName}` }
                   checked={ isSelected }
-                  onCheckedChange={ (checked) => handleSelectOne(booking.id, Boolean(checked)) }
+                  onCheckedChange={ (checked) =>
+                    handleSelectOne(booking.id, Boolean(checked))
+                  }
                 />
               </TableCell>
               <TableCell>
                 <div className="flex flex-col gap-1">
-                  <p className="text-sm font-semibold text-foreground">{ userDisplayName }</p>
-                  <p className="text-xs text-muted-foreground">{ userHandle.startsWith('@') ? userHandle : `@${userHandle}` }</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    { userDisplayName }
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    { userHandle.startsWith('@') ? userHandle : `@${userHandle}` }
+                  </p>
                 </div>
               </TableCell>
               <TableCell>
@@ -371,7 +403,9 @@ status,
                     { booking.spaceName }
                     <FiArrowUpRight className="size-4" aria-hidden="true" />
                   </Link>
-                  <p className="text-xs text-muted-foreground">{ booking.areaName }</p>
+                  <p className="text-xs text-muted-foreground">
+                    { booking.areaName }
+                  </p>
                 </div>
               </TableCell>
               <TableCell>
@@ -379,14 +413,18 @@ status,
                   <Badge variant={ statusVariantMap[booking.status] }>
                     { booking.status }
                   </Badge>
-                  { !['cancelled', 'rejected', 'expired', 'noshow'].includes(booking.status) ? (
+                  { !['cancelled', 'rejected', 'expired', 'noshow'].includes(
+                    booking.status
+                  ) ? (
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={ () => bulkUpdate.mutate({
- ids: [booking.id],
-status: 'cancelled', 
-}) }
+                      onClick={ () =>
+                        bulkUpdate.mutate({
+                          ids: [booking.id],
+                          status: 'cancelled',
+                        })
+                      }
                       disabled={ bulkUpdate.isPending }
                     >
                       Cancel
@@ -394,11 +432,15 @@ status: 'cancelled',
                   ) : null }
                 </div>
               </TableCell>
-              <TableCell>{ booking.bookingHours } hr{ booking.bookingHours === 1 ? '' : 's' }</TableCell>
+              <TableCell>
+                { booking.bookingHours } hr{ booking.bookingHours === 1 ? '' : 's' }
+              </TableCell>
               <TableCell>{ priceLabel }</TableCell>
               <TableCell>
                 <div className="flex flex-col">
-                  <span className="text-sm font-semibold">{ capacity.label }</span>
+                  <span className="text-sm font-semibold">
+                    { capacity.label }
+                  </span>
                   <span
                     className={ cn(
                       'text-xs',
@@ -427,14 +469,30 @@ status: 'cancelled',
     <div className="space-y-6 px-4 pb-10 sm:px-6 lg:px-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-foreground">Bookings</h1>
+          <h1 className="text-2xl font-semibold text-foreground mt-8">
+            Bookings
+          </h1>
           <p className="text-sm text-muted-foreground">
-            Monitor who is currently booked and track how each area is filling up.
+            Monitor who is currently booked and track how each area is filling
+            up.
           </p>
         </div>
         <Badge variant="secondary" className="text-xs">
           { activeCount } active
         </Badge>
+      </div>
+
+      <div className="space-y-2">
+        <Badge variant="outline" className="text-xs">
+          { isStuckLoading
+            ? 'Checking paid-but-pending bookings...'
+            : `${ stuckData?.pendingPaid ?? 0 } paid bookings need review` }
+        </Badge>
+        { stuckData && stuckData.pendingPaid > 0 ? (
+          <div className="rounded-md border border-amber-500/60 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
+            Some bookings were paid but are still pending. Open the table below to resolve them.
+          </div>
+        ) : null }
       </div>
 
       <section
@@ -444,21 +502,28 @@ status: 'cancelled',
       >
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 id={ headingId } className="text-lg font-semibold text-foreground">
+            <h2
+              id={ headingId }
+              className="text-lg font-semibold text-foreground"
+            >
               Area capacity overview
             </h2>
             <p id={ descriptionId } className="text-sm text-muted-foreground">
-              Live bookings with per-area capacity signals, search, and bulk edits.
+              Live bookings with per-area capacity signals, search, and bulk
+              edits.
             </p>
           </div>
-            <Button
-              type="button"
-              asChild
-              variant="outline"
-              size="sm"
-              className="gap-2"
+          <Button
+            type="button"
+            asChild
+            variant="outline"
+            size="sm"
+            className="gap-2"
+          >
+            <Link
+              href="/partner/spaces/dashboard"
+              className="hover:!text-white"
             >
-              <Link href="/partner/spaces/dashboard" className="hover:!text-white">
               View analytics
               <FiArrowUpRight className="size-4" aria-hidden="true" />
             </Link>
@@ -486,14 +551,18 @@ status: 'cancelled',
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Filter the table and quickly locate people currently booked into your areas.
+                Filter the table and quickly locate people currently booked into
+                your areas.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary" className="text-xs">
                 { filteredBookings.length } visible
               </Badge>
-              <Badge variant={ selectedIds.size ? 'default' : 'secondary' } className="text-xs">
+              <Badge
+                variant={ selectedIds.size ? 'default' : 'secondary' }
+                className="text-xs"
+              >
                 { selectedIds.size } selected
               </Badge>
               <DropdownMenu>
@@ -507,7 +576,10 @@ status: 'cancelled',
                   >
                     { bulkUpdate.isPending ? (
                       <>
-                        <FiLoader className="size-4 animate-spin" aria-hidden="true" />
+                        <FiLoader
+                          className="size-4 animate-spin"
+                          aria-hidden="true"
+                        />
                         Applying...
                       </>
                     ) : (
@@ -556,7 +628,8 @@ status: 'cancelled',
 
           <Table aria-labelledby={ headingId } aria-describedby={ descriptionId }>
             <TableCaption className="sr-only">
-              Area capacity overview data table with active bookings, search, and bulk actions
+              Area capacity overview data table with active bookings, search,
+              and bulk actions
             </TableCaption>
             <TableHeader>
               <TableRow>
@@ -564,7 +637,9 @@ status: 'cancelled',
                   <Checkbox
                     aria-label="Select all visible bookings"
                     checked={ selectionState }
-                    onCheckedChange={ (checked) => handleSelectAll(Boolean(checked)) }
+                    onCheckedChange={ (checked) =>
+                      handleSelectAll(Boolean(checked))
+                    }
                   />
                 </TableHead>
                 <TableHead>User</TableHead>
