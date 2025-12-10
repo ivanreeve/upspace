@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import {
   ChangeEvent,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -314,7 +315,7 @@ const normalizeMimeType = (mime: string) => {
   return normalized;
 };
 
-export default function SpaceCreateRoute() {
+function SpaceCreateRouteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const spaceImageMaxLabel = formatBytes(SPACE_IMAGE_MAX_BYTES);
@@ -1817,5 +1818,22 @@ export default function SpaceCreateRoute() {
         </Form>
       </main>
     </>
+  );
+}
+
+function SpaceCreateSuspenseFallback() {
+  return (
+    <div className="flex items-center gap-2 p-6 text-sm text-muted-foreground">
+      <CgSpinner className="size-4 animate-spin" aria-hidden="true" />
+      Loading space form...
+    </div>
+  );
+}
+
+export default function SpaceCreateRoute() {
+  return (
+    <Suspense fallback={ <SpaceCreateSuspenseFallback /> }>
+      <SpaceCreateRouteContent />
+    </Suspense>
   );
 }
