@@ -13,3 +13,4 @@ export const ACTIVE_OCCUPANCY_BOOKING_STATUSES: BookingStatus[] = [
   'confirmed',
   'checkedin'
 ];
+export const MAX_BOOKING_HOURS = 24; // only hourly bookings up to 24 hours
