@@ -139,12 +139,7 @@ export function SpaceVerificationRequirementsStep({
               <div className="mt-4 space-y-3">
                 { requirement.slots.map((slot, slotIndex) => {
                   const slotFile = slotFiles[slotIndex];
-                  const slotFileName =
-                    slotFile && 'name' in slotFile
-                      ? slotFile.name
-                      : slotFile instanceof File
-                        ? slotFile.name
-                        : null;
+                  const slotFileName = slotFile?.name ?? null;
                   const inputKey = getInputKey(requirement.id, slot);
                   const inputId = `requirement-upload-${inputKey}`;
 
