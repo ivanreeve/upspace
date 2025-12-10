@@ -4,7 +4,7 @@ import { subDays } from 'date-fns';
 import { prisma } from '@/lib/prisma';
 import { AdminSessionError, requireAdminSession } from '@/lib/auth/require-admin-session';
 
-const AUDIT_TABLES = ['booking', 'space', 'user', 'verification'] as const;
+const AUDIT_TABLES = ['booking', 'space', 'user', 'verification'];
 
 export async function GET(_req: NextRequest) {
   try {
