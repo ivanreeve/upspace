@@ -2,11 +2,12 @@ import { cookies } from 'next/headers';
 
 import { MarketplaceChrome } from '@/components/pages/Marketplace/MarketplaceChrome';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
-import { PartnerMessagesPanel } from '@/components/pages/Marketplace/PartnerMessagesPanel';
+import { MarketplaceDashboardContent } from './MarketplaceDashboardContent';
 
 export const metadata = {
-  title: 'Partner Messages | UpSpace',
-  description: 'Reply to customer conversations and keep responses in sync with Supabase Realtime.',
+  title: 'Admin Dashboard | UpSpace',
+  description:
+    'Unified audit log spanning bookings, coworking spaces, client registrations, and partner verifications.',
 };
 
 export default async function MarketplaceDashboardPage() {
@@ -16,7 +17,7 @@ export default async function MarketplaceDashboardPage() {
 
   return (
     <MarketplaceChrome initialSidebarOpen={ initialSidebarOpen }>
-      <PartnerMessagesPanel />
+      <MarketplaceDashboardContent />
     </MarketplaceChrome>
   );
 }

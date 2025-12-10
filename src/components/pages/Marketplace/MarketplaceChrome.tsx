@@ -1177,7 +1177,7 @@ export function MarketplaceChrome({
           showThemeSwitcher={ isCustomerRole || isAdminRole }
         />
       ) }
-      <div className="flex min-h-screen w-full">
+      <div className="flex min-h-screen w-full gap-5">
         <Sidebar
           collapsible="icon"
           className="hidden md:flex border-1 border-r-muted"
@@ -1374,7 +1374,7 @@ export function MarketplaceChrome({
 
         <SidebarInset
           className={ cn(
-            'relative flex-1 bg-background w-full pb-0 pt-0 md:pt-0',
+            'relative flex-1 bg-background w-full pb-0 pt-0 md:pt-0 px-4 md:px-6',
             insetClassName
           ) }
           style={
