@@ -42,6 +42,7 @@ model app_notification {
   booking_id   String?           @db.Uuid
   space_id     String?           @db.Uuid
   area_id      String?           @db.Uuid
+  booking      booking?          @relation(fields: [booking_id], references: [id], onDelete: SetNull, map: "app_notification_booking_fk")
   area         area?             @relation(fields: [area_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "app_notification_area_fk")
   space        space?            @relation(fields: [space_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "app_notification_space_fk")
 
