@@ -301,3 +301,31 @@ export function useRequestUnpublishSpaceMutation(spaceId: string) {
     },
   });
 }
+
+export function useWithdrawSpaceVerificationMutation() {
+  const authFetch = useAuthenticatedFetch();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (spaceId: string) => {
+      if (!spaceId) {
+        throw new Error('Space ID is required to withdraw the application.');
+      }
+
+      const response = await authFetch(`/api/v1/partner/spaces/${spaceId}/verification/withdraw`, { method: 'POST', });
+
+      if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+      }
+
+      const payload = (await response.json()) as {
+        data: { id: string; status: string; updated_at: string };
+      };
+      return payload.data;
+    },
+    onSuccess: (_data, spaceId) => {
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), });
+    },
+  });
+}

@@ -69,6 +69,7 @@ type AccountMenuProps = {
   displayName: string;
   secondaryLabel: string | null;
   emailLabel: string;
+  showTransactionHistory: boolean;
 };
 
 function AccountMenu({
@@ -79,6 +80,7 @@ function AccountMenu({
   displayName,
   secondaryLabel,
   emailLabel,
+  showTransactionHistory,
 }: AccountMenuProps) {
   return (
     <DropdownMenu>
@@ -130,10 +132,12 @@ function AccountMenu({
           <FiBell className="size-4" aria-hidden="true" />
           <span>Notifications</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={ () => onNavigate('/customer/transactions') }>
-          <FiCreditCard className="size-4" aria-hidden="true" />
-          <span>Transaction history</span>
-        </DropdownMenuItem>
+        { showTransactionHistory && (
+          <DropdownMenuItem onSelect={ () => onNavigate('/customer/transactions') }>
+            <FiCreditCard className="size-4" aria-hidden="true" />
+            <span>Transaction history</span>
+          </DropdownMenuItem>
+        ) }
         <DropdownMenuSeparator className="my-1" />
         <DropdownMenuItem
           onSelect={ () => {
@@ -258,6 +262,14 @@ export default function NavBar({
     resolvedHandleValue?.slice(0, 2)?.toUpperCase() ?? 'US';
   const displayName = resolvedHandleValue ?? 'UpSpace User';
   const secondaryLabel = session?.user?.email ?? null;
+  const metadataRole = session?.user?.user_metadata?.role as
+    | 'customer'
+    | 'partner'
+    | 'admin'
+    | undefined;
+  const resolvedRole = metadataRole ?? userProfile?.role;
+  const hasTransactionHistory =
+    resolvedRole === 'customer' || resolvedRole === 'partner';
   const handleNavigate = React.useCallback(
     (href: string) => {
       router.push(href);
@@ -331,15 +343,16 @@ export default function NavBar({
                   <div className="flex items-center gap-3 px-2">
                     <ThemeSwitcher />
                     { session && (
-                      <AccountMenu
-                        avatarUrl={ avatarUrl }
-                        fallbackLabel={ avatarFallback }
-                        onLogout={ handleLogout }
-                        onNavigate={ handleNavigate }
-                        displayName={ displayName }
-                        secondaryLabel={ resolvedHandleValue }
-                        emailLabel={ secondaryLabel ?? 'Email unavailable' }
-                      />
+                        <AccountMenu
+                          avatarUrl={ avatarUrl }
+                          fallbackLabel={ avatarFallback }
+                          onLogout={ handleLogout }
+                          onNavigate={ handleNavigate }
+                          displayName={ displayName }
+                          secondaryLabel={ resolvedHandleValue }
+                          emailLabel={ secondaryLabel ?? 'Email unavailable' }
+                          showTransactionHistory={ hasTransactionHistory }
+                        />
                     ) }
                   </div>
                 </NavigationMenuItem>
@@ -351,15 +364,16 @@ export default function NavBar({
           <div className="flex min-[570px]:hidden items-center gap-2">
             <ThemeSwitcher />
             { session && (
-              <AccountMenu
-                avatarUrl={ avatarUrl }
-                fallbackLabel={ avatarFallback }
-                onLogout={ handleLogout }
-                onNavigate={ handleNavigate }
-                displayName={ displayName }
-                secondaryLabel={ resolvedHandleValue }
-                emailLabel={ secondaryLabel ?? 'Email unavailable' }
-              />
+            <AccountMenu
+              avatarUrl={ avatarUrl }
+              fallbackLabel={ avatarFallback }
+              onLogout={ handleLogout }
+              onNavigate={ handleNavigate }
+              displayName={ displayName }
+              secondaryLabel={ resolvedHandleValue }
+              emailLabel={ secondaryLabel ?? 'Email unavailable' }
+              showTransactionHistory={ hasTransactionHistory }
+            />
             ) }
             { resolvedMenuItems.length > 0 && (
               <Sheet open={ isOpen } onOpenChange={ setIsOpen }>

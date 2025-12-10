@@ -95,6 +95,7 @@ type SidebarFooterContentProps = {
   showNotifications?: boolean;
   showAccount?: boolean;
   showWallet?: boolean;
+  showTransactionHistory?: boolean;
 };
 
 function GradientSparklesIcon({
@@ -224,6 +225,7 @@ function SidebarFooterContent({
   showNotifications = true,
   showAccount = true,
   showWallet = false,
+  showTransactionHistory = true,
 }: SidebarFooterContentProps) {
   const {
  state, isMobile, 
@@ -387,13 +389,15 @@ function SidebarFooterContent({
                     <span>Notifications</span>
                   </DropdownMenuItem>
                 ) }
-                <DropdownMenuItem
-                  onSelect={ () => onNavigate('/customer/transactions') }
-                  className="hover:!text-white hover:[&_svg]:!text-white"
-                >
-                  <FiCreditCard className="size-4" aria-hidden="true" />
-                  <span>Transaction history</span>
-                </DropdownMenuItem>
+                { showTransactionHistory && (
+                  <DropdownMenuItem
+                    onSelect={ () => onNavigate('/customer/transactions') }
+                    className="hover:!text-white hover:[&_svg]:!text-white"
+                  >
+                    <FiCreditCard className="size-4" aria-hidden="true" />
+                    <span>Transaction history</span>
+                  </DropdownMenuItem>
+                ) }
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
                   className="text-destructive focus-visible:text-destructive hover:!text-white hover:[&_svg]:!text-white"
@@ -626,10 +630,12 @@ function MobileTopNav({
                   <FiBell className="size-4" aria-hidden="true" />
                   <span>Notifications</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={ () => onNavigate('/customer/transactions') }>
-                  <FiCreditCard className="size-4" aria-hidden="true" />
-                  <span>Transaction history</span>
-                </DropdownMenuItem>
+                { showTransactionHistory && (
+                  <DropdownMenuItem onSelect={ () => onNavigate('/customer/transactions') }>
+                    <FiCreditCard className="size-4" aria-hidden="true" />
+                    <span>Transaction history</span>
+                  </DropdownMenuItem>
+                ) }
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
                   className="text-destructive focus-visible:text-destructive"
@@ -1010,6 +1016,7 @@ export function MarketplaceChrome({
   const isCustomerRole = effectiveRole === 'customer';
   const isPartnerRole = effectiveRole === 'partner';
   const isAdminRole = effectiveRole === 'admin';
+  const showTransactionHistory = isCustomerRole || isPartnerRole;
   const shouldShowAiSearch = isCustomerRole || isPartnerRole || isAdminRole;
   const shouldShowNotifications = isCustomerRole || isPartnerRole;
   const resolvedMessageHref = messageHref ?? '/customer/messages';
@@ -1388,6 +1395,7 @@ export function MarketplaceChrome({
               showNotifications={ shouldShowNotifications }
               showAccount={ !isAdminRole }
               showWallet={ isPartnerRole }
+              showTransactionHistory={ showTransactionHistory }
             />
           </SidebarFooter>
           <SidebarRail />
