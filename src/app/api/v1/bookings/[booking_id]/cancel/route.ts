@@ -30,8 +30,9 @@ const CANCELLABLE_STATUSES: BookingStatus[] = [
 
 export async function POST(
   _req: NextRequest,
-  { params, }: { params: { booking_id: string } }
+  context: { params: Promise<{ booking_id: string }> }
 ) {
+  const params = await context.params;
   const supabase = await createSupabaseServerClient();
   const {
  data: authData, error: authError, 
