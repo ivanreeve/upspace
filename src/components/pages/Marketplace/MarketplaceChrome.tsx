@@ -1257,6 +1257,15 @@ export function MarketplaceChrome({
                       iconProps={ { strokeWidth: 2, } }
                     />
                   ) }
+                  { isCustomerRole && (
+                    <SidebarLinkItem
+                      href="/customer/bookings"
+                      label="Bookings"
+                      icon={ LuTicket }
+                      tooltip="Bookings"
+                      iconProps={ { strokeWidth: 1.5, } }
+                    />
+                  ) }
                   { shouldShowNotifications && (
                     <SidebarLinkItem
                       href={ resolvedMessageHref }
