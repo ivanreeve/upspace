@@ -10,6 +10,7 @@ import {
   FiBell,
   FiBookmark,
   FiCommand,
+  FiCreditCard,
   FiHome,
   FiLogOut,
   FiMenu,
@@ -386,6 +387,13 @@ function SidebarFooterContent({
                     <span>Notifications</span>
                   </DropdownMenuItem>
                 ) }
+                <DropdownMenuItem
+                  onSelect={ () => onNavigate('/customer/transactions') }
+                  className="hover:!text-white hover:[&_svg]:!text-white"
+                >
+                  <FiCreditCard className="size-4" aria-hidden="true" />
+                  <span>Transaction history</span>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
                   className="text-destructive focus-visible:text-destructive hover:!text-white hover:[&_svg]:!text-white"
@@ -617,6 +625,10 @@ function MobileTopNav({
                 <DropdownMenuItem onSelect={ () => onNavigate('/customer/notifications') }>
                   <FiBell className="size-4" aria-hidden="true" />
                   <span>Notifications</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={ () => onNavigate('/customer/transactions') }>
+                  <FiCreditCard className="size-4" aria-hidden="true" />
+                  <span>Transaction history</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
