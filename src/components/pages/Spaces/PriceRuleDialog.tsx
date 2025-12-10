@@ -1440,6 +1440,125 @@ const createDefaultRule = (): PriceRuleFormValues => ({
   },
 });
 
+const pricingRuleTemplates: Array<{
+  key: string;
+  name: string;
+  summary: string;
+  build: () => PriceRuleFormValues;
+}> = [
+  {
+    key: 'simple-hourly',
+    name: 'Simple hourly',
+    summary: 'Flat rate per hour with no conditions.',
+    build: () => ({
+      name: 'Simple hourly',
+      description: 'Multiply base rate by booking hours.',
+      definition: {
+        variables: [
+          ...PRICE_RULE_INITIAL_VARIABLES.map((variable) => ({ ...variable, })),
+          {
+            key: 'base_rate',
+            label: 'base rate',
+            type: 'number',
+            initialValue: '500',
+            userInput: false,
+          }
+        ],
+        conditions: [],
+        formula: 'base_rate * booking_hours',
+      },
+    }),
+  },
+  {
+    key: 'weekday-weekend',
+    name: 'Weekend uplift',
+    summary: 'Higher rate on Saturday/Sunday, normal on weekdays.',
+    build: () => ({
+      name: 'Weekend uplift',
+      description: 'Apply a weekend multiplier; weekdays stay at base rate.',
+      definition: {
+        variables: [
+          ...PRICE_RULE_INITIAL_VARIABLES.map((variable) => ({ ...variable, })),
+          {
+            key: 'base_rate',
+            label: 'base rate',
+            type: 'number',
+            initialValue: '500',
+            userInput: false,
+          },
+          {
+            key: 'weekend_multiplier',
+            label: 'weekend multiplier',
+            type: 'number',
+            initialValue: '1.2',
+            userInput: false,
+          }
+        ],
+        conditions: [
+          {
+            id: crypto.randomUUID(),
+            comparator: '>=',
+            left: {
+              kind: 'variable',
+              key: 'day_of_week',
+            },
+            right: {
+              kind: 'literal',
+              value: '6',
+              valueType: 'number',
+            },
+          }
+        ],
+        formula: 'base_rate * weekend_multiplier ELSE base_rate',
+      },
+    }),
+  },
+  {
+    key: 'long-stay-discount',
+    name: 'Long-stay discount',
+    summary: 'Discount when booking is 24h+.',
+    build: () => ({
+      name: 'Long-stay discount',
+      description: '10% off bookings that are 24 hours or longer.',
+      definition: {
+        variables: [
+          ...PRICE_RULE_INITIAL_VARIABLES.map((variable) => ({ ...variable, })),
+          {
+            key: 'base_rate',
+            label: 'base rate',
+            type: 'number',
+            initialValue: '500',
+            userInput: false,
+          },
+          {
+            key: 'discount_multiplier',
+            label: 'discount multiplier',
+            type: 'number',
+            initialValue: '0.9',
+            userInput: false,
+          }
+        ],
+        conditions: [
+          {
+            id: crypto.randomUUID(),
+            comparator: '>=',
+            left: {
+              kind: 'variable',
+              key: 'booking_hours',
+            },
+            right: {
+              kind: 'literal',
+              value: '24',
+              valueType: 'number',
+            },
+          }
+        ],
+        formula: 'base_rate * booking_hours * discount_multiplier ELSE base_rate * booking_hours',
+      },
+    }),
+  }
+];
+
 export type PriceRuleFormState = {
   values: PriceRuleFormValues;
   setValues: Dispatch<SetStateAction<PriceRuleFormValues>>;
@@ -2508,6 +2627,17 @@ export function PriceRuleFormShell({
   handleConditionExpressionChange,
   updateDefinition,
 }: PriceRuleFormShellProps) {
+  const applyTemplate = (templateKey: string) => {
+    const template = pricingRuleTemplates.find((item) => item.key === templateKey);
+    if (!template) return;
+    const nextValues = template.build();
+    setValues(nextValues);
+    setErrorMessage(null);
+    handleConditionExpressionChange(
+      buildConditionExpressionFromDefinition(nextValues.definition)
+    );
+  };
+
   const handleSubmit = () => {
     const parsed = priceRuleSchema.safeParse(values);
     if (!parsed.success) {
@@ -2523,6 +2653,30 @@ export function PriceRuleFormShell({
       { errorMessage ? (
         <p className="text-sm text-destructive">{ errorMessage }</p>
       ) : null }
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-foreground">Quick templates</h3>
+          <p className="text-xs text-muted-foreground">Start simple, switch to Advanced anytime.</p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          { pricingRuleTemplates.map((template) => (
+            <Button
+              key={ template.key }
+              type="button"
+              variant="outline"
+              size="sm"
+              className="flex flex-col items-start gap-1 text-left h-full"
+              onClick={ () => applyTemplate(template.key) }
+            >
+              <span className="text-sm font-semibold">{ template.name }</span>
+              <span className="text-[11px] text-muted-foreground leading-tight">
+                { template.summary }
+              </span>
+            </Button>
+          )) }
+        </div>
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
