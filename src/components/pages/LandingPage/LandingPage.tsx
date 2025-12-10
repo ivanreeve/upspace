@@ -8,12 +8,16 @@ import { Team } from './LandingPage.Team';
 import NavBar from '@/components/ui/navbar';
 import BackToTopButton from '@/components/ui/back-to-top';
 
-export default function LandingPage() {
+type LandingPageProps = {
+  showHero?: boolean,
+};
+
+export default function LandingPage({ showHero = true, }: LandingPageProps) {
   return (
     <>
       <NavBar />
       <div className="px-4 max-w-[1440px] mx-auto">
-        <Hero />
+        { showHero && <Hero /> }
         <Features />
         <About />
         <Team />
