@@ -263,10 +263,10 @@ export default function OnboardingExperience() {
                 disabled={ isSubmitting }
               >
                 <CgSpinner
-                  className={cn(
+                  className={ cn(
                     'h-4 w-4 transition-opacity',
                     isSubmitting ? 'animate-spin opacity-100' : 'opacity-0'
-                  )}
+                  ) }
                   aria-hidden="true"
                 />
                 <span className="inline-block min-w-[14rem] text-center">
