@@ -1200,6 +1200,8 @@ export function MarketplaceChrome({
           isGuest={ navData.isGuest }
           showSidebarToggle={ isPartnerRole }
           showThemeSwitcher={ isCustomerRole || isAdminRole }
+          showNotifications={ shouldShowNotifications }
+          showTransactionHistory={ showTransactionHistory }
         />
       ) }
       <div className="flex min-h-screen w-full gap-5">
