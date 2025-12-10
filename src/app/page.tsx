@@ -2,6 +2,8 @@ import LandingPage from '@/components/pages/LandingPage/LandingPage';
 import { Footer } from '@/components/ui/footer';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   let showHero = true;
 
