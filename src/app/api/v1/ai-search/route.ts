@@ -1,10 +1,14 @@
-import {
-  ApiError,
-  FunctionCall,
-  FunctionCallingConfigMode,
-  FunctionDeclaration,
-  GoogleGenAI
-} from '@google/genai';
+import { OpenRouter } from '@openrouter/sdk';
+import type {
+  AssistantMessage,
+  ChatMessageContentItem,
+  ChatMessageContentItemText,
+  ChatMessageToolCall,
+  Message,
+  ToolDefinitionJson,
+  ToolResponseMessage
+} from '@openrouter/sdk/models';
+import { OpenRouterError } from '@openrouter/sdk/models/errors/openroutererror';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -153,14 +157,20 @@ const KEYWORD_SEARCH_PARAMETERS_JSON_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-const findSpacesFunctionDeclaration: FunctionDeclaration = {
+type AiFunctionDefinition = {
+  name: string;
+  description: string;
+  parametersJsonSchema: Record<string, unknown>;
+};
+
+const findSpacesFunctionDefinition: AiFunctionDefinition = {
   name: 'find_spaces',
   description:
     'Retrieve coworking spaces that match filters such as location, amenities, price, and rating.',
   parametersJsonSchema: FIND_SPACES_PARAMETERS_JSON_SCHEMA,
 };
 
-const keywordSearchFunctionDeclaration: FunctionDeclaration = {
+const keywordSearchFunctionDefinition: AiFunctionDefinition = {
   name: 'keyword_search',
   description:
     'Retrieve coworking spaces whose description or location fields mention specific keywords.',
@@ -274,112 +284,85 @@ type ConversationMessage = {
   content: string;
 };
 
-type AgentConversationPart =
-  | { text: string }
-  | {
-      functionCall: {
-        name: string;
-        args?: Record<string, unknown>;
-        id?: string;
-      };
-    }
-  | {
-      functionResponse: {
-        name: string;
-        id?: string;
-        response: Record<string, unknown>;
-      };
-    };
-
-type AgentConversationContent = {
-  role: 'user' | 'model';
-  parts: AgentConversationPart[];
-};
-
-const buildConversationContents = (messages: ConversationMessage[]): AgentConversationContent[] =>
+const buildConversationMessages = (messages: ConversationMessage[]): Message[] =>
   messages.map((message) => ({
-    role: message.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: message.content.trim(), }],
+    role: message.role,
+    content: message.content.trim(),
   }));
 
-const createLocationContext = (
+const createLocationMessage = (
   location: z.infer<typeof coordinateSchema>
-): AgentConversationContent => ({
-  role: 'user', // Gemini expects only 'user' or 'model'; embed context as user-provided note
-  parts: [
-    {
-      text: `Customer is currently located at (${location.lat.toFixed(
-        5
-      )}, ${location.long.toFixed(5)}).`,
-    }
-  ],
+): Message => ({
+  role: 'user',
+  content: `Customer is currently located at (${location.lat.toFixed(
+    5
+  )}, ${location.long.toFixed(5)}).`,
 });
 
-const extractTextFromResponse = (response: {
-  candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-}): string | null => {
-  const candidate = response.candidates?.[0];
-  if (!candidate) {
-    return null;
-  }
+const buildReferenceMessages = (data: SearchReferenceData): Message[] => {
+  const MAX_ITEMS = 50;
 
-  const text = candidate.content?.parts
-    ?.map((part) => part.text?.trim())
+  const formatList = (label: string, items: string[]): string | null => {
+    if (!items.length) return null;
+
+    const trimmed = items.slice(0, MAX_ITEMS);
+    const summary = trimmed.map((item) => `- ${item}`).join('\n');
+    const extra =
+      items.length > trimmed.length
+        ? `\n- ...and ${items.length - trimmed.length} more`
+        : '';
+
+    return `${label} (${items.length}):\n${summary}${extra}`;
+  };
+
+  return [
+    formatList('Available amenities', data.amenities),
+    formatList('Regions with spaces', data.regions),
+    formatList('Cities with spaces', data.cities),
+    formatList('Barangays with spaces', data.barangays)
+  ]
     .filter(Boolean)
-    .join('\n\n');
+    .map((text) => ({
+      role: 'user',
+      content: text as string,
+    }));
+};
 
-  if (!text) {
+const flattenMessageContent = (
+  content?: string | Array<ChatMessageContentItem> | null
+): string | null => {
+  if (!content) {
     return null;
   }
 
-  return text;
-};
-
-type FunctionCallPart = {
-  call: FunctionCall;
-  thoughtSignature?: string;
-};
-
-const extractFirstFunctionCallPart = (response: {
-  candidates?: Array<{
-    content?: {
-      parts?: Array<{ functionCall?: FunctionCall; thoughtSignature?: string }>;
-    };
-  }>;
-  functionCalls?: FunctionCall[];
-}): FunctionCallPart | null => {
-  for (const candidate of response.candidates ?? []) {
-    for (const part of candidate.content?.parts ?? []) {
-      if (part.functionCall) {
-        return {
-          call: part.functionCall,
-          thoughtSignature: part.thoughtSignature,
-        };
-      }
-    }
+  if (typeof content === 'string') {
+    const trimmed = content.trim();
+    return trimmed.length ? trimmed : null;
   }
 
-  const fallbackCall = response.functionCalls?.[0];
-  if (fallbackCall) {
-    return {
-      call: fallbackCall,
-      thoughtSignature: undefined,
-    };
-  }
+  const text = content
+    .filter(
+      (item): item is ChatMessageContentItemText => item.type === 'text'
+    )
+    .map((item) => item.text.trim())
+    .filter(Boolean)
+    .join(' ');
 
-  return null;
+  return text.length ? text : null;
 };
 
-const getUserLocationFunctionDeclaration: FunctionDeclaration = {
-  name: 'get_user_location',
-  description:
-    "Returns the customer's current location (latitude and longitude).",
-  parametersJsonSchema: {
-    type: 'object',
-    properties: {},
-    additionalProperties: false,
-  },
-};
+const extractFirstToolCall = (
+  message?: AssistantMessage
+): ChatMessageToolCall | null => message?.toolCalls?.[0] ?? null;
+
+const createToolResponseMessage = (
+  callId: string,
+  payload: Record<string, unknown>
+): ToolResponseMessage => ({
+  role: 'tool',
+  content: JSON.stringify(payload),
+  toolCallId: callId,
+});
 
 const referenceDataToolDefinitions = [
   {
@@ -411,19 +394,21 @@ const referenceDataToolDefinitions = [
 type ReferenceDataToolName =
   (typeof referenceDataToolDefinitions)[number]['name'];
 
-const referenceDataFunctionDeclarations = referenceDataToolDefinitions.map(
-  ({
- name, description, 
-}) => ({
-    name,
-    description,
-    parametersJsonSchema: {
-      type: 'object',
-      properties: {},
-      additionalProperties: false,
-    },
-  })
-) satisfies FunctionDeclaration[];
+const referenceDataFunctionDefinitions: AiFunctionDefinition[] =
+  referenceDataToolDefinitions.map(
+    ({
+      name,
+      description,
+    }) => ({
+      name,
+      description,
+      parametersJsonSchema: {
+        type: 'object',
+        properties: {},
+        additionalProperties: false,
+      },
+    })
+  );
 
 const referenceToolFetchers = referenceDataToolDefinitions.reduce(
   (acc, definition) => {
@@ -439,43 +424,9 @@ const referenceDataToolSet = new Set(
 const isReferenceDataTool = (name: string): name is ReferenceDataToolName =>
   referenceDataToolSet.has(name as ReferenceDataToolName);
 
-const createFunctionCallContent = (
-  name: string,
-  id?: string,
-  args?: Record<string, unknown>,
-  thoughtSignature?: string
-): AgentConversationContent => ({
-  role: 'model',
-  parts: [
-    {
-      functionCall: {
-        name,
-        args,
-        id,
-      },
-      ...(thoughtSignature ? { thoughtSignature, } : {}),
-    }
-  ],
-});
-
-const createFunctionResponseContent = (
-  name: string,
-  id: string | undefined,
-  responsePayload: Record<string, unknown>
-): AgentConversationContent => ({
-  role: 'model',
-  parts: [
-    {
-      functionResponse: {
-        name,
-        id,
-        response: responsePayload,
-      },
-    }
-  ],
-});
-
-const parseFunctionCallArgs = (value?: FunctionCall['args']) => {
+const parseFunctionCallArgs = (
+  value?: string | Record<string, unknown>
+): Record<string, unknown> => {
   if (!value) {
     return {};
   }
@@ -492,35 +443,36 @@ const parseFunctionCallArgs = (value?: FunctionCall['args']) => {
     }
   }
 
-  return value as Record<string, unknown>;
+  return value;
 };
 
-const buildReferenceContents = (data: SearchReferenceData) => {
-  const MAX_ITEMS = 50;
-
-  const formatList = (label: string, items: string[]): AgentConversationContent | null => {
-    if (!items.length) return null;
-
-    const trimmed = items.slice(0, MAX_ITEMS);
-    const summary = trimmed.map((item) => `- ${item}`).join('\n');
-    const extra =
-      items.length > trimmed.length
-        ? `\n- ...and ${items.length - trimmed.length} more`
-        : '';
-
-    return {
-      role: 'user',
-      parts: [{ text: `${label} (${items.length}):\n${summary}${extra}`, }],
-    };
-  };
-
-  return [
-    formatList('Available amenities', data.amenities),
-    formatList('Regions with spaces', data.regions),
-    formatList('Cities with spaces', data.cities),
-    formatList('Barangays with spaces', data.barangays)
-  ].filter(Boolean) as AgentConversationContent[];
+const getUserLocationFunctionDefinition: AiFunctionDefinition = {
+  name: 'get_user_location',
+  description:
+    "Returns the customer's current location (latitude and longitude).",
+  parametersJsonSchema: {
+    type: 'object',
+    properties: {},
+    additionalProperties: false,
+  },
 };
+
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL ?? 'openai/gpt-4o-mini';
+
+const TOOL_DEFINITIONS: ToolDefinitionJson[] = [
+  getUserLocationFunctionDefinition,
+  ...referenceDataFunctionDefinitions,
+  findSpacesFunctionDefinition,
+  keywordSearchFunctionDefinition
+].map((definition) => ({
+  type: 'function',
+  function: {
+    name: definition.name,
+    description: definition.description,
+    parameters: definition.parametersJsonSchema,
+    strict: true,
+  },
+}));
 
 export async function POST(request: NextRequest) {
   try {
@@ -559,15 +511,6 @@ export async function POST(request: NextRequest) {
 } = parsed;
     const trimmedQuery = query?.trim();
 
-    const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: 'AI search is unavailable. Missing API key.', },
-        { status: 500, }
-      );
-    }
-
-    const ai = new GoogleGenAI({ apiKey, });
     const conversation: ConversationMessage[] =
       messages && messages.length
         ? messages
@@ -580,30 +523,30 @@ export async function POST(request: NextRequest) {
             ]
           : [];
 
-    const conversationContents = buildConversationContents(conversation);
-    const contextContents = location ? [createLocationContext(location)] : [];
+    const conversationMessages = buildConversationMessages(conversation);
+    const contextMessages = location ? [createLocationMessage(location)] : [];
     const referenceData = await fetchSearchReferenceData();
-    const referenceContents = buildReferenceContents(referenceData);
-    const toolConfig = {
-      systemInstruction: searchAgentSystemPromptTemplate,
-      toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.AUTO, }, },
-      tools: [
-        {
-          functionDeclarations: [
-            getUserLocationFunctionDeclaration,
-            ...referenceDataFunctionDeclarations,
-            findSpacesFunctionDeclaration,
-            keywordSearchFunctionDeclaration
-          ],
-        }
-      ],
-    };
+    const referenceMessages = buildReferenceMessages(referenceData);
 
-    const historyContents: AgentConversationContent[] = [
-      ...contextContents,
-      ...referenceContents,
-      ...conversationContents
+    const historyMessages: Message[] = [
+      {
+        role: 'system',
+        content: searchAgentSystemPromptTemplate,
+      },
+      ...contextMessages,
+      ...referenceMessages,
+      ...conversationMessages
     ];
+
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'AI search is unavailable. Missing API key.', },
+        { status: 500, }
+      );
+    }
+
+    const ai = new OpenRouter({ apiKey, });
 
     let finalText: string | null = null;
     let toolResult: FindSpacesToolResult | null = null;
@@ -611,32 +554,44 @@ export async function POST(request: NextRequest) {
 
     const MAX_ATTEMPTS = 5;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-pro-preview',
-        contents: historyContents,
-        config: toolConfig,
+      const response = await ai.chat.send({
+        model: OPENROUTER_MODEL,
+        messages: historyMessages,
+        tools: TOOL_DEFINITIONS,
+        toolChoice: 'auto',
+        user: user_id ?? undefined,
       });
 
-      const functionCallPart = extractFirstFunctionCallPart(response);
-      const functionCall = functionCallPart?.call;
-      const responseText = extractTextFromResponse(response);
+      const assistantMessage = response.choices?.[0]?.message;
+      const responseText = assistantMessage
+        ? flattenMessageContent(assistantMessage.content)
+        : null;
 
-      if (!functionCall) {
+      if (!assistantMessage) {
         finalText =
-          finalText ?? responseText ?? 'Gemini did not provide a response.';
+          finalText ?? responseText ?? 'OpenRouter did not provide a response.';
         break;
       }
 
-      const functionCallName = functionCall.name ?? 'unknown';
-      const callArgs = parseFunctionCallArgs(functionCall.args);
-      historyContents.push(
-        createFunctionCallContent(
-          functionCallName,
-          functionCall.id,
-          callArgs,
-          functionCallPart?.thoughtSignature
-        )
-      );
+      historyMessages.push({
+        role: 'assistant',
+        content: assistantMessage.content,
+        name: assistantMessage.name,
+        toolCalls: assistantMessage.toolCalls,
+        refusal: assistantMessage.refusal,
+        reasoning: assistantMessage.reasoning,
+      });
+
+      const functionCall = extractFirstToolCall(assistantMessage);
+      if (!functionCall) {
+        finalText =
+          finalText ?? responseText ?? 'OpenRouter did not provide a response.';
+        break;
+      }
+
+      const functionCallName = functionCall.function.name ?? 'unknown';
+      const callArgs = parseFunctionCallArgs(functionCall.function.arguments);
+      const callId = functionCall.id;
 
       if (functionCallName === 'get_user_location') {
         const locationPayload = location
@@ -648,23 +603,19 @@ export async function POST(request: NextRequest) {
             }
           : { error: 'Location access was not granted.', };
 
-        historyContents.push(
-          createFunctionResponseContent(
-            functionCallName,
-            functionCall.id,
-            locationPayload
-          )
+        historyMessages.push(
+          createToolResponseMessage(callId, locationPayload)
         );
 
         continue;
       }
 
-        if (isReferenceDataTool(functionCallName)) {
+      if (isReferenceDataTool(functionCallName)) {
         try {
           const items = await referenceToolFetchers[functionCallName]();
 
-          historyContents.push(
-            createFunctionResponseContent(functionCallName, functionCall.id, {
+          historyMessages.push(
+            createToolResponseMessage(callId, {
               items,
               count: items.length,
             })
@@ -675,15 +626,15 @@ export async function POST(request: NextRequest) {
               ? referenceToolError.message
               : 'Unable to fetch reference data.';
           console.error('Reference tool error', message);
-          historyContents.push(
-            createFunctionResponseContent(functionCallName, functionCall.id, { error: message, })
+          historyMessages.push(
+            createToolResponseMessage(callId, { error: message, })
           );
         }
 
         continue;
       }
 
-        if (!isSpaceSearchFunction(functionCallName)) {
+      if (!isSpaceSearchFunction(functionCallName)) {
         finalText = responseText ?? finalText;
         break;
       }
@@ -724,27 +675,11 @@ export async function POST(request: NextRequest) {
         ? { error: toolError, }
         : { output: toolResult, };
 
-      historyContents.push(
-        createFunctionResponseContent(
-          functionCallName,
-          functionCall.id,
-          toolResponsePayload
-        )
+      historyMessages.push(
+        createToolResponseMessage(callId, toolResponsePayload)
       );
 
-      const finalResponse = await ai.models.generateContent({
-        model: 'gemini-flash-latest',
-        contents: historyContents,
-        config: toolConfig,
-      });
-
-      finalText =
-        extractTextFromResponse(finalResponse) ??
-        responseText ??
-        toolError ??
-        'Gemini did not provide a response.';
-
-      break;
+      continue;
     }
 
     if (toolError && (!finalText || finalText === toolError)) {
@@ -752,7 +687,7 @@ export async function POST(request: NextRequest) {
         'I am sorry, I could not find spaces right now. Please try again in a moment.';
     }
 
-    const reply = (finalText ?? 'Gemini did not provide a response.').trim();
+    const reply = (finalText ?? 'OpenRouter did not provide a response.').trim();
 
     return NextResponse.json(
       {
@@ -773,8 +708,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (error instanceof ApiError && error.status === 429) {
-      console.error('Gemini AI search rate limited', error.message);
+    if (error instanceof OpenRouterError && error.statusCode === 429) {
+      console.error('OpenRouter AI search rate limited', error.message);
       return NextResponse.json(
         {
           error:
@@ -789,11 +724,11 @@ export async function POST(request: NextRequest) {
         ? error.message
         : typeof error === 'string'
           ? error
-          : 'Unknown Gemini error';
-    console.error('Gemini AI search error', message);
+          : 'Unknown OpenRouter error';
+    console.error('OpenRouter AI search error', message);
     return NextResponse.json(
       {
-        error: 'Gemini could not generate a response. Please try again.',
+        error: 'OpenRouter could not generate a response. Please try again.',
         detail: message,
       },
       { status: 502, }

@@ -10,6 +10,7 @@ import { FaQuestion } from 'react-icons/fa6';
 import {
   FiBell,
   FiChevronRight,
+  FiCreditCard,
   FiLogOut,
   FiSettings,
   FiSidebar,
@@ -128,6 +129,10 @@ function AccountMenu({
         <DropdownMenuItem onSelect={ () => onNavigate('/customer/notifications') }>
           <FiBell className="size-4" aria-hidden="true" />
           <span>Notifications</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={ () => onNavigate('/customer/transactions') }>
+          <FiCreditCard className="size-4" aria-hidden="true" />
+          <span>Transaction history</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator className="my-1" />
         <DropdownMenuItem
