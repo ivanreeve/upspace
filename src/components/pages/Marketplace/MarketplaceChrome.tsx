@@ -626,10 +626,12 @@ function MobileTopNav({
                   <FiSettings className="size-4" aria-hidden="true" />
                   <span>Settings</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={ () => onNavigate('/customer/notifications') }>
-                  <FiBell className="size-4" aria-hidden="true" />
-                  <span>Notifications</span>
-                </DropdownMenuItem>
+                { shouldShowNotifications && (
+                  <DropdownMenuItem onSelect={ () => onNavigate('/customer/notifications') }>
+                    <FiBell className="size-4" aria-hidden="true" />
+                    <span>Notifications</span>
+                  </DropdownMenuItem>
+                ) }
                 { showTransactionHistory && (
                   <DropdownMenuItem onSelect={ () => onNavigate('/customer/transactions') }>
                     <FiCreditCard className="size-4" aria-hidden="true" />

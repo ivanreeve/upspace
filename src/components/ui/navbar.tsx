@@ -70,6 +70,7 @@ type AccountMenuProps = {
   secondaryLabel: string | null;
   emailLabel: string;
   showTransactionHistory: boolean;
+  showNotifications: boolean;
 };
 
 function AccountMenu({
@@ -128,10 +129,12 @@ function AccountMenu({
           <FiSettings className="size-4" aria-hidden="true" />
           <span>Settings</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={ () => onNavigate('/customer/notifications') }>
-          <FiBell className="size-4" aria-hidden="true" />
-          <span>Notifications</span>
-        </DropdownMenuItem>
+        { showNotifications && (
+          <DropdownMenuItem onSelect={ () => onNavigate('/customer/notifications') }>
+            <FiBell className="size-4" aria-hidden="true" />
+            <span>Notifications</span>
+          </DropdownMenuItem>
+        ) }
         { showTransactionHistory && (
           <DropdownMenuItem onSelect={ () => onNavigate('/customer/transactions') }>
             <FiCreditCard className="size-4" aria-hidden="true" />
@@ -270,6 +273,7 @@ export default function NavBar({
   const resolvedRole = metadataRole ?? userProfile?.role;
   const hasTransactionHistory =
     resolvedRole === 'customer' || resolvedRole === 'partner';
+  const hasNotifications = hasTransactionHistory;
   const handleNavigate = React.useCallback(
     (href: string) => {
       router.push(href);
@@ -352,6 +356,7 @@ export default function NavBar({
                           secondaryLabel={ resolvedHandleValue }
                           emailLabel={ secondaryLabel ?? 'Email unavailable' }
                           showTransactionHistory={ hasTransactionHistory }
+                          showNotifications={ hasNotifications }
                         />
                     ) }
                   </div>
@@ -373,6 +378,7 @@ export default function NavBar({
               secondaryLabel={ resolvedHandleValue }
               emailLabel={ secondaryLabel ?? 'Email unavailable' }
               showTransactionHistory={ hasTransactionHistory }
+              showNotifications={ hasNotifications }
             />
             ) }
             { resolvedMenuItems.length > 0 && (
