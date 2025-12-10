@@ -497,6 +497,8 @@ function MobileTopNav({
   showSidebarToggle = false,
   showSearchButton = true,
   showThemeSwitcher = false,
+  showNotifications = true,
+  showTransactionHistory = true,
 }: {
   avatarUrl: string | null;
   avatarFallback: string;
@@ -509,6 +511,8 @@ function MobileTopNav({
   showSidebarToggle?: boolean;
   showSearchButton?: boolean;
   showThemeSwitcher?: boolean;
+  showNotifications?: boolean;
+  showTransactionHistory?: boolean;
 }) {
   const { toggleSidebar, } = useSidebar();
 
@@ -532,7 +536,7 @@ function MobileTopNav({
           </span>
         </Link>
         <div className="flex items-center gap-2">
-          { !isGuest && (
+          { showNotifications && !isGuest && (
             <Link
               href="/customer/notifications"
               aria-label="Notifications"
@@ -622,11 +626,11 @@ function MobileTopNav({
                   <FiUser className="size-4" aria-hidden="true" />
                   <span>Account</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={ () => onNavigate('/customer/settings') }>
-                  <FiSettings className="size-4" aria-hidden="true" />
-                  <span>Settings</span>
-                </DropdownMenuItem>
-                { shouldShowNotifications && (
+              <DropdownMenuItem onSelect={ () => onNavigate('/customer/settings') }>
+                <FiSettings className="size-4" aria-hidden="true" />
+                <span>Settings</span>
+              </DropdownMenuItem>
+                { showNotifications && (
                   <DropdownMenuItem onSelect={ () => onNavigate('/customer/notifications') }>
                     <FiBell className="size-4" aria-hidden="true" />
                     <span>Notifications</span>

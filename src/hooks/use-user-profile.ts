@@ -25,21 +25,12 @@ export function useUserProfile() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const queryKey = ['user-profile'];
-
     if (!session) {
       queryClient.removeQueries({
-        queryKey,
+        queryKey: ['user-profile'],
         exact: true,
       });
-
-      return;
     }
-
-    queryClient.invalidateQueries({
-      queryKey,
-      exact: true,
-    });
   }, [queryClient, session]);
 
   return useQuery<UserProfile>({
