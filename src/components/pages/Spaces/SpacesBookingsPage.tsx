@@ -375,9 +375,21 @@ status,
                 </div>
               </TableCell>
               <TableCell>
-                <Badge variant={ statusVariantMap[booking.status] }>
-                  { booking.status }
-                </Badge>
+                <div className="flex items-center gap-3">
+                  <Badge variant={ statusVariantMap[booking.status] }>
+                    { booking.status }
+                  </Badge>
+                  { !['cancelled', 'rejected', 'expired', 'noshow'].includes(booking.status) ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={ () => bulkUpdate.mutate({ ids: [booking.id], status: 'cancelled' }) }
+                      disabled={ bulkUpdate.isPending }
+                    >
+                      Cancel
+                    </Button>
+                  ) : null }
+                </div>
               </TableCell>
               <TableCell>{ booking.bookingHours } hr{ booking.bookingHours === 1 ? '' : 's' }</TableCell>
               <TableCell>{ priceLabel }</TableCell>

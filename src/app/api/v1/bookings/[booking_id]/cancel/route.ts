@@ -6,55 +6,57 @@ import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 const unauthorizedResponse = NextResponse.json(
-  { error: 'Authentication required.' },
-  { status: 401 }
+  { error: 'Authentication required.', },
+  { status: 401, }
 );
 
 const forbiddenResponse = NextResponse.json(
-  { error: 'Insufficient permissions.' },
-  { status: 403 }
+  { error: 'Insufficient permissions.', },
+  { status: 403, }
 );
 
 const notFoundResponse = NextResponse.json(
-  { error: 'Booking not found.' },
-  { status: 404 }
+  { error: 'Booking not found.', },
+  { status: 404, }
 );
 
 const invalidStatusResponse = (message: string) =>
-  NextResponse.json({ error: message }, { status: 400 });
+  NextResponse.json({ error: message, }, { status: 400, });
 
 const CANCELLABLE_STATUSES: BookingStatus[] = [
   'pending',
-  'confirmed',
+  'confirmed'
 ];
 
 export async function POST(
   _req: NextRequest,
-  { params }: { params: { booking_id: string } }
+  { params, }: { params: { booking_id: string } }
 ) {
   const supabase = await createSupabaseServerClient();
-  const { data: authData, error: authError } = await supabase.auth.getUser();
+  const {
+ data: authData, error: authError, 
+} = await supabase.auth.getUser();
 
   if (authError || !authData?.user) {
     return unauthorizedResponse;
   }
 
   const user = await prisma.user.findFirst({
-    where: { auth_user_id: authData.user.id },
-    select: { role: true },
+    where: { auth_user_id: authData.user.id, },
+    select: { role: true, },
   });
 
   if (!user || user.role !== 'customer') {
     return forbiddenResponse;
   }
 
-  const { booking_id } = params;
+  const { booking_id, } = params;
   if (!booking_id) {
     return notFoundResponse;
   }
 
   const booking = await prisma.booking.findUnique({
-    where: { id: booking_id },
+    where: { id: booking_id, },
     select: {
       id: true,
       space_id: true,
@@ -81,18 +83,16 @@ export async function POST(
   }
 
   await prisma.booking.update({
-    where: { id: booking.id },
-    data: { status: 'cancelled' },
+    where: { id: booking.id, },
+    data: { status: 'cancelled', },
   });
 
-  const updatedRows = await prisma.booking.findMany({
-    where: { id: booking.id },
-  });
+  const updatedRows = await prisma.booking.findMany({ where: { id: booking.id, }, });
   const [record] = await mapBookingsWithProfiles(updatedRows);
 
   if (!record) {
     return notFoundResponse;
   }
 
-  return NextResponse.json({ data: record });
+  return NextResponse.json({ data: record, });
 }

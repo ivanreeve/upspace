@@ -9,7 +9,7 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
+  CardTitle
 } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -84,7 +84,9 @@ const LoadingList = () => (
 );
 
 export function CustomerBookingsPanel() {
-  const { data: bookings, isLoading, isError } = useCustomerBookingsQuery();
+  const {
+ data: bookings, isLoading, isError, 
+} = useCustomerBookingsQuery();
   const cancelMutation = useCustomerCancelBookingMutation();
   const bookingRecords = bookings ?? [];
   const sortedBookings = bookingRecords.slice().sort((left, right) =>
@@ -117,12 +119,12 @@ export function CustomerBookingsPanel() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isError && (
+          { isError && (
             <div className="rounded-2xl border border-destructive/70 bg-destructive/5 px-4 py-3 text-sm text-destructive">
               Unable to load your bookings right now.
             </div>
-          )}
-          {isLoading ? (
+          ) }
+          { isLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-6 w-[180px]" />
               <div className="flex flex-wrap gap-2">
@@ -133,22 +135,22 @@ export function CustomerBookingsPanel() {
             </div>
           ) : (
             <div className="flex flex-wrap gap-3">
-              {Object.entries(CATEGORY_LABELS).map(([category, label]) => (
+              { Object.entries(CATEGORY_LABELS).map(([category, label]) => (
                 <Badge
-                  key={category}
-                  variant={CATEGORY_VARIANTS[category as keyof typeof CATEGORY_VARIANTS]}
+                  key={ category }
+                  variant={ CATEGORY_VARIANTS[category as keyof typeof CATEGORY_VARIANTS] }
                   className="flex items-center gap-3"
                 >
                   <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                    {label}
+                    { label }
                   </span>
                   <span className="text-sm font-semibold text-foreground">
-                    {summaryCounts[category as keyof typeof summaryCounts].toLocaleString()}
+                    { summaryCounts[category as keyof typeof summaryCounts].toLocaleString() }
                   </span>
                 </Badge>
-              ))}
+              )) }
             </div>
-          )}
+          ) }
         </CardContent>
       </Card>
 
@@ -160,7 +162,7 @@ export function CustomerBookingsPanel() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {isLoading ? (
+          { isLoading ? (
             <LoadingList />
           ) : bookingRecords.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border/70 bg-muted/50 px-4 py-6 text-sm text-muted-foreground">
@@ -169,55 +171,53 @@ export function CustomerBookingsPanel() {
           ) : (
             <ScrollArea className="max-h-[480px] rounded-2xl border border-border/70 bg-muted/10">
               <div className="space-y-4 p-4">
-                {sortedBookings.map((booking) => {
+                { sortedBookings.map((booking) => {
                   const isCancelable = booking.status === 'pending';
 
                   return (
                     <article
-                      key={booking.id}
+                      key={ booking.id }
                       className="rounded-2xl border border-border/60 bg-background/80 p-4 shadow-sm"
                     >
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="space-y-1">
                           <p className="text-sm font-semibold text-foreground">
-                            {booking.spaceName} · {booking.areaName}
+                            { booking.spaceName } · { booking.areaName }
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Booked{' '}
-                            {formatDistanceToNow(new Date(booking.createdAt), {
-                              addSuffix: true,
-                            })}
+                            Booked{ ' ' }
+                            { formatDistanceToNow(new Date(booking.createdAt), { addSuffix: true, }) }
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge variant={BOOKING_STATUS_VARIANTS[booking.status]}>
-                            {BOOKING_STATUS_LABELS[booking.status]}
+                          <Badge variant={ BOOKING_STATUS_VARIANTS[booking.status] }>
+                            { BOOKING_STATUS_LABELS[booking.status] }
                           </Badge>
-                          {isCancelable && (
+                          { isCancelable && (
                             <Button
                               size="sm"
                               variant="outline"
                               className="h-8 px-3 text-[13px] font-semibold leading-none border-border/60 bg-background transition hover:border-destructive hover:bg-destructive/10 focus-visible:border-destructive focus-visible:ring-2 focus-visible:ring-destructive/50"
-                              disabled={cancelMutation.isPending}
-                              onClick={() => cancelMutation.mutate({ bookingId: booking.id })}
+                              disabled={ cancelMutation.isPending }
+                              onClick={ () => cancelMutation.mutate({ bookingId: booking.id, }) }
                             >
                               Cancel
                             </Button>
-                          )}
+                          ) }
                         </div>
                       </div>
                       <div className="mt-3 flex flex-wrap items-center gap-3 text-[13px] text-muted-foreground">
-                        <span>{formatBookingDate(booking.createdAt)}</span>
+                        <span>{ formatBookingDate(booking.createdAt) }</span>
                         <span>
-                          {booking.bookingHours} hour{booking.bookingHours === 1 ? '' : 's'}
+                          { booking.bookingHours } hour{ booking.bookingHours === 1 ? '' : 's' }
                         </span>
                       </div>
                     </article>
                   );
-                })}
+                }) }
               </div>
             </ScrollArea>
-          )}
+          ) }
         </CardContent>
       </Card>
     </div>

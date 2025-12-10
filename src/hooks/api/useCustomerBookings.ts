@@ -5,9 +5,7 @@ import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
 import type { BookingRecord } from '@/lib/bookings/types';
 
-export const customerBookingsKeys = {
-  all: ['customer-bookings'] as const,
-};
+export const customerBookingsKeys = { all: ['customer-bookings'] as const, };
 
 type CustomerBookingsQueryOptions = Omit<
   UseQueryOptions<BookingRecord[]>,
