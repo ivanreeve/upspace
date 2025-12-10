@@ -536,7 +536,7 @@ export function SpacesInventoryForm() {
                           href={
                             row.status === 'Draft'
                               ? `/partner/spaces/edit?spaceId=${row.id}&step=1`
-                              : `/spaces/${row.id}`
+                              : `/partner/spaces/${row.id}`
                           }
                         >
                           Open
@@ -632,7 +632,7 @@ export function SpacesInventoryForm() {
                         href={
                           row.status === 'Draft'
                             ? `/partner/spaces/edit?spaceId=${row.id}&step=1`
-                            : `/spaces/${row.id}`
+                            : `/partner/spaces/${row.id}`
                         }
                       >
                         Open
