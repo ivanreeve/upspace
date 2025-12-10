@@ -170,20 +170,26 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     }
   }, [canMessageHost]);
 
-  const resetBookingState = useCallback(() => {
-    setBookingHours(DEFAULT_BOOKING_HOURS);
-    setSelectedAreaId(null);
-    setIsPricingLoading(false);
-    setGuestCount(MIN_GUEST_COUNT);
-    setScheduledDate(earliestScheduleDate);
-  }, [earliestScheduleDate]);
-
   const findFirstPricedAreaId = useCallback(() => {
     const areaWithPricing = space.areas.find(
       (area) => area.pricingRuleId && area.pricingRuleName
     );
     return areaWithPricing?.id ?? null;
   }, [space.areas]);
+
+  const resetBookingState = useCallback(() => {
+    const defaultAreaId = findFirstPricedAreaId();
+    setBookingHours(DEFAULT_BOOKING_HOURS);
+    setSelectedAreaId(defaultAreaId);
+    setIsPricingLoading(Boolean(defaultAreaId));
+    setGuestCount(MIN_GUEST_COUNT);
+    setScheduledDate(earliestScheduleDate);
+  }, [earliestScheduleDate, findFirstPricedAreaId]);
+
+  const handleResetBookingForm = useCallback(() => {
+    resetBookingState();
+    toast.success('Booking form reset.');
+  }, [resetBookingState]);
 
   const initializeBookingSelection = useCallback(() => {
     const defaultAreaId = findFirstPricedAreaId();
@@ -380,8 +386,9 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     () => doesRuleUseBookingDurationVariables(activePriceRule),
     [activePriceRule]
   );
+  const defaultPricedAreaId = findFirstPricedAreaId();
   const isBookingFormPristine =
-    !selectedAreaId &&
+    selectedAreaId === defaultPricedAreaId &&
     guestCount === MIN_GUEST_COUNT &&
     bookingHours === MIN_BOOKING_HOURS &&
     scheduledDate === earliestScheduleDate;
@@ -687,7 +694,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
           type="button"
           variant="outline"
           size="sm"
-          onClick={ resetBookingState }
+          onClick={ handleResetBookingForm }
           disabled={ isBookingFormPristine }
         >
           Reset form
