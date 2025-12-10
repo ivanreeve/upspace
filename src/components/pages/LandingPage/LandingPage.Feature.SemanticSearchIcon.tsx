@@ -186,7 +186,7 @@ export function SemanticSearchIcon() {
             viewBox="0 0 120 120"
             xmlns="http://www.w3.org/2000/svg"
             role="img"
-            aria-label="Animated Gemini spark"
+            aria-label="Animated OpenRouter spark"
           >
             <defs>
               <linearGradient id="semantic-spark-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
