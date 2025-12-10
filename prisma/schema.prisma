@@ -104,8 +104,10 @@ model booking {
   area_id           String             @db.Uuid
   area_name         String
   booking_hours     BigInt
+  start_at          DateTime           @default(now()) @db.Timestamptz(6)
   price_minor       BigInt?
   currency          String             @default("PHP") @db.Char(3)
+  guest_count       Int                @default(1)
   status            booking_status     @default(confirmed)
   created_at        DateTime           @default(now()) @db.Timestamptz(6)
   user_auth_id      String             @db.Uuid

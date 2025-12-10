@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { CANCELLABLE_BOOKING_STATUSES } from '@/lib/bookings/constants';
 import { mapBookingsWithProfiles } from '@/lib/bookings/serializer';
+import { createPaymongoRefund } from '@/lib/paymongo';
 import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -76,6 +77,43 @@ export async function POST(
 
   if (!CANCELLABLE_BOOKING_STATUSES.includes(booking.status)) {
     return invalidStatusResponse('This booking cannot be cancelled at this time.');
+  }
+
+  const charge = await prisma.wallet_transaction.findFirst({
+    where: {
+      booking_id: booking.id,
+      type: 'charge',
+      status: 'succeeded',
+    },
+    orderBy: { created_at: 'desc', },
+    select: {
+      external_reference: true,
+      currency: true,
+      amount_minor: true,
+    },
+  });
+
+  if (charge?.external_reference) {
+    try {
+      await createPaymongoRefund({
+        paymentId: charge.external_reference,
+        amountMinor: Number(booking.price_minor ?? charge.amount_minor ?? 0),
+        reason: 'requested_by_customer',
+        metadata: {
+          booking_id: booking.id,
+          user_auth_id: booking.user_auth_id,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to create refund for cancelled booking', {
+        bookingId: booking.id,
+        error,
+      });
+      return NextResponse.json(
+        { error: 'Unable to process refund right now. Please try again later.', },
+        { status: 502, }
+      );
+    }
   }
 
   await prisma.booking.update({

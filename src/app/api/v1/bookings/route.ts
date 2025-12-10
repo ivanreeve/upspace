@@ -16,12 +16,16 @@ import { MAX_BOOKING_HOURS, MIN_BOOKING_HOURS } from '@/lib/bookings/constants';
 import { countActiveBookingsOverlap, resolveBookingDecision } from '@/lib/bookings/occupancy';
 import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { evaluatePriceRule } from '@/lib/pricing-rules-evaluator';
+import type { PriceRuleRecord } from '@/lib/pricing-rules';
 
 const createBookingSchema = z.object({
   spaceId: z.string().uuid(),
   areaId: z.string().uuid(),
   bookingHours: z.number().int().min(MIN_BOOKING_HOURS).max(MAX_BOOKING_HOURS),
   price: z.number().nonnegative().nullable().optional(),
+  startAt: z.string().datetime().optional(),
+  guestCount: z.number().int().min(1).max(999).optional(),
 });
 
 const bulkUpdateSchema = z.object({
@@ -222,6 +226,16 @@ export async function POST(req: NextRequest) {
       automatic_booking_enabled: true,
       request_approval_at_capacity: true,
       space_id: true,
+      advance_booking_enabled: true,
+      advance_booking_value: true,
+      advance_booking_unit: true,
+      price_rule: {
+        select: {
+          id: true,
+          name: true,
+          definition: true,
+        },
+      },
       space: {
         select: {
           id: true,
@@ -250,15 +264,74 @@ export async function POST(req: NextRequest) {
 
   const partnerAuthId = area.space.user?.auth_user_id ?? null;
   const areaMaxCapacity = normalizeNumeric(area.max_capacity);
-  const priceMinor =
-    typeof parsed.data.price === 'number'
-      ? Math.round(parsed.data.price * BOOKING_PRICE_MINOR_FACTOR)
-      : null;
+  const guestCount = parsed.data.guestCount ?? 1;
+  if (areaMaxCapacity !== null && guestCount > areaMaxCapacity) {
+    return NextResponse.json(
+      { error: `This area allows up to ${areaMaxCapacity} guests.`, },
+      { status: 400, }
+    );
+  }
 
-  const bookingStartAt = new Date();
+  const startAtRaw = parsed.data.startAt ? new Date(parsed.data.startAt) : new Date();
+  const bookingStartAt = Number.isFinite(startAtRaw.getTime()) ? startAtRaw : new Date();
+  const now = new Date();
+  if (bookingStartAt.getTime() < now.getTime()) {
+    return NextResponse.json(
+      { error: 'Start time must be in the future.', },
+      { status: 400, }
+    );
+  }
+
+  if (area.advance_booking_enabled && area.advance_booking_value && area.advance_booking_unit) {
+    const leadMs = (() => {
+      switch (area.advance_booking_unit) {
+        case 'days':
+          return area.advance_booking_value * 24 * 60 * 60 * 1000;
+        case 'weeks':
+          return area.advance_booking_value * 7 * 24 * 60 * 60 * 1000;
+        case 'months':
+          return area.advance_booking_value * 30 * 24 * 60 * 60 * 1000;
+        default:
+          return 0;
+      }
+    })();
+    const minStart = new Date(now.getTime() + leadMs);
+    if (bookingStartAt.getTime() < minStart.getTime()) {
+      return NextResponse.json(
+        { error: 'Please book further in advance for this area.', },
+        { status: 400, }
+      );
+    }
+  }
+
   const bookingExpiresAt = new Date(
     bookingStartAt.getTime() + parsed.data.bookingHours * 60 * 60 * 1000
   );
+
+  const priceRule = area.price_rule as PriceRuleRecord | null;
+  if (!priceRule) {
+    return NextResponse.json(
+      { error: 'Pricing is unavailable for this area.', },
+      { status: 400, }
+    );
+  }
+
+  const priceEvaluation = evaluatePriceRule(priceRule.definition, {
+    bookingHours: parsed.data.bookingHours,
+    now: bookingStartAt,
+    variableOverrides: { guest_count: guestCount, },
+  });
+
+  const priceMinor =
+    typeof priceEvaluation.price === 'number'
+      ? Math.round(priceEvaluation.price * guestCount * BOOKING_PRICE_MINOR_FACTOR)
+      : null;
+  if (priceMinor === null) {
+    return NextResponse.json(
+      { error: 'Unable to compute a price for this booking.', },
+      { status: 400, }
+    );
+  }
 
   class CapacityReachedError extends Error {}
 
@@ -291,12 +364,14 @@ export async function POST(req: NextRequest) {
             area_id: area.id,
             area_name: area.name,
             booking_hours: parsed.data.bookingHours,
+            start_at: bookingStartAt,
             price_minor: priceMinor,
             currency: 'PHP',
             status: approval.status,
             user_auth_id: authData.user.id,
             partner_auth_id: partnerAuthId,
             area_max_capacity: areaMaxCapacity,
+            guest_count: guestCount,
             expires_at: bookingExpiresAt,
           },
         });

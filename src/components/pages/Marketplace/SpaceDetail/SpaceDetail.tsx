@@ -173,6 +173,17 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     const today = new Date();
     return today.toISOString().split('T')[0];
   });
+  const bookingStartAtIso = useMemo(() => {
+    const candidate = new Date(`${scheduledDate}T23:00:00`);
+    const now = new Date();
+    if (!Number.isFinite(candidate.getTime())) {
+      return now.toISOString();
+    }
+    if (candidate.getTime() <= now.getTime()) {
+      return new Date(now.getTime() + 60 * 60 * 1000).toISOString();
+    }
+    return candidate.toISOString();
+  }, [scheduledDate]);
   const earliestScheduleDate = useMemo(() => {
     const today = new Date();
     return today.toISOString().split('T')[0];
@@ -830,7 +841,8 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     activePriceRule &&
     totalPrice !== null &&
     !isGuest &&
-    !createCheckoutSession.isPending
+    !createCheckoutSession.isPending &&
+    !isOverCapacity
   );
 
   const handleConfirmBooking = useCallback(async () => {
@@ -844,6 +856,8 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
         areaId: selectedArea.id,
         bookingHours,
         price: totalPrice ?? 0,
+        startAt: bookingStartAtIso,
+        guestCount,
       });
       resetBookingState();
       setIsBookingOpen(false);
@@ -857,11 +871,13 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     bookingHours,
     canConfirmBooking,
     createCheckoutSession,
+    bookingStartAtIso,
     resetBookingState,
     selectedArea,
     session,
     space.id,
-    totalPrice
+    totalPrice,
+    guestCount
   ]);
 
   return (

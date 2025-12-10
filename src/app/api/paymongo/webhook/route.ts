@@ -178,6 +178,7 @@ async function handleCheckoutEvent(event: CheckoutEvent) {
   const checkoutObject = event.data.object;
   const metadata = checkoutObject.metadata ?? {};
   const bookingId = metadata.booking_id ?? metadata.bookingId ?? null;
+  const requiresHostApproval = metadata.requires_host_approval === 'true';
   if (!bookingId) {
     console.warn('PayMongo checkout webhook missing booking metadata');
     return RECEIVED_RESPONSE;
@@ -191,6 +192,41 @@ async function handleCheckoutEvent(event: CheckoutEvent) {
   }
 
   if (bookingRow.status === 'confirmed') {
+    return RECEIVED_RESPONSE;
+  }
+
+  if (requiresHostApproval) {
+    const booking = mapBookingRowToRecord(bookingRow);
+    const bookingHref = `/marketplace/${booking.spaceId}`;
+
+    await prisma.app_notification.create({
+      data: {
+        user_auth_id: booking.customerAuthId,
+        title: 'Booking pending approval',
+        body: `${booking.areaName} at ${booking.spaceName} is awaiting host approval.`,
+        href: bookingHref,
+        type: 'system',
+        booking_id: booking.id,
+        space_id: booking.spaceId,
+        area_id: booking.areaId,
+      },
+    });
+
+    if (booking.partnerAuthId) {
+      await prisma.app_notification.create({
+        data: {
+          user_auth_id: booking.partnerAuthId,
+          title: 'Booking needs approval',
+          body: `${booking.areaName} in ${booking.spaceName} is pending your review.`,
+          href: bookingHref,
+          type: 'system',
+          booking_id: booking.id,
+          space_id: booking.spaceId,
+          area_id: booking.areaId,
+        },
+      });
+    }
+
     return RECEIVED_RESPONSE;
   }
 

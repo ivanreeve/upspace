@@ -16,6 +16,8 @@ export type BookingRecord = {
   areaId: string;
   areaName: string;
   bookingHours: number;
+  startAt: string;
+  guestCount: number | null;
   price: number | null;
   status: BookingStatus;
   createdAt: string;

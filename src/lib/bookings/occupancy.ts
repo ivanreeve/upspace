@@ -18,16 +18,20 @@ export async function countActiveBookingsOverlap(
   windowStart: Date,
   windowEnd: Date
 ) {
-  return tx.booking.count({
+  const aggregates = await tx.booking.aggregate({
+    _sum: { guest_count: true, },
     where: {
       area_id: areaId,
       status: { in: ACTIVE_OCCUPANCY_BOOKING_STATUSES, },
       NOT: [
         { expires_at: { lte: windowStart, }, },
-        { created_at: { gte: windowEnd, }, }
+        { start_at: { gte: windowEnd, }, }
       ],
     },
   });
+
+  const totalGuests = aggregates._sum.guest_count;
+  return typeof totalGuests === 'number' && Number.isFinite(totalGuests) ? totalGuests : 0;
 }
 
 export function resolveBookingDecision(
