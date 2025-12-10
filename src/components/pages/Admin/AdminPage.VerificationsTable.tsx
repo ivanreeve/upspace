@@ -235,17 +235,31 @@ export function AdminVerificationsTable() {
       );
     }
 
+    const emptyState =
+      activeTab === 'in_review'
+        ? {
+          title: 'No pending verifications',
+          description: 'All verification requests have been processed.',
+        }
+        : activeTab === 'expired'
+          ? {
+            title: 'No renewals required',
+            description: 'Renewal-required spaces will appear here when an approval expires.',
+          }
+          : {
+            title: 'No approved verifications',
+            description: 'Approved verifications will show up here once the queue is reviewed.',
+          };
+
     if (!verifications || verifications.length === 0) {
       return (
         <Card className="border-dashed border-border/70 bg-background/60">
           <CardHeader>
             <CardTitle>
-              { activeTab === 'in_review' ? 'No pending verifications' : 'No verified spaces yet' }
+              { emptyState.title }
             </CardTitle>
             <CardDescription>
-              { activeTab === 'in_review'
-                ? 'All verification requests have been processed.'
-                : 'Approved verifications will show up here once the queue is reviewed.' }
+              { emptyState.description }
             </CardDescription>
           </CardHeader>
         </Card>
