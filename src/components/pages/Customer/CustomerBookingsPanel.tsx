@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CANCELLABLE_BOOKING_STATUSES } from '@/lib/bookings/constants';
 import type { BookingStatus } from '@/lib/bookings/types';
 import { useCustomerBookingsQuery } from '@/hooks/api/useCustomerBookings';
 import { useCustomerCancelBookingMutation } from '@/hooks/api/useCustomerCancelBooking';
@@ -172,7 +173,7 @@ export function CustomerBookingsPanel() {
             <ScrollArea className="max-h-[480px] rounded-2xl border border-border/70 bg-muted/10">
               <div className="space-y-4 p-4">
                 { sortedBookings.map((booking) => {
-                  const isCancelable = booking.status === 'pending';
+                  const isCancelable = CANCELLABLE_BOOKING_STATUSES.includes(booking.status);
 
                   return (
                     <article

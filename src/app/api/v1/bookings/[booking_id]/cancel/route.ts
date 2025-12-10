@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { BookingStatus } from '@/lib/bookings/types';
+import { CANCELLABLE_BOOKING_STATUSES } from '@/lib/bookings/constants';
 import { mapBookingsWithProfiles } from '@/lib/bookings/serializer';
 import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -22,11 +22,6 @@ const notFoundResponse = NextResponse.json(
 
 const invalidStatusResponse = (message: string) =>
   NextResponse.json({ error: message, }, { status: 400, });
-
-const CANCELLABLE_STATUSES: BookingStatus[] = [
-  'pending',
-  'confirmed'
-];
 
 export async function POST(
   _req: NextRequest,
@@ -79,7 +74,7 @@ export async function POST(
     return notFoundResponse;
   }
 
-  if (!CANCELLABLE_STATUSES.includes(booking.status)) {
+  if (!CANCELLABLE_BOOKING_STATUSES.includes(booking.status)) {
     return invalidStatusResponse('This booking cannot be cancelled at this time.');
   }
 

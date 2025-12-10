@@ -12,9 +12,10 @@ import {
   normalizeNumeric
 } from '@/lib/bookings/serializer';
 import type { BookingRecord, BookingStatus } from '@/lib/bookings/types';
+import { MAX_BOOKING_HOURS, MIN_BOOKING_HOURS } from '@/lib/bookings/constants';
+import { countActiveBookingsOverlap, resolveBookingDecision } from '@/lib/bookings/occupancy';
 import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { MAX_BOOKING_HOURS, MIN_BOOKING_HOURS } from '@/lib/bookings/constants';
 
 const createBookingSchema = z.object({
   spaceId: z.string().uuid(),
@@ -218,6 +219,8 @@ export async function POST(req: NextRequest) {
       id: true,
       name: true,
       max_capacity: true,
+      automatic_booking_enabled: true,
+      request_approval_at_capacity: true,
       space_id: true,
       space: {
         select: {
@@ -252,27 +255,71 @@ export async function POST(req: NextRequest) {
       ? Math.round(parsed.data.price * BOOKING_PRICE_MINOR_FACTOR)
       : null;
 
+  const bookingStartAt = new Date();
   const bookingExpiresAt = new Date(
-    Date.now() + parsed.data.bookingHours * 60 * 60 * 1000
+    bookingStartAt.getTime() + parsed.data.bookingHours * 60 * 60 * 1000
   );
 
-  const bookingRow = await prisma.booking.create({
-    data: {
-      id: randomUUID(),
-      space_id: parsed.data.spaceId,
-      space_name: area.space.name,
-      area_id: area.id,
-      area_name: area.name,
-      booking_hours: parsed.data.bookingHours,
-      price_minor: priceMinor,
-      currency: 'PHP',
-      status: 'confirmed',
-      user_auth_id: authData.user.id,
-      partner_auth_id: partnerAuthId,
-      area_max_capacity: areaMaxCapacity,
-      expires_at: bookingExpiresAt,
-    },
-  });
+  class CapacityReachedError extends Error {}
+
+  const bookingResult = await prisma
+    .$transaction(
+      async (tx) => {
+        const activeCount = await countActiveBookingsOverlap(
+          tx,
+          area.id,
+          bookingStartAt,
+          bookingExpiresAt
+        );
+
+        const approval = resolveBookingDecision({
+          automaticBookingEnabled: Boolean(area.automatic_booking_enabled),
+          requestApprovalAtCapacity: Boolean(area.request_approval_at_capacity),
+          maxCapacity: areaMaxCapacity,
+          activeCount,
+        });
+
+        if (approval.status === 'reject_full') {
+          throw new CapacityReachedError('This area is fully booked for this time window.');
+        }
+
+        const created = await tx.booking.create({
+          data: {
+            id: randomUUID(),
+            space_id: parsed.data.spaceId,
+            space_name: area.space.name,
+            area_id: area.id,
+            area_name: area.name,
+            booking_hours: parsed.data.bookingHours,
+            price_minor: priceMinor,
+            currency: 'PHP',
+            status: approval.status,
+            user_auth_id: authData.user.id,
+            partner_auth_id: partnerAuthId,
+            area_max_capacity: areaMaxCapacity,
+            expires_at: bookingExpiresAt,
+          },
+        });
+
+        return { bookingRow: created, };
+      },
+      { isolationLevel: 'Serializable', }
+    )
+    .catch((error) => {
+      if (error instanceof CapacityReachedError) {
+        return null;
+      }
+      throw error;
+    });
+
+  if (!bookingResult) {
+    return NextResponse.json(
+      { error: 'This area is fully booked for the requested time window.', },
+      { status: 409, }
+    );
+  }
+
+  const { bookingRow, } = bookingResult;
 
   const booking = {
     ...mapBookingRowToRecord(bookingRow),
@@ -284,48 +331,81 @@ export async function POST(req: NextRequest) {
   };
   const bookingHref = `/marketplace/${booking.spaceId}`;
 
-  await prisma.app_notification.create({
-    data: {
-      user_auth_id: booking.customerAuthId,
-      title: 'Booking confirmed',
-      body: `${booking.areaName} at ${booking.spaceName} is confirmed.`,
-      href: bookingHref,
-      type: 'booking_confirmed',
-      booking_id: booking.id,
-      space_id: booking.spaceId,
-      area_id: booking.areaId,
-    },
-  });
-
-  if (booking.partnerAuthId) {
+  if (booking.status === 'confirmed') {
     await prisma.app_notification.create({
       data: {
-        user_auth_id: booking.partnerAuthId,
-        title: 'New booking received',
-        body: `${booking.areaName} in ${booking.spaceName} was just booked.`,
+        user_auth_id: booking.customerAuthId,
+        title: 'Booking confirmed',
+        body: `${booking.areaName} at ${booking.spaceName} is confirmed.`,
         href: bookingHref,
-        type: 'booking_received',
+        type: 'booking_confirmed',
         booking_id: booking.id,
         space_id: booking.spaceId,
         area_id: booking.areaId,
       },
     });
-  }
 
-  if (authData.user.email) {
-    try {
-      await sendBookingNotificationEmail({
-        to: authData.user.email,
-        spaceName: booking.spaceName,
-        areaName: booking.areaName,
-        bookingHours: booking.bookingHours,
-        price: booking.price,
-        link: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}${bookingHref}`,
+    if (booking.partnerAuthId) {
+      await prisma.app_notification.create({
+        data: {
+          user_auth_id: booking.partnerAuthId,
+          title: 'New booking received',
+          body: `${booking.areaName} in ${booking.spaceName} was just booked.`,
+          href: bookingHref,
+          type: 'booking_received',
+          booking_id: booking.id,
+          space_id: booking.spaceId,
+          area_id: booking.areaId,
+        },
       });
-    } catch (error) {
-      console.error('Failed to send booking email notification', error);
+    }
+
+    if (authData.user.email) {
+      try {
+        await sendBookingNotificationEmail({
+          to: authData.user.email,
+          spaceName: booking.spaceName,
+          areaName: booking.areaName,
+          bookingHours: booking.bookingHours,
+          price: booking.price,
+          link: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}${bookingHref}`,
+        });
+      } catch (error) {
+        console.error('Failed to send booking email notification', error);
+      }
+    }
+  } else {
+    await prisma.app_notification.create({
+      data: {
+        user_auth_id: booking.customerAuthId,
+        title: 'Booking pending approval',
+        body: `${booking.areaName} at ${booking.spaceName} is awaiting host approval.`,
+        href: bookingHref,
+        type: 'system',
+        booking_id: booking.id,
+        space_id: booking.spaceId,
+        area_id: booking.areaId,
+      },
+    });
+
+    if (booking.partnerAuthId) {
+      await prisma.app_notification.create({
+        data: {
+          user_auth_id: booking.partnerAuthId,
+          title: 'Booking needs approval',
+          body: `${booking.areaName} in ${booking.spaceName} is pending your review.`,
+          href: bookingHref,
+          type: 'system',
+          booking_id: booking.id,
+          space_id: booking.spaceId,
+          area_id: booking.areaId,
+        },
+      });
     }
   }
 
-  return NextResponse.json({ data: booking, }, { status: 201, });
+  return NextResponse.json(
+    { data: booking, },
+    { status: booking.status === 'confirmed' ? 201 : 202, }
+  );
 }

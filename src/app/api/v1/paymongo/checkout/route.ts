@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 import { BOOKING_PRICE_MINOR_FACTOR, mapBookingRowToRecord, normalizeNumeric } from '@/lib/bookings/serializer';
 import { MAX_BOOKING_HOURS, MIN_BOOKING_HOURS } from '@/lib/bookings/constants';
+import { countActiveBookingsOverlap, resolveBookingDecision } from '@/lib/bookings/occupancy';
 import { sendBookingNotificationEmail } from '@/lib/email';
 import { createPaymongoCheckoutSession } from '@/lib/paymongo';
 import { prisma } from '@/lib/prisma';
@@ -64,6 +65,8 @@ export async function POST(req: NextRequest) {
         id: true,
         name: true,
         max_capacity: true,
+        automatic_booking_enabled: true,
+        request_approval_at_capacity: true,
         space_id: true,
         space: {
           select: {
@@ -86,25 +89,70 @@ export async function POST(req: NextRequest) {
 
     const partnerAuthId = area.space.user?.auth_user_id ?? null;
     const priceMinor = Math.round(parsed.data.price * BOOKING_PRICE_MINOR_FACTOR);
-    const expiresAt = new Date(Date.now() + parsed.data.bookingHours * 60 * 60 * 1000);
+    const bookingStartAt = new Date();
+    const expiresAt = new Date(bookingStartAt.getTime() + parsed.data.bookingHours * 60 * 60 * 1000);
+    const areaMaxCapacity = normalizeNumeric(area.max_capacity);
 
-    const bookingRow = await prisma.booking.create({
-      data: {
-        id: randomUUID(),
-        space_id: parsed.data.spaceId,
-        space_name: area.space.name,
-        area_id: area.id,
-        area_name: area.name,
-        booking_hours: parsed.data.bookingHours,
-        price_minor: priceMinor,
-        currency: 'PHP',
-        status: 'pending',
-        user_auth_id: auth.dbUser!.auth_user_id,
-        partner_auth_id: partnerAuthId,
-        area_max_capacity: normalizeNumeric(area.max_capacity),
-        expires_at: expiresAt,
-      },
-    });
+    class CapacityReachedError extends Error {}
+
+    const bookingResult = await prisma
+      .$transaction(
+        async (tx) => {
+          const activeCount = await countActiveBookingsOverlap(
+            tx,
+            area.id,
+            bookingStartAt,
+            expiresAt
+          );
+
+          const approval = resolveBookingDecision({
+            automaticBookingEnabled: Boolean(area.automatic_booking_enabled),
+            requestApprovalAtCapacity: Boolean(area.request_approval_at_capacity),
+            maxCapacity: areaMaxCapacity,
+            activeCount,
+          });
+
+          if (approval.status === 'reject_full') {
+            throw new CapacityReachedError('This area is fully booked for this time window.');
+          }
+
+          const created = await tx.booking.create({
+            data: {
+              id: randomUUID(),
+              space_id: parsed.data.spaceId,
+              space_name: area.space.name,
+              area_id: area.id,
+              area_name: area.name,
+              booking_hours: parsed.data.bookingHours,
+              price_minor: priceMinor,
+              currency: 'PHP',
+              status: approval.status === 'confirmed' ? 'pending' : approval.status,
+              user_auth_id: auth.dbUser!.auth_user_id,
+              partner_auth_id: partnerAuthId,
+              area_max_capacity: areaMaxCapacity,
+              expires_at: expiresAt,
+            },
+          });
+
+          return { bookingRow: created, };
+        },
+        { isolationLevel: 'Serializable', }
+      )
+      .catch((error) => {
+        if (error instanceof CapacityReachedError) {
+          return null;
+        }
+        throw error;
+      });
+
+    if (!bookingResult) {
+      return NextResponse.json(
+        { error: 'This area is fully booked for the requested time window.', },
+        { status: 409, }
+      );
+    }
+
+    const { bookingRow, } = bookingResult;
 
     const successUrl = parsed.data.successUrl ??
       `${APP_URL}/marketplace/${area.space.id}?booking_id=${bookingRow.id}&payment=success`;

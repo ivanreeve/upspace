@@ -25,3 +25,5 @@ export type BookingRecord = {
   customerHandle: string | null;
   customerName: string | null;
 };
+
+export type CancellableStatus = Extract<BookingStatus, 'pending' | 'confirmed'>;
