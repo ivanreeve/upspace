@@ -231,7 +231,7 @@ export default function OnboardingExperience() {
                       variant="outline"
                       id="birthday"
                       aria-label="Select birthday"
-                      className="w-full justify-between font-normal text-left"
+                      className="w-full justify-between font-normal text-left hover:text-white"
                     >
                       { birthday ? birthday.toLocaleDateString(undefined, {
                         month: 'short',
