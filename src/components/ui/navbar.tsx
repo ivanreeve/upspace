@@ -71,6 +71,7 @@ type AccountMenuProps = {
   emailLabel: string;
   showTransactionHistory: boolean;
   showNotifications: boolean;
+  showAccountLinks: boolean;
 };
 
 function AccountMenu({
@@ -82,7 +83,12 @@ function AccountMenu({
   secondaryLabel,
   emailLabel,
   showTransactionHistory,
+  showNotifications,
+  showAccountLinks,
 }: AccountMenuProps) {
+  const hasAdditionalLinks =
+    showAccountLinks || showNotifications || showTransactionHistory;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -120,15 +126,19 @@ function AccountMenu({
             </span>
           </div>
         </div>
-        <DropdownMenuSeparator className="my-1" />
-        <DropdownMenuItem onSelect={ () => onNavigate('/customer/account') }>
-          <FiUser className="size-4" aria-hidden="true" />
-          <span>Account</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={ () => onNavigate('/customer/settings') }>
-          <FiSettings className="size-4" aria-hidden="true" />
-          <span>Settings</span>
-        </DropdownMenuItem>
+        { hasAdditionalLinks && <DropdownMenuSeparator className="my-1" /> }
+        { showAccountLinks && (
+          <>
+            <DropdownMenuItem onSelect={ () => onNavigate('/customer/account') }>
+              <FiUser className="size-4" aria-hidden="true" />
+              <span>Account</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={ () => onNavigate('/customer/settings') }>
+              <FiSettings className="size-4" aria-hidden="true" />
+              <span>Settings</span>
+            </DropdownMenuItem>
+          </>
+        ) }
         { showNotifications && (
           <DropdownMenuItem onSelect={ () => onNavigate('/customer/notifications') }>
             <FiBell className="size-4" aria-hidden="true" />
@@ -271,9 +281,11 @@ export default function NavBar({
     | 'admin'
     | undefined;
   const resolvedRole = metadataRole ?? userProfile?.role;
+  const isAdmin = resolvedRole === 'admin';
   const hasTransactionHistory =
     resolvedRole === 'customer' || resolvedRole === 'partner';
   const hasNotifications = hasTransactionHistory;
+  const showAccountLinks = !isAdmin;
   const handleNavigate = React.useCallback(
     (href: string) => {
       router.push(href);
@@ -357,6 +369,7 @@ export default function NavBar({
                           emailLabel={ secondaryLabel ?? 'Email unavailable' }
                           showTransactionHistory={ hasTransactionHistory }
                           showNotifications={ hasNotifications }
+                          showAccountLinks={ showAccountLinks }
                         />
                     ) }
                   </div>
@@ -379,6 +392,7 @@ export default function NavBar({
               emailLabel={ secondaryLabel ?? 'Email unavailable' }
               showTransactionHistory={ hasTransactionHistory }
               showNotifications={ hasNotifications }
+              showAccountLinks={ showAccountLinks }
             />
             ) }
             { resolvedMenuItems.length > 0 && (
