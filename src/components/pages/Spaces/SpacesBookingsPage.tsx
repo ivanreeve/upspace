@@ -54,7 +54,8 @@ const bookingPriceFormatter = new Intl.NumberFormat('en-PH', {
 
 const ACTIVE_BOOKING_STATUSES = new Set<BookingStatus>([
   'confirmed',
-  'checkedin'
+  'checkedin',
+  'pending'
 ]);
 
 const BULK_STATUS_OPTIONS: { label: string; status: BookingStatus }[] = [

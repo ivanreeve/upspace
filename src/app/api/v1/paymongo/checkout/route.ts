@@ -199,6 +199,7 @@ export async function POST(req: NextRequest) {
             requestApprovalAtCapacity: Boolean(area.request_approval_at_capacity),
             maxCapacity: areaMaxCapacity,
             activeCount,
+            requestedGuestCount: guestCount,
           });
           const requiresHostApproval = approval.status === 'pending';
 

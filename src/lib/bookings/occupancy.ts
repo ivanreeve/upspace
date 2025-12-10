@@ -40,6 +40,7 @@ export function resolveBookingDecision(
     requestApprovalAtCapacity: boolean;
     maxCapacity: number | null;
     activeCount: number;
+    requestedGuestCount: number;
   }
 ): BookingDecision {
   const {
@@ -47,6 +48,7 @@ export function resolveBookingDecision(
     requestApprovalAtCapacity,
     maxCapacity,
     activeCount,
+    requestedGuestCount,
   } = options;
 
   if (!automaticBookingEnabled) {
@@ -57,7 +59,11 @@ export function resolveBookingDecision(
   }
 
   const hasFiniteCapacity = typeof maxCapacity === 'number' && Number.isFinite(maxCapacity);
-  const atOrOverCapacity = hasFiniteCapacity ? activeCount >= maxCapacity : false;
+  const requestedGuests = Number.isFinite(requestedGuestCount) && requestedGuestCount > 0
+    ? requestedGuestCount
+    : 1;
+  const projectedGuests = activeCount + requestedGuests;
+  const atOrOverCapacity = hasFiniteCapacity ? projectedGuests > maxCapacity : false;
 
   if (!atOrOverCapacity) {
     return {

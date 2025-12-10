@@ -1,8 +1,9 @@
+import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { prisma } from '@/lib/prisma';
 import { mapBookingRowToRecord } from '@/lib/bookings/serializer';
+import { prisma } from '@/lib/prisma';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { sendBookingNotificationEmail } from '@/lib/email';
 import { isPaymongoSignatureFresh, parsePaymongoSignatureHeader, verifyPaymongoSignature } from '@/lib/paymongo';
@@ -97,6 +98,46 @@ function getInternalUserId(metadata: Record<string, unknown> | null) {
 }
 
 const RECEIVED_RESPONSE = NextResponse.json({ received: true, }, { status: 200, });
+
+async function recordCheckoutTransaction(opts: {
+  bookingId: string;
+  checkoutObject: CheckoutEvent['data']['object'];
+  livemode: boolean;
+}) {
+  const {
+    bookingId,
+    checkoutObject,
+    livemode,
+  } = opts;
+  const amountMinor = Math.round(checkoutObject.amount ?? 0);
+  const currency = checkoutObject.currency ?? 'PHP';
+
+  try {
+    await prisma.transaction.create({
+      data: {
+        booking_id: bookingId,
+        is_live: livemode,
+        gateway_data: checkoutObject as unknown as Prisma.InputJsonValue,
+        payment_method: 'paymongo',
+        currency_iso3: currency,
+        amount_minor: BigInt(Number.isFinite(amountMinor) ? amountMinor : 0),
+      },
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      // Duplicate gateway_data; treat as idempotent.
+      return;
+    }
+
+    console.error('Failed to record checkout transaction', {
+      bookingId,
+      error,
+    });
+  }
+}
 
 async function handleWalletEvent(event: WalletEvent) {
   const walletObject = event.data.object;
@@ -195,29 +236,30 @@ async function handleCheckoutEvent(event: CheckoutEvent) {
     return RECEIVED_RESPONSE;
   }
 
+  await recordCheckoutTransaction({
+    bookingId,
+    checkoutObject,
+    livemode: event.livemode,
+  });
+
   if (requiresHostApproval) {
     const booking = mapBookingRowToRecord(bookingRow);
     const bookingHref = `/marketplace/${booking.spaceId}`;
 
-    await prisma.app_notification.create({
-      data: {
-        user_auth_id: booking.customerAuthId,
-        title: 'Booking pending approval',
-        body: `${booking.areaName} at ${booking.spaceName} is awaiting host approval.`,
-        href: bookingHref,
-        type: 'system',
+    const existingPendingNotice = await prisma.app_notification.findFirst({
+      where: {
         booking_id: booking.id,
-        space_id: booking.spaceId,
-        area_id: booking.areaId,
+        type: 'system',
       },
+      select: { id: true, },
     });
 
-    if (booking.partnerAuthId) {
+    if (!existingPendingNotice) {
       await prisma.app_notification.create({
         data: {
-          user_auth_id: booking.partnerAuthId,
-          title: 'Booking needs approval',
-          body: `${booking.areaName} in ${booking.spaceName} is pending your review.`,
+          user_auth_id: booking.customerAuthId,
+          title: 'Booking pending approval',
+          body: `${booking.areaName} at ${booking.spaceName} is awaiting host approval.`,
           href: bookingHref,
           type: 'system',
           booking_id: booking.id,
@@ -225,6 +267,21 @@ async function handleCheckoutEvent(event: CheckoutEvent) {
           area_id: booking.areaId,
         },
       });
+
+      if (booking.partnerAuthId) {
+        await prisma.app_notification.create({
+          data: {
+            user_auth_id: booking.partnerAuthId,
+            title: 'Booking needs approval',
+            body: `${booking.areaName} in ${booking.spaceName} is pending your review.`,
+            href: bookingHref,
+            type: 'system',
+            booking_id: booking.id,
+            space_id: booking.spaceId,
+            area_id: booking.areaId,
+          },
+        });
+      }
     }
 
     return RECEIVED_RESPONSE;
@@ -238,32 +295,42 @@ async function handleCheckoutEvent(event: CheckoutEvent) {
   const booking = mapBookingRowToRecord(updatedBooking);
   const bookingHref = `/marketplace/${booking.spaceId}`;
 
-  await prisma.app_notification.create({
-    data: {
-      user_auth_id: booking.customerAuthId,
-      title: 'Booking confirmed',
-      body: `${booking.areaName} at ${booking.spaceName} is confirmed.`,
-      href: bookingHref,
-      type: 'booking_confirmed',
+  const existingConfirmationNotice = await prisma.app_notification.findFirst({
+    where: {
       booking_id: booking.id,
-      space_id: booking.spaceId,
-      area_id: booking.areaId,
+      type: 'booking_confirmed',
     },
+    select: { id: true, },
   });
 
-  if (booking.partnerAuthId) {
+  if (!existingConfirmationNotice) {
     await prisma.app_notification.create({
       data: {
-        user_auth_id: booking.partnerAuthId,
-        title: 'New booking received',
-        body: `${booking.areaName} in ${booking.spaceName} was just booked.`,
+        user_auth_id: booking.customerAuthId,
+        title: 'Booking confirmed',
+        body: `${booking.areaName} at ${booking.spaceName} is confirmed.`,
         href: bookingHref,
-        type: 'booking_received',
+        type: 'booking_confirmed',
         booking_id: booking.id,
         space_id: booking.spaceId,
         area_id: booking.areaId,
       },
     });
+
+    if (booking.partnerAuthId) {
+      await prisma.app_notification.create({
+        data: {
+          user_auth_id: booking.partnerAuthId,
+          title: 'New booking received',
+          body: `${booking.areaName} in ${booking.spaceName} was just booked.`,
+          href: bookingHref,
+          type: 'booking_received',
+          booking_id: booking.id,
+          space_id: booking.spaceId,
+          area_id: booking.areaId,
+        },
+      });
+    }
   }
 
   try {
