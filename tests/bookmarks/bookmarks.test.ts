@@ -1,4 +1,3 @@
-import { NextRequest } from 'next/server';
 import {
 beforeEach,
 describe,
@@ -7,6 +6,7 @@ it,
 vi
 } from 'vitest';
 
+import { MockNextRequest, MockNextResponse } from '../utils/mock-next-server';
 import { bookmarksFixture } from '../fixtures/bookmarks';
 
 type SupabaseAuthUser = { id: string };
@@ -26,31 +26,10 @@ const mockSupabaseClient = { auth: { getUser: vi.fn<() => Promise<SupabaseAuthRe
 
 vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma, }));
 vi.mock('@/lib/supabase/server', () => ({ createSupabaseServerClient: vi.fn(async () => mockSupabaseClient), }));
-vi.mock('next/server', () => {
-  class MockNextRequest extends Request {
-    constructor(input: RequestInfo, init?: RequestInit) {
-      super(input, init);
-    }
-  }
-  class MockNextResponse extends Response {
-    constructor(body?: BodyInit | null, init?: ResponseInit) {
-      super(body, init);
-    }
-    static json(body: unknown, init?: ResponseInit) {
-      return new Response(JSON.stringify(body), {
-        status: init?.status ?? 200,
-        headers: {
-          ...(init?.headers ?? {}),
-          'content-type': 'application/json',
-        },
-      });
-    }
-  }
-  return {
-    NextRequest: MockNextRequest,
-    NextResponse: MockNextResponse,
-  };
-});
+vi.mock('next/server', () => ({
+  NextRequest: MockNextRequest,
+  NextResponse: MockNextResponse,
+}));
 
 const {
  POST, DELETE, 
@@ -58,7 +37,7 @@ const {
 const { createSupabaseServerClient, } = await import('@/lib/supabase/server');
 const mockedSupabaseServerClient = vi.mocked(createSupabaseServerClient);
 
-type NextRequestInit = ConstructorParameters<typeof NextRequest>[1];
+type NextRequestInit = ConstructorParameters<typeof MockNextRequest>[1];
 
 const createRequest = (url: string, init?: RequestInit) => {
   const sanitizedInit: NextRequestInit = init
@@ -67,7 +46,7 @@ const createRequest = (url: string, init?: RequestInit) => {
 signal: init.signal ?? undefined, 
 } as NextRequestInit)
     : undefined;
-  return new NextRequest(url, sanitizedInit);
+  return new MockNextRequest(url, sanitizedInit);
 };
 
 beforeEach(() => {

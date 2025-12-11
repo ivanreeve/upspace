@@ -7,14 +7,14 @@ export const availabilityFixture = {
     {
       id: 'a-monday',
       space_id: '11111111-1111-4111-8111-111111111111',
-      day_of_week: 'Monday',
+      day_of_week: 0,
       opening: new Date('1970-01-01T08:00:00.000Z'),
       closing: new Date('1970-01-01T18:00:00.000Z'),
     },
     {
       id: 'a-tuesday',
       space_id: '11111111-1111-4111-8111-111111111111',
-      day_of_week: 'Tuesday',
+      day_of_week: 1,
       opening: new Date('1970-01-01T09:00:00.000Z'),
       closing: new Date('1970-01-01T17:00:00.000Z'),
     }
@@ -40,7 +40,7 @@ export const availabilityFixture = {
     {
       id: 'a-created-1',
       space_id: '11111111-1111-4111-8111-111111111111',
-      day_of_week: 'Monday',
+      day_of_week: 0,
       opening: new Date('1970-01-01T08:00:00.000Z'),
       closing: new Date('1970-01-01T18:00:00.000Z'),
     }
@@ -48,14 +48,13 @@ export const availabilityFixture = {
   updatedRow: {
     id: '22222222-2222-4222-8222-222222222222',
     space_id: '11111111-1111-4111-8111-111111111111',
-    day_of_week: 'Monday',
+    day_of_week: 0,
     opening: new Date('1970-01-01T10:00:00.000Z'),
     closing: new Date('1970-01-01T19:00:00.000Z'),
   },
   existingRow: {
-    day_of_week: 'Monday',
+    day_of_week: 0,
     opening: new Date('1970-01-01T08:00:00.000Z'),
     closing: new Date('1970-01-01T18:00:00.000Z'),
   },
 };
-
