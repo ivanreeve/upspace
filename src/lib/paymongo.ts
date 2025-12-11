@@ -6,7 +6,7 @@ import type { PaymongoWebhookSignature } from '../../supabase/functions/_shared/
 const PAYMONGO_API_URL = process.env.PAYMONGO_API_URL?.replace(/\/+$/u, '') ?? 'https://api.paymongo.com/v1';
 const PAYMONGO_SECRET_KEY = process.env.PAYMONGO_SECRET_KEY;
 const PAYMONGO_WEBHOOK_SECRET = process.env.PAYMONGO_WEBHOOK_SECRET;
-console.info({ PAYMONGO_SECRET_KEY: Boolean(PAYMONGO_SECRET_KEY) });
+console.info({ PAYMONGO_SECRET_KEY: Boolean(PAYMONGO_SECRET_KEY), });
 function resolveDefaultPaymentMethods() {
   const raw = process.env.PAYMONGO_CHECKOUT_PAYMENT_METHODS ??
     'card,gcash,grab_pay,paymaya';
