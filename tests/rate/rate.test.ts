@@ -1,4 +1,3 @@
-import { NextRequest } from 'next/server';
 import {
 beforeEach,
 describe,
@@ -7,33 +6,13 @@ it,
 vi
 } from 'vitest';
 
+import { MockNextRequest, MockNextResponse } from '../utils/mock-next-server';
 import { rateFixture } from '../fixtures/rate';
 
-vi.mock('next/server', () => {
-  class MockNextRequest extends Request {
-    constructor(input: RequestInfo, init?: RequestInit) {
-      super(input, init);
-    }
-  }
-  class MockNextResponse extends Response {
-    constructor(body?: BodyInit | null, init?: ResponseInit) {
-      super(body, init);
-    }
-    static json(body: unknown, init?: ResponseInit) {
-      return new Response(JSON.stringify(body), {
-        status: init?.status ?? 200,
-        headers: {
-          ...(init?.headers ?? {}),
-          'content-type': 'application/json',
-        },
-      });
-    }
-  }
-  return {
-    NextRequest: MockNextRequest,
-    NextResponse: MockNextResponse,
-  };
-});
+vi.mock('next/server', () => ({
+  NextRequest: MockNextRequest,
+  NextResponse: MockNextResponse,
+}));
 
 const {
  GET, POST, 
@@ -42,7 +21,7 @@ const {
  PUT, DELETE, 
 } = await import('@/app/api/v1/spaces/[space_id]/areas/[area_id]/rates/[rate_id]/route');
 
-type NextRequestInit = ConstructorParameters<typeof NextRequest>[1];
+type NextRequestInit = ConstructorParameters<typeof MockNextRequest>[1];
 
 const createRequest = (url: string, init?: RequestInit) => {
   const sanitizedInit: NextRequestInit = init
@@ -51,7 +30,7 @@ const createRequest = (url: string, init?: RequestInit) => {
 signal: init.signal ?? undefined, 
 } as NextRequestInit)
     : undefined;
-  return new NextRequest(url, sanitizedInit);
+  return new MockNextRequest(url, sanitizedInit);
 };
 
 beforeEach(() => {
