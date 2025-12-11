@@ -4,7 +4,7 @@ import {
   describe,
   expect,
   it,
-  vi,
+  vi
 } from 'vitest';
 
 import { reviewFixtures } from '../fixtures/review';
@@ -31,14 +31,16 @@ const mockSupabaseClient = { auth: { getUser: vi.fn<() => Promise<SupabaseAuthRe
 vi.doMock('@/lib/prisma', () => ({ prisma: mockPrisma, }));
 vi.doMock('@/lib/supabase/server', () => ({ createSupabaseServerClient: vi.fn(async () => mockSupabaseClient), }));
 vi.doMock('next/server', async () => {
-  const { MockNextRequest, MockNextResponse } = await import('../utils/mock-next-server');
+  const {
+ MockNextRequest, MockNextResponse, 
+} = await import('../utils/mock-next-server');
   return {
     NextRequest: MockNextRequest,
     NextResponse: MockNextResponse,
   };
 });
 
-const { MockNextRequest } = await import('../utils/mock-next-server');
+const { MockNextRequest, } = await import('../utils/mock-next-server');
 const {
   GET,
   POST,
@@ -228,11 +230,26 @@ describe('GET /api/v1/spaces/{space_id}/reviews', () => {
           average_rating: 0,
           total_reviews: 0,
           breakdown: [
-            { rating: 5, count: 0, },
-            { rating: 4, count: 0, },
-            { rating: 3, count: 0, },
-            { rating: 2, count: 0, },
-            { rating: 1, count: 0, }
+            {
+ rating: 5,
+count: 0, 
+},
+            {
+ rating: 4,
+count: 0, 
+},
+            {
+ rating: 3,
+count: 0, 
+},
+            {
+ rating: 2,
+count: 0, 
+},
+            {
+ rating: 1,
+count: 0, 
+}
           ],
         },
         reviews: [],
