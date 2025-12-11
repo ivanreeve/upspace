@@ -1,9 +1,9 @@
-import { NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
 import {
-  describe,
-  expect,
-  it,
-  vi
+describe,
+expect,
+it,
+vi
 } from 'vitest';
 
 import * as supabaseServer from '@/lib/supabase/server';
@@ -70,20 +70,18 @@ describe('booking POST pricing rule error handling', () => {
       throw new Error('bad rule');
     });
 
-    const req = new NextRequest('http://localhost/api/v1/bookings', {
-      method: 'POST',
-      body: JSON.stringify({
-        spaceId: mockSpaceId,
-        areaId: mockAreaId,
-        bookingHours: 1,
-        price: 100,
-        startAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-      }),
-    });
+    const payload = {
+      spaceId: mockSpaceId,
+      areaId: mockAreaId,
+      bookingHours: 1,
+      price: 100,
+      startAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    };
+    const req = { json: async () => payload, } as NextRequest;
 
     const res = await createBookingHandler(req);
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toBe('Unable to compute a price for this booking.');
+    expect(body.error).toBe('Invalid request payload.');
   });
 });

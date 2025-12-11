@@ -1,4 +1,3 @@
-import { NextRequest } from 'next/server';
 import {
 beforeEach,
 describe,
@@ -34,32 +33,16 @@ const mockPrisma = {
 
 const mockSupabaseClient = { auth: { getUser: vi.fn<() => Promise<SupabaseAuthResponse>>(), }, };
 
-vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma, }));
-vi.mock('@/lib/supabase/server', () => ({ createSupabaseServerClient: vi.fn(async () => mockSupabaseClient), }));
+vi.doMock('@/lib/prisma', () => ({ prisma: mockPrisma, }));
+vi.doMock('@/lib/supabase/server', () => ({ createSupabaseServerClient: vi.fn(async () => mockSupabaseClient), }));
 const mockBuildSpacesListCacheKey = vi.fn(() => 'spaces:list:test-cache');
 const mockReadSpacesListCache = vi.fn(async (): Promise<string | null> => null);
 const mockSetSpacesListCache = vi.fn(async () => undefined);
 const mockInvalidateSpacesListCache = vi.fn(async () => undefined);
-vi.mock('next/server', () => {
-  class MockNextRequest extends Request {
-    constructor(input: RequestInfo, init?: RequestInit) {
-      super(input, init);
-    }
-  }
-  class MockNextResponse extends Response {
-    constructor(body?: BodyInit | null, init?: ResponseInit) {
-      super(body, init);
-    }
-    static json(body: unknown, init?: ResponseInit) {
-      return new Response(JSON.stringify(body), {
-        status: init?.status ?? 200,
-        headers: {
-          ...(init?.headers ?? {}),
-          'content-type': 'application/json',
-        },
-      });
-    }
-  }
+vi.doMock('next/server', async () => {
+  const {
+ MockNextRequest, MockNextResponse, 
+} = await import('../utils/mock-next-server');
   return {
     NextRequest: MockNextRequest,
     NextResponse: MockNextResponse,
@@ -78,12 +61,13 @@ vi.mock('@/lib/spaces/image-urls', () => ({
 vi.mock('@/lib/spaces/partner-serializer', () => ({ deriveSpaceStatus: vi.fn(() => 'approved'), }));
 vi.mock('@/lib/spaces/pricing', () => ({ computeStartingPriceFromAreas: vi.fn(() => 100), }));
 vi.mock('@/data/spaces', () => ({ WEEKDAY_ORDER: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], }));
-vi.mock('@/lib/cache/redis', () => ({
+vi.doMock('@/lib/cache/redis', () => ({
   SPACES_LIST_CACHE_TTL_SECONDS: 60,
   buildSpacesListCacheKey: mockBuildSpacesListCacheKey,
   readSpacesListCache: mockReadSpacesListCache,
   setSpacesListCache: mockSetSpacesListCache,
   invalidateSpacesListCache: mockInvalidateSpacesListCache,
+  getRedisClient: vi.fn(async () => null),
 }));
 
 class HttpError extends Error {
@@ -95,6 +79,7 @@ class HttpError extends Error {
 }
 (globalThis as unknown as { HttpError?: typeof HttpError }).HttpError = HttpError;
 
+const { MockNextRequest, } = await import('../utils/mock-next-server');
 const {
  GET, POST, 
 } = await import('@/app/api/v1/spaces/route');
@@ -111,7 +96,7 @@ const defaultTransaction = async (fn: any) => {
   return fn;
 };
 
-type NextRequestInit = ConstructorParameters<typeof NextRequest>[1];
+type NextRequestInit = ConstructorParameters<typeof MockNextRequest>[1];
 
 const createRequest = (url: string, init?: RequestInit) => {
   const sanitizedInit: NextRequestInit = init
@@ -120,7 +105,7 @@ const createRequest = (url: string, init?: RequestInit) => {
 signal: init.signal ?? undefined, 
 } as NextRequestInit)
     : undefined;
-  return new NextRequest(url, sanitizedInit);
+  return new MockNextRequest(url, sanitizedInit);
 };
 
 const setAuthUser = (authUserId: string | null) => {

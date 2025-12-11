@@ -1,13 +1,15 @@
+import { JSDOM } from 'jsdom';
 import React from 'react';
-import { render, screen } from '@testing-library/react';
 import {
-describe,
-expect,
-it,
-vi
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi
 } from 'vitest';
 
-import LandingPage from '../src/components/pages/LandingPage/LandingPage';
+let render: typeof import('@testing-library/react').render;
+let screen: typeof import('@testing-library/react').screen;
 
 // Mock the hooks used by NavBar
 vi.mock('@/components/auth/SessionProvider', () => ({
@@ -31,29 +33,83 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock Link from next/link
-vi.mock('next/link', () => {
-  return {
-    default: ({
- children, href, onClick, 
-}: { children: React.ReactNode; href: string; onClick?: any }) => (
-      <a href={ href } onClick={ onClick }>
-        { children }
-      </a>
-    ),
-  };
+vi.mock('next/link', () => ({
+  default: ({
+    children,
+    href,
+    onClick,
+  }: { children: React.ReactNode; href: string; onClick?: any }) => (
+    <a href={ href } onClick={ onClick }>
+      { children }
+    </a>
+  ),
+}));
+
+// Mock next/image to avoid URL resolution in tests
+vi.mock('next/image', () => ({
+  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => (
+    <div data-testid="mock-next-image">
+      <span className="sr-only">{ props.alt }</span>
+      <span aria-hidden="true">{ props.src }</span>
+    </div>
+  ),
+}));
+
+const dom = new JSDOM('<!doctype html><html><body></body></html>');
+const globalAny = globalThis as unknown as Record<string, unknown>;
+
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+Object.defineProperty(globalThis, 'window', {
+  value: dom.window,
+  configurable: true,
+});
+Object.defineProperty(globalThis, 'document', {
+  value: dom.window.document,
+  configurable: true,
+});
+Object.defineProperty(globalThis, 'location', {
+  value: new URL('http://localhost'),
+  configurable: true,
+});
+Object.defineProperty(globalThis, 'navigator', {
+  value: dom.window.navigator,
+  configurable: true,
 });
 
+globalAny.HTMLElement = dom.window.HTMLElement;
+globalAny.Node = dom.window.Node;
+globalAny.React = React;
+globalAny.getComputedStyle = dom.window.getComputedStyle;
+globalAny.requestAnimationFrame =
+  dom.window.requestAnimationFrame ??
+  ((callback: FrameRequestCallback) => globalThis.setTimeout(callback, 0));
+globalAny.cancelAnimationFrame =
+  dom.window.cancelAnimationFrame ??
+  ((handle: number) => globalThis.clearTimeout(handle));
+globalAny.ResizeObserver = dom.window.ResizeObserver ?? ResizeObserverMock;
+
+let LandingPage: typeof import('../src/components/pages/LandingPage/LandingPage').default;
+
 describe('LandingPage', () => {
+  beforeAll(async () => {
+    const testLib = await import('@testing-library/react');
+    render = testLib.render;
+    screen = testLib.screen;
+
+    const landingPageModule = await import('../src/components/pages/LandingPage/LandingPage');
+    LandingPage = landingPageModule.default;
+  });
+
   it('renders the navbar and main content sections', () => {
     render(<LandingPage />);
 
-    // Check for Navbar elements
     expect(screen.getByText('UpSpace')).toBeDefined();
     expect(screen.getByText('Home')).toBeDefined();
     expect(screen.getByText('Features')).toBeDefined();
-
-    // Check for other sections (assuming they render some text, but just checking if it doesn't crash)
-    // We can check for a specific element from the Hero section if we knew what it was.
-    // For now, ensuring render without error is the main goal.
   });
 });

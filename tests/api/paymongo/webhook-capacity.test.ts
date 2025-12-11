@@ -7,9 +7,7 @@ import {
 
 import * as occupancy from '@/lib/bookings/occupancy';
 import * as prismaModule from '@/lib/prisma';
-import { __test__ as webhookTestExports } from '@/app/api/paymongo/webhook/route';
-
-const { handleCheckoutEventForTest, } = webhookTestExports;
+import { handleCheckoutEvent } from '@/app/api/paymongo/webhook/handlers';
 
 describe('PayMongo webhook capacity safeguard', () => {
   it('does not confirm booking when projected capacity is exceeded and sends review notifications once', async () => {
@@ -61,7 +59,7 @@ describe('PayMongo webhook capacity safeguard', () => {
       },
     } as any;
 
-    const response = await handleCheckoutEventForTest(event);
+    const response = await handleCheckoutEvent(event);
     expect(response.status).toBe(200);
 
     const prisma = prismaModule.prisma as any;
