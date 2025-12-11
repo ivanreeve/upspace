@@ -19,8 +19,8 @@ import {
   type CheckoutEventAttributes,
   type PaymentEventAttributes,
   type WalletEventAttributes
-} from '../_shared/paymongo-webhook';
-import { isPaymongoSignatureFresh, parsePaymongoSignatureHeader, verifyPaymongoSignatureWithSecret } from '../_shared/paymongo-signature';
+} from '../_shared/paymongo-webhook.ts';
+import { isPaymongoSignatureFresh, parsePaymongoSignatureHeader, verifyPaymongoSignatureWithSecret } from '../_shared/paymongo-signature.ts';
 
 type SupabaseClient = ReturnType<typeof createClient>;
 type PaymentEvent = PaymentEventAttributes;
