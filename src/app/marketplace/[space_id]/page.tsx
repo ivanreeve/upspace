@@ -7,7 +7,6 @@ import { getSpaceDetail } from '@/lib/queries/space';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import SpaceDetail from '@/components/pages/Marketplace/SpaceDetail/SpaceDetail';
 import { SpaceDetailShell } from '@/components/pages/Marketplace/SpaceDetail/SpaceDetailShell';
-import { Footer } from '@/components/ui/footer';
 import { MarketplaceErrorState } from '@/components/pages/Marketplace/Marketplace.ErrorState';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
 
@@ -77,14 +76,12 @@ export default async function SpaceDetailPage({ params, }: Props) {
             <MarketplaceErrorState />
           </div>
         </div>
-        <Footer />
       </SpaceDetailShell>
     );
   }
   return (
     <SpaceDetailShell initialSidebarOpen={ initialSidebarOpen }>
       <SpaceDetail space={ space } />
-      <Footer />
     </SpaceDetailShell>
   );
 }

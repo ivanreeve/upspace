@@ -2,7 +2,6 @@ import { cookies } from 'next/headers';
 
 import { SpaceDetailSkeleton } from '@/components/pages/Marketplace/SpaceDetail/SpaceDetail.Skeleton';
 import { SpaceDetailShell } from '@/components/pages/Marketplace/SpaceDetail/SpaceDetailShell';
-import { Footer } from '@/components/ui/footer';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
 
 export default async function LoadingSpaceDetailPage() {
@@ -13,7 +12,6 @@ export default async function LoadingSpaceDetailPage() {
   return (
     <SpaceDetailShell initialSidebarOpen={ initialSidebarOpen }>
       <SpaceDetailSkeleton />
-      <Footer />
     </SpaceDetailShell>
   );
 }
