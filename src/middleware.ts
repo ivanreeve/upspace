@@ -128,8 +128,8 @@ export async function middleware(request: NextRequest) {
         return response;
       }
 
-      const landingUrl = new URL('/', request.url);
-      return NextResponse.redirect(landingUrl);
+      const fallbackUrl = new URL(ONBOARDING_PATH, request.url);
+      return NextResponse.redirect(fallbackUrl);
     }
 
     const profilePayload = await profileResponse.json().catch(() => null);
@@ -143,8 +143,8 @@ export async function middleware(request: NextRequest) {
         return response;
       }
 
-      const landingUrl = new URL('/', request.url);
-      return NextResponse.redirect(landingUrl);
+      const fallbackUrl = new URL(ONBOARDING_PATH, request.url);
+      return NextResponse.redirect(fallbackUrl);
     }
 
     const isOnboard = Boolean(profile?.isOnboard);
@@ -162,7 +162,14 @@ export async function middleware(request: NextRequest) {
         ? ROLE_REDIRECT_MAP[profile.role]
         : '/marketplace';
 
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Middleware] Auth user on ${pathname}: onboarded=${isOnboard}, role=${profile?.role}, target=${redirectTarget}`);
+    }
+
     if ((PUBLIC_PATHS.has(pathname) || isOnboardingPath) && redirectTarget) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[Middleware] Redirecting ${pathname} → ${redirectTarget}`);
+      }
       const targetUrl = new URL(redirectTarget, request.url);
       return NextResponse.redirect(targetUrl);
     }
