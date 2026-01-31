@@ -299,11 +299,24 @@ export async function getSpaceDetail(
     return null;
   }
 
-  const reviewAggregate = await prisma.review.aggregate({
-    where: { space_id: spaceId, },
-    _avg: { rating_star: true, },
-    _count: { _all: true, },
-  });
+  // Parallelize review aggregate, bookmark check, and gallery building
+  const [reviewAggregate, bookmarkResult, gallery] = await Promise.all([
+    prisma.review.aggregate({
+      where: { space_id: spaceId, },
+      _avg: { rating_star: true, },
+      _count: { _all: true, },
+    }),
+    bookmarkUserId
+      ? prisma.bookmark.findFirst({
+        where: {
+          user_id: bookmarkUserId,
+          space_id: space.id,
+        },
+        select: { bookmark_id: true, },
+      })
+      : Promise.resolve(null),
+    buildGallery(space.space_image)
+  ]);
 
   const averageRating = reviewAggregate._avg.rating_star === null
     ? 0
@@ -312,18 +325,9 @@ export async function getSpaceDetail(
 
   const status = deriveSpaceStatus(space);
   const {
-    hero,
-    images,
-  } = await buildGallery(space.space_image);
-  const isBookmarked = bookmarkUserId
-    ? Boolean(await prisma.bookmark.findFirst({
-      where: {
-        user_id: bookmarkUserId,
-        space_id: space.id,
-      },
-      select: { bookmark_id: true, },
-    }))
-    : false;
+ hero, images, 
+} = gallery;
+  const isBookmarked = Boolean(bookmarkResult);
   const availability = buildAvailabilityDisplay(space.space_availability);
   const areas = buildAreaSummaries(space.area);
   const amenities = buildAmenities(space.amenity);

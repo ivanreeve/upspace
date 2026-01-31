@@ -100,11 +100,20 @@ export async function middleware(request: NextRequest) {
 
     sharedHeaders.set('x-upspace-internal-call', '1');
 
-    const syncResponse = await fetch(syncProfileUrl, {
-      method: 'POST',
-      headers: new Headers(sharedHeaders),
-      cache: 'no-store',
-    });
+    const profileUrl = new URL('/api/v1/auth/profile', request.url);
+
+    // Parallelize sync and profile fetch to reduce middleware latency
+    const [syncResponse, profileResponse] = await Promise.all([
+      fetch(syncProfileUrl, {
+        method: 'POST',
+        headers: new Headers(sharedHeaders),
+        cache: 'no-store',
+      }),
+      fetch(profileUrl, {
+        headers: new Headers(sharedHeaders),
+        cache: 'no-store',
+      })
+    ]);
 
     if (!syncResponse.ok) {
       console.error(
@@ -114,22 +123,14 @@ export async function middleware(request: NextRequest) {
       );
     }
 
-    const profileUrl = new URL('/api/v1/auth/profile', request.url);
-    const profileHeaders = new Headers(sharedHeaders);
-
-    const profileResponse = await fetch(profileUrl, {
-      headers: profileHeaders,
-      cache: 'no-store',
-    });
-
     if (!profileResponse.ok) {
       console.error('Failed to fetch user profile in middleware', profileResponse.status, profileResponse.statusText);
       if (pathname.startsWith('/api/auth')) {
         return response;
       }
 
-      const landingUrl = new URL('/', request.url);
-      return NextResponse.redirect(landingUrl);
+      const fallbackUrl = new URL(ONBOARDING_PATH, request.url);
+      return NextResponse.redirect(fallbackUrl);
     }
 
     const profilePayload = await profileResponse.json().catch(() => null);
@@ -143,8 +144,8 @@ export async function middleware(request: NextRequest) {
         return response;
       }
 
-      const landingUrl = new URL('/', request.url);
-      return NextResponse.redirect(landingUrl);
+      const fallbackUrl = new URL(ONBOARDING_PATH, request.url);
+      return NextResponse.redirect(fallbackUrl);
     }
 
     const isOnboard = Boolean(profile?.isOnboard);
@@ -162,7 +163,14 @@ export async function middleware(request: NextRequest) {
         ? ROLE_REDIRECT_MAP[profile.role]
         : '/marketplace';
 
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Middleware] Auth user on ${pathname}: onboarded=${isOnboard}, role=${profile?.role}, target=${redirectTarget}`);
+    }
+
     if ((PUBLIC_PATHS.has(pathname) || isOnboardingPath) && redirectTarget) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[Middleware] Redirecting ${pathname} → ${redirectTarget}`);
+      }
       const targetUrl = new URL(redirectTarget, request.url);
       return NextResponse.redirect(targetUrl);
     }

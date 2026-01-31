@@ -1129,8 +1129,8 @@ export function MarketplaceChrome({
 
     if (isCustomerRole) {
       const aiSearchAction: MobileBottomNavAction = {
-        label: 'AI Search',
-        href: '/marketplace/ai-search',
+        label: 'AI Assistant',
+        href: '/marketplace/ai-assistant',
         icon: GradientSparklesIcon,
       };
 
@@ -1165,7 +1165,7 @@ export function MarketplaceChrome({
     }
 
     if (isCustomerRole) {
-      const aiIndex = actions.findIndex((action) => action.label === 'AI Search');
+      const aiIndex = actions.findIndex((action) => action.label === 'AI Assistant');
       if (aiIndex >= 0) {
         const [aiAction] = actions.splice(aiIndex, 1);
         const middleIndex = Math.floor((actions.length + 1) / 2);
@@ -1259,10 +1259,10 @@ export function MarketplaceChrome({
                   </SidebarMenuItem>
                   { shouldShowAiSearch && (
                     <SidebarLinkItem
-                      href="/marketplace/ai-search"
-                      label="AI Search"
+                      href="/marketplace/ai-assistant"
+                      label="AI Assistant"
                       icon={ GradientSparklesIcon }
-                      tooltip="AI Search"
+                      tooltip="AI Assistant"
                       labelBadge={
                         <Badge
                           variant="outline"

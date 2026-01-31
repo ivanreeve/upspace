@@ -68,7 +68,10 @@ const notFoundResponse = NextResponse.json(
   { status: 404, }
 );
 
-export async function GET() {
+const DEFAULT_PAGE_SIZE = 50;
+const MAX_PAGE_SIZE = 100;
+
+export async function GET(req: NextRequest) {
   const supabase = await createSupabaseServerClient();
   const {
     data: authData,
@@ -91,6 +94,15 @@ export async function GET() {
     return forbiddenResponse;
   }
 
+  const { searchParams, } = new URL(req.url);
+  const cursorParam = searchParams.get('cursor');
+  const limitParam = searchParams.get('limit');
+  const cursor = cursorParam && /^[0-9a-f-]{36}$/i.test(cursorParam) ? cursorParam : undefined;
+  const limit = Math.min(
+    Math.max(parseInt(limitParam ?? '', 10) || DEFAULT_PAGE_SIZE, 1),
+    MAX_PAGE_SIZE
+  );
+
   const filters = (() => {
     if (dbUser.role === 'partner') {
       return { partner_auth_id: authData.user.id, } as const;
@@ -104,10 +116,25 @@ export async function GET() {
   const rows = await prisma.booking.findMany({
     where: filters,
     orderBy: { created_at: 'desc', },
+    take: limit + 1,
+    ...(cursor && {
+ cursor: { id: cursor, },
+skip: 1, 
+}),
   });
 
-  const bookings = await mapBookingsWithProfiles(rows);
-  return NextResponse.json({ data: bookings, });
+  const hasMore = rows.length > limit;
+  const data = hasMore ? rows.slice(0, limit) : rows;
+  const nextCursor = hasMore ? data[data.length - 1]?.id : undefined;
+
+  const bookings = await mapBookingsWithProfiles(data);
+  return NextResponse.json({
+    data: bookings,
+    pagination: {
+      hasMore,
+      nextCursor,
+    },
+  });
 }
 
 export async function PATCH(req: NextRequest) {
