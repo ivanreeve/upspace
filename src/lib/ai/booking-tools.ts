@@ -40,53 +40,60 @@ export async function getBookingAvailability(input: unknown) {
     return { error: 'Space not found', };
   }
 
-  // Check for booking conflicts for each area
-  const availabilityResults = await Promise.all(
-    space.area.map(async (area: {
-      id: string;
-      name: string;
-      max_capacity: bigint | null;
-      automatic_booking_enabled: boolean;
-    }) => {
-      const conflicts = await prisma.booking.count({
-        where: {
-          area_id: area.id,
-          status: { in: ['confirmed', 'pending'], },
-          OR: [
-            {
-              // Booking starts during requested period
-              start_at: {
-                gte: start_date,
-                lt: end_date,
-              },
-            },
-            {
-              // Booking ends during requested period
-              expires_at: {
-                gt: start_date,
-                lte: end_date,
-              },
-            },
-            {
-              // Booking spans entire requested period
-              start_at: { lte: start_date, },
-              expires_at: { gte: end_date, },
-            }
-          ],
+  // Check for booking conflicts using a single groupBy query instead of N queries
+  const areaIds = space.area.map((area) => area.id);
+
+  const conflictCounts = await prisma.booking.groupBy({
+    by: ['area_id'],
+    where: {
+      area_id: { in: areaIds, },
+      status: { in: ['confirmed', 'pending'], },
+      OR: [
+        {
+          // Booking starts during requested period
+          start_at: {
+            gte: start_date,
+            lt: end_date,
+          },
         },
-      });
+        {
+          // Booking ends during requested period
+          expires_at: {
+            gt: start_date,
+            lte: end_date,
+          },
+        },
+        {
+          // Booking spans entire requested period
+          start_at: { lte: start_date, },
+          expires_at: { gte: end_date, },
+        }
+      ],
+    },
+    _count: { id: true, },
+  });
 
-      const isAvailable = conflicts === 0;
-
-      return {
-        area_id: area.id,
-        area_name: area.name,
-        max_capacity: area.max_capacity ? Number(area.max_capacity) : null,
-        available: isAvailable,
-        automatic_booking_enabled: area.automatic_booking_enabled,
-      };
-    })
+  const conflictMap = new Map(
+    conflictCounts.map((row) => [row.area_id, row._count.id])
   );
+
+  const availabilityResults = space.area.map((area: {
+    id: string;
+    name: string;
+    max_capacity: bigint | null;
+    automatic_booking_enabled: boolean;
+  }) => {
+    const conflicts = conflictMap.get(area.id) ?? 0;
+    const isAvailable = conflicts === 0;
+
+    return {
+      area_id: area.id,
+      area_name: area.name,
+      max_capacity: area.max_capacity ? Number(area.max_capacity) : null,
+      available: isAvailable,
+      automatic_booking_enabled: area.automatic_booking_enabled,
+    };
+  });
 
   return {
     space_id: space.id,

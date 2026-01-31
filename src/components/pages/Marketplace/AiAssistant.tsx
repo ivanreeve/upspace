@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import dynamic from 'next/dynamic';
 import { useMutation } from '@tanstack/react-query';
 import {
 FiAlertCircle,
@@ -12,8 +13,9 @@ FiCalendar
 } from 'react-icons/fi';
 import { IoStop } from 'react-icons/io5';
 import { toast } from 'sonner';
-import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+
+const ReactMarkdown = dynamic(() => import('react-markdown'), { ssr: false, });
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';

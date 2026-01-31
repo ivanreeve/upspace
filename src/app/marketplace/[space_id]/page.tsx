@@ -41,24 +41,41 @@ export async function generateMetadata({ params, }: Props): Promise<Metadata> {
 export default async function SpaceDetailPage({ params, }: Props) {
   const { space_id, } = await params;
   if (!isUuid(space_id)) notFound();
-  const cookieStore = await cookies();
+
+  // Parallelize cookie, auth, and initial space fetch for better performance
+  const [cookieStore, supabase] = await Promise.all([
+    cookies(),
+    createSupabaseServerClient()
+  ]);
+
   const sidebarCookie = cookieStore.get(SIDEBAR_STATE_COOKIE)?.value;
   const initialSidebarOpen = parseSidebarState(sidebarCookie);
-  const supabase = await createSupabaseServerClient();
   const { data: authData, } = await supabase.auth.getUser();
 
-  const bookmarkUser = authData?.user
-    ? await prisma.user.findFirst({
+  // Fetch bookmark user and space in parallel
+  const bookmarkUserPromise = authData?.user
+    ? prisma.user.findFirst({
       where: { auth_user_id: authData.user.id, },
       select: { user_id: true, },
     })
-    : null;
+    : Promise.resolve(null);
 
   let space: Awaited<ReturnType<typeof getSpaceDetail>> = null;
   let spaceLoadFailed = false;
 
   try {
-    space = await getSpaceDetail(space_id, { bookmarkUserId: bookmarkUser?.user_id, });
+    const [bookmarkUser, spaceResult] = await Promise.all([
+      bookmarkUserPromise,
+      getSpaceDetail(space_id, { bookmarkUserId: undefined, })
+    ]);
+
+    // If we have a bookmark user, re-fetch with bookmark info
+    // This is a tradeoff - we get faster initial load but may need a second query
+    if (bookmarkUser?.user_id && spaceResult) {
+      space = await getSpaceDetail(space_id, { bookmarkUserId: bookmarkUser.user_id, });
+    } else {
+      space = spaceResult;
+    }
   } catch (error) {
     spaceLoadFailed = true;
     console.error('Failed to fetch marketplace space detail', error);

@@ -100,11 +100,20 @@ export async function middleware(request: NextRequest) {
 
     sharedHeaders.set('x-upspace-internal-call', '1');
 
-    const syncResponse = await fetch(syncProfileUrl, {
-      method: 'POST',
-      headers: new Headers(sharedHeaders),
-      cache: 'no-store',
-    });
+    const profileUrl = new URL('/api/v1/auth/profile', request.url);
+
+    // Parallelize sync and profile fetch to reduce middleware latency
+    const [syncResponse, profileResponse] = await Promise.all([
+      fetch(syncProfileUrl, {
+        method: 'POST',
+        headers: new Headers(sharedHeaders),
+        cache: 'no-store',
+      }),
+      fetch(profileUrl, {
+        headers: new Headers(sharedHeaders),
+        cache: 'no-store',
+      })
+    ]);
 
     if (!syncResponse.ok) {
       console.error(
@@ -113,14 +122,6 @@ export async function middleware(request: NextRequest) {
         syncResponse.statusText
       );
     }
-
-    const profileUrl = new URL('/api/v1/auth/profile', request.url);
-    const profileHeaders = new Headers(sharedHeaders);
-
-    const profileResponse = await fetch(profileUrl, {
-      headers: profileHeaders,
-      cache: 'no-store',
-    });
 
     if (!profileResponse.ok) {
       console.error('Failed to fetch user profile in middleware', profileResponse.status, profileResponse.statusText);

@@ -12,7 +12,9 @@
       "Bash(else)",
       "Bash(fi)",
       "Bash(done)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(tree:*)",
+      "Bash(pnpm build:*)"
     ],
     "deny": [],
     "ask": []

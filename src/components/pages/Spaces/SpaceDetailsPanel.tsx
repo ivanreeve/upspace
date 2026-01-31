@@ -27,11 +27,11 @@ import { toast } from 'sonner';
 
 import {
   AreaDialog,
-  DescriptionEditor,
   areaRecordToFormValues,
   createAreaFormDefaults,
   spaceRecordToFormValues
 } from './SpaceForms';
+import { DescriptionEditorDynamic as DescriptionEditor } from './DescriptionEditorDynamic';
 import { SPACE_DESCRIPTION_VIEWER_CLASSNAME } from './space-description-rich-text';
 
 import { SystemErrorIllustration } from '@/components/pages/Marketplace/Marketplace.ErrorState';
