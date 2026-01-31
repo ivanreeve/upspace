@@ -247,7 +247,7 @@ function MessageBubble({
   );
 }
 
-export function AiSearch() {
+export function AiAssistant() {
   const [query, setQuery] = React.useState('');
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
@@ -304,7 +304,7 @@ export function AiSearch() {
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
-      const response = await fetch('/api/v1/ai-search', {
+      const response = await fetch('/api/v1/ai-assistant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', },
         body: JSON.stringify({
@@ -609,15 +609,15 @@ export function AiSearch() {
           placement === 'inline' && 'mt-6 bg-background/80'
         ) }
       >
-        <label htmlFor="ai-search-input" className="sr-only">
+        <label htmlFor="ai-assistant-input" className="sr-only">
           Ask anything about coworking spaces
         </label>
         <Input
-          id="ai-search-input"
+          id="ai-assistant-input"
           value={ query }
           onChange={ (event) => setQuery(event.target.value) }
-          placeholder="Ask Anything"
-          aria-label="AI search query"
+          placeholder="How can I assist you?"
+          aria-label="AI assistant query"
           disabled={ aiSearchMutation.isPending }
           className="h-16 border-none bg-transparent text-sm focus-visible:ring-0 focus-visible:ring-offset-0 sm:h-12 sm:text-base"
         />
@@ -653,7 +653,7 @@ export function AiSearch() {
             type="submit"
             size="icon"
             aria-label={
-              aiSearchMutation.isPending ? 'Stop AI response' : 'Send AI search'
+              aiSearchMutation.isPending ? 'Stop AI response' : 'Send message to AI assistant'
             }
             disabled={ !aiSearchMutation.isPending && query.trim().length === 0 }
             className="dark:bg-cyan-400 text-background dark:hover:bg-cyan-300 bg-primary"
@@ -697,9 +697,14 @@ export function AiSearch() {
     >
       { !hasMessages ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-          <h1 className="greeting-appear text-3xl font-instrument-serif font-semibold leading-tight bg-gradient-to-t from-primary dark:from-gray-400 to-white bg-clip-text text-transparent sm:text-4xl md:text-6xl lg:text-7xl">
-            Hi, { greetingName }
-          </h1>
+          <div className="space-y-3">
+            <h1 className="greeting-appear text-3xl font-instrument-serif font-semibold leading-tight bg-gradient-to-t from-primary dark:from-gray-400 to-white bg-clip-text text-transparent sm:text-4xl md:text-6xl lg:text-7xl">
+              Hi, { greetingName }
+            </h1>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+              I can help you find spaces, compare options, estimate costs, and guide you through booking your ideal workspace.
+            </p>
+          </div>
           { renderPromptForm('inline') }
         </div>
       ) : (
