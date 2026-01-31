@@ -28,10 +28,9 @@ type ChatMessage = {
 };
 
 const makeMessageId = (role: ChatMessage['role']) =>
-  `${role}-${
-    typeof crypto !== 'undefined' && 'randomUUID' in crypto
-      ? crypto.randomUUID()
-      : Date.now().toString(36)
+  `${role}-${typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : Date.now().toString(36)
   }`;
 
 const getFriendlyAiErrorMessage = (error: Error) => {
@@ -206,7 +205,7 @@ function MessageBubble({
       { shouldShowBubble ? (
         <div
           className={ cn(
-            'max-w-[720px] rounded-md border px-4 py-3 text-sm shadow-sm',
+            'max-w-[720px] rounded-md border px-4 py-3 text-sm',
             isUser
               ? 'bg-primary/10 border-primary/30 text-foreground'
               : 'bg-muted/60 border-border/60 text-foreground'
@@ -271,11 +270,11 @@ export function AiAssistant() {
   const hasMessages = messages.length > 0;
   const { data: userProfile, } = useUserProfile();
   const {
- location: userLocation, error: locationError, 
-} = useGeolocation();
+    location: userLocation, error: locationError,
+  } = useGeolocation();
   const {
- state, isMobile, 
-} = useSidebar();
+    state, isMobile,
+  } = useSidebar();
 
   const greetingName = React.useMemo(() => {
     const firstName = userProfile?.firstName?.trim();
@@ -309,8 +308,8 @@ export function AiAssistant() {
         headers: { 'Content-Type': 'application/json', },
         body: JSON.stringify({
           messages: history.map(({
- role, content, 
-}) => ({
+            role, content,
+          }) => ({
             role,
             content: content.trim(),
           })),
@@ -619,7 +618,7 @@ export function AiAssistant() {
           placeholder="How can I assist you?"
           aria-label="AI assistant query"
           disabled={ aiSearchMutation.isPending }
-          className="h-16 border-none bg-transparent text-sm focus-visible:ring-0 focus-visible:ring-offset-0 sm:h-12 sm:text-base"
+          className="h-16 border-none bg-gray-100 dark:bg-transparent text-sm focus-visible:ring-0 focus-visible:ring-offset-0 sm:h-12 sm:text-base"
         />
         <div className="flex items-center justify-end gap-2 sm:justify-end">
           <Button
@@ -629,16 +628,16 @@ export function AiAssistant() {
             onClick={ handleVoiceButtonClick }
             disabled={ !isVoiceSupported || aiSearchMutation.isPending }
             className={ cn(
-              'relative h-10 w-10 rounded-full p-[2px] text-muted-foreground transition-shadow hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary',
+              'relative h-10 w-10 rounded-full p-[2px] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary',
               isVoiceActive
                 ? 'bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400'
-                : 'bg-muted'
+                : 'bg-gray-100 dark:bg-background'
             ) }
           >
             <span
               className={ cn(
-                'flex h-full w-full items-center justify-center rounded-full bg-muted',
-                isVoiceActive && 'bg-background text-foreground'
+                'flex h-full w-full items-center justify-center rounded-full bg-gray-100 dark:bg-background',
+                isVoiceActive && 'bg-background dark:bg-background text-foreground'
               ) }
             >
               <MicGradientIcon
@@ -724,9 +723,9 @@ export function AiAssistant() {
                         style={
                           linePosition
                             ? {
-                                top: linePosition.top,
-                                height: linePosition.height,
-                              }
+                              top: linePosition.top,
+                              height: linePosition.height,
+                            }
                             : { display: 'none', }
                         }
                       />
