@@ -2,9 +2,18 @@
 
 import React from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { FiAlertCircle, FiSend } from 'react-icons/fi';
+import {
+FiAlertCircle,
+FiSend,
+FiMapPin,
+FiDollarSign,
+FiWifi,
+FiCalendar
+} from 'react-icons/fi';
 import { IoStop } from 'react-icons/io5';
 import { toast } from 'sonner';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -56,6 +65,77 @@ const shimmerTextStyle: React.CSSProperties = {
   WebkitBackgroundClip: 'text',
   backgroundClip: 'text',
   WebkitTextFillColor: 'transparent',
+};
+
+const SEARCHING_MESSAGES = [
+  'Consulting the coworking oracle...',
+  'Summoning your perfect workspace...',
+  'Reading the coffee-fueled crystal ball...',
+  'Interrogating our space database...',
+  'Channeling productive vibes...',
+  'Decoding the matrix of desks...'
+];
+
+const markdownComponents = {
+  h1: ({ children, }: { children?: React.ReactNode }) => (
+    <span className="font-semibold">{ children }</span>
+  ),
+  h2: ({ children, }: { children?: React.ReactNode }) => (
+    <span className="font-semibold">{ children }</span>
+  ),
+  h3: ({ children, }: { children?: React.ReactNode }) => (
+    <span className="font-semibold">{ children }</span>
+  ),
+  h4: ({ children, }: { children?: React.ReactNode }) => (
+    <span className="font-medium">{ children }</span>
+  ),
+  h5: ({ children, }: { children?: React.ReactNode }) => (
+    <span className="font-medium">{ children }</span>
+  ),
+  h6: ({ children, }: { children?: React.ReactNode }) => (
+    <span className="font-medium">{ children }</span>
+  ),
+  p: ({ children, }: { children?: React.ReactNode }) => (
+    <p className="mb-2 last:mb-0">{ children }</p>
+  ),
+  ul: ({ children, }: { children?: React.ReactNode }) => (
+    <ul className="mb-2 ml-4 list-disc space-y-1">{ children }</ul>
+  ),
+  ol: ({ children, }: { children?: React.ReactNode }) => (
+    <ol className="mb-2 ml-4 list-decimal space-y-1">{ children }</ol>
+  ),
+  li: ({ children, }: { children?: React.ReactNode }) => (
+    <li className="text-sm">{ children }</li>
+  ),
+  strong: ({ children, }: { children?: React.ReactNode }) => (
+    <strong className="font-semibold">{ children }</strong>
+  ),
+  em: ({ children, }: { children?: React.ReactNode }) => (
+    <em className="italic">{ children }</em>
+  ),
+  code: ({ children, }: { children?: React.ReactNode }) => (
+    <code className="rounded bg-muted px-1 py-0.5 text-sm font-mono">{ children }</code>
+  ),
+  pre: ({ children, }: { children?: React.ReactNode }) => (
+    <pre className="mb-2 overflow-x-auto rounded bg-muted p-3">{ children }</pre>
+  ),
+  a: ({
+ href, children, 
+}: { href?: string; children?: React.ReactNode }) => (
+    <a
+      href={ href }
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-primary underline hover:text-primary/80"
+    >
+      { children }
+    </a>
+  ),
+  blockquote: ({ children, }: { children?: React.ReactNode }) => (
+    <blockquote className="mb-2 border-l-2 border-muted-foreground/30 pl-3 italic text-muted-foreground">
+      { children }
+    </blockquote>
+  ),
 };
 
 interface GradientSparklesIconProps extends React.SVGProps<SVGSVGElement> {
@@ -181,10 +261,21 @@ function MessageBubble({
   isThinking?: boolean;
   iconRef?: (node: HTMLDivElement | null) => void;
 }) {
+  const [searchingMessageIndex, setSearchingMessageIndex] = React.useState(0);
   const isUser = message.role === 'user';
   const hasSpaceResults = Boolean(message.spaceResults?.length);
   const hasContent = message.content.trim().length > 0;
   const shouldShowBubble = isThinking || (!hasSpaceResults && hasContent);
+
+  React.useEffect(() => {
+    if (!isThinking) return;
+
+    const interval = setInterval(() => {
+      setSearchingMessageIndex((prev) => (prev + 1) % SEARCHING_MESSAGES.length);
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [isThinking]);
 
   return (
     <div
@@ -208,15 +299,24 @@ function MessageBubble({
             'max-w-[720px] rounded-md border px-4 py-3 text-sm',
             isUser
               ? 'bg-primary/10 border-primary/30 text-foreground'
-              : 'bg-muted/60 border-border/60 text-foreground'
+              : 'bg-muted/20 dark:bg-muted/60 border-border/60 text-foreground'
           ) }
         >
           { isThinking ? (
             <span className="inline-flex items-center gap-2 text-muted-foreground">
-              <span style={ shimmerTextStyle }>UpSpace is searching...</span>
+              <span style={ shimmerTextStyle }>
+                { SEARCHING_MESSAGES[searchingMessageIndex] }
+              </span>
             </span>
           ) : (
-            <span className="whitespace-pre-wrap">{ message.content }</span>
+            <div className="prose prose-sm max-w-none dark:prose-invert [&>*]:text-sm">
+              <ReactMarkdown
+                remarkPlugins={ [remarkGfm] }
+                components={ markdownComponents }
+              >
+                { message.content }
+              </ReactMarkdown>
+            </div>
           ) }
         </div>
       ) : null }
@@ -422,7 +522,7 @@ export function AiAssistant() {
       return {
         left: 0,
         right: 0,
-        paddingBottom: 'calc(0.75rem + var(--safe-area-bottom, 0px))',
+        paddingBottom: 'calc(1.5rem + var(--safe-area-bottom, 0px))',
       };
     }
 
@@ -434,7 +534,7 @@ export function AiAssistant() {
     return {
       left: sidebarOffset,
       right: 0,
-      paddingBottom: 'calc(1rem + var(--safe-area-bottom, 0px))',
+      paddingBottom: 'calc(2rem + var(--safe-area-bottom, 0px))',
     };
   }, [isMobile, state]);
 
@@ -618,7 +718,7 @@ export function AiAssistant() {
           placeholder="How can I assist you?"
           aria-label="AI assistant query"
           disabled={ aiSearchMutation.isPending }
-          className="h-16 border-none bg-gray-100 dark:bg-transparent text-sm focus-visible:ring-0 focus-visible:ring-offset-0 sm:h-12 sm:text-base"
+          className="h-16 border-none bg-gray-100 dark:bg-border/10 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 sm:h-12 sm:text-base"
         />
         <div className="flex items-center justify-end gap-2 sm:justify-end">
           <Button
@@ -631,12 +731,12 @@ export function AiAssistant() {
               'relative h-10 w-10 rounded-full p-[2px] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary',
               isVoiceActive
                 ? 'bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400'
-                : 'bg-gray-100 dark:bg-background'
+                : 'bg-background'
             ) }
           >
             <span
               className={ cn(
-                'flex h-full w-full items-center justify-center rounded-full bg-gray-100 dark:bg-background',
+                'flex h-full w-full items-center justify-center rounded-full bg-background dark:bg-background',
                 isVoiceActive && 'bg-background dark:bg-background text-foreground'
               ) }
             >
@@ -704,6 +804,52 @@ export function AiAssistant() {
               I can help you find spaces, compare options, estimate costs, and guide you through booking your ideal workspace.
             </p>
           </div>
+          <div className="grid gap-3 sm:grid-cols-2 w-full max-w-2xl">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-auto flex-col gap-2 px-4 py-3 text-left hover:bg-accent/50"
+              onClick={ () => submitPrompt('Find coworking spaces near me with good Wi-Fi') }
+              disabled={ aiSearchMutation.isPending }
+            >
+              <FiMapPin className="size-5 text-primary" aria-hidden="true" />
+              <span className="text-sm font-medium">Find spaces near me</span>
+              <span className="text-xs text-muted-foreground">Discover local coworking options</span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-auto flex-col gap-2 px-4 py-3 text-left hover:bg-accent/50"
+              onClick={ () => submitPrompt('What are the most affordable workspaces available?') }
+              disabled={ aiSearchMutation.isPending }
+            >
+              <FiDollarSign className="size-5 text-primary" aria-hidden="true" />
+              <span className="text-sm font-medium">Show budget-friendly options</span>
+              <span className="text-xs text-muted-foreground">Find affordable workspace deals</span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-auto flex-col gap-2 px-4 py-3 text-left hover:bg-accent/50"
+              onClick={ () => submitPrompt('Find spaces with high-speed Wi-Fi and quiet environment') }
+              disabled={ aiSearchMutation.isPending }
+            >
+              <FiWifi className="size-5 text-primary" aria-hidden="true" />
+              <span className="text-sm font-medium">Spaces with best amenities</span>
+              <span className="text-xs text-muted-foreground">Fast Wi-Fi, meeting rooms, and more</span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-auto flex-col gap-2 px-4 py-3 text-left hover:bg-accent/50"
+              onClick={ () => submitPrompt('Help me book a workspace for tomorrow') }
+              disabled={ aiSearchMutation.isPending }
+            >
+              <FiCalendar className="size-5 text-primary" aria-hidden="true" />
+              <span className="text-sm font-medium">Book for tomorrow</span>
+              <span className="text-xs text-muted-foreground">Quick booking assistance</span>
+            </Button>
+          </div>
           { renderPromptForm('inline') }
         </div>
       ) : (
@@ -761,7 +907,7 @@ export function AiAssistant() {
             </Card>
           </div>
 
-          <BottomGradientOverlay className="z-20" />
+          <BottomGradientOverlay heightClassName="h-[28vh]" className="z-20" />
 
           { renderPromptForm('fixed') }
         </>
