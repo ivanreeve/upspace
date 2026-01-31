@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { sanitizeOpenRouterString } from '@/lib/ai/openrouter-sanitize';
 
 export type SearchReferenceData = {
   amenities: string[];
@@ -13,6 +14,7 @@ const normalizeStringList = (values: (string | null | undefined)[]) =>
       values
         .map((value) => value?.trim())
         .filter((value): value is string => Boolean(value))
+        .map((value) => sanitizeOpenRouterString(value))
     )
   ).sort((a, b) => a.localeCompare(b));
 

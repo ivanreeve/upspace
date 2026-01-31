@@ -7,7 +7,6 @@ import { FiArrowLeft } from 'react-icons/fi';
 import { MarketplaceErrorState } from '@/components/pages/Marketplace/Marketplace.ErrorState';
 import { SpaceDetailShell } from '@/components/pages/Marketplace/SpaceDetail/SpaceDetailShell';
 import { Button } from '@/components/ui/button';
-import { Footer } from '@/components/ui/footer';
 
 type SpaceDetailErrorProps = {
   error: Error & { digest?: string };
@@ -37,7 +36,6 @@ export default function SpaceDetailError({
           </div>
         </div>
       </div>
-      <Footer />
     </SpaceDetailShell>
   );
 }

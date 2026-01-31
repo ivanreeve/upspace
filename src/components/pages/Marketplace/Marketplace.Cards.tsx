@@ -1,6 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import {
+memo,
+useCallback,
+useEffect,
+useState
+} from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { CgSpinner } from 'react-icons/cg';
@@ -58,7 +63,7 @@ export function CardsGrid({ items, }: { items: Space[] }) {
   );
 }
 
-export function SpaceCard({
+function SpaceCardComponent({
   space,
   onBookmarkChange,
 }: {
@@ -198,3 +203,18 @@ export function SpaceCard({
     </Card>
   );
 }
+
+// Memoize SpaceCard to prevent unnecessary re-renders when parent updates
+export const SpaceCard = memo(SpaceCardComponent, (prevProps, nextProps) => {
+  // Only re-render if space data or callback changes
+  return (
+    prevProps.space.space_id === nextProps.space.space_id &&
+    prevProps.space.isBookmarked === nextProps.space.isBookmarked &&
+    prevProps.space.starting_price === nextProps.space.starting_price &&
+    prevProps.space.average_rating === nextProps.space.average_rating &&
+    prevProps.space.total_reviews === nextProps.space.total_reviews &&
+    prevProps.space.image_url === nextProps.space.image_url &&
+    prevProps.space.distance_meters === nextProps.space.distance_meters &&
+    prevProps.onBookmarkChange === nextProps.onBookmarkChange
+  );
+});

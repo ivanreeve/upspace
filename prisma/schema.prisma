@@ -121,7 +121,9 @@ model booking {
 
   @@index([area_id, start_at, expires_at], map: "idx_booking_area_window")
   @@index([partner_auth_id, created_at(sort: Desc)], map: "idx_booking_partner_created")
+  @@index([partner_auth_id, status], map: "idx_booking_partner_status")
   @@index([space_id, created_at(sort: Desc)], map: "idx_booking_space_created")
+  @@index([user_auth_id], map: "idx_booking_user_auth_id")
   @@index([user_auth_id, created_at(sort: Desc)], map: "idx_booking_user_created")
 }
 
