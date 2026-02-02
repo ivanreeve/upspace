@@ -741,10 +741,20 @@ export default function Marketplace({ initialSidebarOpen, }: MarketplaceProps) {
 
   const content = (
     <section className="relative mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 lg:px-10">
-      <div className="space-y-10">
-        { curatedCarousels }
-        { searchResultsSection }
-      </div>
+      { isLoading ? (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-6 w-24 rounded-full" />
+          </div>
+          <SkeletonGrid count={ 12 } />
+        </div>
+      ) : (
+        <div className="space-y-10">
+          { curatedCarousels }
+          { searchResultsSection }
+        </div>
+      ) }
 
       <div className="hidden md:block">
         <BackToTopButton />
