@@ -708,7 +708,7 @@ export function AiAssistant() {
   const renderPromptForm = (placement: 'fixed' | 'inline') => {
     const shouldShowPrebuiltPrompts = placement === 'inline' && !hasMessages;
     const prebuiltPrompts = (
-      <div className="grid gap-3 sm:grid-cols-2 w-full max-w-2xl">
+      <div className="grid gap-3 sm:grid-cols-2 w-full max-w-2xl rounded-lg bg-gray-50 p-4 dark:bg-transparent dark:p-0">
         <Button
           type="button"
           variant="outline"
