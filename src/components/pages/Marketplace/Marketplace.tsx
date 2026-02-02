@@ -680,12 +680,8 @@ export default function Marketplace({ initialSidebarOpen, }: MarketplaceProps) {
               Showing results for &quot;{ filters.q }&quot;
             </p>
           ) }
-          { isLoading ? (
-            <SkeletonGrid />
-          ) : (
-            <CardsGrid items={ paginatedRestSpaces } />
-          ) }
-          { !isLoading && shouldShowPagination && (
+          <CardsGrid items={ paginatedRestSpaces } isLoading={ isLoading } />
+          { shouldShowPagination && (
             <div className="flex flex-col items-stretch gap-2">
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <Button

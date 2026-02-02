@@ -12,16 +12,18 @@ export default async function LoadingMarketplacePage() {
 
   return (
     <MarketplaceChrome initialSidebarOpen={ initialSidebarOpen }>
-      <div className="w-full space-y-6 px-4 py-6 md:px-6 lg:px-8">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <Skeleton className="h-8 w-48" />
-          <div className="flex gap-2">
-            <Skeleton className="h-10 w-32" />
-            <Skeleton className="h-10 w-32" />
+      <section className="relative mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 lg:px-10">
+        <div className="space-y-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <Skeleton className="h-8 w-48" />
+            <div className="flex gap-2">
+              <Skeleton className="h-10 w-32" />
+              <Skeleton className="h-10 w-32" />
+            </div>
           </div>
+          <SkeletonGrid count={ 12 } />
         </div>
-        <SkeletonGrid count={ 12 } />
-      </div>
+      </section>
     </MarketplaceChrome>
   );
 }

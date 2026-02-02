@@ -11,6 +11,7 @@ import {
   FiBell,
   FiChevronRight,
   FiCreditCard,
+  FiLayers,
   FiLogOut,
   FiSettings,
   FiSidebar,
@@ -233,6 +234,11 @@ export default function NavBar({
       href: '/#home',
       label: 'Home',
       icon: GrHomeRounded,
+    },
+    {
+      href: '/marketplace',
+      label: 'Marketplace',
+      icon: FiLayers,
     },
     {
       href: '/#features',

@@ -14,7 +14,8 @@
       "Bash(done)",
       "Bash(test:*)",
       "Bash(tree:*)",
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build:*)",
+      "Bash(pnpm next build:*)"
     ],
     "deny": [],
     "ask": []
