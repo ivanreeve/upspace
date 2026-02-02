@@ -13,7 +13,6 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { CardsGrid, SkeletonGrid } from './Marketplace.Cards';
 import { MarketplaceErrorState } from './Marketplace.ErrorState';
-import { MarketplaceChrome } from './MarketplaceChrome';
 
 import {
   listSpaces,
@@ -69,6 +68,7 @@ import { dedupeAddressOptions } from '@/lib/addresses';
 import { BottomGradientOverlay } from '@/components/ui/bottom-gradient-overlay';
 import { AMENITY_CATEGORY_DISPLAY_MAP } from '@/lib/amenity/amenity_category_display_map';
 import { AMENITY_ICON_MAPPINGS } from '@/lib/amenity/amenity_icon_mappings';
+import { useMarketplaceChromeSlot } from '@/components/pages/Marketplace/MarketplaceChromeProvider';
 import { cn } from '@/lib/utils';
 
 type FiltersState = {
@@ -401,11 +401,7 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
   return debounced;
 }
 
-type MarketplaceProps = {
-  initialSidebarOpen?: boolean;
-};
-
-export default function Marketplace({ initialSidebarOpen, }: MarketplaceProps) {
+export default function Marketplace() {
   const [filters, setFilters] = React.useState<FiltersState>(DEFAULT_FILTERS);
   const [pendingFilters, setPendingFilters] =
     React.useState<FiltersState>(DEFAULT_FILTERS);
@@ -763,27 +759,38 @@ export default function Marketplace({ initialSidebarOpen, }: MarketplaceProps) {
     </section>
   );
 
-  return (
-    <MarketplaceChrome
-      onSearchOpen={ openSearchModal }
-      initialSidebarOpen={ initialSidebarOpen }
-      dialogSlot={
-        <MarketplaceSearchDialog
-          open={ isSearchOpen }
-          onOpenChange={ handleSearchOpenChange }
-          searchValue={ searchValue }
-          onSearchChange={ setSearchValue }
-          onSearchSubmit={ handleSearchSubmit }
-          hasActiveSearch={ hasActiveSearch }
-          hasAnyFilters={ pendingHasAnyFilters }
-          filters={ pendingFilters }
-          onFiltersApply={ applyFilters }
-        />
-      }
-    >
-      { content }
-    </MarketplaceChrome>
+  const searchDialog = React.useMemo(
+    () => (
+      <MarketplaceSearchDialog
+        open={ isSearchOpen }
+        onOpenChange={ handleSearchOpenChange }
+        searchValue={ searchValue }
+        onSearchChange={ setSearchValue }
+        onSearchSubmit={ handleSearchSubmit }
+        hasActiveSearch={ hasActiveSearch }
+        hasAnyFilters={ pendingHasAnyFilters }
+        filters={ pendingFilters }
+        onFiltersApply={ applyFilters }
+      />
+    ),
+    [
+      applyFilters,
+      handleSearchOpenChange,
+      handleSearchSubmit,
+      hasActiveSearch,
+      isSearchOpen,
+      pendingFilters,
+      pendingHasAnyFilters,
+      searchValue,
+    ]
   );
+
+  useMarketplaceChromeSlot({
+    dialogSlot: searchDialog,
+    onSearchOpen: openSearchModal,
+  });
+
+  return content;
 }
 
 type MarketplaceSearchDialogProps = {
