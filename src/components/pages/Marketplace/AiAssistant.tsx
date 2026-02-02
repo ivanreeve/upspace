@@ -449,6 +449,10 @@ export function AiAssistant() {
     },
   });
 
+  const setPromptInput = React.useCallback((prompt: string) => {
+    setQuery(prompt.trim());
+  }, []);
+
   const submitPrompt = React.useCallback(
     (rawPrompt: string) => {
       if (aiSearchMutation.isPending) return;
@@ -702,6 +706,71 @@ export function AiAssistant() {
   };
 
   const renderPromptForm = (placement: 'fixed' | 'inline') => {
+    const shouldShowPrebuiltPrompts = placement === 'inline' && !hasMessages;
+    const prebuiltPrompts = (
+      <div className="grid gap-3 sm:grid-cols-2 w-full max-w-2xl">
+        <Button
+          type="button"
+          variant="outline"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 px-4 py-3 text-left hover:bg-accent/10 dark:hover:bg-accent/50"
+          onClick={ () => setPromptInput('Find coworking spaces near me with good Wi-Fi') }
+          disabled={ aiSearchMutation.isPending }
+        >
+          <span className="flex h-10 w-10 items-center justify-center">
+            <FiMapPin className="size-5 text-primary" aria-hidden="true" />
+          </span>
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-medium">Find spaces near me</span>
+            <span className="text-xs text-muted-foreground">Discover local coworking options</span>
+          </div>
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 px-4 py-3 text-left hover:bg-accent/10 dark:hover:bg-accent/50"
+          onClick={ () => setPromptInput('What are the most affordable workspaces available?') }
+          disabled={ aiSearchMutation.isPending }
+        >
+          <span className="flex h-10 w-10 items-center justify-center">
+            <FiDollarSign className="size-5 text-primary" aria-hidden="true" />
+          </span>
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-medium">Show budget-friendly options</span>
+            <span className="text-xs text-muted-foreground">Find affordable workspace deals</span>
+          </div>
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 px-4 py-3 text-left hover:bg-accent/10 dark:hover:bg-accent/50"
+          onClick={ () => setPromptInput('Find spaces with high-speed Wi-Fi and quiet environment') }
+          disabled={ aiSearchMutation.isPending }
+        >
+          <span className="flex h-10 w-10 items-center justify-center">
+            <FiWifi className="size-5 text-primary" aria-hidden="true" />
+          </span>
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-medium">Spaces with best amenities</span>
+            <span className="text-xs text-muted-foreground">Fast Wi-Fi, meeting rooms, and more</span>
+          </div>
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 px-4 py-3 text-left hover:bg-accent/10 dark:hover:bg-accent/50"
+          onClick={ () => setPromptInput('Help me book a workspace for tomorrow') }
+          disabled={ aiSearchMutation.isPending }
+        >
+          <span className="flex h-10 w-10 items-center justify-center">
+            <FiCalendar className="size-5 text-primary" aria-hidden="true" />
+          </span>
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-medium">Book for tomorrow</span>
+            <span className="text-xs text-muted-foreground">Quick booking assistance</span>
+          </div>
+        </Button>
+      </div>
+    );
     const form = (
       <form
         onSubmit={ handleSubmit }
@@ -779,6 +848,11 @@ export function AiAssistant() {
         style={ placement === 'fixed' ? bottomBarOffsets : undefined }
       >
         { form }
+        { shouldShowPrebuiltPrompts ? (
+          <div className="mx-auto mt-4 w-full max-w-2xl">
+            { prebuiltPrompts }
+          </div>
+        ) : null }
         { locationError && (
           <p className="mt-1 text-center text-xs text-muted-foreground">
             { locationError }
@@ -799,58 +873,12 @@ export function AiAssistant() {
       { !hasMessages ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
           <div className="space-y-3">
-            <h1 className="greeting-appear text-3xl font-instrument-serif font-semibold leading-tight bg-gradient-to-t from-primary dark:from-gray-400 to-white bg-clip-text text-transparent sm:text-4xl md:text-6xl lg:text-7xl">
+            <h1 className="greeting-appear text-3xl font-instrument-serif font-semibold leading-tight bg-gradient-to-t from-background to-primary dark:from-gray-400 dark:to-white bg-clip-text text-transparent sm:text-4xl md:text-6xl lg:text-7xl">
               Hi, { greetingName }
             </h1>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
               I can help you find spaces, compare options, estimate costs, and guide you through booking your ideal workspace.
             </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 w-full max-w-2xl">
-            <Button
-              type="button"
-              variant="outline"
-              className="h-auto flex-col gap-2 px-4 py-3 text-left hover:bg-accent/50"
-              onClick={ () => submitPrompt('Find coworking spaces near me with good Wi-Fi') }
-              disabled={ aiSearchMutation.isPending }
-            >
-              <FiMapPin className="size-5 text-primary" aria-hidden="true" />
-              <span className="text-sm font-medium">Find spaces near me</span>
-              <span className="text-xs text-muted-foreground">Discover local coworking options</span>
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-auto flex-col gap-2 px-4 py-3 text-left hover:bg-accent/50"
-              onClick={ () => submitPrompt('What are the most affordable workspaces available?') }
-              disabled={ aiSearchMutation.isPending }
-            >
-              <FiDollarSign className="size-5 text-primary" aria-hidden="true" />
-              <span className="text-sm font-medium">Show budget-friendly options</span>
-              <span className="text-xs text-muted-foreground">Find affordable workspace deals</span>
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-auto flex-col gap-2 px-4 py-3 text-left hover:bg-accent/50"
-              onClick={ () => submitPrompt('Find spaces with high-speed Wi-Fi and quiet environment') }
-              disabled={ aiSearchMutation.isPending }
-            >
-              <FiWifi className="size-5 text-primary" aria-hidden="true" />
-              <span className="text-sm font-medium">Spaces with best amenities</span>
-              <span className="text-xs text-muted-foreground">Fast Wi-Fi, meeting rooms, and more</span>
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-auto flex-col gap-2 px-4 py-3 text-left hover:bg-accent/50"
-              onClick={ () => submitPrompt('Help me book a workspace for tomorrow') }
-              disabled={ aiSearchMutation.isPending }
-            >
-              <FiCalendar className="size-5 text-primary" aria-hidden="true" />
-              <span className="text-sm font-medium">Book for tomorrow</span>
-              <span className="text-xs text-muted-foreground">Quick booking assistance</span>
-            </Button>
           </div>
           { renderPromptForm('inline') }
         </div>
