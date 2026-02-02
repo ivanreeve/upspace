@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+
 import { AiAssistant } from '@/components/pages/Marketplace/AiAssistant';
 
 export const metadata: Metadata = {

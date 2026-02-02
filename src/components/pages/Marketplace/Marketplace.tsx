@@ -781,7 +781,7 @@ export default function Marketplace() {
       isSearchOpen,
       pendingFilters,
       pendingHasAnyFilters,
-      searchValue,
+      searchValue
     ]
   );
 

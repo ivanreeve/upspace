@@ -20,9 +20,7 @@ type SpaceDetailShellProps = {
   children: React.ReactNode
 };
 
-export function SpaceDetailShell({
-  children,
-}: SpaceDetailShellProps) {
+export function SpaceDetailShell({ children, }: SpaceDetailShellProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const router = useRouter();
@@ -127,7 +125,7 @@ export function SpaceDetailShell({
       handleVoiceSearchSubmit,
       isSearchOpen,
       isVoiceSearchOpen,
-      searchValue,
+      searchValue
     ]
   );
 

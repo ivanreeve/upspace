@@ -37,7 +37,10 @@ export function MarketplaceChromeProvider({
   }, []);
 
   const contextValue = React.useMemo(
-    () => ({ setDialogSlot, setOnSearchOpen }),
+    () => ({
+ setDialogSlot,
+setOnSearchOpen, 
+}),
     [setDialogSlot, setOnSearchOpen]
   );
 
