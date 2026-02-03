@@ -708,7 +708,7 @@ export function AiAssistant() {
   const renderPromptForm = (placement: 'fixed' | 'inline') => {
     const shouldShowPrebuiltPrompts = placement === 'inline' && !hasMessages;
     const prebuiltPrompts = (
-      <div className="grid gap-3 sm:grid-cols-2 w-full max-w-2xl rounded-lg p-4 dark:p-0">
+      <div className="grid gap-3 sm:grid-cols-2 w-full max-w-2xl rounded-lg p-0">
         <Button
           type="button"
           variant="outline"
@@ -873,7 +873,7 @@ export function AiAssistant() {
       { !hasMessages ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
           <div className="space-y-3">
-            <h1 className="greeting-appear text-3xl font-instrument-serif font-semibold leading-tight bg-gradient-to-t from-background to-primary dark:from-gray-400 dark:to-white bg-clip-text text-transparent sm:text-4xl md:text-6xl lg:text-7xl">
+            <h1 className="greeting-appear text-3xl font-instrument-serif font-semibold leading-tight bg-gradient-to-t from-[color-mix(in_srgb,var(--primary)_70%,black)] to-primary dark:from-gray-400 dark:to-white bg-clip-text text-transparent sm:text-4xl md:text-6xl lg:text-7xl">
               Hi, { greetingName }
             </h1>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
