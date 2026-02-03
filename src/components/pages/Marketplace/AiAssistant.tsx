@@ -708,11 +708,11 @@ export function AiAssistant() {
   const renderPromptForm = (placement: 'fixed' | 'inline') => {
     const shouldShowPrebuiltPrompts = placement === 'inline' && !hasMessages;
     const prebuiltPrompts = (
-      <div className="grid gap-3 sm:grid-cols-2 w-full max-w-2xl rounded-lg bg-gray-50 p-4 dark:bg-transparent dark:p-0">
+      <div className="grid gap-3 sm:grid-cols-2 w-full max-w-2xl rounded-lg p-4 dark:p-0">
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 px-4 py-3 text-left hover:bg-accent/10 dark:hover:bg-accent/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-gray-50 px-4 py-3 text-left hover:bg-accent/10 dark:bg-transparent dark:hover:bg-accent/50"
           onClick={ () => setPromptInput('Find coworking spaces near me with good Wi-Fi') }
           disabled={ aiSearchMutation.isPending }
         >
@@ -727,7 +727,7 @@ export function AiAssistant() {
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 px-4 py-3 text-left hover:bg-accent/10 dark:hover:bg-accent/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-gray-50 px-4 py-3 text-left hover:bg-accent/10 dark:bg-transparent dark:hover:bg-accent/50"
           onClick={ () => setPromptInput('What are the most affordable workspaces available?') }
           disabled={ aiSearchMutation.isPending }
         >
@@ -742,7 +742,7 @@ export function AiAssistant() {
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 px-4 py-3 text-left hover:bg-accent/10 dark:hover:bg-accent/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-gray-50 px-4 py-3 text-left hover:bg-accent/10 dark:bg-transparent dark:hover:bg-accent/50"
           onClick={ () => setPromptInput('Find spaces with high-speed Wi-Fi and quiet environment') }
           disabled={ aiSearchMutation.isPending }
         >
@@ -757,7 +757,7 @@ export function AiAssistant() {
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 px-4 py-3 text-left hover:bg-accent/10 dark:hover:bg-accent/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-gray-50 px-4 py-3 text-left hover:bg-accent/10 dark:bg-transparent dark:hover:bg-accent/50"
           onClick={ () => setPromptInput('Help me book a workspace for tomorrow') }
           disabled={ aiSearchMutation.isPending }
         >
