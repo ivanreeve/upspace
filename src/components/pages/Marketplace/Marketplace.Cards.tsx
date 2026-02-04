@@ -35,8 +35,6 @@ export function SkeletonGrid({ count = 12, }: { count?: number }) {
         >
           <div className="relative aspect-[16/9] w-full overflow-hidden rounded-md">
             <Skeleton className="absolute inset-0 h-full w-full rounded-md" />
-            <Skeleton className="absolute right-3 top-3 h-9 w-9 rounded-full" />
-            <div className="pointer-events-none absolute inset-0 rounded-md bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
           </div>
           <CardContent className="flex flex-1 flex-col gap-2 p-0">
             <Skeleton className="h-5 w-3/4" />
@@ -48,8 +46,13 @@ export function SkeletonGrid({ count = 12, }: { count?: number }) {
   );
 }
 
-export function CardsGrid({ items, }: { items: Space[] }) {
+export function CardsGrid({
+ items, isLoading,
+}: { items: Space[]; isLoading?: boolean }) {
   if (items.length === 0) {
+    if (isLoading) {
+      return <SkeletonGrid />;
+    }
     return (
       <div className="text-sm text-muted-foreground">No spaces found. Try adjusting filters.</div>
     );

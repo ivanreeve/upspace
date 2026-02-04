@@ -1,10 +1,8 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiSearch, FiX } from 'react-icons/fi';
-
-import { MarketplaceChrome } from '../MarketplaceChrome';
 
 import {
   ResponsiveCommandDialog as CommandDialog,
@@ -16,16 +14,13 @@ import {
 import { Kbd } from '@/components/ui/kbd';
 import { VoiceSearchButton } from '@/components/ui/voice-search-button';
 import { VoiceSearchDialog } from '@/components/ui/voice-search-dialog';
+import { useMarketplaceChromeSlot } from '@/components/pages/Marketplace/MarketplaceChromeProvider';
 
 type SpaceDetailShellProps = {
   children: React.ReactNode
-  initialSidebarOpen?: boolean
 };
 
-export function SpaceDetailShell({
-  children,
-  initialSidebarOpen,
-}: SpaceDetailShellProps) {
+export function SpaceDetailShell({ children, }: SpaceDetailShellProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const router = useRouter();
@@ -60,13 +55,10 @@ export function SpaceDetailShell({
     setIsVoiceSearchOpen(true);
   }, [handleDialogOpenChange]);
 
-  return (
-    <MarketplaceChrome
-      initialSidebarOpen={ initialSidebarOpen }
-      onSearchOpen={ handleSearchOpen }
-      dialogSlot={ (
-        <>
-          <CommandDialog
+  const dialogSlot = useMemo(
+    () => (
+      <>
+        <CommandDialog
           open={ isSearchOpen }
           onOpenChange={ handleDialogOpenChange }
           title="Search spaces"
@@ -74,7 +66,7 @@ export function SpaceDetailShell({
           position="top"
           fullWidth
         >
-            <CommandInput
+          <CommandInput
             value={ searchValue }
             onValueChange={ setSearchValue }
             placeholder="Search Spaces..."
@@ -118,16 +110,29 @@ export function SpaceDetailShell({
               ) }
             </CommandGroup>
           </CommandList>
-          </CommandDialog>
-          <VoiceSearchDialog
+        </CommandDialog>
+        <VoiceSearchDialog
           open={ isVoiceSearchOpen }
           onOpenChange={ setIsVoiceSearchOpen }
           onSubmit={ handleVoiceSearchSubmit }
         />
-        </>
-      ) }
-    >
-      { children }
-    </MarketplaceChrome>
+      </>
+    ),
+    [
+      handleDialogOpenChange,
+      handleSearchSubmit,
+      handleVoiceButtonClick,
+      handleVoiceSearchSubmit,
+      isSearchOpen,
+      isVoiceSearchOpen,
+      searchValue
+    ]
   );
+
+  useMarketplaceChromeSlot({
+    dialogSlot,
+    onSearchOpen: handleSearchOpen,
+  });
+
+  return <>{ children }</>;
 }
