@@ -371,6 +371,7 @@ model user {
   unpublish_request_unpublish_request_user_idTouser                    unpublish_request[]    @relation("unpublish_request_user_idTouser")
   verification                                                         verification[]
   wallet                                                               wallet?
+  ai_conversation                                                      ai_conversation[]
 
   @@index([expires_at], map: "idx_user_expires_at")
   @@index([status], map: "idx_user_status")
@@ -610,4 +611,35 @@ enum wallet_transaction_type {
   charge
   refund
   payout
+}
+
+enum ai_message_role {
+  user
+  assistant
+}
+
+model ai_conversation {
+  id         String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    BigInt
+  title      String?
+  deleted_at DateTime?                 @db.Timestamptz(6)
+  created_at DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime                  @default(now()) @db.Timestamptz(6)
+  user       user                      @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+  messages   ai_conversation_message[]
+
+  @@index([user_id, deleted_at, updated_at(sort: Desc)], map: "idx_ai_conversation_user_active")
+}
+
+model ai_conversation_message {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id String          @db.Uuid
+  role            ai_message_role
+  content         String
+  space_results   Json?
+  booking_action  Json?
+  created_at      DateTime        @default(now()) @db.Timestamptz(6)
+  conversation    ai_conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([conversation_id, created_at], map: "idx_ai_message_conv_created")
 }

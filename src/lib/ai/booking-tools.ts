@@ -3,6 +3,9 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { evaluatePriceRule } from '@/lib/pricing-rules-evaluator';
 import type { PriceRuleDefinition } from '@/lib/pricing-rules';
+import { countActiveBookingsOverlap, resolveBookingDecision } from '@/lib/bookings/occupancy';
+import { normalizeNumeric } from '@/lib/bookings/serializer';
+import { MIN_BOOKING_HOURS, MAX_BOOKING_HOURS } from '@/lib/bookings/constants';
 
 const bookingAvailabilityInputSchema = z.object({
   space_id: z.string().uuid(),
@@ -220,5 +223,161 @@ export async function validateBookingRequest(input: unknown) {
     availability: areaAvailability,
     pricing: pricingResult,
     message: 'Booking request is valid. User can proceed to complete the booking.',
+  };
+}
+
+const createBookingCheckoutInputSchema = z.object({
+  space_id: z.string().uuid(),
+  area_id: z.string().uuid(),
+  booking_hours: z.coerce.number().int().min(MIN_BOOKING_HOURS).max(MAX_BOOKING_HOURS),
+  start_at: z.coerce.date(),
+  guest_count: z.coerce.number().int().min(1).max(999).optional().default(1),
+});
+
+/**
+ * Validate availability, pricing, and capacity for a booking, then return
+ * checkout-ready parameters the frontend can use to initiate payment.
+ */
+export async function createBookingCheckout(input: unknown): Promise<Record<string, unknown>> {
+  const validated = createBookingCheckoutInputSchema.parse(input);
+  const {
+ space_id, area_id, booking_hours, start_at, guest_count,
+} = validated;
+
+  const now = new Date();
+  if (start_at.getTime() < now.getTime()) {
+    return { error: 'Start time must be in the future.', };
+  }
+
+  const area = await prisma.area.findUnique({
+    where: { id: area_id, },
+    select: {
+      id: true,
+      name: true,
+      max_capacity: true,
+      automatic_booking_enabled: true,
+      request_approval_at_capacity: true,
+      space_id: true,
+      advance_booking_enabled: true,
+      advance_booking_value: true,
+      advance_booking_unit: true,
+      price_rule: {
+        select: {
+          id: true,
+          name: true,
+          definition: true,
+          is_active: true,
+        },
+      },
+      space: {
+        select: {
+          id: true,
+          name: true,
+          is_published: true,
+        },
+      },
+    },
+  });
+
+  if (!area || area.space_id !== space_id || !area.space) {
+    return { error: 'Area not found for this space.', };
+  }
+
+  if (!area.space.is_published) {
+    return { error: 'This space is no longer available for booking.', };
+  }
+
+  const areaMaxCapacity = normalizeNumeric(area.max_capacity);
+  if (areaMaxCapacity !== null && guest_count > areaMaxCapacity) {
+    return { error: `This area allows up to ${areaMaxCapacity} guests.`, };
+  }
+
+  if (area.advance_booking_enabled && area.advance_booking_value && area.advance_booking_unit) {
+    const leadMs = (() => {
+      const unit = area.advance_booking_unit;
+      const value = area.advance_booking_value;
+      switch (unit) {
+        case 'days':
+          return value * 24 * 60 * 60 * 1000;
+        case 'weeks':
+          return value * 7 * 24 * 60 * 60 * 1000;
+        case 'months':
+          return value * 30 * 24 * 60 * 60 * 1000;
+        default:
+          return 0;
+      }
+    })();
+    const minStart = new Date(now.getTime() + leadMs);
+    if (start_at.getTime() < minStart.getTime()) {
+      return { error: 'Please book further in advance for this area.', };
+    }
+  }
+
+  const priceRule = area.price_rule;
+  if (!priceRule) {
+    return { error: 'Pricing is unavailable for this area.', };
+  }
+
+  if (!priceRule.is_active) {
+    return { error: 'The pricing rule for this area is currently inactive.', };
+  }
+
+  const bookingStartAt = start_at;
+  const expiresAt = new Date(bookingStartAt.getTime() + booking_hours * 60 * 60 * 1000);
+
+  const priceEvaluation = (() => {
+    try {
+      return evaluatePriceRule(priceRule.definition as PriceRuleDefinition, {
+        bookingHours: booking_hours,
+        now: bookingStartAt,
+        variableOverrides: { guest_count, },
+      });
+    } catch {
+      return {
+ price: null,
+usedVariables: [] as string[], 
+};
+    }
+  })();
+
+  if (priceEvaluation.price === null) {
+    return { error: 'Unable to compute a price for this booking.', };
+  }
+
+  const formulaAlreadyHandlesGuests = priceEvaluation.usedVariables.includes('guest_count');
+  const guestMultiplier = formulaAlreadyHandlesGuests ? 1 : guest_count;
+  const totalPrice = Number(priceEvaluation.price) * guestMultiplier;
+
+  const activeCount = await countActiveBookingsOverlap(
+    prisma,
+    area.id,
+    bookingStartAt,
+    expiresAt
+  );
+
+  const decision = resolveBookingDecision({
+    automaticBookingEnabled: Boolean(area.automatic_booking_enabled),
+    requestApprovalAtCapacity: Boolean(area.request_approval_at_capacity),
+    maxCapacity: areaMaxCapacity,
+    activeCount,
+    requestedGuestCount: guest_count,
+  });
+
+  if (decision.status === 'reject_full') {
+    return { error: 'This area is fully booked for the requested time window.', };
+  }
+
+  return {
+    action: 'checkout',
+    spaceId: space_id,
+    areaId: area.id,
+    bookingHours: booking_hours,
+    price: totalPrice,
+    startAt: bookingStartAt.toISOString(),
+    guestCount: guest_count,
+    spaceName: area.space.name,
+    areaName: area.name,
+    priceCurrency: 'PHP',
+    requiresHostApproval: decision.status === 'pending',
   };
 }

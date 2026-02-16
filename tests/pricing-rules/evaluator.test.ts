@@ -8,7 +8,7 @@ import {
   validateDatetimeLiteral,
   FORMULA_MAX_LENGTH,
   FORMULA_MAX_NESTING_DEPTH,
-  FORMULA_MAX_CONDITIONS,
+  FORMULA_MAX_CONDITIONS
 } from '@/lib/pricing-rules-evaluator';
 import type { PriceRuleDefinition, PriceRuleCondition } from '@/lib/pricing-rules';
 import { PRICE_RULE_INITIAL_VARIABLES, priceRuleSchema } from '@/lib/pricing-rules';
@@ -29,9 +29,7 @@ const makeDefinition = (
 
 const makeCondition = (
   overrides: Partial<PriceRuleCondition> & Pick<PriceRuleCondition, 'id' | 'comparator' | 'left' | 'right'>
-): PriceRuleCondition => ({
-  ...overrides,
-});
+): PriceRuleCondition => ({ ...overrides, });
 
 // ---------------------------------------------------------------------------
 // evaluateFormula — arithmetic
@@ -132,11 +130,14 @@ describe('evaluateFormula', () => {
 
   describe('variables', () => {
     it('resolves a variable', () => {
-      expect(evaluateFormula('x', { x: 10 })).toBe(10);
+      expect(evaluateFormula('x', { x: 10, })).toBe(10);
     });
 
     it('uses variable in expression', () => {
-      expect(evaluateFormula('x * 2 + y', { x: 5, y: 3 })).toBe(13);
+      expect(evaluateFormula('x * 2 + y', {
+ x: 5,
+y: 3, 
+})).toBe(13);
     });
 
     it('throws on unknown variable', () => {
@@ -145,16 +146,22 @@ describe('evaluateFormula', () => {
 
     it('calls onVariable callback', () => {
       const used: string[] = [];
-      evaluateFormula('x + y', { x: 1, y: 2 }, (key) => used.push(key));
+      evaluateFormula('x + y', {
+ x: 1,
+y: 2, 
+}, (key) => used.push(key));
       expect(used).toEqual(['x', 'y']);
     });
 
     it('handles underscore-prefixed variables', () => {
-      expect(evaluateFormula('_val', { _val: 42 })).toBe(42);
+      expect(evaluateFormula('_val', { _val: 42, })).toBe(42);
     });
 
     it('handles variables with digits', () => {
-      expect(evaluateFormula('var1 + var2', { var1: 10, var2: 20 })).toBe(30);
+      expect(evaluateFormula('var1 + var2', {
+ var1: 10,
+var2: 20, 
+})).toBe(30);
     });
   });
 
@@ -164,7 +171,7 @@ describe('evaluateFormula', () => {
     });
 
     it('throws on variable division by zero', () => {
-      expect(() => evaluateFormula('10 / x', { x: 0 })).toThrow('Division by zero');
+      expect(() => evaluateFormula('10 / x', { x: 0, })).toThrow('Division by zero');
     });
   });
 
@@ -315,58 +322,58 @@ describe('validateDatetimeLiteral', () => {
 describe('evaluatePriceRule', () => {
   describe('unconditional formulas', () => {
     it('evaluates a simple constant formula', () => {
-      const def = makeDefinition({ formula: '100' });
-      const result = evaluatePriceRule(def, { bookingHours: 1 });
+      const def = makeDefinition({ formula: '100', });
+      const result = evaluatePriceRule(def, { bookingHours: 1, });
       expect(result.price).toBe(100);
       expect(result.branch).toBe('unconditional');
       expect(result.conditionsSatisfied).toBe(true);
     });
 
     it('evaluates a formula with booking_hours', () => {
-      const def = makeDefinition({ formula: 'booking_hours * 50' });
-      const result = evaluatePriceRule(def, { bookingHours: 3 });
+      const def = makeDefinition({ formula: 'booking_hours * 50', });
+      const result = evaluatePriceRule(def, { bookingHours: 3, });
       expect(result.price).toBe(150);
     });
 
     it('evaluates booking_days', () => {
-      const def = makeDefinition({ formula: 'booking_days * 500' });
-      const result = evaluatePriceRule(def, { bookingHours: 48 });
+      const def = makeDefinition({ formula: 'booking_days * 500', });
+      const result = evaluatePriceRule(def, { bookingHours: 48, });
       expect(result.price).toBe(1000);
     });
 
     it('evaluates booking_weeks', () => {
-      const def = makeDefinition({ formula: 'booking_weeks * 3000' });
-      const result = evaluatePriceRule(def, { bookingHours: 168 });
+      const def = makeDefinition({ formula: 'booking_weeks * 3000', });
+      const result = evaluatePriceRule(def, { bookingHours: 168, });
       expect(result.price).toBe(3000);
     });
 
     it('evaluates booking_months', () => {
-      const def = makeDefinition({ formula: 'booking_months * 10000' });
-      const result = evaluatePriceRule(def, { bookingHours: 720 });
+      const def = makeDefinition({ formula: 'booking_months * 10000', });
+      const result = evaluatePriceRule(def, { bookingHours: 720, });
       expect(result.price).toBe(10000);
     });
 
     it('returns null for empty formula', () => {
-      const def = makeDefinition({ formula: '' });
-      const result = evaluatePriceRule(def, { bookingHours: 1 });
+      const def = makeDefinition({ formula: '', });
+      const result = evaluatePriceRule(def, { bookingHours: 1, });
       expect(result.price).toBeNull();
     });
 
     it('returns null for whitespace formula', () => {
-      const def = makeDefinition({ formula: '   ' });
-      const result = evaluatePriceRule(def, { bookingHours: 1 });
+      const def = makeDefinition({ formula: '   ', });
+      const result = evaluatePriceRule(def, { bookingHours: 1, });
       expect(result.price).toBeNull();
     });
 
     it('tracks used variables', () => {
-      const def = makeDefinition({ formula: 'booking_hours * 50' });
-      const result = evaluatePriceRule(def, { bookingHours: 1 });
+      const def = makeDefinition({ formula: 'booking_hours * 50', });
+      const result = evaluatePriceRule(def, { bookingHours: 1, });
       expect(result.usedVariables).toContain('booking_hours');
     });
 
     it('returns empty usedVariables for constant formula', () => {
-      const def = makeDefinition({ formula: '100' });
-      const result = evaluatePriceRule(def, { bookingHours: 1 });
+      const def = makeDefinition({ formula: '100', });
+      const result = evaluatePriceRule(def, { bookingHours: 1, });
       expect(result.usedVariables).toEqual([]);
     });
   });
@@ -379,12 +386,19 @@ describe('evaluatePriceRule', () => {
           makeCondition({
             id: 'c1',
             comparator: '>',
-            left: { kind: 'variable', key: 'booking_hours' },
-            right: { kind: 'literal', value: '5', valueType: 'number' },
-          }),
+            left: {
+ kind: 'variable',
+key: 'booking_hours', 
+},
+            right: {
+ kind: 'literal',
+value: '5',
+valueType: 'number', 
+},
+          })
         ],
       });
-      const result = evaluatePriceRule(def, { bookingHours: 10 });
+      const result = evaluatePriceRule(def, { bookingHours: 10, });
       expect(result.price).toBe(1000);
       expect(result.branch).toBe('then');
       expect(result.conditionsSatisfied).toBe(true);
@@ -397,12 +411,19 @@ describe('evaluatePriceRule', () => {
           makeCondition({
             id: 'c1',
             comparator: '>',
-            left: { kind: 'variable', key: 'booking_hours' },
-            right: { kind: 'literal', value: '5', valueType: 'number' },
-          }),
+            left: {
+ kind: 'variable',
+key: 'booking_hours', 
+},
+            right: {
+ kind: 'literal',
+value: '5',
+valueType: 'number', 
+},
+          })
         ],
       });
-      const result = evaluatePriceRule(def, { bookingHours: 2 });
+      const result = evaluatePriceRule(def, { bookingHours: 2, });
       expect(result.price).toBe(100);
       expect(result.branch).toBe('else');
       expect(result.conditionsSatisfied).toBe(false);
@@ -415,12 +436,19 @@ describe('evaluatePriceRule', () => {
           makeCondition({
             id: 'c1',
             comparator: '=',
-            left: { kind: 'variable', key: 'booking_hours' },
-            right: { kind: 'literal', value: '1', valueType: 'number' },
-          }),
+            left: {
+ kind: 'variable',
+key: 'booking_hours', 
+},
+            right: {
+ kind: 'literal',
+value: '1',
+valueType: 'number', 
+},
+          })
         ],
       });
-      const result = evaluatePriceRule(def, { bookingHours: 1 });
+      const result = evaluatePriceRule(def, { bookingHours: 1, });
       expect(result.price).toBeNull();
     });
 
@@ -431,12 +459,19 @@ describe('evaluatePriceRule', () => {
           makeCondition({
             id: 'c1',
             comparator: '=',
-            left: { kind: 'variable', key: 'booking_hours' },
-            right: { kind: 'literal', value: '999', valueType: 'number' },
-          }),
+            left: {
+ kind: 'variable',
+key: 'booking_hours', 
+},
+            right: {
+ kind: 'literal',
+value: '999',
+valueType: 'number', 
+},
+          })
         ],
       });
-      const result = evaluatePriceRule(def, { bookingHours: 1 });
+      const result = evaluatePriceRule(def, { bookingHours: 1, });
       expect(result.price).toBeNull();
       expect(result.branch).toBe('no-match');
     });
@@ -452,42 +487,49 @@ describe('evaluatePriceRule', () => {
         makeCondition({
           id: 'c1',
           comparator,
-          left: { kind: 'variable', key: 'booking_hours' },
-          right: { kind: 'literal', value: rightValue, valueType: 'number' },
-        }),
+          left: {
+ kind: 'variable',
+key: 'booking_hours', 
+},
+          right: {
+ kind: 'literal',
+value: rightValue,
+valueType: 'number', 
+},
+        })
       ],
     });
 
     it('< operator', () => {
-      expect(evaluatePriceRule(makeNumericConditionDef('<', '5'), { bookingHours: 3 }).branch).toBe('then');
-      expect(evaluatePriceRule(makeNumericConditionDef('<', '5'), { bookingHours: 5 }).branch).toBe('else');
-      expect(evaluatePriceRule(makeNumericConditionDef('<', '5'), { bookingHours: 7 }).branch).toBe('else');
+      expect(evaluatePriceRule(makeNumericConditionDef('<', '5'), { bookingHours: 3, }).branch).toBe('then');
+      expect(evaluatePriceRule(makeNumericConditionDef('<', '5'), { bookingHours: 5, }).branch).toBe('else');
+      expect(evaluatePriceRule(makeNumericConditionDef('<', '5'), { bookingHours: 7, }).branch).toBe('else');
     });
 
     it('<= operator', () => {
-      expect(evaluatePriceRule(makeNumericConditionDef('<=', '5'), { bookingHours: 3 }).branch).toBe('then');
-      expect(evaluatePriceRule(makeNumericConditionDef('<=', '5'), { bookingHours: 5 }).branch).toBe('then');
-      expect(evaluatePriceRule(makeNumericConditionDef('<=', '5'), { bookingHours: 7 }).branch).toBe('else');
+      expect(evaluatePriceRule(makeNumericConditionDef('<=', '5'), { bookingHours: 3, }).branch).toBe('then');
+      expect(evaluatePriceRule(makeNumericConditionDef('<=', '5'), { bookingHours: 5, }).branch).toBe('then');
+      expect(evaluatePriceRule(makeNumericConditionDef('<=', '5'), { bookingHours: 7, }).branch).toBe('else');
     });
 
     it('> operator', () => {
-      expect(evaluatePriceRule(makeNumericConditionDef('>', '5'), { bookingHours: 7 }).branch).toBe('then');
-      expect(evaluatePriceRule(makeNumericConditionDef('>', '5'), { bookingHours: 5 }).branch).toBe('else');
+      expect(evaluatePriceRule(makeNumericConditionDef('>', '5'), { bookingHours: 7, }).branch).toBe('then');
+      expect(evaluatePriceRule(makeNumericConditionDef('>', '5'), { bookingHours: 5, }).branch).toBe('else');
     });
 
     it('>= operator', () => {
-      expect(evaluatePriceRule(makeNumericConditionDef('>=', '5'), { bookingHours: 5 }).branch).toBe('then');
-      expect(evaluatePriceRule(makeNumericConditionDef('>=', '5'), { bookingHours: 3 }).branch).toBe('else');
+      expect(evaluatePriceRule(makeNumericConditionDef('>=', '5'), { bookingHours: 5, }).branch).toBe('then');
+      expect(evaluatePriceRule(makeNumericConditionDef('>=', '5'), { bookingHours: 3, }).branch).toBe('else');
     });
 
     it('= operator', () => {
-      expect(evaluatePriceRule(makeNumericConditionDef('=', '5'), { bookingHours: 5 }).branch).toBe('then');
-      expect(evaluatePriceRule(makeNumericConditionDef('=', '5'), { bookingHours: 3 }).branch).toBe('else');
+      expect(evaluatePriceRule(makeNumericConditionDef('=', '5'), { bookingHours: 5, }).branch).toBe('then');
+      expect(evaluatePriceRule(makeNumericConditionDef('=', '5'), { bookingHours: 3, }).branch).toBe('else');
     });
 
     it('!= operator', () => {
-      expect(evaluatePriceRule(makeNumericConditionDef('!=', '5'), { bookingHours: 3 }).branch).toBe('then');
-      expect(evaluatePriceRule(makeNumericConditionDef('!=', '5'), { bookingHours: 5 }).branch).toBe('else');
+      expect(evaluatePriceRule(makeNumericConditionDef('!=', '5'), { bookingHours: 3, }).branch).toBe('then');
+      expect(evaluatePriceRule(makeNumericConditionDef('!=', '5'), { bookingHours: 5, }).branch).toBe('else');
     });
   });
 
@@ -499,19 +541,33 @@ describe('evaluatePriceRule', () => {
           makeCondition({
             id: 'c1',
             comparator: '>',
-            left: { kind: 'variable', key: 'booking_hours' },
-            right: { kind: 'literal', value: '2', valueType: 'number' },
+            left: {
+ kind: 'variable',
+key: 'booking_hours', 
+},
+            right: {
+ kind: 'literal',
+value: '2',
+valueType: 'number', 
+},
           }),
           makeCondition({
             id: 'c2',
             connector: 'and',
             comparator: '<',
-            left: { kind: 'variable', key: 'booking_hours' },
-            right: { kind: 'literal', value: '10', valueType: 'number' },
-          }),
+            left: {
+ kind: 'variable',
+key: 'booking_hours', 
+},
+            right: {
+ kind: 'literal',
+value: '10',
+valueType: 'number', 
+},
+          })
         ],
       });
-      expect(evaluatePriceRule(def, { bookingHours: 5 }).branch).toBe('then');
+      expect(evaluatePriceRule(def, { bookingHours: 5, }).branch).toBe('then');
     });
 
     it('AND: one false', () => {
@@ -521,19 +577,33 @@ describe('evaluatePriceRule', () => {
           makeCondition({
             id: 'c1',
             comparator: '>',
-            left: { kind: 'variable', key: 'booking_hours' },
-            right: { kind: 'literal', value: '2', valueType: 'number' },
+            left: {
+ kind: 'variable',
+key: 'booking_hours', 
+},
+            right: {
+ kind: 'literal',
+value: '2',
+valueType: 'number', 
+},
           }),
           makeCondition({
             id: 'c2',
             connector: 'and',
             comparator: '<',
-            left: { kind: 'variable', key: 'booking_hours' },
-            right: { kind: 'literal', value: '3', valueType: 'number' },
-          }),
+            left: {
+ kind: 'variable',
+key: 'booking_hours', 
+},
+            right: {
+ kind: 'literal',
+value: '3',
+valueType: 'number', 
+},
+          })
         ],
       });
-      expect(evaluatePriceRule(def, { bookingHours: 5 }).branch).toBe('else');
+      expect(evaluatePriceRule(def, { bookingHours: 5, }).branch).toBe('else');
     });
 
     it('OR: one true', () => {
@@ -543,19 +613,33 @@ describe('evaluatePriceRule', () => {
           makeCondition({
             id: 'c1',
             comparator: '=',
-            left: { kind: 'variable', key: 'booking_hours' },
-            right: { kind: 'literal', value: '1', valueType: 'number' },
+            left: {
+ kind: 'variable',
+key: 'booking_hours', 
+},
+            right: {
+ kind: 'literal',
+value: '1',
+valueType: 'number', 
+},
           }),
           makeCondition({
             id: 'c2',
             connector: 'or',
             comparator: '=',
-            left: { kind: 'variable', key: 'booking_hours' },
-            right: { kind: 'literal', value: '5', valueType: 'number' },
-          }),
+            left: {
+ kind: 'variable',
+key: 'booking_hours', 
+},
+            right: {
+ kind: 'literal',
+value: '5',
+valueType: 'number', 
+},
+          })
         ],
       });
-      expect(evaluatePriceRule(def, { bookingHours: 5 }).branch).toBe('then');
+      expect(evaluatePriceRule(def, { bookingHours: 5, }).branch).toBe('then');
     });
 
     it('OR: both false', () => {
@@ -565,19 +649,33 @@ describe('evaluatePriceRule', () => {
           makeCondition({
             id: 'c1',
             comparator: '=',
-            left: { kind: 'variable', key: 'booking_hours' },
-            right: { kind: 'literal', value: '1', valueType: 'number' },
+            left: {
+ kind: 'variable',
+key: 'booking_hours', 
+},
+            right: {
+ kind: 'literal',
+value: '1',
+valueType: 'number', 
+},
           }),
           makeCondition({
             id: 'c2',
             connector: 'or',
             comparator: '=',
-            left: { kind: 'variable', key: 'booking_hours' },
-            right: { kind: 'literal', value: '2', valueType: 'number' },
-          }),
+            left: {
+ kind: 'variable',
+key: 'booking_hours', 
+},
+            right: {
+ kind: 'literal',
+value: '2',
+valueType: 'number', 
+},
+          })
         ],
       });
-      expect(evaluatePriceRule(def, { bookingHours: 5 }).branch).toBe('else');
+      expect(evaluatePriceRule(def, { bookingHours: 5, }).branch).toBe('else');
     });
   });
 
@@ -590,15 +688,22 @@ describe('evaluatePriceRule', () => {
             id: 'c1',
             negated: true,
             comparator: '=',
-            left: { kind: 'variable', key: 'booking_hours' },
-            right: { kind: 'literal', value: '5', valueType: 'number' },
-          }),
+            left: {
+ kind: 'variable',
+key: 'booking_hours', 
+},
+            right: {
+ kind: 'literal',
+value: '5',
+valueType: 'number', 
+},
+          })
         ],
       });
       // booking_hours = 5 matches, but negated → false → ELSE
-      expect(evaluatePriceRule(def, { bookingHours: 5 }).branch).toBe('else');
+      expect(evaluatePriceRule(def, { bookingHours: 5, }).branch).toBe('else');
       // booking_hours = 3 doesn't match, negated → true → THEN
-      expect(evaluatePriceRule(def, { bookingHours: 3 }).branch).toBe('then');
+      expect(evaluatePriceRule(def, { bookingHours: 3, }).branch).toBe('then');
     });
   });
 
@@ -607,13 +712,18 @@ describe('evaluatePriceRule', () => {
       const def = makeDefinition({
         variables: [
           ...PRICE_RULE_INITIAL_VARIABLES,
-          { key: 'guest_count', label: 'guest count', type: 'number', initialValue: '1' },
+          {
+ key: 'guest_count',
+label: 'guest count',
+type: 'number',
+initialValue: '1', 
+}
         ],
         formula: 'booking_hours * 50 * guest_count',
       });
       const result = evaluatePriceRule(def, {
         bookingHours: 2,
-        variableOverrides: { guest_count: 3 },
+        variableOverrides: { guest_count: 3, },
       });
       expect(result.price).toBe(300);
       expect(result.usedVariables).toContain('guest_count');
@@ -624,11 +734,16 @@ describe('evaluatePriceRule', () => {
       const def = makeDefinition({
         variables: [
           ...PRICE_RULE_INITIAL_VARIABLES,
-          { key: 'rate', label: 'rate', type: 'number', initialValue: '100' },
+          {
+ key: 'rate',
+label: 'rate',
+type: 'number',
+initialValue: '100', 
+}
         ],
         formula: 'booking_hours * rate',
       });
-      const result = evaluatePriceRule(def, { bookingHours: 3 });
+      const result = evaluatePriceRule(def, { bookingHours: 3, });
       expect(result.price).toBe(300);
     });
   });
@@ -643,12 +758,22 @@ describe('evaluatePriceRule', () => {
           makeCondition({
             id: 'c1',
             comparator: '=',
-            left: { kind: 'variable', key: 'day_of_week' },
-            right: { kind: 'literal', value: '0', valueType: 'number' },
-          }),
+            left: {
+ kind: 'variable',
+key: 'day_of_week', 
+},
+            right: {
+ kind: 'literal',
+value: '0',
+valueType: 'number', 
+},
+          })
         ],
       });
-      const result = evaluatePriceRule(def, { bookingHours: 1, now: monday });
+      const result = evaluatePriceRule(def, {
+ bookingHours: 1,
+now: monday, 
+});
       expect(result.branch).toBe('then');
     });
   });
@@ -661,14 +786,24 @@ describe('evaluatePriceRule', () => {
           makeCondition({
             id: 'c1',
             comparator: '>=',
-            left: { kind: 'variable', key: 'time' },
-            right: { kind: 'literal', value: '18:00', valueType: 'time' },
-          }),
+            left: {
+ kind: 'variable',
+key: 'time', 
+},
+            right: {
+ kind: 'literal',
+value: '18:00',
+valueType: 'time', 
+},
+          })
         ],
       });
       // 7 PM → should match >= 18:00
       const evening = new Date('2024-01-15T19:00:00');
-      const result = evaluatePriceRule(def, { bookingHours: 1, now: evening });
+      const result = evaluatePriceRule(def, {
+ bookingHours: 1,
+now: evening, 
+});
       expect(result.branch).toBe('then');
     });
   });
@@ -676,30 +811,40 @@ describe('evaluatePriceRule', () => {
   describe('conditions count limit', () => {
     it('throws when conditions exceed maximum', () => {
       const conditions: PriceRuleCondition[] = Array.from(
-        { length: FORMULA_MAX_CONDITIONS + 1 },
+        { length: FORMULA_MAX_CONDITIONS + 1, },
         (_, i) => makeCondition({
           id: `c${i}`,
           connector: i > 0 ? 'and' : undefined,
           comparator: '=',
-          left: { kind: 'variable', key: 'booking_hours' },
-          right: { kind: 'literal', value: '1', valueType: 'number' },
+          left: {
+ kind: 'variable',
+key: 'booking_hours', 
+},
+          right: {
+ kind: 'literal',
+value: '1',
+valueType: 'number', 
+},
         })
       );
-      const def = makeDefinition({ formula: '1 ELSE 0', conditions });
-      expect(() => evaluatePriceRule(def, { bookingHours: 1 })).toThrow(`exceeds maximum of ${FORMULA_MAX_CONDITIONS}`);
+      const def = makeDefinition({
+ formula: '1 ELSE 0',
+conditions, 
+});
+      expect(() => evaluatePriceRule(def, { bookingHours: 1, })).toThrow(`exceeds maximum of ${FORMULA_MAX_CONDITIONS}`);
     });
   });
 
   describe('error handling', () => {
     it('returns null price for invalid formula via safe evaluation', () => {
-      const def = makeDefinition({ formula: 'booking_hours / (booking_hours - booking_hours)' });
-      const result = evaluatePriceRule(def, { bookingHours: 5 });
+      const def = makeDefinition({ formula: 'booking_hours / (booking_hours - booking_hours)', });
+      const result = evaluatePriceRule(def, { bookingHours: 5, });
       expect(result.price).toBeNull();
     });
 
     it('returns null price for unknown variable in formula', () => {
-      const def = makeDefinition({ formula: 'nonexistent_var * 10' });
-      const result = evaluatePriceRule(def, { bookingHours: 1 });
+      const def = makeDefinition({ formula: 'nonexistent_var * 10', });
+      const result = evaluatePriceRule(def, { bookingHours: 1, });
       expect(result.price).toBeNull();
     });
   });
@@ -754,8 +899,16 @@ describe('priceRuleSchema', () => {
       definition: {
         variables: [
           ...PRICE_RULE_INITIAL_VARIABLES,
-          { key: 'rate', label: 'Rate A', type: 'number' },
-          { key: 'rate', label: 'Rate B', type: 'number' },
+          {
+ key: 'rate',
+label: 'Rate A',
+type: 'number', 
+},
+          {
+ key: 'rate',
+label: 'Rate B',
+type: 'number', 
+}
         ],
         conditions: [],
         formula: 'rate * 10',
@@ -773,9 +926,16 @@ describe('priceRuleSchema', () => {
           {
             id: '00000000-0000-0000-0000-000000000001',
             comparator: '=',
-            left: { kind: 'variable', key: 'nonexistent' },
-            right: { kind: 'literal', value: '1', valueType: 'number' },
-          },
+            left: {
+ kind: 'variable',
+key: 'nonexistent', 
+},
+            right: {
+ kind: 'literal',
+value: '1',
+valueType: 'number', 
+},
+          }
         ],
         formula: '100 ELSE 50',
       },
@@ -789,7 +949,11 @@ describe('priceRuleSchema', () => {
       definition: {
         variables: [
           ...PRICE_RULE_INITIAL_VARIABLES,
-          { key: 'invalid-key', label: 'Bad', type: 'number' },
+          {
+ key: 'invalid-key',
+label: 'Bad',
+type: 'number', 
+}
         ],
         conditions: [],
         formula: '100',
@@ -819,9 +983,9 @@ describe('computeStartingPriceFromAreas', () => {
 
   it('returns minimum price across areas', () => {
     const areas = [
-      { price_rule: { definition: makeDefinition({ formula: '200' }) } },
-      { price_rule: { definition: makeDefinition({ formula: '100' }) } },
-      { price_rule: { definition: makeDefinition({ formula: '300' }) } },
+      { price_rule: { definition: makeDefinition({ formula: '200', }), }, },
+      { price_rule: { definition: makeDefinition({ formula: '100', }), }, },
+      { price_rule: { definition: makeDefinition({ formula: '300', }), }, }
     ];
     expect(computeStartingPriceFromAreas(areas)).toBe(100);
   });
@@ -831,30 +995,35 @@ describe('computeStartingPriceFromAreas', () => {
   });
 
   it('returns null when no valid pricing rules', () => {
-    const areas = [{ price_rule: null }];
+    const areas = [{ price_rule: null, }];
     expect(computeStartingPriceFromAreas(areas)).toBeNull();
   });
 
   it('skips areas with invalid formulas', () => {
     const areas = [
-      { price_rule: { definition: makeDefinition({ formula: 'invalid!!!' }) } },
-      { price_rule: { definition: makeDefinition({ formula: '150' }) } },
+      { price_rule: { definition: makeDefinition({ formula: 'invalid!!!', }), }, },
+      { price_rule: { definition: makeDefinition({ formula: '150', }), }, }
     ];
     expect(computeStartingPriceFromAreas(areas)).toBe(150);
   });
 
   it('skips inactive pricing rules', () => {
     const areas = [
-      { price_rule: { definition: makeDefinition({ formula: '50' }), is_active: false } },
-      { price_rule: { definition: makeDefinition({ formula: '150' }) } },
+      {
+ price_rule: {
+ definition: makeDefinition({ formula: '50', }),
+is_active: false, 
+}, 
+},
+      { price_rule: { definition: makeDefinition({ formula: '150', }), }, }
     ];
     expect(computeStartingPriceFromAreas(areas)).toBe(150);
   });
 
   it('skips negative prices', () => {
     const areas = [
-      { price_rule: { definition: makeDefinition({ formula: '-100' }) } },
-      { price_rule: { definition: makeDefinition({ formula: '200' }) } },
+      { price_rule: { definition: makeDefinition({ formula: '-100', }), }, },
+      { price_rule: { definition: makeDefinition({ formula: '200', }), }, }
     ];
     expect(computeStartingPriceFromAreas(areas)).toBe(200);
   });

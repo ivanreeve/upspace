@@ -152,8 +152,13 @@ export const BOOKING_DURATION_VARIABLE_KEYS = [
   'booking_months'
 ] as const;
 
+export const FORMULA_ALLOWED_BUILTIN_KEYS = [
+  ...BOOKING_DURATION_VARIABLE_KEYS,
+  'guest_count'
+] as const;
+
 export const BOOKING_DURATION_VARIABLE_REFERENCE_TEXT =
-  'booking_hours, booking_days, booking_weeks, or booking_months';
+  'booking_hours, booking_days, booking_weeks, booking_months, or guest_count';
 
 export const PRICE_RULE_INITIAL_VARIABLES: PriceRuleVariable[] = [
   {
@@ -200,6 +205,13 @@ export const PRICE_RULE_INITIAL_VARIABLES: PriceRuleVariable[] = [
     key: 'day_of_week',
     label: 'day of week',
     type: 'number',
+    userInput: false,
+  },
+  {
+    key: 'guest_count',
+    label: 'guest count',
+    type: 'number',
+    initialValue: '1',
     userInput: false,
   }
 ];

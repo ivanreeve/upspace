@@ -267,9 +267,9 @@ function SidebarFooterContent({
   );
   const skeletonTextClass = isCollapsed ? 'h-3 w-16' : 'h-3 w-24';
   const sidebarAccountMenuItemClassName =
-    'data-[highlighted]:bg-[oklch(0.955_0.02_204.6929)] focus-visible:bg-[oklch(0.955_0.02_204.6929)] data-[highlighted]:text-primary data-[highlighted]:[&_svg]:text-primary hover:!text-primary hover:[&_svg]:!text-primary';
+    'data-[highlighted]:bg-[oklch(0.955_0.02_204.6929)] focus-visible:bg-[oklch(0.955_0.02_204.6929)] dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] data-[highlighted]:text-primary data-[highlighted]:[&_svg]:text-primary dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary hover:!text-primary hover:[&_svg]:!text-primary dark:hover:!text-secondary dark:hover:[&_svg]:!text-secondary';
   const sidebarLogoutMenuItemClassName =
-    'text-destructive focus-visible:text-destructive data-[highlighted]:bg-[oklch(0.9059_0.0543_19.81)] focus-visible:bg-[oklch(0.9059_0.0543_19.81)] data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive hover:bg-[oklch(0.9059_0.0543_19.81)] hover:text-destructive hover:[&_svg]:text-destructive';
+    'mt-2 text-destructive focus-visible:text-destructive data-[highlighted]:bg-[oklch(0.9647_0.0345_19.81)] focus-visible:bg-[oklch(0.9647_0.0345_19.81)] dark:data-[highlighted]:bg-[oklch(0.24_0.04_19.81)] dark:focus-visible:bg-[oklch(0.24_0.04_19.81)] data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive hover:bg-[oklch(0.9647_0.0345_19.81)] dark:hover:bg-[oklch(0.24_0.04_19.81)] hover:text-destructive hover:[&_svg]:text-destructive';
 
   if (isMobile) {
     return null;
@@ -665,31 +665,43 @@ function MobileTopNav({
                 { hasAdditionalLinks && <DropdownMenuSeparator className="my-1" /> }
                 { showAccountLinks && (
                   <>
-                    <DropdownMenuItem onSelect={ () => onNavigate('/customer/account') }>
+                    <DropdownMenuItem
+                      onSelect={ () => onNavigate('/customer/account') }
+                      className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
+                    >
                       <User className="size-4" aria-hidden="true" />
                       <span>Account</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={ () => onNavigate('/customer/settings') }>
+                    <DropdownMenuItem
+                      onSelect={ () => onNavigate('/customer/settings') }
+                      className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
+                    >
                       <Settings className="size-4" aria-hidden="true" />
                       <span>Settings</span>
                     </DropdownMenuItem>
                   </>
                 ) }
                 { showNotifications && (
-                  <DropdownMenuItem onSelect={ () => onNavigate('/customer/notifications') }>
+                  <DropdownMenuItem
+                    onSelect={ () => onNavigate('/customer/notifications') }
+                    className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
+                  >
                     <NotificationIcon className="size-4" aria-hidden="true" />
                     <span>Notifications</span>
                   </DropdownMenuItem>
                 ) }
                 { showTransactionHistory && (
-                  <DropdownMenuItem onSelect={ () => onNavigate('/customer/transactions') }>
+                  <DropdownMenuItem
+                    onSelect={ () => onNavigate('/customer/transactions') }
+                    className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
+                  >
                     <CreditCard className="size-4" aria-hidden="true" />
                     <span>Transaction history</span>
                   </DropdownMenuItem>
                 ) }
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
-                  className="text-destructive focus-visible:text-destructive data-[highlighted]:bg-[oklch(0.9059_0.0543_19.81)] focus-visible:bg-[oklch(0.9059_0.0543_19.81)] data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive hover:bg-[oklch(0.9059_0.0543_19.81)] hover:text-destructive hover:[&_svg]:text-destructive"
+                  className="mt-2 text-destructive focus-visible:text-destructive data-[highlighted]:bg-[oklch(0.9647_0.0345_19.81)] focus-visible:bg-[oklch(0.9647_0.0345_19.81)] dark:data-[highlighted]:bg-[oklch(0.24_0.04_19.81)] dark:focus-visible:bg-[oklch(0.24_0.04_19.81)] data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive hover:bg-[oklch(0.9647_0.0345_19.81)] dark:hover:bg-[oklch(0.24_0.04_19.81)] hover:text-destructive hover:[&_svg]:text-destructive"
                   onSelect={ () => {
                     void onLogout();
                   } }
@@ -1278,7 +1290,7 @@ export function MarketplaceChrome({
                     >
                       <MdManageSearch className="size-4" aria-hidden="true" />
                       <span data-sidebar-label>Search</span>
-                      <Kbd className="ml-auto hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden hover:!text-gray-500 dark:hover:!text-sidebar-foreground/70">
+                      <Kbd className="ml-auto hidden items-center gap-1 bg-muted/20 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden hover:!text-gray-500 dark:hover:!text-sidebar-foreground/70">
                         <Command className="size-3" aria-hidden="true" />
                         <span> + K</span>
                       </Kbd>
@@ -1293,7 +1305,7 @@ export function MarketplaceChrome({
                       labelBadge={
                         <Badge
                           variant="outline"
-                          className="px-2 py-0.5 text-[10px] leading-none"
+                          className="bg-muted/20 px-2 py-0.5 text-[10px] leading-none"
                         >
                           Beta
                         </Badge>

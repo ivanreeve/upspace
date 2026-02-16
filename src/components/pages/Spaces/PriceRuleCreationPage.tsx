@@ -110,7 +110,7 @@ export function PriceRuleCreationPage() {
                   onValueChange={ (value) => setSelectedSpaceId(value) }
                   disabled={ !spaces.length }
                 >
-                  <SelectTrigger className="min-w-[12rem] text-sm">
+                  <SelectTrigger className="min-w-[12rem] bg-muted/20 text-sm">
                     <SelectValue placeholder="Select space" />
                   </SelectTrigger>
                   <SelectContent>

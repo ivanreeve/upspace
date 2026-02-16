@@ -149,10 +149,7 @@ function SpaceCardComponent({
             aria-pressed={ isSaved }
             aria-label={ isSaved ? 'Remove from saved spaces' : 'Save this space' }
             className={ cn(
-              'absolute right-3 top-3 rounded-full cursor-pointer backdrop-blur-2xl p-2 shadow-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-70',
-              isSaved
-                ? 'bg-white text-rose-600 ring-offset-black/30'
-                : 'bg-black/30 text-white hover:bg-black/70'
+              'absolute right-3 top-3 rounded-full cursor-pointer bg-black/30 text-white backdrop-blur-2xl p-2 shadow-md transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-70'
             ) }
           >
             { isSaving ? (
