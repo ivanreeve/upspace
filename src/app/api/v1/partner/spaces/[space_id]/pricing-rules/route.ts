@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { PartnerSessionError, requirePartnerSession } from '@/lib/auth/require-partner-session';
 import type { PriceRuleDefinition, PriceRuleRecord } from '@/lib/pricing-rules';
 import { priceRuleSchema } from '@/lib/pricing-rules';
+import { invalidateStartingPriceCache } from '@/lib/spaces/pricing';
 
 const isUuid = (value: string | undefined): value is string =>
   typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -14,6 +15,7 @@ const serializePriceRule = (rule: PrismaPriceRuleRow): PriceRuleRecord => ({
   name: rule.name,
   description: rule.description ?? null,
   definition: rule.definition as PriceRuleDefinition,
+  is_active: rule.is_active,
   linked_area_count: rule._count?.area ?? 0,
   created_at: rule.created_at instanceof Date ? rule.created_at.toISOString() : String(rule.created_at),
   updated_at: rule.updated_at instanceof Date ? rule.updated_at.toISOString() : null,
@@ -108,6 +110,7 @@ export async function POST(req: NextRequest, { params, }: RouteParams) {
       include: { _count: { select: { area: true, }, }, },
     });
 
+    invalidateStartingPriceCache(spaceIdParam);
     return NextResponse.json({ data: serializePriceRule(createdRule), }, { status: 201, });
   } catch (error) {
     if (error instanceof PartnerSessionError) {

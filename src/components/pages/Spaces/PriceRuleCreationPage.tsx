@@ -78,7 +78,7 @@ export function PriceRuleCreationPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" asChild>
+          <Button asChild>
             <Link
               href="/partner/spaces/pricing-rules"
               className="flex items-center gap-2 text-sm hover:text-white"

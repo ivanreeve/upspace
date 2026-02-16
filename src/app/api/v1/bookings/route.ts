@@ -261,6 +261,7 @@ export async function POST(req: NextRequest) {
           id: true,
           name: true,
           definition: true,
+          is_active: true,
         },
       },
       space: {
@@ -335,10 +336,17 @@ export async function POST(req: NextRequest) {
     bookingStartAt.getTime() + parsed.data.bookingHours * 60 * 60 * 1000
   );
 
-  const priceRule = area.price_rule as PriceRuleRecord | null;
+  const priceRule = area.price_rule as (PriceRuleRecord & { is_active?: boolean }) | null;
   if (!priceRule) {
     return NextResponse.json(
       { error: 'Pricing is unavailable for this area.', },
+      { status: 400, }
+    );
+  }
+
+  if (priceRule.is_active === false) {
+    return NextResponse.json(
+      { error: 'The pricing rule for this area is currently inactive.', },
       { status: 400, }
     );
   }
@@ -355,13 +363,23 @@ export async function POST(req: NextRequest) {
         areaId: area.id,
         error,
       });
-      return { price: null, };
+      return {
+        price: null,
+        branch: 'unconditional' as const,
+        appliedExpression: null,
+        conditionsSatisfied: false,
+        usedVariables: [] as string[],
+      };
     }
   })();
 
+  const formulaAlreadyHandlesGuests = priceEvaluation.usedVariables.includes('guest_count');
+
+  const guestMultiplier = formulaAlreadyHandlesGuests ? 1 : guestCount;
+
   const priceMinor =
     typeof priceEvaluation.price === 'number'
-      ? Math.round(priceEvaluation.price * guestCount * BOOKING_PRICE_MINOR_FACTOR)
+      ? Math.round(priceEvaluation.price * guestMultiplier * BOOKING_PRICE_MINOR_FACTOR)
       : null;
   if (priceMinor === null) {
     return NextResponse.json(
@@ -411,6 +429,11 @@ export async function POST(req: NextRequest) {
             area_max_capacity: areaMaxCapacity,
             guest_count: guestCount,
             expires_at: bookingExpiresAt,
+            price_rule_id: priceRule.id,
+            price_rule_name: priceRule.name,
+            price_rule_snapshot: priceRule.definition,
+            price_rule_branch: priceEvaluation.branch ?? null,
+            price_rule_expression: priceEvaluation.appliedExpression ?? null,
           },
         });
 

@@ -1,0 +1,2 @@
+-- This migration was applied directly to the database.
+-- Empty placeholder to keep local history in sync.

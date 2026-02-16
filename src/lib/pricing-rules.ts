@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { FORMULA_MAX_LENGTH, FORMULA_MAX_CONDITIONS } from '@/lib/pricing-rules-evaluator';
+
 export const PRICE_RULE_CONNECTORS = ['and', 'or'] as const;
 export type PriceRuleConditionConnector = (typeof PRICE_RULE_CONNECTORS)[number];
 
@@ -43,6 +45,7 @@ export type PriceRuleRecord = {
   name: string;
   description: string | null;
   definition: PriceRuleDefinition;
+  is_active: boolean;
   linked_area_count: number;
   created_at: string;
   updated_at: string | null;
@@ -72,18 +75,22 @@ export const priceRuleConditionSchema = z.object({
   right: priceRuleOperandSchema,
 });
 
+const VARIABLE_KEY_REGEX = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
 export const priceRuleDefinitionSchema = z.object({
   variables: z.array(
     z.object({
-      key: z.string().min(1),
+      key: z.string().min(1).regex(VARIABLE_KEY_REGEX, 'Variable key must contain only letters, numbers, and underscores, and start with a letter or underscore.'),
       label: z.string().min(1),
       type: z.enum(['text', 'number', 'date', 'time']),
       initialValue: z.string().optional(),
       userInput: z.boolean().optional(),
     })
   ),
-  conditions: z.array(priceRuleConditionSchema),
-  formula: z.string().min(1, 'Add a formula to determine the price action.'),
+  conditions: z.array(priceRuleConditionSchema).max(FORMULA_MAX_CONDITIONS, `A rule can have at most ${FORMULA_MAX_CONDITIONS} conditions.`),
+  formula: z.string()
+    .min(1, 'Add a formula to determine the price action.')
+    .max(FORMULA_MAX_LENGTH, `Formula must not exceed ${FORMULA_MAX_LENGTH} characters.`),
 });
 
 export const priceRuleSchema = z.object({
@@ -91,21 +98,48 @@ export const priceRuleSchema = z.object({
   description: z.string().max(500).optional(),
   definition: priceRuleDefinitionSchema,
 }).superRefine((value, ctx) => {
+  // Validate IF/ELSE structure
   const formula = value.definition.formula.trim();
-  if (!formula) {
-    return;
+  if (formula) {
+    const hasIfClause = /\bif\b/i.test(formula);
+    if (hasIfClause) {
+      const elseMatches = formula.toLowerCase().match(/\belse\b/g) ?? [];
+      if (elseMatches.length !== 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Conditions that use IF statements must include exactly one ELSE clause.',
+          path: ['definition', 'formula'],
+        });
+      }
+    }
   }
-  const hasIfClause = /\bif\b/i.test(formula);
-  if (!hasIfClause) {
-    return;
+
+  // Validate no duplicate variable keys
+  const declaredKeys = new Set<string>();
+  for (const variable of value.definition.variables) {
+    if (declaredKeys.has(variable.key)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Duplicate variable key "${variable.key}".`,
+        path: ['definition', 'variables'],
+      });
+    }
+    declaredKeys.add(variable.key);
   }
-  const elseMatches = formula.toLowerCase().match(/\belse\b/g) ?? [];
-  if (elseMatches.length !== 1) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Conditions that use IF statements must include exactly one ELSE clause.',
-      path: ['definition', 'formula'],
-    });
+
+  // Validate condition operand variable references exist
+  for (let i = 0; i < value.definition.conditions.length; i++) {
+    const condition = value.definition.conditions[i];
+    for (const side of ['left', 'right'] as const) {
+      const operand = condition[side];
+      if (operand.kind === 'variable' && !declaredKeys.has(operand.key)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Condition references unknown variable "${operand.key}".`,
+          path: ['definition', 'conditions', i, side, 'key'],
+        });
+      }
+    }
   }
 });
 

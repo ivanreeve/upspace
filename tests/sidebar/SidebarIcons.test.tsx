@@ -3,6 +3,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
 import { MarketplaceChrome } from '@/components/pages/Marketplace/MarketplaceChrome';
 import { AdminChrome } from '@/components/pages/Admin/AdminChrome';
 import { SpacesChrome } from '@/components/pages/Spaces/SpacesChrome';
@@ -18,9 +19,7 @@ vi.mock('@/components/auth/SessionProvider', () => ({
     session: {
       user: {
         email: 'test@example.com',
-        user_metadata: {
-          role: 'customer',
-        },
+        user_metadata: { role: 'customer', },
       },
     },
     isLoading: false,
@@ -40,13 +39,9 @@ vi.mock('@/hooks/use-user-profile', () => ({
   }),
 }));
 
-vi.mock('@/hooks/use-cached-avatar', () => ({
-  useCachedAvatar: () => 'https://example.com/avatar.png',
-}));
+vi.mock('@/hooks/use-cached-avatar', () => ({ useCachedAvatar: () => 'https://example.com/avatar.png', }));
 
-vi.mock('@/hooks/use-mobile', () => ({
-  useIsMobile: () => false,
-}));
+vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false, }));
 
 // Mock router
 vi.mock('next/navigation', () => ({
@@ -58,9 +53,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock other components if necessary (e.g., specific complex ones)
-vi.mock('@/components/ui/theme-switcher', () => ({
-  ThemeSwitcher: () => <div data-testid="theme-switcher" />,
-}));
+vi.mock('@/components/ui/theme-switcher', () => ({ ThemeSwitcher: () => <div data-testid="theme-switcher" />, }));
 
 // Mock specific icons if needed, but we want to verify their presence indirectly via rendering
 // Actually, Lucide icons render as <svg ... class="lucide lucide-icon-name ..."> usually.
@@ -69,7 +62,7 @@ vi.mock('@/components/ui/theme-switcher', () => ({
 describe('Sidebar Icons Improvement', () => {
   it('renders MarketplaceChrome with updated icons without crashing', () => {
     render(
-      <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={ queryClient }>
         <MarketplaceChrome>
           <div>Content</div>
         </MarketplaceChrome>
@@ -87,7 +80,7 @@ describe('Sidebar Icons Improvement', () => {
     // Let's rely on the mock above which returns 'customer'.
     // AdminChrome might show different items based on role, but it should render.
     render(
-      <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={ queryClient }>
         <AdminChrome>
           <div>Admin Content</div>
         </AdminChrome>
@@ -98,7 +91,7 @@ describe('Sidebar Icons Improvement', () => {
 
   it('renders SpacesChrome with updated icons without crashing', () => {
     render(
-      <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={ queryClient }>
         <SpacesChrome>
           <div>Spaces Content</div>
         </SpacesChrome>

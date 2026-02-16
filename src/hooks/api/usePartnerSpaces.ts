@@ -17,6 +17,7 @@ export const partnerSpacesKeys = {
   list: () => ['partner-spaces', 'list'] as const,
   detail: (spaceId: string) => ['partner-spaces', 'detail', spaceId] as const,
   verification: (spaceId: string) => ['partner-spaces', 'verification', spaceId] as const,
+  pricingRules: (spaceId: string) => ['partner-spaces', 'pricing-rules', spaceId] as const,
 };
 
 const parseErrorMessage = async (response: Response) => {
@@ -226,7 +227,7 @@ export function useCreatePriceRuleMutation(spaceId: string) {
       return data.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.pricingRules(spaceId), });
       queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), });
     },
   });
@@ -258,7 +259,39 @@ export function useUpdatePriceRuleMutation(spaceId: string) {
       return data.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.pricingRules(spaceId), });
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), });
+    },
+  });
+}
+
+export function useTogglePriceRuleActiveMutation(spaceId: string) {
+  const authFetch = useAuthenticatedFetch();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      priceRuleId,
+      isActive,
+    }: {
+      priceRuleId: string;
+      isActive: boolean;
+    }) => {
+      const response = await authFetch(`/api/v1/partner/spaces/${spaceId}/pricing-rules/${priceRuleId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify({ is_active: isActive, }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+      }
+
+      const data = (await response.json()) as { data: PriceRuleRecord };
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.pricingRules(spaceId), });
       queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), });
     },
   });
@@ -279,7 +312,7 @@ export function useDeletePriceRuleMutation(spaceId: string) {
       return priceRuleId;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.pricingRules(spaceId), });
       queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), });
     },
   });

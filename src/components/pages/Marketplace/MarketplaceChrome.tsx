@@ -30,7 +30,9 @@ import {
   UserX,
   Wallet
 } from 'lucide-react';
-import { MdOutlineNotificationsNone } from 'react-icons/md';
+import { LuMessageSquareText } from 'react-icons/lu';
+import { MdManageSearch, MdOutlineNotificationsNone } from 'react-icons/md';
+import { RiHome6Line } from 'react-icons/ri';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -151,6 +153,14 @@ function NotificationIcon(props: React.SVGProps<SVGSVGElement>) {
   return <MdOutlineNotificationsNone { ...props } />;
 }
 
+function SidebarMessageIcon(props: React.SVGProps<SVGSVGElement>) {
+  return <LuMessageSquareText { ...props } />;
+}
+
+function SidebarHomeIcon(props: React.SVGProps<SVGSVGElement>) {
+  return <RiHome6Line { ...props } />;
+}
+
 function SidebarToggleMenuItem() {
   const {
  state, toggleSidebar, isMobile, 
@@ -257,7 +267,7 @@ function SidebarFooterContent({
   );
   const skeletonTextClass = isCollapsed ? 'h-3 w-16' : 'h-3 w-24';
   const sidebarAccountMenuItemClassName =
-    'data-[highlighted]:bg-[oklch(0.9117_0.0384_204.6929)] focus-visible:bg-[oklch(0.9117_0.0384_204.6929)] hover:!text-white hover:[&_svg]:!text-white';
+    'data-[highlighted]:bg-[oklch(0.9117_0.0384_204.6929)] focus-visible:bg-[oklch(0.9117_0.0384_204.6929)] data-[highlighted]:text-primary data-[highlighted]:[&_svg]:text-primary hover:!text-primary hover:[&_svg]:!text-primary';
 
   if (isMobile) {
     return null;
@@ -1255,9 +1265,9 @@ export function MarketplaceChrome({
                   <SidebarLinkItem
                     href="/marketplace"
                     label="Home"
-                    icon={ Home }
+                    icon={ SidebarHomeIcon }
                     tooltip="Home"
-                    iconProps={ { strokeWidth: 2, } }
+                    iconProps={ { className: 'size-[18px]', } }
                   />
                   <SidebarMenuItem>
                     <SidebarMenuButton
@@ -1266,7 +1276,7 @@ export function MarketplaceChrome({
                       type="button"
                       onClick={ handleSearch }
                     >
-                      <Search className="size-4" strokeWidth={ 2 } />
+                      <MdManageSearch className="size-4" aria-hidden="true" />
                       <span data-sidebar-label>Search</span>
                       <Kbd className="ml-auto hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden hover:!text-gray-500 dark:hover:!text-sidebar-foreground/70">
                         <Command className="size-3" aria-hidden="true" />
@@ -1305,7 +1315,7 @@ export function MarketplaceChrome({
                       label="Notifications"
                       icon={ NotificationIcon }
                       tooltip="Notifications"
-                      iconProps={ { strokeWidth: 2, } }
+                      iconProps={ { className: 'size-[19px] -translate-y-px', } }
                     />
                   ) }
                   { isCustomerRole && (
@@ -1321,7 +1331,7 @@ export function MarketplaceChrome({
                     <SidebarLinkItem
                       href={ resolvedMessageHref }
                       label="Messages"
-                      icon={ MessageSquare }
+                      icon={ SidebarMessageIcon }
                       tooltip="Messages"
                       iconProps={ { strokeWidth: 2, } }
                     />

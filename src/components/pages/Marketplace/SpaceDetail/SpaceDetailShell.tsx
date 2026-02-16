@@ -65,6 +65,7 @@ export function SpaceDetailShell({ children, }: SpaceDetailShellProps) {
           description="Search the UpSpace marketplace"
           position="top"
           fullWidth
+          className="[&_[data-slot=command-item][data-selected=true]]:bg-transparent [&_[data-slot=command-item][data-selected=true]:hover]:bg-accent"
         >
           <CommandInput
             value={ searchValue }

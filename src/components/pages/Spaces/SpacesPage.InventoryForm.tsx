@@ -667,11 +667,12 @@ export function SpacesInventoryForm() {
 
       { renderContent() }
 
-      <div className="w-full">
+      <div className="flex w-full justify-end">
       <Button
         asChild
+        size="sm"
         variant="outline"
-        className="inline-flex w-full items-center justify-center gap-2 hover:text-white"
+        className="inline-flex items-center justify-center gap-2 hover:text-white"
       >
         <Link
           href="/partner/spaces/create"

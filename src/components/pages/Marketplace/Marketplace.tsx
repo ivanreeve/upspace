@@ -913,6 +913,7 @@ function MarketplaceSearchDialog({
         position="top"
         mobileFullScreen={ isMobile }
         fullWidth
+        className="[&_[data-slot=command-item][data-selected=true]]:bg-transparent [&_[data-slot=command-item][data-selected=true]:hover]:bg-accent"
       >
         <CommandInput
           value={ searchValue }
