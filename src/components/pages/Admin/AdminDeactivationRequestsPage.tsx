@@ -314,7 +314,7 @@ export function AdminDeactivationRequestsPage() {
             </TableHeader>
             <TableBody>
               { requests.map((request) => (
-                <TableRow key={ request.id } className="transition hover:bg-muted/40">
+                <TableRow key={ request.id } className="transition hover:bg-muted/20">
                   <TableCell>
                     <div className="flex flex-col">
                       <span className="font-medium">{ request.user.name }</span>

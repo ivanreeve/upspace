@@ -12,10 +12,12 @@ import {
   FiChevronRight,
   FiEdit3,
   FiFileText,
+  FiMoreHorizontal,
   FiPlus,
   FiTrash2,
   FiXCircle
 } from 'react-icons/fi';
+import { MdOpenInNew } from 'react-icons/md';
 import { toast } from 'sonner';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -44,6 +46,12 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 import { usePartnerSpacesQuery, useWithdrawSpaceVerificationMutation } from '@/hooks/api/usePartnerSpaces';
 import { clearSpaceFormDraft, useSpaceDraftSummary } from '@/hooks/useSpaceFormPersistence';
 import { clearStoredPhotoState } from '@/hooks/usePersistentSpaceImages';
@@ -88,6 +96,12 @@ const STATUS_FILTER_OPTIONS: StatusFilterOption[] = [
     label: status,
   }))
 ];
+const SPACE_STATUS_BADGE_CLASSNAME: Record<SpaceStatus, string> = {
+  Live: 'border-emerald-600/40 bg-emerald-50 text-emerald-700',
+  Pending: 'border-amber-600/40 bg-amber-50 text-amber-700',
+  Draft: 'border-slate-500/40 bg-slate-100 text-slate-700',
+  Unpublished: 'border-rose-600/40 bg-rose-50 text-rose-700',
+};
 
 export function SpacesInventoryForm() {
   const [pageSize, setPageSize] = useState<number>(10);
@@ -466,7 +480,7 @@ export function SpacesInventoryForm() {
               { paginatedRows.map((row) => (
                 <TableRow
                   key={ row.id }
-                  className="cursor-pointer transition hover:bg-muted/40"
+                  className="cursor-pointer transition hover:bg-muted/20"
                 >
                   <TableCell className="w-[96px]">
                     <Avatar className="h-16 w-16 min-h-16 min-w-16 rounded-none border border-border/70 shadow-sm">
@@ -499,13 +513,8 @@ export function SpacesInventoryForm() {
                   </TableCell>
                   <TableCell className="space-y-1">
                     <Badge
-                      variant={
-                        row.status === 'Live'
-                          ? 'success'
-                          : row.status === 'Unpublished'
-                            ? 'destructive'
-                            : 'outline'
-                      }
+                      variant="outline"
+                      className={ SPACE_STATUS_BADGE_CLASSNAME[row.status] }
                     >
                       { row.status }
                     </Badge>
@@ -517,32 +526,48 @@ export function SpacesInventoryForm() {
                   </TableCell>
                   <TableCell>{ row.areas }</TableCell>
                   <TableCell className="text-right">
-                    <div className="flex flex-wrap items-center justify-end gap-2">
-                      { row.status === 'Pending' && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
                         <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-rose-500 hover:text-rose-600"
-                          onClick={ () => void handleWithdrawApplication(row.id) }
-                          disabled={ withdrawingSpaceId === row.id }
-                          aria-label="Withdraw application from review"
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="ml-auto rounded-md bg-[oklch(0.955_0.02_204.6929)] text-primary hover:bg-[oklch(0.955_0.02_204.6929)] dark:bg-background dark:text-foreground dark:hover:bg-background"
+                          aria-label={ `Space actions for ${row.name}` }
                         >
-                          <FiXCircle className="size-4" aria-hidden="true" />
-                          Withdraw
+                          <FiMoreHorizontal className="size-4" aria-hidden="true" />
+                          <span className="sr-only">Open actions</span>
                         </Button>
-                      ) }
-                      <Button asChild size="sm" variant="outline" className="hover:text-white">
-                        <Link
-                          href={
-                            row.status === 'Draft'
-                              ? `/partner/spaces/edit?spaceId=${row.id}&step=1`
-                              : `/partner/spaces/${row.id}`
-                          }
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="min-w-0 w-32 space-y-1 bg-white p-1 dark:bg-popover">
+                        <DropdownMenuItem
+                          asChild
+                          className="data-[highlighted]:bg-[oklch(0.955_0.02_204.6929)] focus-visible:bg-[oklch(0.955_0.02_204.6929)]"
                         >
-                          Open
-                        </Link>
-                      </Button>
-                    </div>
+                          <Link
+                            href={
+                              row.status === 'Draft'
+                                ? `/partner/spaces/edit?spaceId=${row.id}&step=1`
+                                : `/partner/spaces/${row.id}`
+                            }
+                            className="flex items-center gap-2"
+                          >
+                            <MdOpenInNew className="size-4" aria-hidden="true" />
+                            Open
+                          </Link>
+                        </DropdownMenuItem>
+                        { row.status === 'Pending' && (
+                          <DropdownMenuItem
+                            onSelect={ () => void handleWithdrawApplication(row.id) }
+                            disabled={ withdrawingSpaceId === row.id }
+                            className="rounded-sm text-sm font-medium text-destructive focus-visible:text-destructive data-[highlighted]:bg-[oklch(0.9647_0.0345_19.81)] focus-visible:bg-[oklch(0.9647_0.0345_19.81)] dark:data-[highlighted]:bg-[oklch(0.24_0.04_19.81)] dark:focus-visible:bg-[oklch(0.24_0.04_19.81)] data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive hover:bg-[oklch(0.9647_0.0345_19.81)] dark:hover:bg-[oklch(0.24_0.04_19.81)] hover:text-destructive hover:[&_svg]:text-destructive"
+                          >
+                            <FiXCircle className="size-4 text-destructive" aria-hidden="true" />
+                            Withdraw
+                          </DropdownMenuItem>
+                        ) }
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               )) }
@@ -579,14 +604,8 @@ export function SpacesInventoryForm() {
                       </CardDescription>
                     </div>
                     <Badge
-                      variant={
-                        row.status === 'Live'
-                          ? 'success'
-                          : row.status === 'Unpublished'
-                            ? 'destructive'
-                            : 'outline'
-                      }
-                      className="shrink-0"
+                      variant="outline"
+                      className={ `${SPACE_STATUS_BADGE_CLASSNAME[row.status]} shrink-0` }
                     >
                       { row.status }
                     </Badge>
@@ -614,30 +633,48 @@ export function SpacesInventoryForm() {
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    { row.status === 'Pending' && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-rose-500 hover:text-rose-600"
-                        onClick={ () => void handleWithdrawApplication(row.id) }
-                        disabled={ withdrawingSpaceId === row.id }
-                        aria-label="Withdraw application from review"
-                      >
-                        <FiXCircle className="size-4" aria-hidden="true" />
-                        Withdraw
-                      </Button>
-                    ) }
-                    <Button asChild size="sm" variant="outline">
-                      <Link
-                        href={
-                          row.status === 'Draft'
-                            ? `/partner/spaces/edit?spaceId=${row.id}&step=1`
-                            : `/partner/spaces/${row.id}`
-                        }
-                      >
-                        Open
-                      </Link>
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="rounded-md bg-[oklch(0.955_0.02_204.6929)] text-primary hover:bg-[oklch(0.955_0.02_204.6929)] dark:bg-background dark:text-foreground dark:hover:bg-background"
+                          aria-label={ `Space actions for ${row.name}` }
+                        >
+                          <FiMoreHorizontal className="size-4" aria-hidden="true" />
+                          <span className="sr-only">Open actions</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="min-w-0 w-32 space-y-1 bg-white p-1 dark:bg-popover">
+                        <DropdownMenuItem
+                          asChild
+                          className="data-[highlighted]:bg-[oklch(0.955_0.02_204.6929)] focus-visible:bg-[oklch(0.955_0.02_204.6929)]"
+                        >
+                          <Link
+                            href={
+                              row.status === 'Draft'
+                                ? `/partner/spaces/edit?spaceId=${row.id}&step=1`
+                                : `/partner/spaces/${row.id}`
+                            }
+                            className="flex items-center gap-2"
+                          >
+                            <MdOpenInNew className="size-4" aria-hidden="true" />
+                            Open
+                          </Link>
+                        </DropdownMenuItem>
+                        { row.status === 'Pending' && (
+                          <DropdownMenuItem
+                            onSelect={ () => void handleWithdrawApplication(row.id) }
+                            disabled={ withdrawingSpaceId === row.id }
+                            className="rounded-sm text-sm font-medium text-destructive focus-visible:text-destructive data-[highlighted]:bg-[oklch(0.9647_0.0345_19.81)] focus-visible:bg-[oklch(0.9647_0.0345_19.81)] dark:data-[highlighted]:bg-[oklch(0.24_0.04_19.81)] dark:focus-visible:bg-[oklch(0.24_0.04_19.81)] data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive hover:bg-[oklch(0.9647_0.0345_19.81)] dark:hover:bg-[oklch(0.24_0.04_19.81)] hover:text-destructive hover:[&_svg]:text-destructive"
+                          >
+                            <FiXCircle className="size-4 text-destructive" aria-hidden="true" />
+                            Withdraw
+                          </DropdownMenuItem>
+                        ) }
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </div>
@@ -671,7 +708,7 @@ export function SpacesInventoryForm() {
       <Button
         asChild
         size="sm"
-        variant="outline"
+        variant="default"
         className="inline-flex items-center justify-center gap-2 hover:text-white"
       >
         <Link

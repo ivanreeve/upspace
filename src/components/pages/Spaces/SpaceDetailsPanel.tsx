@@ -899,12 +899,13 @@ export function SpaceDetailsPanel({
                 </div>
               ) }
             </CardContent>
-            <CardFooter className="flex flex-col gap-2">
-              <div className="w-full">
+            <CardFooter className="flex justify-end">
+              <div>
                 <Button
                   type="button"
-                  variant="outline"
-                  className="inline-flex w-full items-center justify-center gap-2"
+                  size="sm"
+                  variant="default"
+                  className="inline-flex items-center justify-center gap-2"
                   onClick={ handleAddArea }
                 >
                   <FiPlus className="size-4" aria-hidden="true" />

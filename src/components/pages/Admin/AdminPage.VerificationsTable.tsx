@@ -284,7 +284,7 @@ export function AdminVerificationsTable() {
               { tableRows.map((row) => {
                 const verification = verifications?.find((v) => v.id === row.id);
                 return (
-                  <TableRow key={ row.id } className="cursor-pointer transition hover:bg-muted/40">
+                  <TableRow key={ row.id } className="cursor-pointer transition hover:bg-muted/20">
                     <TableCell className="font-medium">
                       <div className="flex flex-col">
                         <span>{ row.spaceName }</span>
