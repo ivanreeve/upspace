@@ -12,6 +12,7 @@ import { OpenRouterError } from '@openrouter/sdk/models/errors/openroutererror';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
+import { prisma } from '@/lib/prisma';
 import { findSpacesAgent, MAX_RADIUS_METERS } from '@/lib/ai/space-agent';
 import type { FindSpacesToolInput, FindSpacesToolResult } from '@/lib/ai/space-agent';
 import {

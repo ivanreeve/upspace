@@ -101,8 +101,13 @@ function ConversationItem({
 
   return (
     <div
+      onClick={ () => {
+        if (!isRenaming) {
+          onSelect();
+        }
+      } }
       className={ cn(
-        'group flex items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors',
+        'group flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors',
         isActive
           ? 'bg-primary/10 text-foreground'
           : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
@@ -117,6 +122,7 @@ function ConversationItem({
             value={ renameValue }
             onChange={ (event) => setRenameValue(event.target.value) }
             onKeyDown={ handleRenameKeyDown }
+            onClick={ (event) => event.stopPropagation() }
             className="h-6 px-1 text-xs"
             aria-label="Rename conversation"
           />
@@ -126,6 +132,7 @@ function ConversationItem({
             size="icon"
             className="size-5"
             onClick={ handleConfirmRename }
+            onMouseDown={ (event) => event.stopPropagation() }
             aria-label="Confirm rename"
           >
             <FiCheck className="size-3" />
@@ -136,6 +143,7 @@ function ConversationItem({
             size="icon"
             className="size-5"
             onClick={ handleCancelRename }
+            onMouseDown={ (event) => event.stopPropagation() }
             aria-label="Cancel rename"
           >
             <FiX className="size-3" />
@@ -143,18 +151,14 @@ function ConversationItem({
         </div>
       ) : (
         <>
-          <button
-            type="button"
-            onClick={ onSelect }
-            className="flex flex-1 flex-col items-start gap-0.5 overflow-hidden text-left"
-          >
+          <div className="flex flex-1 flex-col items-start gap-0.5 overflow-hidden text-left">
             <span className="w-full truncate text-xs font-medium">
               { conversation.title ?? 'New conversation' }
             </span>
             <span className="text-[10px] text-muted-foreground">
               { formatRelativeTime(conversation.updated_at) }
             </span>
-          </button>
+          </div>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -162,20 +166,24 @@ function ConversationItem({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="size-6 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                className="size-6 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 hover:!bg-sidebar focus-visible:!bg-sidebar data-[state=open]:!bg-sidebar dark:hover:!bg-accent/50 dark:focus-visible:!bg-accent/50 dark:data-[state=open]:!bg-accent/50"
+                onClick={ (event) => event.stopPropagation() }
                 aria-label="Conversation options"
               >
                 <FiMoreHorizontal className="size-3.5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-36">
-              <DropdownMenuItem onClick={ handleStartRename }>
+            <DropdownMenuContent align="end" className="w-36 bg-popover p-1">
+              <DropdownMenuItem
+                onClick={ handleStartRename }
+                className="data-[highlighted]:bg-[oklch(0.955_0.02_204.6929)] focus-visible:bg-[oklch(0.955_0.02_204.6929)] dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] data-[highlighted]:text-primary data-[highlighted]:[&_svg]:text-primary dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary hover:!text-primary hover:[&_svg]:!text-primary dark:hover:!text-secondary dark:hover:[&_svg]:!text-secondary"
+              >
                 <FiEdit2 className="mr-2 size-3.5" aria-hidden="true" />
                 Rename
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={ onDelete }
-                className="text-destructive focus:text-destructive"
+                className="text-destructive focus-visible:text-destructive data-[highlighted]:bg-[oklch(0.9647_0.0345_19.81)] focus-visible:bg-[oklch(0.9647_0.0345_19.81)] dark:data-[highlighted]:bg-[oklch(0.24_0.04_19.81)] dark:focus-visible:bg-[oklch(0.24_0.04_19.81)] data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive hover:bg-[oklch(0.9647_0.0345_19.81)] dark:hover:bg-[oklch(0.24_0.04_19.81)] hover:text-destructive hover:[&_svg]:text-destructive"
               >
                 <FiTrash2 className="mr-2 size-3.5" aria-hidden="true" />
                 Delete
@@ -294,7 +302,7 @@ title,
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete conversation</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="pb-2">
               Are you sure you want to delete{ ' ' }
               <span className="font-medium">
                 { deleteTarget?.title ?? 'this conversation' }
