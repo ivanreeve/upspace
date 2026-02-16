@@ -36,9 +36,15 @@ import { useGeolocation } from '@/hooks/use-geolocation';
 import { cn } from '@/lib/utils';
 import { getSpeechRecognitionErrorMessage, VOICE_UNSUPPORTED_MESSAGE } from '@/lib/voice';
 import { useCreateCheckoutSessionMutation } from '@/hooks/api/useBookings';
-import { useAiConversationQuery, useCreateAiConversationMutation, aiConversationKeys } from '@/hooks/api/useAiConversations';
+import {
+  useCreateAiConversationMutation,
+  aiConversationKeys,
+  type AiConversationDetail,
+  type AiConversationMessage
+} from '@/hooks/api/useAiConversations';
 import { AiChatSidebar } from '@/components/pages/Marketplace/AiChatSidebar';
 import { useSession } from '@/components/auth/SessionProvider';
+import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
 
 type BookingAction = {
   action: 'checkout';
@@ -67,6 +73,17 @@ const makeMessageId = (role: ChatMessage['role']) =>
     ? crypto.randomUUID()
     : Date.now().toString(36)
   }`;
+
+const mapConversationMessages = (
+  source: AiConversationMessage[]
+): ChatMessage[] =>
+  source.map((msg) => ({
+    id: msg.id,
+    role: msg.role,
+    content: msg.content,
+    spaceResults: (msg.space_results as Space[] | null) ?? undefined,
+    bookingAction: (msg.booking_action as BookingAction | null) ?? undefined,
+  }));
 
 const getFriendlyAiErrorMessage = (error: Error) => {
   const message = error.message ?? '';
@@ -317,7 +334,7 @@ function BookingConfirmationCard({ bookingAction, }: {
   });
 
   return (
-    <Card className="mt-3 w-full max-w-[480px] border-primary/30 bg-primary/5">
+    <Card className="w-full border-primary/30 bg-primary/5">
       <CardContent className="space-y-3 p-4">
         <div className="flex items-center gap-2">
           <FiCheckCircle className="size-5 text-primary" aria-hidden="true" />
@@ -415,73 +432,75 @@ function MessageBubble({
   return (
     <div
       className={ cn(
-        'flex gap-3 items-center',
-        isUser ? 'justify-end' : 'justify-start'
+        'flex gap-3',
+        isUser ? 'justify-end' : 'justify-start items-start'
       ) }
     >
       { !isUser && (
         <div
           ref={ iconRef }
-          className="relative z-10 mt-0.5 flex size-12 items-center justify-center rounded-full bg-cyan-100 text-cyan-900 dark:bg-cyan-900/30 dark:text-cyan-100"
+          className="relative z-10 mt-0.5 flex size-12 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-cyan-900 dark:bg-cyan-900/30 dark:text-cyan-100"
         >
           <GradientSparklesIcon isThinking={ isThinking } />
           <span className="sr-only">OpenRouter assistant</span>
         </div>
       ) }
-      { shouldShowBubble ? (
-        <div
-          className={ cn(
-            'max-w-[720px] rounded-md border px-4 py-3 text-sm',
-            isUser
-              ? 'bg-primary/10 border-primary/30 text-foreground'
-              : 'bg-muted/20 dark:bg-muted/60 border-border/60 text-foreground'
-          ) }
-        >
-          { isThinking ? (
-            <span className="inline-flex items-center gap-2 text-muted-foreground">
-              <span style={ shimmerTextStyle }>
-                { SEARCHING_MESSAGES[searchingMessageIndex] }
+      <div className={ cn('flex min-w-0 flex-col gap-3', isUser ? 'items-end' : 'items-start') }>
+        { shouldShowBubble ? (
+          <div
+            className={ cn(
+              'max-w-[720px] rounded-md border px-4 py-3 text-sm',
+              isUser
+                ? 'bg-primary/10 border-primary/30 text-foreground'
+                : 'bg-muted/20 dark:bg-muted/60 border-border/60 text-foreground'
+            ) }
+          >
+            { isThinking ? (
+              <span className="inline-flex items-center gap-2 text-muted-foreground">
+                <span style={ shimmerTextStyle }>
+                  { SEARCHING_MESSAGES[searchingMessageIndex] }
+                </span>
               </span>
-            </span>
-          ) : (
-            <div className="prose prose-sm max-w-none dark:prose-invert [&>*]:text-sm">
-              <ReactMarkdown
-                remarkPlugins={ [remarkGfm] }
-                components={ markdownComponents }
-              >
-                { message.content }
-              </ReactMarkdown>
-            </div>
-          ) }
-        </div>
-      ) : null }
-      { hasSpaceResults ? (
-        <div className="mt-3 w-full max-w-[720px]">
-          { (message.spaceResults?.length ?? 0) > 1 ? (
-            <div className="relative">
-              <div className="flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory touch-pan-x">
-                { message.spaceResults!.map((space) => (
-                  <div
-                    key={ space.space_id }
-                    className="min-w-[320px] max-w-[360px] snap-start space-card-entrance"
-                  >
-                    <SpaceCard space={ space } />
-                  </div>
-                )) }
+            ) : (
+              <div className="prose prose-sm max-w-none dark:prose-invert [&>*]:text-sm">
+                <ReactMarkdown
+                  remarkPlugins={ [remarkGfm] }
+                  components={ markdownComponents }
+                >
+                  { message.content }
+                </ReactMarkdown>
               </div>
-            </div>
-          ) : (
-            <div className="space-card-entrance">
-              <SpaceCard space={ message.spaceResults![0] } />
-            </div>
-          ) }
-        </div>
-      ) : null }
-      { message.bookingAction ? (
-        <div className="mt-3 w-full max-w-[720px]">
-          <BookingConfirmationCard bookingAction={ message.bookingAction } />
-        </div>
-      ) : null }
+            ) }
+          </div>
+        ) : null }
+        { hasSpaceResults ? (
+          <div className="w-full max-w-[720px]">
+            { (message.spaceResults?.length ?? 0) > 1 ? (
+              <div className="relative">
+                <div className="flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory touch-pan-x">
+                  { message.spaceResults!.map((space) => (
+                    <div
+                      key={ space.space_id }
+                      className="min-w-[320px] max-w-[360px] snap-start space-card-entrance"
+                    >
+                      <SpaceCard space={ space } />
+                    </div>
+                  )) }
+                </div>
+              </div>
+            ) : (
+              <div className="space-card-entrance">
+                <SpaceCard space={ message.spaceResults![0] } />
+              </div>
+            ) }
+          </div>
+        ) : null }
+        { message.bookingAction ? (
+          <div className="w-full max-w-[720px]">
+            <BookingConfirmationCard bookingAction={ message.bookingAction } />
+          </div>
+        ) : null }
+      </div>
     </div>
   );
 }
@@ -525,25 +544,55 @@ export function AiAssistant() {
   const {
     session, isLoading: sessionLoading,
   } = useSession();
+  const authFetch = useAuthenticatedFetch();
   const queryClient = useQueryClient();
   const createConversation = useCreateAiConversationMutation();
-  const conversationQuery = useAiConversationQuery(activeConversationId);
+  const fetchConversationDetail = React.useCallback(
+    async (id: string) => {
+      const response = await authFetch(`/api/v1/ai/conversations/${id}`);
+      if (!response.ok) {
+        throw new Error('Unable to load that conversation right now.');
+      }
 
-  React.useEffect(() => {
-    if (!activeConversationId) {
-      return;
-    }
-    if (conversationQuery.data?.messages) {
-      const loadedMessages: ChatMessage[] = conversationQuery.data.messages.map((msg) => ({
-        id: msg.id,
-        role: msg.role,
-        content: msg.content,
-        spaceResults: (msg.space_results as Space[] | null) ?? undefined,
-        bookingAction: (msg.booking_action as BookingAction | null) ?? undefined,
-      }));
-      setMessages(loadedMessages);
-    }
-  }, [activeConversationId, conversationQuery.data]);
+      const payload = await response.json();
+      return payload.conversation as AiConversationDetail;
+    },
+    [authFetch]
+  );
+
+  const handleSelectConversation = React.useCallback(
+    async (id: string) => {
+      setErrorMessage(null);
+      setActiveConversationId(id);
+      setMessages([]);
+
+      try {
+        const conversation = await queryClient.fetchQuery<AiConversationDetail>({
+          queryKey: aiConversationKeys.detail(id),
+          queryFn: () => fetchConversationDetail(id),
+        });
+        const loaded = conversation.messages ?? [];
+        if (loaded.length === 0) {
+          toast.info('This conversation has no saved messages. Starting fresh.');
+          setActiveConversationId(null);
+          setMessages([]);
+        } else {
+          setMessages(mapConversationMessages(loaded));
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Unable to load conversation history.'
+        );
+      }
+
+      if (isMobile) {
+        setChatSidebarOpen(false);
+      }
+    },
+    [fetchConversationDetail, isMobile, queryClient]
+  );
 
   const greetingName = React.useMemo(() => {
     const firstName = userProfile?.firstName?.trim();
@@ -918,61 +967,61 @@ conversationId: finalConversationId,
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-muted/30 px-4 py-3 text-left hover:bg-accent/10 dark:hover:bg-accent/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-muted/30 px-4 py-3 text-left text-primary hover:bg-accent/10 dark:text-foreground dark:hover:bg-accent/50"
           onClick={ () => setPromptInput('Find coworking spaces near me with good Wi-Fi') }
           disabled={ aiSearchMutation.isPending }
         >
           <span className="flex h-10 w-10 items-center justify-center">
-            <FiMapPin className="size-5 text-primary" aria-hidden="true" />
+            <FiMapPin className="size-5 text-primary dark:text-foreground" aria-hidden="true" />
           </span>
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Find spaces near me</span>
-            <span className="text-xs text-muted-foreground">Discover local coworking options</span>
+            <span className="text-sm font-medium text-primary dark:text-foreground">Find spaces near me</span>
+            <span className="text-xs text-primary/80 dark:text-muted-foreground">Discover local coworking options</span>
           </div>
         </Button>
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-muted/30 px-4 py-3 text-left hover:bg-accent/10 dark:hover:bg-accent/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-muted/30 px-4 py-3 text-left text-primary hover:bg-accent/10 dark:text-foreground dark:hover:bg-accent/50"
           onClick={ () => setPromptInput('What are the most affordable workspaces available?') }
           disabled={ aiSearchMutation.isPending }
         >
           <span className="flex h-10 w-10 items-center justify-center">
-            <FiDollarSign className="size-5 text-primary" aria-hidden="true" />
+            <FiDollarSign className="size-5 text-primary dark:text-foreground" aria-hidden="true" />
           </span>
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Show budget-friendly options</span>
-            <span className="text-xs text-muted-foreground">Find affordable workspace deals</span>
+            <span className="text-sm font-medium text-primary dark:text-foreground">Show budget-friendly options</span>
+            <span className="text-xs text-primary/80 dark:text-muted-foreground">Find affordable workspace deals</span>
           </div>
         </Button>
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-muted/30 px-4 py-3 text-left hover:bg-accent/10 dark:hover:bg-accent/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-muted/30 px-4 py-3 text-left text-primary hover:bg-accent/10 dark:text-foreground dark:hover:bg-accent/50"
           onClick={ () => setPromptInput('Find spaces with high-speed Wi-Fi and quiet environment') }
           disabled={ aiSearchMutation.isPending }
         >
           <span className="flex h-10 w-10 items-center justify-center">
-            <FiWifi className="size-5 text-primary" aria-hidden="true" />
+            <FiWifi className="size-5 text-primary dark:text-foreground" aria-hidden="true" />
           </span>
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Spaces with best amenities</span>
-            <span className="text-xs text-muted-foreground">Fast Wi-Fi, meeting rooms, and more</span>
+            <span className="text-sm font-medium text-primary dark:text-foreground">Spaces with best amenities</span>
+            <span className="text-xs text-primary/80 dark:text-muted-foreground">Fast Wi-Fi, meeting rooms, and more</span>
           </div>
         </Button>
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-muted/30 px-4 py-3 text-left hover:bg-accent/10 dark:hover:bg-accent/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-muted/30 px-4 py-3 text-left text-primary hover:bg-accent/10 dark:text-foreground dark:hover:bg-accent/50"
           onClick={ () => setPromptInput('Help me book a workspace for tomorrow') }
           disabled={ aiSearchMutation.isPending }
         >
           <span className="flex h-10 w-10 items-center justify-center">
-            <FiCalendar className="size-5 text-primary" aria-hidden="true" />
+            <FiCalendar className="size-5 text-primary dark:text-foreground" aria-hidden="true" />
           </span>
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Book for tomorrow</span>
-            <span className="text-xs text-muted-foreground">Quick booking assistance</span>
+            <span className="text-sm font-medium text-primary dark:text-foreground">Book for tomorrow</span>
+            <span className="text-xs text-primary/80 dark:text-muted-foreground">Quick booking assistance</span>
           </div>
         </Button>
       </div>
@@ -1100,10 +1149,7 @@ conversationId: finalConversationId,
       { chatSidebarOpen ? (
         <AiChatSidebar
           activeConversationId={ activeConversationId }
-          onSelectConversation={ (id) => {
-            setActiveConversationId(id);
-            if (isMobile) setChatSidebarOpen(false);
-          } }
+          onSelectConversation={ handleSelectConversation }
           onNewConversation={ handleNewConversation }
         />
       ) : null }
