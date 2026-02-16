@@ -393,50 +393,58 @@ function SidebarFooterContent({
                   showTransactionHistory) && (
                   <DropdownMenuSeparator className="my-1" />
                 ) }
-                { showAccount && (
-                  <DropdownMenuItem
-                    onSelect={ () => onNavigate('/customer/account') }
-                    className={ sidebarAccountMenuItemClassName }
-                  >
-                    <User className="size-4" aria-hidden="true" />
-                    <span>Account</span>
-                  </DropdownMenuItem>
-                ) }
-                { showWallet && (
-                  <DropdownMenuItem
-                    onSelect={ () => onNavigate('/partner/wallet') }
-                    className={ sidebarAccountMenuItemClassName }
-                  >
-                    <MdOutlineAccountBalanceWallet className="size-4" aria-hidden="true" />
-                    <span>Wallet</span>
-                  </DropdownMenuItem>
-                ) }
-                { showSettings && (
-                  <DropdownMenuItem
-                    onSelect={ () => onNavigate('/customer/settings') }
-                    className={ sidebarAccountMenuItemClassName }
-                  >
-                    <Settings className="size-4" aria-hidden="true" />
-                    <span>Settings</span>
-                  </DropdownMenuItem>
-                ) }
-                { showNotifications && (
-                  <DropdownMenuItem
-                    onSelect={ () => onNavigate('/customer/notifications') }
-                    className={ sidebarAccountMenuItemClassName }
-                  >
-                    <NotificationIcon className="size-4" aria-hidden="true" />
-                    <span>Notifications</span>
-                  </DropdownMenuItem>
-                ) }
-                { showTransactionHistory && (
-                  <DropdownMenuItem
-                    onSelect={ () => onNavigate('/customer/transactions') }
-                    className={ sidebarAccountMenuItemClassName }
-                  >
-                    <CreditCard className="size-4" aria-hidden="true" />
-                    <span>Transaction history</span>
-                  </DropdownMenuItem>
+                { (showAccount ||
+                  showWallet ||
+                  showSettings ||
+                  showNotifications ||
+                  showTransactionHistory) && (
+                  <div className="space-y-0.5 py-2">
+                    { showAccount && (
+                      <DropdownMenuItem
+                        onSelect={ () => onNavigate('/customer/account') }
+                        className={ sidebarAccountMenuItemClassName }
+                      >
+                        <User className="size-4" aria-hidden="true" />
+                        <span>Account</span>
+                      </DropdownMenuItem>
+                    ) }
+                    { showWallet && (
+                      <DropdownMenuItem
+                        onSelect={ () => onNavigate('/partner/wallet') }
+                        className={ sidebarAccountMenuItemClassName }
+                      >
+                        <MdOutlineAccountBalanceWallet className="size-4" aria-hidden="true" />
+                        <span>Wallet</span>
+                      </DropdownMenuItem>
+                    ) }
+                    { showSettings && (
+                      <DropdownMenuItem
+                        onSelect={ () => onNavigate('/customer/settings') }
+                        className={ sidebarAccountMenuItemClassName }
+                      >
+                        <Settings className="size-4" aria-hidden="true" />
+                        <span>Settings</span>
+                      </DropdownMenuItem>
+                    ) }
+                    { showNotifications && (
+                      <DropdownMenuItem
+                        onSelect={ () => onNavigate('/customer/notifications') }
+                        className={ sidebarAccountMenuItemClassName }
+                      >
+                        <NotificationIcon className="size-4" aria-hidden="true" />
+                        <span>Notifications</span>
+                      </DropdownMenuItem>
+                    ) }
+                    { showTransactionHistory && (
+                      <DropdownMenuItem
+                        onSelect={ () => onNavigate('/customer/transactions') }
+                        className={ sidebarAccountMenuItemClassName }
+                      >
+                        <CreditCard className="size-4" aria-hidden="true" />
+                        <span>Transaction history</span>
+                      </DropdownMenuItem>
+                    ) }
+                  </div>
                 ) }
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
@@ -666,41 +674,45 @@ function MobileTopNav({
                   </div>
                 </div>
                 { hasAdditionalLinks && <DropdownMenuSeparator className="my-1" /> }
-                { showAccountLinks && (
-                  <>
-                    <DropdownMenuItem
-                      onSelect={ () => onNavigate('/customer/account') }
-                      className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
-                    >
-                      <User className="size-4" aria-hidden="true" />
-                      <span>Account</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onSelect={ () => onNavigate('/customer/settings') }
-                      className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
-                    >
-                      <Settings className="size-4" aria-hidden="true" />
-                      <span>Settings</span>
-                    </DropdownMenuItem>
-                  </>
-                ) }
-                { showNotifications && (
-                  <DropdownMenuItem
-                    onSelect={ () => onNavigate('/customer/notifications') }
-                    className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
-                  >
-                    <NotificationIcon className="size-4" aria-hidden="true" />
-                    <span>Notifications</span>
-                  </DropdownMenuItem>
-                ) }
-                { showTransactionHistory && (
-                  <DropdownMenuItem
-                    onSelect={ () => onNavigate('/customer/transactions') }
-                    className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
-                  >
-                    <CreditCard className="size-4" aria-hidden="true" />
-                    <span>Transaction history</span>
-                  </DropdownMenuItem>
+                { hasAdditionalLinks && (
+                  <div className="space-y-0.5 py-2">
+                    { showAccountLinks && (
+                      <>
+                        <DropdownMenuItem
+                          onSelect={ () => onNavigate('/customer/account') }
+                          className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
+                        >
+                          <User className="size-4" aria-hidden="true" />
+                          <span>Account</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onSelect={ () => onNavigate('/customer/settings') }
+                          className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
+                        >
+                          <Settings className="size-4" aria-hidden="true" />
+                          <span>Settings</span>
+                        </DropdownMenuItem>
+                      </>
+                    ) }
+                    { showNotifications && (
+                      <DropdownMenuItem
+                        onSelect={ () => onNavigate('/customer/notifications') }
+                        className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
+                      >
+                        <NotificationIcon className="size-4" aria-hidden="true" />
+                        <span>Notifications</span>
+                      </DropdownMenuItem>
+                    ) }
+                    { showTransactionHistory && (
+                      <DropdownMenuItem
+                        onSelect={ () => onNavigate('/customer/transactions') }
+                        className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
+                      >
+                        <CreditCard className="size-4" aria-hidden="true" />
+                        <span>Transaction history</span>
+                      </DropdownMenuItem>
+                    ) }
+                  </div>
                 ) }
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem

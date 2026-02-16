@@ -82,6 +82,54 @@ const DATE_RANGE_PRESETS: {
   }
 ];
 
+const BOOKING_HOURS_DAILY_THRESHOLD = 24;
+
+type ListingMetrics = {
+  id: string;
+  name: string;
+  status: string;
+  bookings: number;
+  revenue: number;
+  cancellations: number;
+  lastUpdated: string;
+};
+
+const resolveDateRangeBounds = (
+  dateRange: DateRangeKey,
+  customStart: string,
+  customEnd: string
+) => {
+  const now = new Date();
+
+  if (dateRange === 'today') {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    return [start, now] as const;
+  }
+
+  if (dateRange === '7d') {
+    const start = subDays(now, 6);
+    start.setHours(0, 0, 0, 0);
+    return [start, now] as const;
+  }
+
+  if (dateRange === '30d') {
+    const start = subDays(now, 29);
+    start.setHours(0, 0, 0, 0);
+    return [start, now] as const;
+  }
+
+  const start = customStart ? new Date(customStart) : subDays(now, 6);
+  const end = customEnd ? new Date(customEnd) : now;
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+
+  return [start, end] as const;
+};
+
+const resolveBookingType = (bookingHours: number): BookingTypeKey =>
+  bookingHours >= BOOKING_HOURS_DAILY_THRESHOLD ? 'daily' : 'hourly';
+
 function MiniBarChart({
   values,
   color,
@@ -219,9 +267,66 @@ export function SpacesAnalyticsPanel() {
     }
   };
 
+  const [rangeStart, rangeEnd] = useMemo(
+    () => resolveDateRangeBounds(dateRange, customStart, customEnd),
+    [customEnd, customStart, dateRange]
+  );
+
+  const filteredBookings = useMemo(() => {
+    const startMs = rangeStart.getTime();
+    const endMs = rangeEnd.getTime();
+
+    return partnerBookings.filter((booking) => {
+      const createdAtMs = new Date(booking.createdAt).getTime();
+      if (createdAtMs < startMs || createdAtMs > endMs) {
+        return false;
+      }
+
+      if (listingFilter !== 'all' && booking.spaceId !== listingFilter) {
+        return false;
+      }
+
+      if (bookingType !== 'all' && resolveBookingType(booking.bookingHours) !== bookingType) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [
+    bookingType,
+    listingFilter,
+    partnerBookings,
+    rangeEnd,
+    rangeStart
+  ]);
+
+  const filteredDashboardFeed = useMemo(() => {
+    const startMs = rangeStart.getTime();
+    const endMs = rangeEnd.getTime();
+
+    return dashboardFeed.filter((item) => {
+      const createdAtMs = new Date(item.createdAt).getTime();
+      if (createdAtMs < startMs || createdAtMs > endMs) {
+        return false;
+      }
+
+      if (listingFilter === 'all') {
+        return true;
+      }
+
+      if (item.type === 'booking') {
+        return item.spaceId === listingFilter;
+      }
+
+      return item.spaceId === listingFilter;
+    });
+  }, [dashboardFeed, listingFilter, rangeEnd, rangeStart]);
+
   const liveListingSource = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
     return partnerSpaces.map((space) => {
-      const spaceBookings = partnerBookings.filter(
+      const spaceBookings = filteredBookings.filter(
         (booking) => booking.spaceId === space.id
       );
       const revenue = spaceBookings.reduce(
@@ -239,19 +344,23 @@ export function SpacesAnalyticsPanel() {
         id: space.id,
         name: space.name,
         status: space.status,
-        views: 0,
-        saves: 0,
-        inquiries: 0,
         bookings,
         revenue,
-        rating: 0,
-        reviews: 0,
         cancellations,
         lastUpdated,
-        bookingTypes: ['hourly', 'daily'],
-      };
+      } as ListingMetrics;
+    }).filter((listing) => {
+      if (listingFilter !== 'all' && listing.id !== listingFilter) {
+        return false;
+      }
+
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      return listing.name.toLowerCase().includes(normalizedSearch);
     });
-  }, [partnerBookings, partnerSpaces]);
+  }, [filteredBookings, listingFilter, partnerSpaces, searchTerm]);
 
   const bookingStatusCounts = useMemo(() => {
     const base: Record<BookingStatus, number> = {
@@ -265,11 +374,11 @@ export function SpacesAnalyticsPanel() {
       completed: 0,
       noshow: 0,
     };
-    partnerBookings.forEach((booking) => {
+    filteredBookings.forEach((booking) => {
       base[booking.status] += 1;
     });
     return base;
-  }, [partnerBookings]);
+  }, [filteredBookings]);
 
   const totalBookingStatuses = useMemo(
     () => Object.values(bookingStatusCounts).reduce((sum, value) => sum + value, 0),
@@ -303,30 +412,6 @@ export function SpacesAnalyticsPanel() {
 
   const chartSeries = useMemo(() => {
     const points = 7;
-    const now = new Date();
-
-    const [rangeStart, rangeEnd] = (() => {
-      if (dateRange === 'today') {
-        const start = new Date(now);
-        start.setHours(0, 0, 0, 0);
-        return [start, now] as const;
-      }
-      if (dateRange === '7d') {
-        const start = subDays(now, 6);
-        start.setHours(0, 0, 0, 0);
-        return [start, now] as const;
-      }
-      if (dateRange === '30d') {
-        const start = subDays(now, 29);
-        start.setHours(0, 0, 0, 0);
-        return [start, now] as const;
-      }
-      const start = customStart ? new Date(customStart) : subDays(now, 6);
-      const end = customEnd ? new Date(customEnd) : now;
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999);
-      return [start, end] as const;
-    })();
 
     const startMs = rangeStart.getTime();
     const endMs = rangeEnd.getTime();
@@ -343,7 +428,7 @@ export function SpacesAnalyticsPanel() {
       return Math.min(points - 1, Math.max(0, rawIndex));
     };
 
-    partnerBookings.forEach((booking) => {
+    filteredBookings.forEach((booking) => {
       const created = new Date(booking.createdAt).getTime();
       if (created < startMs || created > endMs) {
         return;
@@ -353,7 +438,7 @@ export function SpacesAnalyticsPanel() {
       revenueBuckets[index] += booking.price ?? 0;
     });
 
-    dashboardFeed.forEach((item) => {
+    filteredDashboardFeed.forEach((item) => {
       const created = new Date(item.createdAt).getTime();
       if (created < startMs || created > endMs) {
         return;
@@ -382,24 +467,24 @@ export function SpacesAnalyticsPanel() {
       ticks,
     };
   }, [
-    dashboardFeed,
-    customEnd,
-    customStart,
     dateRange,
-    partnerBookings
+    filteredBookings,
+    filteredDashboardFeed,
+    rangeEnd,
+    rangeStart
   ]);
 
   const funnelSteps = useMemo(() => {
-    const messageCount = dashboardFeed.filter(
+    const messageCount = filteredDashboardFeed.filter(
       (item) => item.type === 'notification' && item.notificationType === 'message'
     ).length;
-    const completedCount = partnerBookings.filter((booking) =>
+    const completedCount = filteredBookings.filter((booking) =>
       ['completed', 'checkedout'].includes(booking.status)
     ).length;
     const base = Math.max(
-      dashboardFeed.length,
+      filteredDashboardFeed.length,
       messageCount,
-      partnerBookings.length,
+      filteredBookings.length,
       completedCount,
       1
     );
@@ -407,9 +492,9 @@ export function SpacesAnalyticsPanel() {
     return [
       {
         label: 'Activity items',
-        value: dashboardFeed.length,
+        value: filteredDashboardFeed.length,
         accent: 'bg-cyan-500',
-        percent: (dashboardFeed.length / base) * 100,
+        percent: (filteredDashboardFeed.length / base) * 100,
       },
       {
         label: 'Messages',
@@ -419,9 +504,9 @@ export function SpacesAnalyticsPanel() {
       },
       {
         label: 'Bookings',
-        value: partnerBookings.length,
+        value: filteredBookings.length,
         accent: 'bg-sky-500',
-        percent: (partnerBookings.length / base) * 100,
+        percent: (filteredBookings.length / base) * 100,
       },
       {
         label: 'Completed',
@@ -430,19 +515,19 @@ export function SpacesAnalyticsPanel() {
         percent: (completedCount / base) * 100,
       }
     ];
-  }, [dashboardFeed, partnerBookings]);
+  }, [filteredBookings, filteredDashboardFeed]);
 
   const recentBookings = useMemo(() => {
-    return [...partnerBookings]
+    return [...filteredBookings]
       .filter((booking) =>
         ['confirmed', 'pending', 'checkedin'].includes(booking.status)
       )
       .sort(
         (first, second) =>
-          new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()
+        new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()
       )
       .slice(0, 3);
-  }, [partnerBookings]);
+  }, [filteredBookings]);
 
   const openBookingsCount = useMemo(
     () =>
@@ -453,7 +538,7 @@ export function SpacesAnalyticsPanel() {
   );
 
   const peakDemand = useMemo(() => {
-    if (!partnerBookings.length) {
+    if (!filteredBookings.length) {
       return {
  dayLabel: '—',
 hourLabel: '—', 
@@ -463,7 +548,7 @@ hourLabel: '—',
     const dayCounts = Array.from({ length: 7, }, () => 0);
     const hourCounts = Array.from({ length: 24, }, () => 0);
 
-    partnerBookings.forEach((booking) => {
+    filteredBookings.forEach((booking) => {
       const date = new Date(booking.createdAt);
       dayCounts[date.getDay()] += 1;
       hourCounts[date.getHours()] += 1;
@@ -491,44 +576,16 @@ hourLabel: '—',
       dayLabel: dayNames[peakDayIndex] ?? '—',
       hourLabel: formatHourLabel(peakHourIndex),
     };
-  }, [partnerBookings]);
-
-  const filteredListings = useMemo(() => {
-    return liveListingSource.filter((listing) => {
-      if (
-        bookingType !== 'all' &&
-        !listing.bookingTypes.includes(bookingType)
-      ) {
-        return false;
-      }
-      if (listingFilter !== 'all' && listing.id !== listingFilter) {
-        return false;
-      }
-      if (!searchTerm) {
-        return true;
-      }
-      return listing.name.toLowerCase().includes(searchTerm.toLowerCase());
-    });
-  }, [bookingType, listingFilter, liveListingSource, searchTerm]);
+  }, [filteredBookings]);
 
   const sortedListings = useMemo(() => {
-    const rows = filteredListings.map((listing) => {
-      const computedViews = listing.views ?? 0;
-      const computedBookings = listing.bookings;
-      const computedRevenue = listing.revenue;
-      const conversion = computedViews
-        ? (computedBookings / computedViews) * 100
-        : 0;
-      const cancellations = Math.min(listing.cancellations, Math.max(computedBookings, 1));
-      const cancellationRate = computedBookings
-        ? (cancellations / computedBookings) * 100
+    const rows = liveListingSource.map((listing) => {
+      const cancellations = Math.min(listing.cancellations, Math.max(listing.bookings, 1));
+      const cancellationRate = listing.bookings
+        ? (cancellations / listing.bookings) * 100
         : 0;
       return {
         ...listing,
-        views: computedViews,
-        bookings: computedBookings,
-        revenue: computedRevenue,
-        conversion,
         cancellationRate,
       };
     });
@@ -549,7 +606,7 @@ hourLabel: '—',
     };
 
     return [...rows].sort(comparator);
-  }, [filteredListings, sortDirection, sortKey]);
+  }, [liveListingSource, sortDirection, sortKey]);
 
   const exportCsv = useCallback(() => {
     const headers = [
@@ -557,8 +614,6 @@ hourLabel: '—',
       'Status',
       'Bookings',
       'Revenue',
-      'Rating',
-      'Reviews',
       'Cancellation %',
       'Last updated'
     ];
@@ -567,8 +622,6 @@ hourLabel: '—',
       listing.status,
       listing.bookings.toString(),
       listing.revenue.toString(),
-      listing.rating.toString(),
-      listing.reviews.toString(),
       listing.cancellationRate.toFixed(1),
       listing.lastUpdated
     ]);
@@ -600,30 +653,30 @@ hourLabel: '—',
   const summaryMetrics = [
     {
       label: 'Total revenue (₱)',
-      value: `₱${partnerBookings
+      value: `₱${filteredBookings
         .reduce((sum, booking) => sum + (booking.price ?? 0), 0)
         .toLocaleString('en-US')}`,
-      helper: 'All partner bookings',
+      helper: 'Current filter selection',
       change: 0,
     },
     {
       label: 'Bookings',
-      value: partnerBookings.length.toString(),
-      helper: 'All partner bookings',
+      value: filteredBookings.length.toString(),
+      helper: 'Current filter selection',
       change: 0,
     },
     {
       label: 'Messages',
-      value: dashboardFeed.filter(
+      value: filteredDashboardFeed.filter(
         (item) => item.type === 'notification' && item.notificationType === 'message'
       ).length.toString(),
-      helper: 'Recent partner messages',
+      helper: 'Current filter selection',
       change: 0,
     },
     {
       label: 'Active listings',
-      value: partnerSpaces.length.toString(),
-      helper: 'Your spaces in UpSpace',
+      value: liveListingSource.filter((listing) => listing.bookings > 0).length.toString(),
+      helper: 'Listings with bookings in range',
       change: 0,
     }
   ];
@@ -631,6 +684,7 @@ hourLabel: '—',
   const topFilterRowClass = dateRange === 'custom'
     ? 'grid gap-2 md:grid-cols-[180px_220px_160px_148px_148px_minmax(240px,1fr)_auto]'
     : 'grid gap-2 md:grid-cols-[180px_220px_160px_minmax(240px,1fr)_auto]';
+  const dashboardCardClassName = 'rounded-md bg-sidebar dark:bg-card';
 
   return (
     <div className="mt-8 space-y-6">
@@ -645,7 +699,7 @@ hourLabel: '—',
         </p>
       </div>
 
-      <Card className="rounded-md">
+      <Card className={ dashboardCardClassName }>
         <CardHeader className="pb-3">
           <CardTitle>Filters</CardTitle>
           <CardDescription>
@@ -777,7 +831,7 @@ hourLabel: '—',
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         { summaryMetrics.map((metric) => (
-          <Card key={ metric.label } className="rounded-md">
+          <Card key={ metric.label } className={ dashboardCardClassName }>
             <CardContent className="space-y-2 pt-6">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -793,9 +847,9 @@ hourLabel: '—',
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
-        <Card className="rounded-md xl:col-span-2">
+        <Card className={ `${dashboardCardClassName} xl:col-span-2` }>
           <CardHeader className="flex items-center justify-between">
-            <div>
+            <div className="space-y-2">
               <CardTitle>Bookings and revenue trend</CardTitle>
               <CardDescription>Tracks the same range as your filters.</CardDescription>
             </div>
@@ -819,7 +873,7 @@ hourLabel: '—',
             />
           </CardContent>
         </Card>
-        <Card className="rounded-md">
+        <Card className={ dashboardCardClassName }>
           <CardHeader>
             <CardTitle>Views and saves</CardTitle>
             <CardDescription>
@@ -842,7 +896,7 @@ hourLabel: '—',
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
-        <Card className="rounded-md xl:col-span-2">
+        <Card className={ `${dashboardCardClassName} xl:col-span-2` }>
           <CardHeader>
             <CardTitle>Listing performance</CardTitle>
             <CardDescription>Sortable and exportable per-listing metrics.</CardDescription>
@@ -916,7 +970,7 @@ hourLabel: '—',
           </CardContent>
         </Card>
 
-        <Card className="rounded-md">
+        <Card className={ dashboardCardClassName }>
           <CardHeader>
             <CardTitle>Activity feed</CardTitle>
             <CardDescription>Latest bookings and messages in your workspace.</CardDescription>
@@ -927,7 +981,7 @@ hourLabel: '—',
         </Card>
       </div>
 
-      <Card className="rounded-md">
+      <Card className={ dashboardCardClassName }>
         <CardHeader>
           <CardTitle>Funnel and engagement</CardTitle>
           <CardDescription>
@@ -968,14 +1022,14 @@ hourLabel: '—',
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">
                     Total bookings
                   </p>
-                  <p className="text-2xl font-semibold">{ partnerBookings.length }</p>
+                  <p className="text-2xl font-semibold">{ filteredBookings.length }</p>
                 </div>
                 <div className="space-y-1 rounded-md border p-3">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">
                     Messages (last feed)
                   </p>
                   <p className="text-2xl font-semibold">
-                    { dashboardFeed.filter(
+                    { filteredDashboardFeed.filter(
                       (item) =>
                         item.type === 'notification' &&
                         item.notificationType === 'message'
@@ -989,7 +1043,7 @@ hourLabel: '—',
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="rounded-md">
+        <Card className={ dashboardCardClassName }>
           <CardHeader>
             <CardTitle>Booking status</CardTitle>
             <CardDescription>Track lifecycle health.</CardDescription>
@@ -1044,7 +1098,7 @@ hourLabel: '—',
           </CardContent>
         </Card>
 
-        <Card className="rounded-md">
+        <Card className={ dashboardCardClassName }>
           <CardHeader className="flex flex-row items-start justify-between">
             <div>
               <CardTitle>Operational insights</CardTitle>

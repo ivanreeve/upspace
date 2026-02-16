@@ -102,7 +102,7 @@ function TransactionArticle({ transaction, }: { transaction: WalletTransactionRe
   const isCredit = transaction.type === 'charge' || transaction.type === 'cash_in';
 
   return (
-    <article className="group relative flex items-center justify-between gap-4 rounded-md border bg-card px-4 py-3 transition-colors hover:bg-accent/20">
+    <article className="group relative flex items-center justify-between gap-4 rounded-md border bg-sidebar px-4 py-3 transition-colors hover:bg-accent/20 dark:bg-card">
       <div className="flex items-center gap-4 min-w-0">
         <div className="flex size-10 shrink-0 items-center justify-center rounded-md border bg-muted/30 text-muted-foreground transition-colors group-hover:text-foreground">
           <Icon className="size-4" aria-hidden="true" />
@@ -385,6 +385,7 @@ failed: 0,
     ? formatCurrencyMinor(stats.totalRefundedMinor, wallet?.currency ?? 'PHP')
     : '₱0.00';
   const filteredCount = stats?.transactionCount ?? 0;
+  const walletCardClassName = 'rounded-md bg-sidebar dark:bg-card';
 
   return (
     <div className="w-full px-4 pb-8 sm:px-6 lg:px-10">
@@ -414,7 +415,7 @@ failed: 0,
           </p>
         </div>
 
-        <Card className="rounded-md">
+        <Card className={ walletCardClassName }>
           <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
               <div className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground">
@@ -445,7 +446,7 @@ failed: 0,
 
         { /* Stats cards */ }
         <div className="grid gap-4 md:grid-cols-3">
-          <Card className="rounded-md">
+          <Card className={ walletCardClassName }>
             <CardHeader className="space-y-1 px-5 py-2.5">
               <div className="flex items-center justify-between">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -464,7 +465,7 @@ failed: 0,
             </CardHeader>
           </Card>
 
-          <Card className="rounded-md">
+          <Card className={ walletCardClassName }>
             <CardHeader className="space-y-1 px-5 py-2.5">
               <div className="flex items-center justify-between">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -483,7 +484,7 @@ failed: 0,
             </CardHeader>
           </Card>
 
-          <Card className="rounded-md">
+          <Card className={ walletCardClassName }>
             <CardHeader className="space-y-1 px-5 py-2.5">
               <div className="flex items-center justify-between">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -512,7 +513,7 @@ failed: 0,
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
-            <Card className="rounded-md">
+            <Card className={ walletCardClassName }>
               <CardHeader className="space-y-1 px-5 py-2.5">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Success rate
@@ -527,7 +528,7 @@ failed: 0,
               </CardHeader>
             </Card>
 
-            <Card className="rounded-md">
+            <Card className={ walletCardClassName }>
               <CardHeader className="space-y-1 px-5 py-2.5">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Most common type
@@ -542,7 +543,7 @@ failed: 0,
               </CardHeader>
             </Card>
 
-            <Card className="rounded-md">
+            <Card className={ walletCardClassName }>
               <CardHeader className="space-y-1 px-5 py-2.5">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Avg booking charge
@@ -559,7 +560,7 @@ failed: 0,
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <Card className="rounded-md">
+            <Card className={ walletCardClassName }>
               <CardHeader className="px-5 py-2.5">
                 <CardTitle className="text-sm font-semibold">Status distribution</CardTitle>
                 <CardDescription className="text-xs">How your transactions are resolving.</CardDescription>
@@ -585,7 +586,7 @@ failed: 0,
               </CardContent>
             </Card>
 
-            <Card className="rounded-md">
+            <Card className={ walletCardClassName }>
               <CardHeader className="px-5 py-2.5">
                 <CardTitle className="text-sm font-semibold">Transaction mix</CardTitle>
                 <CardDescription className="text-xs">Share by wallet transaction type.</CardDescription>
@@ -612,7 +613,7 @@ failed: 0,
             </Card>
           </div>
 
-          <Card className="rounded-md">
+          <Card className={ walletCardClassName }>
             <CardHeader className="px-5 py-2.5">
               <CardTitle className="text-sm font-semibold">Net flow trend (last 6 months)</CardTitle>
               <CardDescription className="text-xs">Charges/top-ups minus payouts/refunds.</CardDescription>
@@ -693,7 +694,7 @@ failed: 0,
             </div>
           </div>
 
-          <Card className="overflow-hidden rounded-md">
+          <Card className={ `overflow-hidden ${walletCardClassName}` }>
             <CardContent className="p-0">
               { transactions.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 px-6 py-20 text-center">
