@@ -3,11 +3,11 @@
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-FiCheckCircle,
-FiLayers,
-FiUsers,
-FiX
-} from 'react-icons/fi';
+CheckCircle,
+Layers,
+Users,
+X
+} from 'lucide-react';
 
 import { MarketplaceChrome } from '../Marketplace/MarketplaceChrome';
 
@@ -91,18 +91,18 @@ export function AdminChrome({
               value="pending verifications"
               onSelect={ () => handleNavigate('/admin') }
             >
-              <FiCheckCircle className="size-4" aria-hidden="true" />
+              <CheckCircle className="size-4" aria-hidden="true" />
               <span>Pending Verifications</span>
               <Kbd className="ml-auto flex items-center gap-1 text-[10px]">
                 Enter
               </Kbd>
             </CommandItem>
             <CommandItem value="users" onSelect={ () => handleNavigate('/admin/users') }>
-              <FiUsers className="size-4" aria-hidden="true" />
+              <Users className="size-4" aria-hidden="true" />
               <span>Users</span>
             </CommandItem>
             <CommandItem value="spaces" onSelect={ () => handleNavigate('/admin/spaces') }>
-              <FiLayers className="size-4" aria-hidden="true" />
+              <Layers className="size-4" aria-hidden="true" />
               <span>Spaces</span>
             </CommandItem>
             { searchValue.trim() && (
@@ -110,7 +110,7 @@ export function AdminChrome({
                 value="clear search"
                   onSelect={ () => setSearchValue('') }
                 >
-                  <FiX className="size-4" aria-hidden="true" />
+                  <X className="size-4" aria-hidden="true" />
                   <span>Clear search</span>
                 </CommandItem>
               ) }
