@@ -24,7 +24,9 @@
       "Bash(pnpm prisma db execute:*)",
       "Bash(for m in 202402050001_add_space_location 202406070001_enable_pg_trgm_space_name_index 202502150100_add_booking_expires_at 202502240001_add_area_booking_options 202502240002_drop_price_rate 20251206120000_unpublish_requests 20251208000000_add_wallet 20251209100000_fix_user_rls_policy 20251210091500_add_app_notification_booking_fk 20260131233411_add_user_verification_indexes 20260216000001_add_booking_price_rule_snapshot 20260216000002_add_price_rule_is_active)",
       "Bash(npx vitest run:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(git cherry-pick:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

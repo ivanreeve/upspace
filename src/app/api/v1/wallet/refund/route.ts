@@ -64,6 +64,32 @@ export async function POST(req: NextRequest) {
     const walletRow = await ensureWalletRow(auth.dbUser!.user_id);
 
     const metadata = normalizeMetadata(parsed.data.metadata);
+
+    const existing = await prisma.wallet_transaction.findFirst({
+      where: {
+        wallet_id: walletRow.id,
+        type: 'refund',
+        external_reference: { startsWith: `refund_`, },
+        metadata: {
+ path: ['payment_id'],
+equals: parsed.data.paymentId, 
+},
+      },
+    });
+
+    if (existing) {
+      return NextResponse.json({
+        transaction: {
+          id: existing.id,
+          type: existing.type,
+          status: existing.status,
+          amountMinor: existing.amount_minor.toString(),
+          currency: existing.currency,
+        },
+        refundId: existing.external_reference,
+      });
+    }
+
     const refundPayload = await createPaymongoRefund({
       paymentId: parsed.data.paymentId,
       amountMinor,
@@ -87,12 +113,11 @@ export async function POST(req: NextRequest) {
           currency: refundAttributes.currency,
           description: refundAttributes.notes ?? parsed.data.notes ?? null,
           external_reference: refundPayload.data.id,
-          metadata: metadata
-            ? {
-                ...metadata,
-                paymongo_refund_id: refundPayload.data.id,
-              }
-            : { paymongo_refund_id: refundPayload.data.id, },
+          metadata: {
+            ...(metadata ?? {}),
+            paymongo_refund_id: refundPayload.data.id,
+            payment_id: parsed.data.paymentId,
+          },
         },
       });
 

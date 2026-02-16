@@ -97,10 +97,10 @@ const STATUS_FILTER_OPTIONS: StatusFilterOption[] = [
   }))
 ];
 const SPACE_STATUS_BADGE_CLASSNAME: Record<SpaceStatus, string> = {
-  Live: 'border-emerald-600/40 bg-emerald-50 text-emerald-700',
-  Pending: 'border-amber-600/40 bg-amber-50 text-amber-700',
-  Draft: 'border-slate-500/40 bg-slate-100 text-slate-700',
-  Unpublished: 'border-rose-600/40 bg-rose-50 text-rose-700',
+  Live: 'border-emerald-600/40 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-400',
+  Pending: 'border-amber-600/40 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-400',
+  Draft: 'border-slate-500/40 bg-slate-100 text-slate-700 dark:border-slate-400/20 dark:bg-slate-400/10 dark:text-slate-400',
+  Unpublished: 'border-rose-600/40 bg-rose-50 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-400',
 };
 
 export function SpacesInventoryForm() {
@@ -282,7 +282,7 @@ export function SpacesInventoryForm() {
               </CardDescription>
             </div>
           </div>
-          <Badge variant="outline">Draft</Badge>
+          <Badge variant="outline" className={ SPACE_STATUS_BADGE_CLASSNAME['Draft'] }>Draft</Badge>
         </CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 px-6 py-3">
           <p className="text-xs text-muted-foreground">
@@ -519,7 +519,7 @@ export function SpacesInventoryForm() {
                       { row.status }
                     </Badge>
                     { row.pendingUnpublish && (
-                      <p className="text-[11px] font-medium text-amber-600">
+                      <p className="text-[11px] font-medium text-amber-600 dark:text-amber-500/90">
                         Unpublish request pending
                       </p>
                     ) }
@@ -542,7 +542,7 @@ export function SpacesInventoryForm() {
                       <DropdownMenuContent align="end" className="min-w-0 w-32 space-y-1 bg-white p-1 dark:bg-popover">
                         <DropdownMenuItem
                           asChild
-                          className="data-[highlighted]:bg-[oklch(0.955_0.02_204.6929)] focus-visible:bg-[oklch(0.955_0.02_204.6929)]"
+                          className="data-[highlighted]:bg-[oklch(0.955_0.02_204.6929)] focus-visible:bg-[oklch(0.955_0.02_204.6929)] dark:data-[highlighted]:bg-muted dark:focus-visible:bg-muted"
                         >
                           <Link
                             href={
@@ -649,7 +649,7 @@ export function SpacesInventoryForm() {
                       <DropdownMenuContent align="end" className="min-w-0 w-32 space-y-1 bg-white p-1 dark:bg-popover">
                         <DropdownMenuItem
                           asChild
-                          className="data-[highlighted]:bg-[oklch(0.955_0.02_204.6929)] focus-visible:bg-[oklch(0.955_0.02_204.6929)]"
+                          className="data-[highlighted]:bg-[oklch(0.955_0.02_204.6929)] focus-visible:bg-[oklch(0.955_0.02_204.6929)] dark:data-[highlighted]:bg-muted dark:focus-visible:bg-muted"
                         >
                           <Link
                             href={

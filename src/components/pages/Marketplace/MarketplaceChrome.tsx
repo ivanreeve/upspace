@@ -17,7 +17,6 @@ import {
   FileText,
   Home,
   Layers,
-  LayoutDashboard,
   LogOut,
   Menu,
   MessageSquare,
@@ -31,7 +30,7 @@ import {
   Wallet
 } from 'lucide-react';
 import { LuMessageSquareText } from 'react-icons/lu';
-import { MdManageSearch, MdOutlineNotificationsNone } from 'react-icons/md';
+import { MdManageSearch, MdOutlineDashboardCustomize, MdOutlineNotificationsNone } from 'react-icons/md';
 import { RiHome6Line } from 'react-icons/ri';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -401,7 +400,7 @@ function SidebarFooterContent({
                 ) }
                 { showWallet && (
                   <DropdownMenuItem
-                    onSelect={ () => onNavigate('/customer/account/wallet') }
+                    onSelect={ () => onNavigate('/partner/wallet') }
                     className={ sidebarAccountMenuItemClassName }
                   >
                     <Wallet className="size-4" aria-hidden="true" />
@@ -1161,7 +1160,7 @@ export function MarketplaceChrome({
     if (isPartnerRole) {
       actions.push({
         label: 'Wallet',
-        href: '/customer/account/wallet',
+        href: '/partner/wallet',
         icon: Wallet,
       });
     }
@@ -1350,7 +1349,7 @@ export function MarketplaceChrome({
                   ) }
                   { isPartnerRole && (
                     <SidebarLinkItem
-                      href="/customer/account/wallet"
+                      href="/partner/wallet"
                       label="Wallet"
                       icon={ Wallet }
                       tooltip="Wallet"
@@ -1376,7 +1375,7 @@ export function MarketplaceChrome({
                     <SidebarLinkItem
                       href="/partner/spaces/dashboard"
                       label="Dashboard"
-                      icon={ LayoutDashboard }
+                      icon={ MdOutlineDashboardCustomize }
                       tooltip="Dashboard"
                     />
                   ) }
