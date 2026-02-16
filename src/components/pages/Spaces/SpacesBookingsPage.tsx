@@ -488,7 +488,7 @@ export function SpacesBookingsPage() {
       <div className="space-y-2">
         <Badge
           variant="outline"
-          className="bg-muted/20 text-sidebar-accent-foreground/20 dark:bg-muted/70 dark:text-muted-foreground text-xs"
+          className="bg-muted/20 text-sidebar-accent-foreground dark:bg-muted/70 dark:text-muted-foreground text-xs"
         >
           {isStuckLoading
             ? 'Checking paid-but-pending bookings...'
