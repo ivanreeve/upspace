@@ -442,7 +442,7 @@ function SidebarFooterContent({
                     void onLogout();
                   } }
                 >
-                  <LogOut className="size-4" aria-hidden="true" />
+                  <LogOut className="size-4 text-destructive" aria-hidden="true" />
                   <span>Log out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -706,7 +706,7 @@ function MobileTopNav({
                     void onLogout();
                   } }
                 >
-                  <LogOut className="size-4" aria-hidden="true" />
+                  <LogOut className="size-4 text-destructive" aria-hidden="true" />
                   <span>Log out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
