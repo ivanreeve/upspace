@@ -223,7 +223,7 @@ function SidebarToggleMenuItem() {
         aria-label={ isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }
       >
         { isExpanded ? (
-          <PanelLeft className="size-4" aria-hidden="true" />
+          <PanelLeft className="size-3" aria-hidden="true" />
         ) : (
           <LogoSymbolic
             className="size-4 text-primary dark:text-secondary"

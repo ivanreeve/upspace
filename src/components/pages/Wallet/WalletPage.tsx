@@ -66,13 +66,6 @@ const TRANSACTION_TYPE_ICONS: Record<WalletTransactionType, React.ComponentType<
   payout: FiSend,
 };
 
-const TRANSACTION_CARD_STYLES: Record<WalletTransactionType, string> = {
-  cash_in: 'border-sky-200/80 bg-sky-50/70 hover:bg-sky-50 dark:border-sky-900/50 dark:bg-sky-950/20 dark:hover:bg-sky-950/30',
-  charge: 'border-emerald-200/80 bg-emerald-50/70 hover:bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/30',
-  refund: 'border-rose-200/80 bg-rose-50/70 hover:bg-rose-50 dark:border-rose-900/50 dark:bg-rose-950/20 dark:hover:bg-rose-950/30',
-  payout: 'border-violet-200/80 bg-violet-50/70 hover:bg-violet-50 dark:border-violet-900/50 dark:bg-violet-950/20 dark:hover:bg-violet-950/30',
-};
-
 const STATUS_BADGE_VARIANTS: Record<WalletTransactionStatus, 'success' | 'secondary' | 'destructive'> = {
   succeeded: 'success',
   pending: 'secondary',
@@ -106,17 +99,13 @@ function TransactionArticle({ transaction, }: { transaction: WalletTransactionRe
   const label = TRANSACTION_TYPE_LABELS[transaction.type] ?? 'Transaction';
   const badgeVariant = STATUS_BADGE_VARIANTS[transaction.status] ?? 'secondary';
   const amountLabel = formatCurrencyMinor(transaction.amountMinor, transaction.currency);
-  const transactionTone = TRANSACTION_CARD_STYLES[transaction.type] ?? 'border-border/50 bg-background/50 hover:bg-muted/5';
-  const isDebit = transaction.type === 'payout' || transaction.type === 'refund'; // Refunds are also debits from partner's perspective if they were the ones paying? Wait, no, refunds to customers are debits from partner's wallet.
-  
-  // Actually, 'charge' is credit to partner, 'payout' is debit, 'refund' is debit (money going back to customer), 'cash_in' is credit.
   const isCredit = transaction.type === 'charge' || transaction.type === 'cash_in';
 
   return (
-    <article className={ `group relative flex items-center justify-between gap-4 rounded-xl border px-4 py-2 transition-colors ${transactionTone}` }>
+    <article className="group relative flex items-center justify-between gap-4 rounded-md border bg-card px-4 py-3 transition-colors hover:bg-accent/20">
       <div className="flex items-center gap-4 min-w-0">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted/40 text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
-          <Icon className="size-5" aria-hidden="true" />
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-md border bg-muted/30 text-muted-foreground transition-colors group-hover:text-foreground">
+          <Icon className="size-4" aria-hidden="true" />
         </div>
         <div className="min-w-0 flex flex-col gap-0.5">
           <p className="text-sm font-semibold text-foreground truncate">
@@ -140,7 +129,7 @@ function TransactionArticle({ transaction, }: { transaction: WalletTransactionRe
         </p>
         <Badge 
           variant={ badgeVariant } 
-          className="h-5 px-1.5 text-[10px] font-bold uppercase tracking-wider"
+          className="h-5 px-1.5 text-[10px] font-semibold uppercase tracking-wide"
         >
           { STATUS_LABELS[transaction.status] }
         </Badge>
@@ -161,7 +150,7 @@ function WalletPageSkeleton() {
         
         <div className="grid gap-4 md:grid-cols-3">
           { [1, 2, 3].map((i) => (
-            <Card key={ i } className="border border-border/70 bg-background/80">
+            <Card key={ i } className="rounded-md">
               <CardHeader className="space-y-2 px-5 py-2.5">
                 <Skeleton className="h-4 w-20 rounded-md" />
                 <Skeleton className="h-8 w-32 rounded-md" />
@@ -171,13 +160,13 @@ function WalletPageSkeleton() {
           )) }
         </div>
 
-        <Card className="border border-border/70 bg-background/80">
+        <Card className="rounded-md">
           <CardHeader className="px-6 py-2.5">
             <Skeleton className="h-6 w-32 rounded-md" />
           </CardHeader>
           <CardContent className="space-y-3 p-6 pt-0">
             { [1, 2, 3, 4].map((i) => (
-              <Skeleton key={ i } className="h-20 rounded-xl" />
+              <Skeleton key={ i } className="h-20 rounded-md" />
             )) }
           </CardContent>
         </Card>
@@ -338,7 +327,7 @@ failed: 0,
     return (
       <div className="w-full px-4 pb-8 sm:px-6 lg:px-10">
         <section className="space-y-6 py-8 md:space-y-8 md:py-12">
-          <Card className="border-dashed border-border/70 bg-background/60">
+          <Card className="rounded-md border-dashed">
             <CardHeader className="p-8 text-center">
               <CardTitle className="text-xl">Partner wallet only</CardTitle>
               <CardDescription className="mx-auto max-w-md text-balance pt-2">
@@ -365,7 +354,7 @@ failed: 0,
     return (
       <div className="w-full px-4 pb-8 sm:px-6 lg:px-10">
         <section className="space-y-6 py-8 md:space-y-8 md:py-12">
-          <Card className="border-destructive/20 bg-destructive/5">
+          <Card className="rounded-md border-destructive/20 bg-destructive/5">
             <CardHeader className="p-8 text-center">
               <CardTitle>Unable to load wallet</CardTitle>
               <CardDescription className="pt-2">
@@ -420,52 +409,50 @@ failed: 0,
           <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
             Wallet
           </h2>
-          <p className="text-sm text-muted-foreground md:text-base font-sf">
+          <p className="text-sm text-muted-foreground md:text-base">
             Track your earnings, refunds, and payouts from UpSpace bookings.
           </p>
         </div>
 
-        { /* Withdrawals info */ }
-        <section className="relative overflow-hidden rounded-md border border-sky-300/70 bg-gradient-to-br from-sky-100/80 via-cyan-100/40 to-background dark:border-sky-900/70 dark:from-sky-950/30 dark:via-cyan-950/15 dark:to-background">
-          <div className="pointer-events-none absolute -right-10 -top-10 size-32 rounded-full bg-sky-300/30 blur-2xl dark:bg-sky-500/20" />
-          <div className="pointer-events-none absolute -bottom-12 left-8 size-28 rounded-full bg-cyan-300/25 blur-2xl dark:bg-cyan-500/15" />
-          <div className="relative flex flex-col gap-4 px-5 py-3 md:flex-row md:items-end md:justify-between">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 rounded-md border border-sky-300/70 bg-background/70 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-700 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300">
+        <Card className="rounded-md">
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground">
                 <FiDollarSign className="size-4" aria-hidden="true" />
                 PayMongo withdrawals
               </div>
-              <div className="space-y-1">
-                <h3 className="text-sm font-semibold text-foreground">Withdrawals</h3>
-                <p className="max-w-2xl text-xs leading-relaxed text-foreground/80 dark:text-muted-foreground">
-                  Payouts are managed through PayMongo. This balance represents funds collected
-                  from bookings that PayMongo released to you. To move money out, initiate
-                  payouts or withdrawals from your PayMongo dashboard.
-                </p>
-              </div>
+              <CardTitle className="text-base">Withdrawals</CardTitle>
+              <CardDescription className="max-w-2xl">
+                Payouts are managed through PayMongo. This balance represents funds collected
+                from bookings that PayMongo released to you.
+              </CardDescription>
             </div>
-            <a
-              href="https://dashboard.paymongo.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-[#0A5057] underline underline-offset-4 transition-colors hover:text-[#083f44] dark:text-sky-300 dark:hover:text-sky-200"
+            <Button
+              asChild
+              className="dark:border dark:border-input dark:bg-background dark:text-foreground dark:hover:bg-input/50"
             >
-              Open PayMongo dashboard
-              <FiArrowUpRight className="size-4" aria-hidden="true" />
-            </a>
-          </div>
-        </section>
+              <a
+                href="https://dashboard.paymongo.com"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open PayMongo dashboard
+                <FiArrowUpRight className="size-4" aria-hidden="true" />
+              </a>
+            </Button>
+          </CardHeader>
+        </Card>
 
         { /* Stats cards */ }
         <div className="grid gap-4 md:grid-cols-3">
-          <Card className="relative overflow-hidden border border-primary/30 bg-primary/10">
+          <Card className="rounded-md">
             <CardHeader className="space-y-1 px-5 py-2.5">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Available balance
                 </p>
-                <div className="rounded-full bg-primary/10 p-1.5 text-primary">
-                  <FiDollarSign className="size-4" />
+                <div className="rounded-md border bg-muted/30 p-1.5 text-muted-foreground">
+                  <FiDollarSign className="size-4" aria-hidden="true" />
                 </div>
               </div>
               <CardTitle className="text-3xl font-bold tracking-tight">
@@ -477,14 +464,14 @@ failed: 0,
             </CardHeader>
           </Card>
 
-          <Card className="relative overflow-hidden border border-emerald-300/60 bg-emerald-100/40 dark:border-emerald-900/60 dark:bg-emerald-950/20">
+          <Card className="rounded-md">
             <CardHeader className="space-y-1 px-5 py-2.5">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Total earned
                 </p>
-                <div className="rounded-full bg-emerald-500/10 p-1.5 text-emerald-600 dark:text-emerald-400">
-                  <FiTrendingUp className="size-4" />
+                <div className="rounded-md border bg-muted/30 p-1.5 text-muted-foreground">
+                  <FiTrendingUp className="size-4" aria-hidden="true" />
                 </div>
               </div>
               <CardTitle className="text-3xl font-bold tracking-tight">
@@ -496,14 +483,14 @@ failed: 0,
             </CardHeader>
           </Card>
 
-          <Card className="relative overflow-hidden border border-rose-300/60 bg-rose-100/40 dark:border-rose-900/60 dark:bg-rose-950/20">
+          <Card className="rounded-md">
             <CardHeader className="space-y-1 px-5 py-2.5">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Total refunded
                 </p>
-                <div className="rounded-full bg-destructive/10 p-1.5 text-destructive">
-                  <FiRotateCcw className="size-4" />
+                <div className="rounded-md border bg-muted/30 p-1.5 text-muted-foreground">
+                  <FiRotateCcw className="size-4" aria-hidden="true" />
                 </div>
               </div>
               <CardTitle className="text-3xl font-bold tracking-tight">
@@ -525,13 +512,13 @@ failed: 0,
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
-            <Card className="border border-border/70 bg-background/80">
+            <Card className="rounded-md">
               <CardHeader className="space-y-1 px-5 py-2.5">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Success rate
                 </p>
                 <CardTitle className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-                  <FiActivity className="size-5 text-emerald-500" aria-hidden="true" />
+                  <FiActivity className="size-4 text-emerald-500" aria-hidden="true" />
                   { analytics.successfulRate }%
                 </CardTitle>
                 <CardDescription className="text-xs font-medium text-muted-foreground">
@@ -540,13 +527,13 @@ failed: 0,
               </CardHeader>
             </Card>
 
-            <Card className="border border-border/70 bg-background/80">
+            <Card className="rounded-md">
               <CardHeader className="space-y-1 px-5 py-2.5">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Most common type
                 </p>
                 <CardTitle className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-                  <FiPieChart className="size-5 text-violet-500" aria-hidden="true" />
+                  <FiPieChart className="size-4 text-violet-500" aria-hidden="true" />
                   { analytics.topType }
                 </CardTitle>
                 <CardDescription className="text-xs font-medium text-muted-foreground">
@@ -555,13 +542,13 @@ failed: 0,
               </CardHeader>
             </Card>
 
-            <Card className="border border-border/70 bg-background/80">
+            <Card className="rounded-md">
               <CardHeader className="space-y-1 px-5 py-2.5">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Avg booking charge
                 </p>
                 <CardTitle className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-                  <FiBarChart2 className="size-5 text-sky-600" aria-hidden="true" />
+                  <FiBarChart2 className="size-4 text-sky-600" aria-hidden="true" />
                   { analytics.averageCharge }
                 </CardTitle>
                 <CardDescription className="text-xs font-medium text-muted-foreground">
@@ -572,7 +559,7 @@ failed: 0,
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <Card className="border border-border/70 bg-background/80">
+            <Card className="rounded-md">
               <CardHeader className="px-5 py-2.5">
                 <CardTitle className="text-sm font-semibold">Status distribution</CardTitle>
                 <CardDescription className="text-xs">How your transactions are resolving.</CardDescription>
@@ -598,7 +585,7 @@ failed: 0,
               </CardContent>
             </Card>
 
-            <Card className="border border-border/70 bg-background/80">
+            <Card className="rounded-md">
               <CardHeader className="px-5 py-2.5">
                 <CardTitle className="text-sm font-semibold">Transaction mix</CardTitle>
                 <CardDescription className="text-xs">Share by wallet transaction type.</CardDescription>
@@ -625,7 +612,7 @@ failed: 0,
             </Card>
           </div>
 
-          <Card className="border border-border/70 bg-background/80">
+          <Card className="rounded-md">
             <CardHeader className="px-5 py-2.5">
               <CardTitle className="text-sm font-semibold">Net flow trend (last 6 months)</CardTitle>
               <CardDescription className="text-xs">Charges/top-ups minus payouts/refunds.</CardDescription>
@@ -706,7 +693,7 @@ failed: 0,
             </div>
           </div>
 
-          <Card className="overflow-hidden border border-border/70 bg-background/80">
+          <Card className="overflow-hidden rounded-md">
             <CardContent className="p-0">
               { transactions.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 px-6 py-20 text-center">
@@ -757,7 +744,7 @@ failed: 0,
             </CardContent>
             { transactions.length > 0 && (
               <div className="border-t border-border/40 bg-muted/10 px-6 py-1">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Showing { transactions.length } { transactions.length === 1 ? 'entry' : 'entries' } • Synced with PayMongo
                 </p>
               </div>
