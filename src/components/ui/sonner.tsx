@@ -7,6 +7,11 @@ export const Toaster = ({ ...props }: ToasterProps) => {
       <Sonner
         theme="light"
         className="toaster group"
+        style={ {
+          left: 'calc(var(--sidebar-width, 0px) + (100vw - var(--sidebar-width, 0px)) * 0.58)',
+          right: 'auto',
+          transform: 'translateX(-50%)',
+        } }
         visibleToasts={ 1 }
         position="top-center"
         offset={ 32 }
