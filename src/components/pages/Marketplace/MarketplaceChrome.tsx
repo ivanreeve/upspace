@@ -6,29 +6,36 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
-  FiBarChart2,
-  FiBell,
-  FiBookmark,
-  FiCommand,
-  FiCreditCard,
-  FiHome,
-  FiLogOut,
-  FiMenu,
-  FiMessageSquare,
-  FiSearch,
-  FiSettings,
-  FiUser,
-  FiUserX,
-  FiUsers,
-  FiEyeOff,
-  FiChevronRight,
-  FiLayers
-} from 'react-icons/fi';
-import { PiMoneyWavyBold, PiWalletLight } from 'react-icons/pi';
-import { HiOutlineDocumentText } from 'react-icons/hi';
-import { LuTicket } from 'react-icons/lu';
-import { MdOutlineSpaceDashboard, MdWorkOutline } from 'react-icons/md';
-import { TbLayoutSidebarFilled } from 'react-icons/tb';
+  BarChart3,
+  Bookmark,
+  Briefcase,
+  ChevronRight,
+  Command,
+  CreditCard,
+  DollarSign,
+  EyeOff,
+  FileText,
+  Home,
+  LogOut,
+  Menu,
+  MessageSquare,
+  PanelLeft,
+  Search,
+  Settings,
+  Ticket,
+  User,
+  Users,
+  UserX
+} from 'lucide-react';
+import { LuMessageSquareText } from 'react-icons/lu';
+import {
+  MdManageSearch,
+  MdOutlineAccountBalanceWallet,
+  MdOutlineDashboardCustomize,
+  MdOutlineNotificationsNone
+} from 'react-icons/md';
+import { TbLocationCog } from 'react-icons/tb';
+import { RiHome6Line } from 'react-icons/ri';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -145,15 +152,26 @@ function GradientSparklesIcon({
   );
 }
 
+function NotificationIcon(props: React.SVGProps<SVGSVGElement>) {
+  return <MdOutlineNotificationsNone { ...props } />;
+}
+
+function SidebarMessageIcon(props: React.SVGProps<SVGSVGElement>) {
+  return <LuMessageSquareText { ...props } />;
+}
+
+function SidebarHomeIcon(props: React.SVGProps<SVGSVGElement>) {
+  return <RiHome6Line { ...props } />;
+}
+
 function SidebarToggleMenuItem() {
   const {
  state, toggleSidebar, isMobile, 
 } = useSidebar();
   const isExpanded = state === 'expanded';
-  const Icon = isExpanded ? TbLayoutSidebarFilled : TbLayoutSidebarFilled;
 
   if (isMobile) {
-    const CloseIcon = FiChevronRight;
+    const CloseIcon = ChevronRight;
 
     return (
       <SidebarMenuItem className="flex items-center justify-between gap-2 pr-1">
@@ -165,7 +183,7 @@ function SidebarToggleMenuItem() {
           <span className="leading-tight">UpSpace</span>
         </Link>
         <div className="flex items-center gap-2">
-          <ThemeSwitcher variant="compact" />
+          <ThemeSwitcher variant="compact" shadowless />
           <SidebarMenuButton
             tooltip="Close menu"
             type="button"
@@ -204,7 +222,14 @@ function SidebarToggleMenuItem() {
         className="w-10 justify-center p-2"
         aria-label={ isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }
       >
-        <Icon className="size-4" aria-hidden="true" />
+        { isExpanded ? (
+          <PanelLeft className="size-3" aria-hidden="true" />
+        ) : (
+          <LogoSymbolic
+            className="size-4 text-primary dark:text-secondary"
+            aria-hidden="true"
+          />
+        ) }
         <span className="sr-only">
           { isExpanded ? 'Collapse sidebar' : 'Expand sidebar' }
         </span>
@@ -244,6 +269,10 @@ function SidebarFooterContent({
     isCollapsed ? 'h-9 w-9' : 'h-11 w-11'
   );
   const skeletonTextClass = isCollapsed ? 'h-3 w-16' : 'h-3 w-24';
+  const sidebarAccountMenuItemClassName =
+    'data-[highlighted]:bg-[oklch(0.955_0.02_204.6929)] focus-visible:bg-[oklch(0.955_0.02_204.6929)] dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] data-[highlighted]:text-primary data-[highlighted]:[&_svg]:text-primary dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary hover:!text-primary hover:[&_svg]:!text-primary dark:hover:!text-secondary dark:hover:[&_svg]:!text-secondary';
+  const sidebarLogoutMenuItemClassName =
+    'mt-2 text-destructive focus-visible:text-destructive data-[highlighted]:bg-[oklch(0.9647_0.0345_19.81)] focus-visible:bg-[oklch(0.9647_0.0345_19.81)] dark:data-[highlighted]:bg-[oklch(0.24_0.04_19.81)] dark:focus-visible:bg-[oklch(0.24_0.04_19.81)] data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive hover:bg-[oklch(0.9647_0.0345_19.81)] dark:hover:bg-[oklch(0.24_0.04_19.81)] hover:text-destructive hover:[&_svg]:text-destructive';
 
   if (isMobile) {
     return null;
@@ -258,6 +287,7 @@ function SidebarFooterContent({
     >
       <ThemeSwitcher
         variant={ isCollapsed ? 'compact' : 'default' }
+        shadowless
         className={ isCollapsed ? undefined : 'w-full justify-between' }
       />
       { isSidebarLoading ? (
@@ -363,59 +393,67 @@ function SidebarFooterContent({
                   showTransactionHistory) && (
                   <DropdownMenuSeparator className="my-1" />
                 ) }
-                { showAccount && (
-                  <DropdownMenuItem
-                    onSelect={ () => onNavigate('/customer/account') }
-                    className="hover:!text-white hover:[&_svg]:!text-white"
-                  >
-                    <FiUser className="size-4" aria-hidden="true" />
-                    <span>Account</span>
-                  </DropdownMenuItem>
-                ) }
-                { showWallet && (
-                  <DropdownMenuItem
-                    onSelect={ () => onNavigate('/customer/account/wallet') }
-                    className="hover:!text-white hover:[&_svg]:!text-white"
-                  >
-                    <PiWalletLight className="size-4" aria-hidden="true" />
-                    <span>Wallet</span>
-                  </DropdownMenuItem>
-                ) }
-                { showSettings && (
-                  <DropdownMenuItem
-                    onSelect={ () => onNavigate('/customer/settings') }
-                    className="hover:!text-white hover:[&_svg]:!text-white"
-                  >
-                    <FiSettings className="size-4" aria-hidden="true" />
-                    <span>Settings</span>
-                  </DropdownMenuItem>
-                ) }
-                { showNotifications && (
-                  <DropdownMenuItem
-                    onSelect={ () => onNavigate('/customer/notifications') }
-                    className="hover:!text-white hover:[&_svg]:!text-white"
-                  >
-                    <FiBell className="size-4" aria-hidden="true" />
-                    <span>Notifications</span>
-                  </DropdownMenuItem>
-                ) }
-                { showTransactionHistory && (
-                  <DropdownMenuItem
-                    onSelect={ () => onNavigate('/customer/transactions') }
-                    className="hover:!text-white hover:[&_svg]:!text-white"
-                  >
-                    <FiCreditCard className="size-4" aria-hidden="true" />
-                    <span>Transaction history</span>
-                  </DropdownMenuItem>
+                { (showAccount ||
+                  showWallet ||
+                  showSettings ||
+                  showNotifications ||
+                  showTransactionHistory) && (
+                  <div className="space-y-0.5 py-2">
+                    { showAccount && (
+                      <DropdownMenuItem
+                        onSelect={ () => onNavigate('/customer/account') }
+                        className={ sidebarAccountMenuItemClassName }
+                      >
+                        <User className="size-4" aria-hidden="true" />
+                        <span>Account</span>
+                      </DropdownMenuItem>
+                    ) }
+                    { showWallet && (
+                      <DropdownMenuItem
+                        onSelect={ () => onNavigate('/partner/wallet') }
+                        className={ sidebarAccountMenuItemClassName }
+                      >
+                        <MdOutlineAccountBalanceWallet className="size-4" aria-hidden="true" />
+                        <span>Wallet</span>
+                      </DropdownMenuItem>
+                    ) }
+                    { showSettings && (
+                      <DropdownMenuItem
+                        onSelect={ () => onNavigate('/customer/settings') }
+                        className={ sidebarAccountMenuItemClassName }
+                      >
+                        <Settings className="size-4" aria-hidden="true" />
+                        <span>Settings</span>
+                      </DropdownMenuItem>
+                    ) }
+                    { showNotifications && (
+                      <DropdownMenuItem
+                        onSelect={ () => onNavigate('/customer/notifications') }
+                        className={ sidebarAccountMenuItemClassName }
+                      >
+                        <NotificationIcon className="size-4" aria-hidden="true" />
+                        <span>Notifications</span>
+                      </DropdownMenuItem>
+                    ) }
+                    { showTransactionHistory && (
+                      <DropdownMenuItem
+                        onSelect={ () => onNavigate('/customer/transactions') }
+                        className={ sidebarAccountMenuItemClassName }
+                      >
+                        <CreditCard className="size-4" aria-hidden="true" />
+                        <span>Transaction history</span>
+                      </DropdownMenuItem>
+                    ) }
+                  </div>
                 ) }
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
-                  className="text-destructive focus-visible:text-destructive hover:!text-white hover:[&_svg]:!text-white"
+                  className={ sidebarLogoutMenuItemClassName }
                   onSelect={ () => {
                     void onLogout();
                   } }
                 >
-                  <FiLogOut className="size-4" aria-hidden="true" />
+                  <LogOut className="size-4 text-destructive" aria-hidden="true" />
                   <span>Log out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -556,7 +594,7 @@ function MobileTopNav({
               aria-label="Notifications"
               className="rounded-full p-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
-              <FiBell className="size-5" aria-hidden="true" />
+              <NotificationIcon className="size-5" aria-hidden="true" />
             </Link>
           ) }
           { showSearchButton && (
@@ -566,7 +604,7 @@ function MobileTopNav({
               onClick={ onSearchOpen }
               className="rounded-full p-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
-              <FiSearch className="size-5" aria-hidden="true" />
+              <Search className="size-5" aria-hidden="true" />
             </button>
           ) }
           { showSidebarToggle && (
@@ -576,7 +614,7 @@ function MobileTopNav({
               onClick={ toggleSidebar }
               className="rounded-full p-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
-              <FiMenu className="size-5" aria-hidden="true" />
+              <Menu className="size-5" aria-hidden="true" />
             </button>
           ) }
           { showThemeSwitcher && <ThemeSwitcher variant="compact" /> }
@@ -636,38 +674,54 @@ function MobileTopNav({
                   </div>
                 </div>
                 { hasAdditionalLinks && <DropdownMenuSeparator className="my-1" /> }
-                { showAccountLinks && (
-                  <>
-                    <DropdownMenuItem onSelect={ () => onNavigate('/customer/account') }>
-                      <FiUser className="size-4" aria-hidden="true" />
-                      <span>Account</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={ () => onNavigate('/customer/settings') }>
-                      <FiSettings className="size-4" aria-hidden="true" />
-                      <span>Settings</span>
-                    </DropdownMenuItem>
-                  </>
-                ) }
-                { showNotifications && (
-                  <DropdownMenuItem onSelect={ () => onNavigate('/customer/notifications') }>
-                    <FiBell className="size-4" aria-hidden="true" />
-                    <span>Notifications</span>
-                  </DropdownMenuItem>
-                ) }
-                { showTransactionHistory && (
-                  <DropdownMenuItem onSelect={ () => onNavigate('/customer/transactions') }>
-                    <FiCreditCard className="size-4" aria-hidden="true" />
-                    <span>Transaction history</span>
-                  </DropdownMenuItem>
+                { hasAdditionalLinks && (
+                  <div className="space-y-0.5 py-2">
+                    { showAccountLinks && (
+                      <>
+                        <DropdownMenuItem
+                          onSelect={ () => onNavigate('/customer/account') }
+                          className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
+                        >
+                          <User className="size-4" aria-hidden="true" />
+                          <span>Account</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onSelect={ () => onNavigate('/customer/settings') }
+                          className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
+                        >
+                          <Settings className="size-4" aria-hidden="true" />
+                          <span>Settings</span>
+                        </DropdownMenuItem>
+                      </>
+                    ) }
+                    { showNotifications && (
+                      <DropdownMenuItem
+                        onSelect={ () => onNavigate('/customer/notifications') }
+                        className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
+                      >
+                        <NotificationIcon className="size-4" aria-hidden="true" />
+                        <span>Notifications</span>
+                      </DropdownMenuItem>
+                    ) }
+                    { showTransactionHistory && (
+                      <DropdownMenuItem
+                        onSelect={ () => onNavigate('/customer/transactions') }
+                        className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
+                      >
+                        <CreditCard className="size-4" aria-hidden="true" />
+                        <span>Transaction history</span>
+                      </DropdownMenuItem>
+                    ) }
+                  </div>
                 ) }
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
-                  className="text-destructive focus-visible:text-destructive"
+                  className="mt-2 text-destructive focus-visible:text-destructive data-[highlighted]:bg-[oklch(0.9647_0.0345_19.81)] focus-visible:bg-[oklch(0.9647_0.0345_19.81)] dark:data-[highlighted]:bg-[oklch(0.24_0.04_19.81)] dark:focus-visible:bg-[oklch(0.24_0.04_19.81)] data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive hover:bg-[oklch(0.9647_0.0345_19.81)] dark:hover:bg-[oklch(0.24_0.04_19.81)] hover:text-destructive hover:[&_svg]:text-destructive"
                   onSelect={ () => {
                     void onLogout();
                   } }
                 >
-                  <FiLogOut className="size-4" aria-hidden="true" />
+                  <LogOut className="size-4 text-destructive" aria-hidden="true" />
                   <span>Log out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -1076,37 +1130,37 @@ export function MarketplaceChrome({
         {
           label: 'Home',
           href: '/marketplace',
-          icon: FiHome,
+          icon: Home,
         },
         {
           label: 'Dashboard',
           href: '/marketplace/dashboard',
-          icon: FiBarChart2,
+          icon: BarChart3,
         },
         {
           label: 'Queue',
           href: '/admin',
-          icon: HiOutlineDocumentText,
+          icon: FileText,
         },
         {
           label: 'Deactivation requests',
           href: '/admin/deactivation-requests',
-          icon: FiUserX,
+          icon: UserX,
         },
         {
           label: 'Unpublish requests',
           href: '/admin/unpublish-requests',
-          icon: FiEyeOff,
+          icon: EyeOff,
         },
         {
           label: 'Users',
           href: '/admin/users',
-          icon: FiUsers,
+          icon: Users,
         },
         {
           label: 'Spaces',
           href: '/admin/spaces',
-          icon: FiLayers,
+          icon: TbLocationCog,
         }
       ];
     }
@@ -1116,14 +1170,14 @@ export function MarketplaceChrome({
     actions.push({
       label: 'Home',
       href: '/marketplace',
-      icon: FiHome,
+      icon: Home,
     });
 
     if (isPartnerRole) {
       actions.push({
         label: 'Wallet',
-        href: '/customer/account/wallet',
-        icon: PiWalletLight,
+        href: '/partner/wallet',
+        icon: MdOutlineAccountBalanceWallet,
       });
     }
 
@@ -1137,13 +1191,13 @@ export function MarketplaceChrome({
       actions.push({
         label: 'Bookmarks',
         href: '/customer/bookmarks',
-        icon: FiBookmark,
+        icon: Bookmark,
       });
       actions.push(aiSearchAction);
     } else {
       actions.push({
         label: 'Search',
-        icon: FiSearch,
+        icon: Search,
         onClick: handleSearch,
       });
     }
@@ -1152,7 +1206,7 @@ export function MarketplaceChrome({
       actions.push({
         label: 'Notifications',
         href: '/customer/notifications',
-        icon: FiBell,
+        icon: NotificationIcon,
       });
     }
 
@@ -1160,7 +1214,7 @@ export function MarketplaceChrome({
       actions.push({
         label: 'Messages',
         href: resolvedMessageHref,
-        icon: FiMessageSquare,
+        icon: MessageSquare,
       });
     }
 
@@ -1238,9 +1292,9 @@ export function MarketplaceChrome({
                   <SidebarLinkItem
                     href="/marketplace"
                     label="Home"
-                    icon={ FiHome }
+                    icon={ SidebarHomeIcon }
                     tooltip="Home"
-                    iconProps={ { strokeWidth: 2, } }
+                    iconProps={ { className: 'size-[18px]', } }
                   />
                   <SidebarMenuItem>
                     <SidebarMenuButton
@@ -1249,10 +1303,10 @@ export function MarketplaceChrome({
                       type="button"
                       onClick={ handleSearch }
                     >
-                      <FiSearch className="size-4" strokeWidth={ 2 } />
+                      <MdManageSearch className="size-4" aria-hidden="true" />
                       <span data-sidebar-label>Search</span>
-                      <Kbd className="ml-auto hidden items-center gap-1 bg-sidebar-accent/10 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden hover:!text-gray-500 dark:hover:!text-sidebar-foreground/70">
-                        <FiCommand className="size-3" aria-hidden="true" />
+                      <Kbd className="ml-auto hidden items-center gap-1 bg-muted/20 text-[10px] text-sidebar-foreground/70 md:flex group-data-[collapsible=icon]:hidden hover:!text-gray-500 dark:hover:!text-sidebar-foreground/70">
+                        <Command className="size-3" aria-hidden="true" />
                         <span> + K</span>
                       </Kbd>
                     </SidebarMenuButton>
@@ -1266,7 +1320,7 @@ export function MarketplaceChrome({
                       labelBadge={
                         <Badge
                           variant="outline"
-                          className="px-2 py-0.5 text-[10px] leading-none"
+                          className="bg-muted/20 px-2 py-0.5 text-[10px] leading-none"
                         >
                           Beta
                         </Badge>
@@ -1277,7 +1331,7 @@ export function MarketplaceChrome({
                     <SidebarLinkItem
                       href="/customer/bookmarks"
                       label="Bookmarks"
-                      icon={ FiBookmark }
+                      icon={ Bookmark }
                       tooltip="Bookmarks"
                       iconProps={ { strokeWidth: 2, } }
                     />
@@ -1286,16 +1340,16 @@ export function MarketplaceChrome({
                     <SidebarLinkItem
                       href="/customer/notifications"
                       label="Notifications"
-                      icon={ FiBell }
+                      icon={ NotificationIcon }
                       tooltip="Notifications"
-                      iconProps={ { strokeWidth: 2, } }
+                      iconProps={ { className: 'size-[19px] -translate-y-px', } }
                     />
                   ) }
                   { isCustomerRole && (
                     <SidebarLinkItem
                       href="/customer/bookings"
                       label="Bookings"
-                      icon={ LuTicket }
+                      icon={ Ticket }
                       tooltip="Bookings"
                       iconProps={ { strokeWidth: 1.5, } }
                     />
@@ -1304,16 +1358,16 @@ export function MarketplaceChrome({
                     <SidebarLinkItem
                       href={ resolvedMessageHref }
                       label="Messages"
-                      icon={ FiMessageSquare }
+                      icon={ SidebarMessageIcon }
                       tooltip="Messages"
                       iconProps={ { strokeWidth: 2, } }
                     />
                   ) }
                   { isPartnerRole && (
                     <SidebarLinkItem
-                      href="/customer/account/wallet"
+                      href="/partner/wallet"
                       label="Wallet"
-                      icon={ PiWalletLight }
+                      icon={ MdOutlineAccountBalanceWallet }
                       tooltip="Wallet"
                     />
                   ) }
@@ -1321,7 +1375,7 @@ export function MarketplaceChrome({
                     <SidebarLinkItem
                       href="/partner/spaces"
                       label="Spaces"
-                      icon={ MdWorkOutline }
+                      icon={ TbLocationCog }
                       tooltip="Spaces"
                     />
                   ) }
@@ -1329,7 +1383,7 @@ export function MarketplaceChrome({
                     <SidebarLinkItem
                       href="/partner/spaces/pricing-rules"
                       label="Price Rules"
-                      icon={ PiMoneyWavyBold }
+                      icon={ DollarSign }
                       tooltip="Price rules"
                     />
                   ) }
@@ -1337,7 +1391,7 @@ export function MarketplaceChrome({
                     <SidebarLinkItem
                       href="/partner/spaces/dashboard"
                       label="Dashboard"
-                      icon={ MdOutlineSpaceDashboard }
+                      icon={ MdOutlineDashboardCustomize }
                       tooltip="Dashboard"
                     />
                   ) }
@@ -1345,7 +1399,7 @@ export function MarketplaceChrome({
                     <SidebarLinkItem
                       href="/partner/spaces/bookings"
                       label="Bookings"
-                      icon={ LuTicket }
+                      icon={ Ticket }
                       tooltip="Bookings"
                     />
                   ) }
@@ -1353,7 +1407,7 @@ export function MarketplaceChrome({
                     <SidebarLinkItem
                       href="/marketplace/dashboard"
                       label="Dashboard"
-                      icon={ FiBarChart2 }
+                      icon={ BarChart3 }
                       tooltip="Dashboard"
                       iconProps={ { strokeWidth: 2, } }
                     />
@@ -1362,7 +1416,7 @@ export function MarketplaceChrome({
                     <SidebarLinkItem
                       href="/admin"
                       label="Verification Queue"
-                      icon={ HiOutlineDocumentText }
+                      icon={ FileText }
                       tooltip="Verification queue"
                       iconProps={ { strokeWidth: 2, } }
                     />
@@ -1371,7 +1425,7 @@ export function MarketplaceChrome({
                     <SidebarLinkItem
                       href="/admin/deactivation-requests"
                       label="Deactivation requests"
-                      icon={ FiUserX }
+                      icon={ UserX }
                       tooltip="Deactivation requests"
                       iconProps={ { strokeWidth: 2, } }
                     />
@@ -1380,7 +1434,7 @@ export function MarketplaceChrome({
                     <SidebarLinkItem
                       href="/admin/unpublish-requests"
                       label="Unpublish requests"
-                      icon={ FiEyeOff }
+                      icon={ EyeOff }
                       tooltip="Unpublish requests"
                       iconProps={ { strokeWidth: 2, } }
                     />
@@ -1389,7 +1443,7 @@ export function MarketplaceChrome({
                     <SidebarLinkItem
                       href="/admin/users"
                       label="Users"
-                      icon={ FiUsers }
+                      icon={ Users }
                       tooltip="Manage users"
                       iconProps={ { strokeWidth: 2, } }
                     />
@@ -1398,7 +1452,7 @@ export function MarketplaceChrome({
                     <SidebarLinkItem
                       href="/admin/spaces"
                       label="Spaces"
-                      icon={ FiLayers }
+                      icon={ TbLocationCog }
                       tooltip="Manage spaces"
                       iconProps={ { strokeWidth: 2, } }
                     />

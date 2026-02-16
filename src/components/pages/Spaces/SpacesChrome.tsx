@@ -2,7 +2,7 @@
 
 import { useCallback, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiSearch, FiX } from 'react-icons/fi';
+import { Search, X } from 'lucide-react';
 
 import { MarketplaceChrome } from '../Marketplace/MarketplaceChrome';
 
@@ -80,6 +80,7 @@ export function SpacesChrome({
           description="Search the UpSpace marketplace"
           position="top"
           fullWidth
+          className="[&_[data-slot=command-item][data-selected=true]]:bg-transparent [&_[data-slot=command-item][data-selected=true]:hover]:bg-accent"
         >
           <CommandInput
             value={ searchValue }
@@ -103,7 +104,7 @@ export function SpacesChrome({
                 onSelect={ () => handleSearchSubmit() }
                 className="hover:!text-white"
               >
-                <FiSearch className="size-4" aria-hidden="true" />
+                <Search className="size-4" aria-hidden="true" />
                 <span>Search marketplace</span>
                 { searchValue.trim() ? (
                   <span className="truncate text-muted-foreground">
@@ -120,7 +121,7 @@ export function SpacesChrome({
                   onSelect={ () => setSearchValue('') }
                   className="hover:!text-white"
                 >
-                  <FiX className="size-4" aria-hidden="true" />
+                  <X className="size-4" aria-hidden="true" />
                   <span>Clear search</span>
                 </CommandItem>
               ) }

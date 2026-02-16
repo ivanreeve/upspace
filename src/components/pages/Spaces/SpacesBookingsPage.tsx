@@ -15,6 +15,8 @@ import {
   FiSearch
 } from 'react-icons/fi';
 
+import { SpacesBreadcrumbs } from './SpacesBreadcrumbs';
+
 import { useBulkUpdateBookingStatusMutation, usePartnerBookingsQuery } from '@/hooks/api/useBookings';
 import { usePartnerStuckBookingsQuery } from '@/hooks/api/usePartnerStuckBookings';
 import type { BookingStatus } from '@/lib/bookings/types';
@@ -467,9 +469,10 @@ export function SpacesBookingsPage() {
 
   return (
     <div className="space-y-6 px-4 pb-10 sm:px-6 lg:px-10">
+      <SpacesBreadcrumbs currentPage="Bookings" className="mt-6" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-foreground mt-8">
+          <h1 className="text-2xl font-semibold text-foreground">
             Bookings
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -483,13 +486,16 @@ export function SpacesBookingsPage() {
       </div>
 
       <div className="space-y-2">
-        <Badge variant="outline" className="text-xs">
+        <Badge
+          variant="outline"
+          className="bg-muted/20 text-sidebar-accent-foreground dark:bg-muted/70 dark:text-muted-foreground text-xs"
+        >
           { isStuckLoading
             ? 'Checking paid-but-pending bookings...'
-            : `${ stuckData?.pendingPaid ?? 0 } paid bookings need review` }
+            : `${stuckData?.pendingPaid ?? 0} paid bookings need review` }
         </Badge>
         { stuckData && stuckData.pendingPaid > 0 ? (
-          <div className="rounded-md border border-amber-500/60 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
+          <div className="rounded-md border border-amber-500/60 bg-muted px-3 py-2 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-100">
             Some bookings were paid but are still pending. Open the table below to resolve them.
           </div>
         ) : null }
@@ -516,9 +522,9 @@ export function SpacesBookingsPage() {
           <Button
             type="button"
             asChild
-            variant="outline"
+            variant="default"
             size="sm"
-            className="gap-2"
+            className="gap-2 dark:bg-background dark:text-foreground dark:hover:bg-background"
           >
             <Link
               href="/partner/spaces/dashboard"
@@ -547,7 +553,7 @@ export function SpacesBookingsPage() {
                   onChange={ (event) => setSearchTerm(event.target.value) }
                   placeholder="Search by user, space, area, or status"
                   aria-label="Search booked users"
-                  className="pl-9"
+                  className="pl-9 !bg-white !border-slate-300 hover:!bg-white focus:!bg-white dark:!bg-input/30 dark:!border-input"
                 />
               </div>
               <p className="text-xs text-muted-foreground">
@@ -565,41 +571,43 @@ export function SpacesBookingsPage() {
               >
                 { selectedIds.size } selected
               </Badge>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    disabled={ selectedIds.size === 0 || bulkUpdate.isPending }
-                  >
-                    { bulkUpdate.isPending ? (
-                      <>
-                        <FiLoader
-                          className="size-4 animate-spin"
-                          aria-hidden="true"
-                        />
-                        Applying...
-                      </>
-                    ) : (
-                      'Bulk edit'
-                    ) }
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>Change status</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  { BULK_STATUS_OPTIONS.map((option) => (
-                    <DropdownMenuItem
-                      key={ option.status }
-                      onSelect={ () => handleBulkStatusChange(option.status) }
+              { selectedIds.size > 0 ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      disabled={ bulkUpdate.isPending }
                     >
-                      { option.label }
-                    </DropdownMenuItem>
-                  )) }
-                </DropdownMenuContent>
-              </DropdownMenu>
+                      { bulkUpdate.isPending ? (
+                        <>
+                          <FiLoader
+                            className="size-4 animate-spin"
+                            aria-hidden="true"
+                          />
+                          Applying...
+                        </>
+                      ) : (
+                        'Bulk edit'
+                      ) }
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>Change status</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    { BULK_STATUS_OPTIONS.map((option) => (
+                      <DropdownMenuItem
+                        key={ option.status }
+                        onSelect={ () => handleBulkStatusChange(option.status) }
+                      >
+                        { option.label }
+                      </DropdownMenuItem>
+                    )) }
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null }
               { selectedIds.size > 0 ? (
                 <Button
                   type="button"
@@ -631,9 +639,9 @@ export function SpacesBookingsPage() {
               Area capacity overview data table with active bookings, search,
               and bulk actions
             </TableCaption>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-10">
+            <TableHeader className="bg-primary dark:bg-transparent">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-10 text-white dark:text-foreground">
                   <Checkbox
                     aria-label="Select all visible bookings"
                     checked={ selectionState }
@@ -642,13 +650,13 @@ export function SpacesBookingsPage() {
                     }
                   />
                 </TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Space / Area</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Capacity</TableHead>
-                <TableHead>Booked at</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">User</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Space / Area</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Status</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Duration</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Price</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Capacity</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Booked at</TableHead>
               </TableRow>
             </TableHeader>
             { renderBody() }

@@ -356,7 +356,7 @@ export function AdminUnpublishRequestsPage() {
                 const request = requests.find((item) => item.id === row.id);
                 if (!request) return null;
                 return (
-                  <TableRow key={ row.id } className="transition hover:bg-muted/40">
+                  <TableRow key={ row.id } className="transition hover:bg-muted/20">
                     <TableCell>
                       <div className="flex flex-col">
                         <span className="font-medium">{ row.spaceName }</span>

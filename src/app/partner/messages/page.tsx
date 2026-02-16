@@ -4,6 +4,14 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator
+} from '@/components/ui/breadcrumb';
 import { SpacesChrome } from '@/components/pages/Spaces/SpacesChrome';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -74,6 +82,19 @@ export default async function SpacesMessagesPage() {
     >
       <div className="flex h-full w-full items-center justify-center px-4 py-8">
         <div className="max-w-xl space-y-4 rounded-2xl border border-border/60 bg-card/80 p-8 text-center shadow-sm">
+          <Breadcrumb className="mx-auto w-fit">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link href="/partner/spaces">Spaces</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage className="text-sm font-medium">Messages</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Messages
           </p>

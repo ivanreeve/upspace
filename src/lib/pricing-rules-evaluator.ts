@@ -98,12 +98,17 @@ export type PriceRuleEvaluationResult = {
   branch: 'then' | 'else' | 'unconditional' | 'no-match';
   appliedExpression: string | null;
   conditionsSatisfied: boolean;
+  usedVariables: string[];
 };
 
 export function evaluatePriceRule(
   definition: PriceRuleDefinition,
   context: PriceRuleExecutionContext
 ): PriceRuleEvaluationResult {
+  if (definition.conditions.length > FORMULA_MAX_CONDITIONS) {
+    throw new Error(`Rule exceeds maximum of ${FORMULA_MAX_CONDITIONS} conditions.`);
+  }
+
   const trimmedFormula = definition.formula.trim();
   if (!trimmedFormula) {
     return {
@@ -111,6 +116,7 @@ export function evaluatePriceRule(
       appliedExpression: null,
       branch: 'unconditional',
       conditionsSatisfied: false,
+      usedVariables: [],
     };
   }
 
@@ -122,6 +128,9 @@ export function evaluatePriceRule(
   } = splitFormulaExpressions(trimmedFormula);
   const hasConditions = definition.conditions.length > 0;
 
+  const usedVars = new Set<string>();
+  const trackVar = (key: string) => { usedVars.add(key); };
+
   if (!hasConditions) {
     if (!thenExpression) {
       return {
@@ -129,13 +138,15 @@ export function evaluatePriceRule(
         appliedExpression: null,
         branch: 'unconditional',
         conditionsSatisfied: true,
+        usedVariables: [],
       };
     }
     return {
-      price: safeEvaluateExpression(thenExpression, numericVariableMap),
+      price: safeEvaluateExpression(thenExpression, numericVariableMap, trackVar),
       appliedExpression: thenExpression,
       branch: 'unconditional',
       conditionsSatisfied: true,
+      usedVariables: Array.from(usedVars),
     };
   }
 
@@ -143,19 +154,21 @@ export function evaluatePriceRule(
 
   if (conditionsMatch && thenExpression) {
     return {
-      price: safeEvaluateExpression(thenExpression, numericVariableMap),
+      price: safeEvaluateExpression(thenExpression, numericVariableMap, trackVar),
       appliedExpression: thenExpression,
       branch: 'then',
       conditionsSatisfied: true,
+      usedVariables: Array.from(usedVars),
     };
   }
 
   if (!conditionsMatch && elseExpression) {
     return {
-      price: safeEvaluateExpression(elseExpression, numericVariableMap),
+      price: safeEvaluateExpression(elseExpression, numericVariableMap, trackVar),
       appliedExpression: elseExpression,
       branch: 'else',
       conditionsSatisfied: false,
+      usedVariables: Array.from(usedVars),
     };
   }
 
@@ -165,6 +178,7 @@ export function evaluatePriceRule(
       appliedExpression: thenExpression || null,
       branch: 'then',
       conditionsSatisfied: true,
+      usedVariables: Array.from(usedVars),
     };
   }
 
@@ -173,18 +187,20 @@ export function evaluatePriceRule(
     appliedExpression: elseExpression || null,
     branch: 'no-match',
     conditionsSatisfied: false,
+    usedVariables: Array.from(usedVars),
   };
 }
 
 const safeEvaluateExpression = (
   expression: string,
-  variables: FormulaVariableValueMap
+  variables: FormulaVariableValueMap,
+  onVariable?: (key: string) => void
 ): number | null => {
   if (!expression.trim()) {
     return null;
   }
   try {
-    const value = evaluateFormula(expression, variables);
+    const value = evaluateFormula(expression, variables, onVariable);
     if (!Number.isFinite(value)) {
       return null;
     }
@@ -571,10 +587,15 @@ const secondsIntoDay = (value: Date) => {
   return value.getHours() * 3600 + value.getMinutes() * 60 + value.getSeconds();
 };
 
+export const FORMULA_MAX_LENGTH = 1024;
+export const FORMULA_MAX_NESTING_DEPTH = 32;
+export const FORMULA_MAX_CONDITIONS = 50;
+
 type ParserState = {
   expression: string;
   length: number;
   pos: number;
+  depth: number;
   variables: FormulaVariableValueMap;
   onVariable?: (key: string) => void;
 };
@@ -596,10 +617,15 @@ export function evaluateFormula(
     throw new Error('Enter a formula before validating.');
   }
 
+  if (expression.length > FORMULA_MAX_LENGTH) {
+    throw new Error(`Formula exceeds maximum length of ${FORMULA_MAX_LENGTH} characters.`);
+  }
+
   const state: ParserState = {
     expression,
     length: expression.length,
     pos: 0,
+    depth: 0,
     variables,
     onVariable,
   };
@@ -668,6 +694,10 @@ function parseFactor(state: ParserState): number {
   }
 
   if (char === '(') {
+    state.depth += 1;
+    if (state.depth > FORMULA_MAX_NESTING_DEPTH) {
+      throw new Error(`Formula exceeds maximum nesting depth of ${FORMULA_MAX_NESTING_DEPTH}.`);
+    }
     state.pos += 1;
     const value = parseExpression(state);
     skipWhitespace(state);
@@ -675,6 +705,7 @@ function parseFactor(state: ParserState): number {
       throw new Error('Expected closing parenthesis.');
     }
     state.pos += 1;
+    state.depth -= 1;
     return value;
   }
 

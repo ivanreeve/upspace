@@ -78,7 +78,7 @@ export function PriceRuleCreationPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" asChild>
+          <Button asChild>
             <Link
               href="/partner/spaces/pricing-rules"
               className="flex items-center gap-2 text-sm hover:text-white"
@@ -110,7 +110,7 @@ export function PriceRuleCreationPage() {
                   onValueChange={ (value) => setSelectedSpaceId(value) }
                   disabled={ !spaces.length }
                 >
-                  <SelectTrigger className="min-w-[12rem] text-sm">
+                  <SelectTrigger className="min-w-[12rem] bg-muted/20 text-sm">
                     <SelectValue placeholder="Select space" />
                   </SelectTrigger>
                   <SelectContent>

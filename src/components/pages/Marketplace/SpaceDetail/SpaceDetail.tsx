@@ -416,10 +416,11 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
       activePriceRule.definition,
       {
         bookingHours,
+        now: new Date(bookingStartAtIso),
         variableOverrides,
       }
     );
-  }, [activePriceRule, bookingHours, variableOverrides]);
+  }, [activePriceRule, bookingHours, bookingStartAtIso, variableOverrides]);
 
   const selectedAreaMaxCapacity = selectedArea?.maxCapacity ?? null;
   const remainingCapacity =
@@ -436,7 +437,14 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
         : `${remainingCapacity} slot${remainingCapacity === 1 ? '' : 's'} remaining`
     : 'Select an area to view capacity limits.';
 
-  const totalPrice = priceEvaluation?.price ?? null;
+  const totalPrice = useMemo(() => {
+    if (!priceEvaluation || priceEvaluation.price === null) {
+      return null;
+    }
+    const formulaAlreadyHandlesGuests = priceEvaluation.usedVariables.includes('guest_count');
+    const guestMultiplier = formulaAlreadyHandlesGuests ? 1 : guestCount;
+    return priceEvaluation.price * guestMultiplier;
+  }, [priceEvaluation, guestCount]);
   const pricePreviewLabel = (() => {
     if (!selectedArea) {
       return 'Select an area to preview pricing';
@@ -864,7 +872,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                             onClick={ () => setIsDescriptionExpanded(true) }
                             aria-expanded={ false }
                             aria-controls={ descriptionViewportId }
-                            className="flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent hover:text-white"
+                            className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-background px-4 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent hover:text-white"
                           >
                             Show more
                             <FiChevronDown

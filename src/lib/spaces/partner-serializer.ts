@@ -147,6 +147,7 @@ const serializePriceRule = (
   name: rule.name,
   description: rule.description ?? null,
   definition: rule.definition as PriceRuleDefinition,
+  is_active: rule.is_active,
   linked_area_count: rule._count?.area ?? 0,
   created_at: rule.created_at instanceof Date ? rule.created_at.toISOString() : String(rule.created_at),
   updated_at: rule.updated_at instanceof Date ? rule.updated_at.toISOString() : null,

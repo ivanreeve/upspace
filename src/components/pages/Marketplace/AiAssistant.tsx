@@ -2,14 +2,19 @@
 
 import React from 'react';
 import dynamic from 'next/dynamic';
-import { useMutation } from '@tanstack/react-query';
+import Link from 'next/link';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
 FiAlertCircle,
 FiSend,
 FiMapPin,
 FiDollarSign,
 FiWifi,
-FiCalendar
+FiCalendar,
+FiClock,
+FiUsers,
+FiCheckCircle,
+FiMenu
 } from 'react-icons/fi';
 import { IoStop } from 'react-icons/io5';
 import { toast } from 'sonner';
@@ -30,12 +35,31 @@ import { useUserProfile } from '@/hooks/use-user-profile';
 import { useGeolocation } from '@/hooks/use-geolocation';
 import { cn } from '@/lib/utils';
 import { getSpeechRecognitionErrorMessage, VOICE_UNSUPPORTED_MESSAGE } from '@/lib/voice';
+import { useCreateCheckoutSessionMutation } from '@/hooks/api/useBookings';
+import { useAiConversationQuery, useCreateAiConversationMutation, aiConversationKeys } from '@/hooks/api/useAiConversations';
+import { AiChatSidebar } from '@/components/pages/Marketplace/AiChatSidebar';
+import { useSession } from '@/components/auth/SessionProvider';
+
+type BookingAction = {
+  action: 'checkout';
+  spaceId: string;
+  areaId: string;
+  bookingHours: number;
+  price: number;
+  startAt: string;
+  guestCount: number;
+  spaceName: string;
+  areaName: string;
+  priceCurrency: string;
+  requiresHostApproval?: boolean;
+};
 
 type ChatMessage = {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   spaceResults?: Space[];
+  bookingAction?: BookingAction;
 };
 
 const makeMessageId = (role: ChatMessage['role']) =>
@@ -254,6 +278,115 @@ function MicGradientIcon({ className, }: { className?: string }) {
   );
 }
 
+function BookingConfirmationCard({ bookingAction, }: {
+  bookingAction: BookingAction;
+}) {
+  const checkoutMutation = useCreateCheckoutSessionMutation();
+
+  const handleProceedToPayment = () => {
+    checkoutMutation.mutate(
+      {
+        spaceId: bookingAction.spaceId,
+        areaId: bookingAction.areaId,
+        bookingHours: bookingAction.bookingHours,
+        price: bookingAction.price,
+        startAt: bookingAction.startAt,
+        guestCount: bookingAction.guestCount,
+      },
+      {
+        onSuccess: (data) => {
+          window.location.href = data.checkoutUrl;
+        },
+        onError: (error) => {
+          toast.error(error.message || 'Failed to start checkout. Please try again.');
+        },
+      }
+    );
+  };
+
+  const startDate = new Date(bookingAction.startAt);
+  const formattedDate = startDate.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  const formattedTime = startDate.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+
+  return (
+    <Card className="mt-3 w-full max-w-[480px] border-primary/30 bg-primary/5">
+      <CardContent className="space-y-3 p-4">
+        <div className="flex items-center gap-2">
+          <FiCheckCircle className="size-5 text-primary" aria-hidden="true" />
+          <span className="text-sm font-semibold">Booking Summary</span>
+        </div>
+
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Space</span>
+            <span className="font-medium">{ bookingAction.spaceName }</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Area</span>
+            <span className="font-medium">{ bookingAction.areaName }</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Date</span>
+            <span className="font-medium">{ formattedDate }</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Time</span>
+            <span className="font-medium">{ formattedTime }</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">
+              <FiClock className="mr-1 inline size-3.5" aria-hidden="true" />
+              Duration
+            </span>
+            <span className="font-medium">
+              { bookingAction.bookingHours } hour{ bookingAction.bookingHours > 1 ? 's' : '' }
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">
+              <FiUsers className="mr-1 inline size-3.5" aria-hidden="true" />
+              Guests
+            </span>
+            <span className="font-medium">{ bookingAction.guestCount }</span>
+          </div>
+          <hr className="border-border/50" />
+          <div className="flex justify-between text-base">
+            <span className="font-semibold">Total</span>
+            <span className="font-semibold text-primary">
+              { bookingAction.priceCurrency }{ ' ' }
+              { bookingAction.price.toLocaleString('en-US', { minimumFractionDigits: 2, }) }
+            </span>
+          </div>
+        </div>
+
+        { bookingAction.requiresHostApproval ? (
+          <p className="text-xs text-muted-foreground">
+            <FiAlertCircle className="mr-1 inline size-3" aria-hidden="true" />
+            This booking requires host approval after payment.
+          </p>
+        ) : null }
+
+        <Button
+          className="w-full"
+          onClick={ handleProceedToPayment }
+          disabled={ checkoutMutation.isPending }
+          aria-label="Proceed to payment checkout"
+        >
+          { checkoutMutation.isPending ? 'Starting checkout...' : 'Proceed to Payment' }
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 function MessageBubble({
   message,
   isThinking = false,
@@ -344,14 +477,26 @@ function MessageBubble({
           ) }
         </div>
       ) : null }
+      { message.bookingAction ? (
+        <div className="mt-3 w-full max-w-[720px]">
+          <BookingConfirmationCard bookingAction={ message.bookingAction } />
+        </div>
+      ) : null }
     </div>
   );
 }
+
+type AiMutationInput = {
+  history: ChatMessage[];
+  conversationId: string;
+};
 
 export function AiAssistant() {
   const [query, setQuery] = React.useState('');
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+  const [activeConversationId, setActiveConversationId] = React.useState<string | null>(null);
+  const [chatSidebarOpen, setChatSidebarOpen] = React.useState(false);
   const {
     isSupported: isVoiceSupported,
     status: voiceStatus,
@@ -377,6 +522,28 @@ export function AiAssistant() {
   const {
     state, isMobile,
   } = useSidebar();
+  const {
+    session, isLoading: sessionLoading,
+  } = useSession();
+  const queryClient = useQueryClient();
+  const createConversation = useCreateAiConversationMutation();
+  const conversationQuery = useAiConversationQuery(activeConversationId);
+
+  React.useEffect(() => {
+    if (!activeConversationId) {
+      return;
+    }
+    if (conversationQuery.data?.messages) {
+      const loadedMessages: ChatMessage[] = conversationQuery.data.messages.map((msg) => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+        spaceResults: (msg.space_results as Space[] | null) ?? undefined,
+        bookingAction: (msg.booking_action as BookingAction | null) ?? undefined,
+      }));
+      setMessages(loadedMessages);
+    }
+  }, [activeConversationId, conversationQuery.data]);
 
   const greetingName = React.useMemo(() => {
     const firstName = userProfile?.firstName?.trim();
@@ -393,11 +560,13 @@ export function AiAssistant() {
   }, [userProfile]);
 
   const aiSearchMutation = useMutation<
-    { reply: string; spaces?: Space[] },
+    { reply: string; spaces?: Space[]; bookingAction?: BookingAction },
     Error,
-    ChatMessage[]
+    AiMutationInput
   >({
-    mutationFn: async (history: ChatMessage[]) => {
+    mutationFn: async ({
+ history, conversationId, 
+}: AiMutationInput) => {
       if (!history.length) {
         throw new Error('Please enter a question.');
       }
@@ -415,6 +584,7 @@ export function AiAssistant() {
             role,
             content: content.trim(),
           })),
+          conversation_id: conversationId,
           ...(userLocation ? { location: userLocation, } : {}),
           ...(userProfile?.userId ? { user_id: userProfile.userId, } : {}),
         }),
@@ -439,9 +609,13 @@ export function AiAssistant() {
         throw new Error('Unexpected response from OpenRouter.');
       }
 
+      const bookingAction: BookingAction | undefined =
+        data.bookingAction?.action === 'checkout' ? data.bookingAction : undefined;
+
       return {
         reply: data.reply.trim(),
         spaces: Array.isArray(data.spaces) ? data.spaces : [],
+        bookingAction,
       };
     },
     onSettled: () => {
@@ -453,13 +627,31 @@ export function AiAssistant() {
     setQuery(prompt.trim());
   }, []);
 
+  const activeConversationIdRef = React.useRef(activeConversationId);
+  activeConversationIdRef.current = activeConversationId;
+
   const submitPrompt = React.useCallback(
-    (rawPrompt: string) => {
-      if (aiSearchMutation.isPending) return;
+    async (rawPrompt: string) => {
+      if (aiSearchMutation.isPending || createConversation.isPending) return;
 
       const trimmed = rawPrompt.trim();
       if (!trimmed) {
         return;
+      }
+
+      setQuery('');
+      setErrorMessage(null);
+
+      let conversationId = activeConversationIdRef.current;
+      if (!conversationId) {
+        try {
+          const newConv = await createConversation.mutateAsync();
+          conversationId = newConv.id;
+          setActiveConversationId(conversationId);
+        } catch {
+          toast.error('Failed to create conversation. Please try again.');
+          return;
+        }
       }
 
       const userMessage: ChatMessage = {
@@ -468,13 +660,15 @@ export function AiAssistant() {
         content: trimmed,
       };
 
-      setQuery('');
-      setErrorMessage(null);
+      const finalConversationId = conversationId;
 
       setMessages((previous) => {
         const history = [...previous, userMessage];
 
-        aiSearchMutation.mutate(history, {
+        aiSearchMutation.mutate({
+ history,
+conversationId: finalConversationId, 
+}, {
           onSuccess: (result) => {
             setMessages((prev) => [
               ...prev,
@@ -486,8 +680,13 @@ export function AiAssistant() {
                   result.spaces && result.spaces.length > 0
                     ? result.spaces
                     : undefined,
+                bookingAction: result.bookingAction,
               }
             ]);
+            queryClient.invalidateQueries({ queryKey: aiConversationKeys.all, });
+            if (finalConversationId) {
+              queryClient.invalidateQueries({ queryKey: aiConversationKeys.detail(finalConversationId), });
+            }
           },
           onError: (mutationError) => {
             if (mutationError.name === 'AbortError') {
@@ -509,7 +708,7 @@ export function AiAssistant() {
         return history;
       });
     },
-    [aiSearchMutation]
+    [aiSearchMutation, createConversation, queryClient]
   );
 
   const stopAiSearch = React.useCallback(() => {
@@ -680,8 +879,15 @@ export function AiAssistant() {
       stopListening();
     }
 
-    submitPrompt(query);
+    void submitPrompt(query);
   };
+
+  const handleNewConversation = React.useCallback(() => {
+    setActiveConversationId(null);
+    setMessages([]);
+    setQuery('');
+    setErrorMessage(null);
+  }, []);
 
   const handleVoiceButtonClick = () => {
     if (aiSearchMutation.isPending) {
@@ -712,7 +918,7 @@ export function AiAssistant() {
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-gray-50 px-4 py-3 text-left hover:bg-accent/10 dark:bg-transparent dark:hover:bg-accent/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-muted/30 px-4 py-3 text-left hover:bg-accent/10 dark:hover:bg-accent/50"
           onClick={ () => setPromptInput('Find coworking spaces near me with good Wi-Fi') }
           disabled={ aiSearchMutation.isPending }
         >
@@ -727,7 +933,7 @@ export function AiAssistant() {
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-gray-50 px-4 py-3 text-left hover:bg-accent/10 dark:bg-transparent dark:hover:bg-accent/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-muted/30 px-4 py-3 text-left hover:bg-accent/10 dark:hover:bg-accent/50"
           onClick={ () => setPromptInput('What are the most affordable workspaces available?') }
           disabled={ aiSearchMutation.isPending }
         >
@@ -742,7 +948,7 @@ export function AiAssistant() {
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-gray-50 px-4 py-3 text-left hover:bg-accent/10 dark:bg-transparent dark:hover:bg-accent/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-muted/30 px-4 py-3 text-left hover:bg-accent/10 dark:hover:bg-accent/50"
           onClick={ () => setPromptInput('Find spaces with high-speed Wi-Fi and quiet environment') }
           disabled={ aiSearchMutation.isPending }
         >
@@ -757,7 +963,7 @@ export function AiAssistant() {
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-gray-50 px-4 py-3 text-left hover:bg-accent/10 dark:bg-transparent dark:hover:bg-accent/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-muted/30 px-4 py-3 text-left hover:bg-accent/10 dark:hover:bg-accent/50"
           onClick={ () => setPromptInput('Help me book a workspace for tomorrow') }
           disabled={ aiSearchMutation.isPending }
         >
@@ -862,14 +1068,66 @@ export function AiAssistant() {
     );
   };
 
+  if (sessionLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="size-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className="flex h-screen items-center justify-center px-4">
+        <Card className="w-full max-w-sm text-center">
+          <CardContent className="space-y-4 p-6">
+            <GradientSparklesIcon className="mx-auto size-10" />
+            <h2 className="text-lg font-semibold">Sign in to use the AI assistant</h2>
+            <p className="text-sm text-muted-foreground">
+              Create an account or sign in to chat with UpSpace AI, search for workspaces, and book your ideal spot.
+            </p>
+            <Button asChild className="w-full">
+              <Link href="/login">Sign in</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={ cn(
-        'relative mx-auto flex h-full min-h-full min-h-screen w-full max-w-5xl flex-col gap-6 px-4 pb-32 sm:pb-36 md:pb-40',
-        containerTopPadding,
-        'overflow-hidden'
-      ) }
-    >
+    <div className="relative flex h-full min-h-screen w-full">
+      { chatSidebarOpen ? (
+        <AiChatSidebar
+          activeConversationId={ activeConversationId }
+          onSelectConversation={ (id) => {
+            setActiveConversationId(id);
+            if (isMobile) setChatSidebarOpen(false);
+          } }
+          onNewConversation={ handleNewConversation }
+        />
+      ) : null }
+
+      <div
+        className={ cn(
+          'relative mx-auto flex h-full min-h-full min-h-screen w-full max-w-5xl flex-1 flex-col gap-6 px-4 pb-32 sm:pb-36 md:pb-40',
+          containerTopPadding,
+          'overflow-hidden'
+        ) }
+      >
+        <div className="flex items-center gap-2 pt-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            onClick={ () => setChatSidebarOpen((prev) => !prev) }
+            aria-label={ chatSidebarOpen ? 'Close chat history' : 'Open chat history' }
+          >
+            <FiMenu className="size-4" />
+          </Button>
+        </div>
+
       { !hasMessages ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
           <div className="space-y-3">
@@ -942,6 +1200,7 @@ export function AiAssistant() {
           { renderPromptForm('fixed') }
         </>
       ) }
+      </div>
     </div>
   );
 }
