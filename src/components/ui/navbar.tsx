@@ -130,24 +130,36 @@ function AccountMenu({
         { hasAdditionalLinks && <DropdownMenuSeparator className="my-1" /> }
         { showAccountLinks && (
           <>
-            <DropdownMenuItem onSelect={ () => onNavigate('/customer/account') }>
+            <DropdownMenuItem
+              onSelect={ () => onNavigate('/customer/account') }
+              className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
+            >
               <FiUser className="size-4" aria-hidden="true" />
               <span>Account</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={ () => onNavigate('/customer/settings') }>
+            <DropdownMenuItem
+              onSelect={ () => onNavigate('/customer/settings') }
+              className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
+            >
               <FiSettings className="size-4" aria-hidden="true" />
               <span>Settings</span>
             </DropdownMenuItem>
           </>
         ) }
         { showNotifications && (
-          <DropdownMenuItem onSelect={ () => onNavigate('/customer/notifications') }>
+          <DropdownMenuItem
+            onSelect={ () => onNavigate('/customer/notifications') }
+            className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
+          >
             <FiBell className="size-4" aria-hidden="true" />
             <span>Notifications</span>
           </DropdownMenuItem>
         ) }
         { showTransactionHistory && (
-          <DropdownMenuItem onSelect={ () => onNavigate('/customer/transactions') }>
+          <DropdownMenuItem
+            onSelect={ () => onNavigate('/customer/transactions') }
+            className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
+          >
             <FiCreditCard className="size-4" aria-hidden="true" />
             <span>Transaction history</span>
           </DropdownMenuItem>
@@ -157,9 +169,9 @@ function AccountMenu({
           onSelect={ () => {
             onLogout();
           } }
-          className="rounded-sm text-sm font-medium text-destructive focus-visible:text-destructive"
+          className="mt-2 rounded-sm text-sm font-medium text-destructive focus-visible:text-destructive data-[highlighted]:bg-[oklch(0.9647_0.0345_19.81)] focus-visible:bg-[oklch(0.9647_0.0345_19.81)] dark:data-[highlighted]:bg-[oklch(0.24_0.04_19.81)] dark:focus-visible:bg-[oklch(0.24_0.04_19.81)] data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive hover:bg-[oklch(0.9647_0.0345_19.81)] dark:hover:bg-[oklch(0.24_0.04_19.81)] hover:text-destructive hover:[&_svg]:text-destructive"
         >
-          <FiLogOut className="size-4" aria-hidden="true" />
+          <FiLogOut className="size-4 text-destructive" aria-hidden="true" />
           Logout
         </DropdownMenuItem>
       </DropdownMenuContent>

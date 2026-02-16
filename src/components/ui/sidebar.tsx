@@ -27,10 +27,17 @@ import {
 } from '@/components/ui/tooltip';
 
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
-const SIDEBAR_WIDTH = '16rem';
 const SIDEBAR_WIDTH_MOBILE = '18rem';
 const SIDEBAR_WIDTH_ICON = '4rem';
 const SIDEBAR_KEYBOARD_SHORTCUT = 'b';
+const SIDEBAR_WIDTH_STORAGE_KEY = 'sidebar_width_px';
+const SIDEBAR_WIDTH_DEFAULT_PX = 256;
+const SIDEBAR_WIDTH_MIN_PX = SIDEBAR_WIDTH_DEFAULT_PX;
+const SIDEBAR_WIDTH_MAX_PX = 560;
+
+function clampSidebarWidth(widthPx: number) {
+  return Math.min(Math.max(widthPx, SIDEBAR_WIDTH_MIN_PX), SIDEBAR_WIDTH_MAX_PX);
+}
 
 type SidebarContextProps = {
   state: 'expanded' | 'collapsed'
@@ -40,6 +47,8 @@ type SidebarContextProps = {
   setOpenMobile: (open: boolean) => void
   isMobile: boolean
   toggleSidebar: () => void
+  sidebarWidthPx: number
+  setSidebarWidthPx: (widthPx: number) => void
 }
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null);
@@ -70,6 +79,13 @@ function SidebarProvider({
 }) {
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = React.useState(false);
+  const [sidebarWidthPx, setSidebarWidthPxState] = React.useState(
+    SIDEBAR_WIDTH_DEFAULT_PX
+  );
+
+  const setSidebarWidthPx = React.useCallback((widthPx: number) => {
+    setSidebarWidthPxState(clampSidebarWidth(widthPx));
+  }, []);
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
@@ -103,6 +119,20 @@ function SidebarProvider({
       _setOpen(storedState === 'true');
     }
   }, [_setOpen, initialOpen, openProp]);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const storedSidebarWidth = window.localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY);
+    if (!storedSidebarWidth) return;
+    const parsedWidth = Number(storedSidebarWidth);
+    if (!Number.isFinite(parsedWidth)) return;
+    setSidebarWidthPx(parsedWidth);
+  }, [setSidebarWidthPx]);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(sidebarWidthPx));
+  }, [sidebarWidthPx]);
 
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
@@ -138,8 +168,20 @@ function SidebarProvider({
       openMobile,
       setOpenMobile,
       toggleSidebar,
+      sidebarWidthPx,
+      setSidebarWidthPx,
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+    [
+      state,
+      open,
+      setOpen,
+      isMobile,
+      openMobile,
+      setOpenMobile,
+      toggleSidebar,
+      sidebarWidthPx,
+      setSidebarWidthPx
+    ]
   );
 
   return (
@@ -149,7 +191,7 @@ function SidebarProvider({
           data-slot="sidebar-wrapper"
           style={
             {
-              '--sidebar-width': SIDEBAR_WIDTH,
+              '--sidebar-width': `${sidebarWidthPx}px`,
               '--sidebar-width-icon': SIDEBAR_WIDTH_ICON,
               ...style,
             } as React.CSSProperties
@@ -291,7 +333,7 @@ function SidebarTrigger({
       } }
       { ...props }
     >
-      <PanelLeftIcon />
+      <PanelLeftIcon className="size-3" />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   );
@@ -300,20 +342,104 @@ function SidebarTrigger({
 function SidebarRail({
  className, ...props 
 }: React.ComponentProps<'button'>) {
-  const { toggleSidebar, } = useSidebar();
+  const {
+    isMobile,
+    state,
+    setOpen,
+    toggleSidebar,
+    sidebarWidthPx,
+    setSidebarWidthPx,
+  } = useSidebar();
+  const dragStartRef = React.useRef<{
+    startX: number
+    startWidth: number
+    side: 'left' | 'right'
+  } | null>(null);
+  const didDragRef = React.useRef(false);
+  const dragCleanupRef = React.useRef<(() => void) | null>(null);
+
+  React.useEffect(
+    () => () => {
+      dragCleanupRef.current?.();
+      dragCleanupRef.current = null;
+      document.body.style.userSelect = '';
+    },
+    []
+  );
 
   return (
     <button
       data-sidebar="rail"
       data-slot="sidebar-rail"
-      aria-label="Toggle Sidebar"
+      aria-label="Resize Sidebar"
       tabIndex={ -1 }
-      onClick={ toggleSidebar }
-      title="Toggle Sidebar"
+      onPointerDown={ (event) => {
+        if (isMobile || event.button !== 0) {
+          return;
+        }
+        event.preventDefault();
+
+        const sidebarRoot = event.currentTarget.closest('[data-slot="sidebar"]');
+        if (!(sidebarRoot instanceof HTMLElement)) {
+          return;
+        }
+
+        const side = sidebarRoot.dataset.side === 'right' ? 'right' : 'left';
+        if (state === 'collapsed') {
+          setOpen(true);
+        }
+
+        dragStartRef.current = {
+          startX: event.clientX,
+          startWidth: sidebarWidthPx,
+          side,
+        };
+        didDragRef.current = false;
+
+        const handlePointerMove = (pointerMoveEvent: PointerEvent) => {
+          const start = dragStartRef.current;
+          if (!start) {
+            return;
+          }
+
+          const deltaX = pointerMoveEvent.clientX - start.startX;
+          const directionalDelta = start.side === 'right' ? -deltaX : deltaX;
+          if (Math.abs(directionalDelta) > 2) {
+            didDragRef.current = true;
+          }
+          setSidebarWidthPx(start.startWidth + directionalDelta);
+        };
+
+        const handlePointerUp = () => {
+          dragCleanupRef.current?.();
+          dragCleanupRef.current = null;
+          dragStartRef.current = null;
+          document.body.style.userSelect = '';
+        };
+
+        dragCleanupRef.current?.();
+        document.body.style.userSelect = 'none';
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+        window.addEventListener('pointercancel', handlePointerUp);
+        dragCleanupRef.current = () => {
+          window.removeEventListener('pointermove', handlePointerMove);
+          window.removeEventListener('pointerup', handlePointerUp);
+          window.removeEventListener('pointercancel', handlePointerUp);
+        };
+      } }
+      onClick={ (event) => {
+        if (didDragRef.current) {
+          didDragRef.current = false;
+          event.preventDefault();
+          return;
+        }
+        toggleSidebar();
+      } }
+      title="Resize Sidebar"
       className={ cn(
         'hover:after:bg-sidebar-border absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] sm:flex',
-        'in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize',
-        '[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize',
+        'cursor-col-resize',
         'hover:group-data-[collapsible=offcanvas]:bg-sidebar group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full',
         '[[data-side=left][data-collapsible=offcanvas]_&]:-right-2',
         '[[data-side=right][data-collapsible=offcanvas]_&]:-left-2',
@@ -435,7 +561,7 @@ function SidebarGroupLabel({
       data-slot="sidebar-group-label"
       data-sidebar="group-label"
       className={ cn(
-        'text-sidebar-foreground/70 ring-sidebar-ring flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium outline-hidden focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
+        'text-sidebar-foreground/70 ring-sidebar-ring flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-semibold outline-hidden focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
         'group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0',
         className
       ) }
@@ -508,7 +634,7 @@ function SidebarMenuItem({
 }
 
 const sidebarMenuButtonVariants = cva(
-  'peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:h-10! group-data-[collapsible=icon]:w-10! group-data-[collapsible=icon]:p-2! group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:[&_span[data-sidebar-label]]:sr-only group-data-[collapsible=icon]:[&_span[data-sidebar-label]]:h-px group-data-[collapsible=icon]:[&_span[data-sidebar-label]]:w-px group-data-[collapsible=icon]:[&_span[data-sidebar-label]]:p-0 [&>span:last-child]:truncate [&>svg]:size-5 [&>svg]:shrink-0',
+  'peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm font-semibold outline-hidden ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-semibold data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:h-10! group-data-[collapsible=icon]:w-10! group-data-[collapsible=icon]:p-2! group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:[&_span[data-sidebar-label]]:sr-only group-data-[collapsible=icon]:[&_span[data-sidebar-label]]:h-px group-data-[collapsible=icon]:[&_span[data-sidebar-label]]:w-px group-data-[collapsible=icon]:[&_span[data-sidebar-label]]:p-0 [&>span:last-child]:truncate [&>svg]:size-5 [&>svg]:shrink-0',
   {
     variants: {
       variant: {
@@ -723,7 +849,7 @@ function SidebarMenuSubButton({
       data-size={ size }
       data-active={ isActive }
       className={ cn(
-        'text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent active:text-sidebar-accent-foreground [&>svg]:text-sidebar-accent-foreground flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 outline-hidden focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-5 [&>svg]:shrink-0',
+        'text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent active:text-sidebar-accent-foreground [&>svg]:text-sidebar-accent-foreground flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 font-semibold outline-hidden focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-5 [&>svg]:shrink-0',
         'data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground',
         size === 'sm' && 'text-xs',
         size === 'md' && 'text-sm',

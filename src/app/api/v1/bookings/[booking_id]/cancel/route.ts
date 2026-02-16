@@ -31,7 +31,7 @@ export async function POST(
   const params = await context.params;
   const supabase = await createSupabaseServerClient();
   const {
- data: authData, error: authError, 
+ data: authData, error: authError,
 } = await supabase.auth.getUser();
 
   if (authError || !authData?.user) {
@@ -79,6 +79,21 @@ export async function POST(
     return invalidStatusResponse('This booking cannot be cancelled at this time.');
   }
 
+  // Atomically mark as cancelled to prevent double-cancel race conditions.
+  // updateMany with a status filter ensures only one concurrent request succeeds.
+  const cancelResult = await prisma.booking.updateMany({
+    where: {
+      id: booking.id,
+      status: { in: CANCELLABLE_BOOKING_STATUSES, },
+    },
+    data: { status: 'cancelled', },
+  });
+
+  if (cancelResult.count === 0) {
+    return invalidStatusResponse('This booking was already cancelled or is no longer cancellable.');
+  }
+
+  // Find the original charge for this booking to issue a refund.
   const charge = await prisma.wallet_transaction.findFirst({
     where: {
       booking_id: booking.id,
@@ -87,6 +102,7 @@ export async function POST(
     },
     orderBy: { created_at: 'desc', },
     select: {
+      wallet_id: true,
       external_reference: true,
       currency: true,
       amount_minor: true,
@@ -94,32 +110,71 @@ export async function POST(
   });
 
   if (charge?.external_reference) {
+    const refundAmountMinor = Number(booking.price_minor ?? charge.amount_minor ?? 0);
+
     try {
-      await createPaymongoRefund({
+      const refundPayload = await createPaymongoRefund({
         paymentId: charge.external_reference,
-        amountMinor: Number(booking.price_minor ?? charge.amount_minor ?? 0),
+        amountMinor: refundAmountMinor,
         reason: 'requested_by_customer',
         metadata: {
           booking_id: booking.id,
           user_auth_id: booking.user_auth_id,
         },
       });
+
+      // Record the refund transaction locally so the partner wallet reflects it
+      // immediately, rather than waiting for the PayMongo webhook.
+      const refundAttributes = refundPayload.data.attributes;
+      try {
+        await prisma.$transaction(async (tx) => {
+          await tx.wallet_transaction.create({
+            data: {
+              wallet_id: charge.wallet_id,
+              type: 'refund',
+              status: refundAttributes.status,
+              amount_minor: BigInt(refundAmountMinor),
+              net_amount_minor: BigInt(refundAmountMinor),
+              currency: charge.currency,
+              description: `Cancellation refund · ${booking.area_name} · ${booking.space_name}`,
+              booking_id: booking.id,
+              external_reference: refundPayload.data.id,
+              metadata: {
+                paymongo_refund_id: refundPayload.data.id,
+                payment_id: charge.external_reference,
+                booking_id: booking.id,
+                user_auth_id: booking.user_auth_id,
+              },
+            },
+          });
+
+          if (refundAttributes.status === 'succeeded') {
+            await tx.wallet.update({
+              where: { id: charge.wallet_id, },
+              data: {
+                balance_minor: { decrement: BigInt(refundAmountMinor), },
+                updated_at: new Date(),
+              },
+            });
+          }
+        });
+      } catch (walletError) {
+        // Non-fatal: the webhook will reconcile. Log for monitoring.
+        console.error('Failed to record cancellation refund in wallet', {
+          bookingId: booking.id,
+          refundId: refundPayload.data.id,
+          error: walletError,
+        });
+      }
     } catch (error) {
-      console.error('Failed to create refund for cancelled booking', {
+      // Refund failed but booking is already cancelled.
+      // Log for manual reconciliation — don't block the cancellation response.
+      console.error('Failed to create PayMongo refund for cancelled booking', {
         bookingId: booking.id,
         error,
       });
-      return NextResponse.json(
-        { error: 'Unable to process refund right now. Please try again later.', },
-        { status: 502, }
-      );
     }
   }
-
-  await prisma.booking.update({
-    where: { id: booking.id, },
-    data: { status: 'cancelled', },
-  });
 
   const updatedRows = await prisma.booking.findMany({ where: { id: booking.id, }, });
   const [record] = await mapBookingsWithProfiles(updatedRows);

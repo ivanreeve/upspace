@@ -11,7 +11,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { buildPublicObjectUrl, isAbsoluteUrl, resolveSignedImageUrls } from '@/lib/spaces/image-urls';
 import { deriveSpaceStatus } from '@/lib/spaces/partner-serializer';
 import { PriceRuleDefinition } from '@/lib/pricing-rules';
-import { computeStartingPriceFromAreas } from '@/lib/spaces/pricing';
+import { computeStartingPriceFromAreasCached } from '@/lib/spaces/pricing';
 import {
   SPACES_LIST_CACHE_TTL_SECONDS,
   buildSpacesListCacheKey,
@@ -736,7 +736,7 @@ mode: 'insensitive' as const,
             ? { definition: entry.price_rule.definition as PriceRuleDefinition, }
             : null,
         })) ?? [];
-      const startingPrice = computeStartingPriceFromAreas(areaPayloads);
+      const startingPrice = computeStartingPriceFromAreasCached(space.id, areaPayloads);
       startingPriceMap.set(space.id, startingPrice);
     }
 

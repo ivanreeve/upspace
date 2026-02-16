@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 type ThemeSwitcherProps = {
   className?: string
   variant?: 'default' | 'compact'
+  shadowless?: boolean
 };
 
 const themeOptions = [
@@ -34,6 +35,7 @@ type ThemeOption = (typeof themeOptions)[number]['value'];
 export function ThemeSwitcher({
   className,
   variant = 'default',
+  shadowless = false,
 }: ThemeSwitcherProps) {
   const {
     theme,
@@ -65,7 +67,8 @@ export function ThemeSwitcher({
         type="button"
         onClick={ cycleTheme }
         className={ cn(
-          'flex size-8 items-center justify-center rounded-full border border-border bg-card/80 text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+          'flex size-8 items-center justify-center rounded-full border border-border bg-card/80 text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+          !shadowless && 'shadow-sm',
           className
         ) }
         aria-label={ `Toggle theme (current: ${activeOption.label})` }
@@ -80,7 +83,8 @@ export function ThemeSwitcher({
       role="group"
       aria-label="Theme"
       className={ cn(
-        'inline-flex items-center gap-1 rounded-lg border bg-card/80 px-1.5 py-1 text-sm shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/60',
+        'inline-flex items-center gap-1 rounded-lg border bg-card/80 px-1.5 py-1 text-sm backdrop-blur supports-[backdrop-filter]:bg-card/60',
+        !shadowless && 'shadow-sm',
         className
       ) }
     >
@@ -96,7 +100,7 @@ export function ThemeSwitcher({
             className={ cn(
               'flex items-center gap-1 rounded-md px-2 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
               isActive
-                ? 'bg-primary text-white shadow-sm'
+                ? cn('bg-primary text-white', !shadowless && 'shadow-sm')
                 : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             ) }
             aria-pressed={ isActive }

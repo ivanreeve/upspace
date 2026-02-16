@@ -1,19 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
+import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
 import { PartnerSessionError, requirePartnerSession } from '@/lib/auth/require-partner-session';
 import type { PriceRuleDefinition, PriceRuleRecord } from '@/lib/pricing-rules';
 import { priceRuleSchema } from '@/lib/pricing-rules';
+import { invalidateStartingPriceCache } from '@/lib/spaces/pricing';
+
+const patchPriceRuleSchema = z.object({ is_active: z.boolean(), });
 
 const isUuid = (value: string | undefined): value is string =>
   typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
+class PriceRuleNotFoundError extends Error {
+  constructor() { super('Pricing rule not found.'); }
+}
+
+class PriceRuleLinkedError extends Error {
+  constructor() { super('This pricing rule is assigned to one or more areas. Remove it from all areas in this space before deleting it.'); }
+}
 
 const serializePriceRule = (rule: PrismaPriceRuleRow): PriceRuleRecord => ({
   id: rule.id,
   name: rule.name,
   description: rule.description ?? null,
   definition: rule.definition as PriceRuleDefinition,
+  is_active: rule.is_active,
   linked_area_count: rule._count?.area ?? 0,
   created_at: rule.created_at instanceof Date ? rule.created_at.toISOString() : String(rule.created_at),
   updated_at: rule.updated_at instanceof Date ? rule.updated_at.toISOString() : null,
@@ -83,12 +96,75 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
       include: { _count: { select: { area: true, }, }, },
     });
 
+    invalidateStartingPriceCache(spaceIdParam);
     return NextResponse.json({ data: serializePriceRule(updatedRule), });
   } catch (error) {
     if (error instanceof PartnerSessionError) {
       return NextResponse.json({ error: error.message, }, { status: error.status, });
     }
     console.error('Failed to update pricing rule', error);
+    return NextResponse.json({ error: 'Unable to update pricing rule.', }, { status: 500, });
+  }
+}
+
+export async function PATCH(req: NextRequest, { params, }: RouteParams) {
+  try {
+    const { userId, } = await requirePartnerSession();
+    const resolvedParams = await params;
+    const spaceIdParam = resolvedParams.space_id;
+    const priceRuleIdParam = resolvedParams.price_rule_id;
+
+    if (!isUuid(spaceIdParam) || !isUuid(priceRuleIdParam)) {
+      return NextResponse.json({ error: 'space_id and price_rule_id must be valid UUIDs.', }, { status: 400, });
+    }
+
+    const body = await req.json().catch(() => null);
+    const parsed = patchPriceRuleSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.flatten(), }, { status: 400, });
+    }
+
+    const space = await prisma.space.findFirst({
+      where: {
+        id: spaceIdParam,
+        user_id: userId,
+      },
+      select: { id: true, },
+    });
+
+    if (!space) {
+      return NextResponse.json({ error: 'Space not found.', }, { status: 404, });
+    }
+
+    const existingRule = await prisma.price_rule.findFirst({
+      where: {
+        id: priceRuleIdParam,
+        space_id: spaceIdParam,
+      },
+      select: { id: true, },
+    });
+
+    if (!existingRule) {
+      return NextResponse.json({ error: 'Pricing rule not found.', }, { status: 404, });
+    }
+
+    const updatedRule = await prisma.price_rule.update({
+      where: { id: priceRuleIdParam, },
+      data: {
+        is_active: parsed.data.is_active,
+        updated_at: new Date(),
+      },
+      include: { _count: { select: { area: true, }, }, },
+    });
+
+    invalidateStartingPriceCache(spaceIdParam);
+    return NextResponse.json({ data: serializePriceRule(updatedRule), });
+  } catch (error) {
+    if (error instanceof PartnerSessionError) {
+      return NextResponse.json({ error: error.message, }, { status: error.status, });
+    }
+    console.error('Failed to update pricing rule status', error);
     return NextResponse.json({ error: 'Unable to update pricing rule.', }, { status: 500, });
   }
 }
@@ -116,28 +192,37 @@ export async function DELETE(_req: NextRequest, { params, }: RouteParams) {
       return NextResponse.json({ error: 'Space not found.', }, { status: 404, });
     }
 
-    const existingRule = await prisma.price_rule.findFirst({
-      where: {
-        id: priceRuleIdParam,
-        space_id: spaceIdParam,
-      },
-      include: { _count: { select: { area: true, }, }, },
+    await prisma.$transaction(async (tx) => {
+      const existingRule = await tx.price_rule.findFirst({
+        where: {
+          id: priceRuleIdParam,
+          space_id: spaceIdParam,
+        },
+        include: { _count: { select: { area: true, }, }, },
+      });
+
+      if (!existingRule) {
+        throw new PriceRuleNotFoundError();
+      }
+
+      if (existingRule._count.area > 0) {
+        throw new PriceRuleLinkedError();
+      }
+
+      await tx.price_rule.delete({ where: { id: priceRuleIdParam, }, });
     });
 
-    if (!existingRule) {
-      return NextResponse.json({ error: 'Pricing rule not found.', }, { status: 404, });
-    }
-
-    if (existingRule._count.area > 0) {
-      return NextResponse.json({ error: 'This pricing rule is assigned to one or more areas. Remove it from all areas in this space before deleting it.', }, { status: 409, });
-    }
-
-    await prisma.price_rule.delete({ where: { id: priceRuleIdParam, }, });
-
+    invalidateStartingPriceCache(spaceIdParam);
     return new NextResponse(null, { status: 204, });
   } catch (error) {
     if (error instanceof PartnerSessionError) {
       return NextResponse.json({ error: error.message, }, { status: error.status, });
+    }
+    if (error instanceof PriceRuleNotFoundError) {
+      return NextResponse.json({ error: error.message, }, { status: 404, });
+    }
+    if (error instanceof PriceRuleLinkedError) {
+      return NextResponse.json({ error: error.message, }, { status: 409, });
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
       return NextResponse.json({ error: 'This pricing rule is assigned to one or more areas. Remove it from all areas in this space before deleting it.', }, { status: 409, });

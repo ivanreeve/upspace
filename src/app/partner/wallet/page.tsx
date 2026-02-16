@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import WalletPage from '@/components/pages/Wallet/WalletPage';
-import { MarketplaceChrome } from '@/components/pages/Marketplace/MarketplaceChrome';
+import { SpacesChrome } from '@/components/pages/Spaces/SpacesChrome';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -25,8 +25,8 @@ export default async function WalletRoutePage() {
   const initialSidebarOpen = parseSidebarState(sidebarCookie);
 
   return (
-    <MarketplaceChrome initialSidebarOpen={ initialSidebarOpen }>
+    <SpacesChrome initialSidebarOpen={ initialSidebarOpen }>
       <WalletPage />
-    </MarketplaceChrome>
+    </SpacesChrome>
   );
 }

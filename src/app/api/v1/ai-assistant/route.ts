@@ -23,7 +23,12 @@ import {
   type SearchReferenceData
 } from '@/lib/ai/search-reference-data';
 import { assistantAgentSystemPromptTemplate } from '@/lib/assistant-agent';
-import { getBookingAvailability, getBookingPricing, validateBookingRequest } from '@/lib/ai/booking-tools';
+import {
+getBookingAvailability,
+getBookingPricing,
+validateBookingRequest,
+createBookingCheckout
+} from '@/lib/ai/booking-tools';
 import { compareSpaces } from '@/lib/ai/comparison-tools';
 import { estimateMonthlyCost, findBudgetOptimalSpaces } from '@/lib/ai/budget-tools';
 import { getUserBookmarks, getUserBookingHistory, getSimilarSpaces } from '@/lib/ai/recommendation-tools';
@@ -61,6 +66,7 @@ const requestSchema = z
     messages: z.array(messageSchema).min(1).optional(),
     user_id: z.string().regex(/^\d+$/).optional(),
     location: coordinateSchema.optional(),
+    conversation_id: z.string().uuid().optional(),
   })
   .refine(
     (data) => Boolean(data.query?.length) || Boolean(data.messages?.length),
@@ -266,6 +272,41 @@ const validateBookingFunctionDefinition: AiFunctionDefinition = {
       },
     },
     required: ['space_id', 'area_id', 'start_date', 'end_date'],
+    additionalProperties: false,
+  },
+};
+
+const createBookingCheckoutFunctionDefinition: AiFunctionDefinition = {
+  name: 'create_booking_checkout',
+  description:
+    'Validate availability, pricing, and capacity for a booking, then return checkout-ready parameters. Use this when the user confirms they want to proceed with booking a specific area.',
+  parametersJsonSchema: {
+    type: 'object',
+    properties: {
+      space_id: {
+        type: 'string',
+        format: 'uuid',
+      },
+      area_id: {
+        type: 'string',
+        format: 'uuid',
+      },
+      booking_hours: {
+        type: 'integer',
+        minimum: 1,
+        maximum: 24,
+      },
+      start_at: {
+        type: 'string',
+        format: 'date-time',
+      },
+      guest_count: {
+        type: 'integer',
+        minimum: 1,
+        maximum: 999,
+      },
+    },
+    required: ['space_id', 'area_id', 'booking_hours', 'start_at'],
     additionalProperties: false,
   },
 };
@@ -787,6 +828,7 @@ const TOOL_DEFINITIONS: ToolDefinitionJson[] = [
   bookingAvailabilityFunctionDefinition,
   bookingPricingFunctionDefinition,
   validateBookingFunctionDefinition,
+  createBookingCheckoutFunctionDefinition,
   compareSpacesFunctionDefinition,
   estimateMonthlyCostFunctionDefinition,
   findBudgetOptimalSpacesFunctionDefinition,
@@ -836,7 +878,7 @@ export async function POST(request: NextRequest) {
     });
 
     const {
- messages, query, user_id, location, 
+ messages, query, user_id, location, conversation_id,
 } = parsed;
     const trimmedQuery = query?.trim();
 
@@ -892,6 +934,7 @@ export async function POST(request: NextRequest) {
     let finalText: string | null = null;
     let toolResult: FindSpacesToolResult | null = null;
     let toolError: string | null = null;
+    let bookingAction: Record<string, unknown> | null = null;
 
     const MAX_ATTEMPTS = 5;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
@@ -1027,6 +1070,27 @@ export async function POST(request: NextRequest) {
               ? error.message
               : 'Failed to validate booking request.';
           console.error('Booking validation error', message);
+          historyMessages.push(
+            createToolResponseMessage(callId, { error: message, })
+          );
+        }
+
+        continue;
+      }
+
+      if (functionCallName === 'create_booking_checkout') {
+        try {
+          const result = await createBookingCheckout(callArgs);
+          if ('action' in result && result.action === 'checkout') {
+            bookingAction = result;
+          }
+          historyMessages.push(createToolResponseMessage(callId, result));
+        } catch (error) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : 'Failed to create booking checkout.';
+          console.error('Booking checkout error', message);
           historyMessages.push(
             createToolResponseMessage(callId, { error: message, })
           );
@@ -1219,11 +1283,50 @@ export async function POST(request: NextRequest) {
 
     const reply = (finalText ?? 'OpenRouter did not provide a response.').trim();
 
+    if (conversation_id) {
+      const lastUserMessage = conversation[conversation.length - 1];
+      try {
+        await prisma.ai_conversation_message.createMany({
+          data: [
+            {
+              conversation_id,
+              role: 'user',
+              content: lastUserMessage.content,
+            },
+            {
+              conversation_id,
+              role: 'assistant',
+              content: reply,
+              space_results: toolResult?.spaces
+                ? (JSON.parse(JSON.stringify(toolResult.spaces)) as object)
+                : undefined,
+              booking_action: bookingAction
+                ? (JSON.parse(JSON.stringify(bookingAction)) as object)
+                : undefined,
+            }
+          ],
+        });
+
+        await prisma.ai_conversation.update({
+          where: { id: conversation_id, },
+          data: {
+            updated_at: new Date(),
+            ...(conversation.length === 1
+              ? { title: lastUserMessage.content.slice(0, 100), }
+              : {}),
+          },
+        });
+      } catch (persistError) {
+        console.error('Failed to persist AI conversation messages', persistError);
+      }
+    }
+
     return NextResponse.json(
       {
         reply,
         spaces: toolResult?.spaces ?? [],
         filters: toolResult?.filters,
+        ...(bookingAction ? { bookingAction, } : {}),
       },
       { status: 200, }
     );

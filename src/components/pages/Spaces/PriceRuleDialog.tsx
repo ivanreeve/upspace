@@ -52,8 +52,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import {
-  BOOKING_DURATION_VARIABLE_KEYS,
   BOOKING_DURATION_VARIABLE_REFERENCE_TEXT,
+  FORMULA_ALLOWED_BUILTIN_KEYS,
   PRICE_RULE_COMPARATORS,
   PRICE_RULE_CONNECTORS,
   PRICE_RULE_INITIAL_VARIABLES,
@@ -249,7 +249,7 @@ function DatePickerInput({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="w-full justify-between font-normal tracking-tight hover:text-white"
+          className="w-full justify-between bg-muted/20 font-normal tracking-tight hover:text-white"
           disabled={ disabled }
           type="button"
           aria-label={ selectedDate ? `Selected date ${label}` : 'Select date' }
@@ -337,7 +337,7 @@ const validatePriceExpression = (
     evaluateFormula(trimmed, variableMap, (key) => {
       usedVariables.add(key);
     });
-    const allowedVariables = new Set<string>(BOOKING_DURATION_VARIABLE_KEYS);
+    const allowedVariables = new Set<string>(FORMULA_ALLOWED_BUILTIN_KEYS);
     definition.variables.forEach((variable) => {
       if (
         !RESERVED_VARIABLE_KEYS.includes(variable.key) &&
@@ -2481,10 +2481,10 @@ function RuleLanguageEditor({
   );
 
   return (
-    <section className="space-y-4 rounded-xl border border-border bg-background p-4 shadow-sm">
+    <section className="space-y-4 rounded-xl border border-border bg-background p-4">
       <div className="flex flex-col gap-2">
-        <div className="flex flex-col gap-1 gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-2">
             <h3 className="text-sm font-semibold">Rule language</h3>
             <p className="text-xs text-muted-foreground">
               Define how your rule behaves with a readable expression, then
@@ -2497,7 +2497,7 @@ function RuleLanguageEditor({
         </div>
       </div>
       <div className="space-y-4">
-        <div className="space-y-3 rounded-xl border border-border/80 bg-muted/30 p-3">
+        <div className="space-y-3 rounded-xl border border-border/80 bg-muted/20 p-3">
           <div className="flex items-center justify-between gap-2">
             <div>
               <Label>Variables</Label>
@@ -2511,7 +2511,7 @@ function RuleLanguageEditor({
               .map((variable) => (
                 <div
                   key={ variable.key }
-                  className="flex items-center gap-2 rounded-md border border-border/80 pr-1 pl-3 py-1 text-[11px] font-semibold tracking-wide"
+                  className="flex items-center gap-2 rounded-md border border-border/80 bg-white dark:bg-transparent pr-1 pl-3 py-1 text-[11px] font-semibold tracking-wide"
                 >
                   <div className="flex items-center gap-2">
                     <TypeIcon type={ variable.type } />
@@ -2532,7 +2532,7 @@ function RuleLanguageEditor({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="text-destructive"
+                    className="text-destructive hover:bg-[oklch(0.9647_0.0345_19.81)] dark:hover:bg-[oklch(0.26_0.04_19.81)] hover:text-destructive"
                     onClick={ () => removeVariable(variable.key) }
                     disabled={ usedVariables.has(variable.key) }
                     aria-label="Remove variable"
@@ -2552,7 +2552,7 @@ function RuleLanguageEditor({
               <span className="sr-only">Add variable</span>
             </Button>
             <Input
-              className="min-w-[12rem]"
+              className="min-w-[12rem] bg-white"
               placeholder="New variable label"
               value={ newVariableLabel }
               onChange={ (event) =>
@@ -2569,7 +2569,7 @@ function RuleLanguageEditor({
                 }
               } }
             >
-              <SelectTrigger className="min-w-[8rem]">
+              <SelectTrigger className="min-w-[8rem] bg-muted/20">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
@@ -2608,10 +2608,10 @@ function RuleLanguageEditor({
                 />
               </div>
             ) : newVariableType === 'time' ? (
-              <div className="w-full border border-input rounded-md">
+              <div className="w-full rounded-md border border-input bg-white">
                 <Input
                   readOnly={ newVariableUserInput }
-                  className="w-full border-none pl-4 focus-visible:outline-none"
+                  className="w-full border-none bg-white pl-4 focus-visible:outline-none"
                   placeholder="Default value"
                   type="time"
                   value={ newVariableValue }
@@ -2621,7 +2621,7 @@ function RuleLanguageEditor({
               </div>
             ) : (
               <Input
-                className="min-w-[8rem]"
+                className="min-w-[8rem] bg-white"
                 placeholder="Default value"
                 type={ newVariableType === 'number' ? 'number' : 'text' }
                 inputMode={ newVariableType === 'number' ? 'decimal' : undefined }
@@ -2981,7 +2981,7 @@ export function PriceRuleFormShell({
               type="button"
               variant="outline"
               size="sm"
-              className="flex flex-col items-start gap-1 text-left h-full my-2"
+              className="my-2 flex h-full flex-col items-start gap-1 bg-muted/30 text-left hover:bg-primary hover:text-white hover:[&_span.text-muted-foreground]:text-white"
               onClick={ () => applyTemplate(template.key) }
             >
               <span className="text-sm font-semibold">{ template.name }</span>

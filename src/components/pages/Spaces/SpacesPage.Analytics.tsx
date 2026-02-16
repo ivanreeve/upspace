@@ -2,9 +2,10 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { format, subDays } from 'date-fns';
-import { FiArrowDown, FiArrowUpRight } from 'react-icons/fi';
+import { FiArrowDown, FiArrowUpRight, FiSearch } from 'react-icons/fi';
 
 import { PartnerDashboardFeed } from './PartnerDashboardFeed';
+import { SpacesBreadcrumbs } from './SpacesBreadcrumbs';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -47,219 +48,89 @@ type SortKey =
   | 'lastUpdated';
 
 type NumericSortKey = Exclude<SortKey, 'lastUpdated'>;
+const BOOKING_STATUS_ORDER: BookingStatus[] = [
+  'pending',
+  'confirmed',
+  'checkedin',
+  'checkedout',
+  'completed',
+  'cancelled',
+  'rejected',
+  'expired',
+  'noshow'
+];
 
 const DATE_RANGE_PRESETS: {
   label: string;
   value: DateRangeKey;
-  description: string;
 }[] = [
   {
     label: 'Today',
     value: 'today',
-    description: 'Closed deals posted today',
   },
   {
     label: 'Last 7 days',
     value: '7d',
-    description: 'Weekly momentum',
   },
   {
     label: 'Last 30 days',
     value: '30d',
-    description: 'Monthly performance',
   },
   {
     label: 'Custom range',
     value: 'custom',
-    description: 'Choose your own window',
   }
 ];
 
-const SUMMARY_DATA: Record<
-  DateRangeKey,
-  {
-    revenue: number;
-    revenueChange: number;
-    bookings: number;
-    bookingsChange: number;
-    conversion: number;
-    conversionChange: number;
-    views: number;
-    saves: number;
-    inquiries: number;
-    rating: number;
-    reviews: number;
+const BOOKING_HOURS_DAILY_THRESHOLD = 24;
+
+type ListingMetrics = {
+  id: string;
+  name: string;
+  status: string;
+  bookings: number;
+  revenue: number;
+  cancellations: number;
+  lastUpdated: string;
+};
+
+const resolveDateRangeBounds = (
+  dateRange: DateRangeKey,
+  customStart: string,
+  customEnd: string
+) => {
+  const now = new Date();
+
+  if (dateRange === 'today') {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    return [start, now] as const;
   }
-> = {
-  today: {
-    revenue: 145_600,
-    revenueChange: 5,
-    bookings: 18,
-    bookingsChange: 12,
-    conversion: 3.6,
-    conversionChange: 0.4,
-    views: 520,
-    saves: 38,
-    inquiries: 26,
-    rating: 4.7,
-    reviews: 9,
-  },
-  '7d': {
-    revenue: 512_400,
-    revenueChange: 8,
-    bookings: 72,
-    bookingsChange: 5,
-    conversion: 4.1,
-    conversionChange: 0.8,
-    views: 3_480,
-    saves: 240,
-    inquiries: 112,
-    rating: 4.6,
-    reviews: 32,
-  },
-  '30d': {
-    revenue: 1_820_000,
-    revenueChange: 14,
-    bookings: 310,
-    bookingsChange: 9,
-    conversion: 4.9,
-    conversionChange: 0.6,
-    views: 13_000,
-    saves: 920,
-    inquiries: 405,
-    rating: 4.6,
-    reviews: 86,
-  },
-  custom: {
-    revenue: 920_000,
-    revenueChange: 12,
-    bookings: 160,
-    bookingsChange: 6,
-    conversion: 4.4,
-    conversionChange: 0.5,
-    views: 7_200,
-    saves: 520,
-    inquiries: 210,
-    rating: 4.6,
-    reviews: 48,
-  },
-};
 
-const TIME_SERIES_DATA: Record<
-  DateRangeKey,
-  { bookings: number[]; revenue: number[]; views: number[]; saves: number[] }
-> = {
-  today: {
-    bookings: [2, 3, 1, 4, 3, 3, 2],
-    revenue: [28, 32, 24, 45, 40, 35, 31],
-    views: [60, 55, 68, 72, 70, 65, 60],
-    saves: [3, 4, 5, 6, 8, 6, 6],
-  },
-  '7d': {
-    bookings: [8, 10, 9, 7, 11, 12, 15],
-    revenue: [90, 120, 110, 95, 135, 150, 170],
-    views: [400, 420, 380, 390, 420, 450, 490],
-    saves: [28, 30, 27, 34, 38, 40, 43],
-  },
-  '30d': {
-    bookings: [12, 16, 14, 18, 20, 25, 30],
-    revenue: [160, 200, 180, 215, 230, 270, 310],
-    views: [900, 940, 910, 950, 980, 1_050, 1_120],
-    saves: [60, 64, 58, 70, 76, 82, 89],
-  },
-  custom: {
-    bookings: [9, 11, 12, 15, 14, 12, 16],
-    revenue: [110, 140, 135, 170, 165, 150, 190],
-    views: [600, 650, 640, 680, 690, 710, 735],
-    saves: [42, 45, 47, 52, 55, 54, 60],
-  },
-};
-
-const FUNNEL_DATA: Record<
-  DateRangeKey,
-  {
-    views: number;
-    saves: number;
-    inquiries: number;
-    bookings: number;
-    responseRate: number;
-    medianResponseMinutes: number;
+  if (dateRange === '7d') {
+    const start = subDays(now, 6);
+    start.setHours(0, 0, 0, 0);
+    return [start, now] as const;
   }
-> = {
-  today: {
-    views: 520,
-    saves: 38,
-    inquiries: 26,
-    bookings: 18,
-    responseRate: 92,
-    medianResponseMinutes: 18,
-  },
-  '7d': {
-    views: 3_480,
-    saves: 240,
-    inquiries: 112,
-    bookings: 72,
-    responseRate: 89,
-    medianResponseMinutes: 26,
-  },
-  '30d': {
-    views: 13_000,
-    saves: 920,
-    inquiries: 405,
-    bookings: 310,
-    responseRate: 91,
-    medianResponseMinutes: 28,
-  },
-  custom: {
-    views: 7_200,
-    saves: 520,
-    inquiries: 210,
-    bookings: 160,
-    responseRate: 90,
-    medianResponseMinutes: 24,
-  },
+
+  if (dateRange === '30d') {
+    const start = subDays(now, 29);
+    start.setHours(0, 0, 0, 0);
+    return [start, now] as const;
+  }
+
+  const start = customStart ? new Date(customStart) : subDays(now, 6);
+  const end = customEnd ? new Date(customEnd) : now;
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+
+  return [start, end] as const;
 };
 
-const BOOKING_STATUS_BREAKDOWN: Record<
-  DateRangeKey,
-  { pending: number; confirmed: number; completed: number; cancelled: number }
-> = {
-  today: {
-    pending: 5,
-    confirmed: 9,
-    completed: 12,
-    cancelled: 2,
-  },
-  '7d': {
-    pending: 17,
-    confirmed: 28,
-    completed: 41,
-    cancelled: 6,
-  },
-  '30d': {
-    pending: 48,
-    confirmed: 82,
-    completed: 118,
-    cancelled: 12,
-  },
-  custom: {
-    pending: 30,
-    confirmed: 52,
-    completed: 70,
-    cancelled: 8,
-  },
-};
+const resolveBookingType = (bookingHours: number): BookingTypeKey =>
+  bookingHours >= BOOKING_HOURS_DAILY_THRESHOLD ? 'daily' : 'hourly';
 
-const RANGE_MULTIPLIERS: Record<DateRangeKey, number> = {
-  today: 0.15,
-  '7d': 1,
-  '30d': 3.5,
-  custom: 2,
-};
-
-const DATE_TICKS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-function MiniLineChart({
+function MiniBarChart({
   values,
   color,
   label,
@@ -268,68 +139,40 @@ function MiniLineChart({
   color: string;
   label: string;
 }) {
-  const maxValue = Math.max(...values, 1);
-  const step = values.length > 1 ? 100 / (values.length - 1) : 0;
-  const points = values.map((value, index) => {
-    const x = index * step;
-    const y = 100 - (value / maxValue) * 100;
-    return `${x},${y}`;
-  });
-  const linePath = points.join(' ');
-  const areaPath = `${linePath} 100,100 0,100`;
-  const normalizedId = label.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const hasData = values.length > 0;
+  const maxValue = hasData ? Math.max(...values, 1) : 1;
+
+  if (!hasData) {
+    return (
+      <div className="w-full rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+        No chart data available.
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full" aria-label={ `Chart for ${label}` }>
-      <svg viewBox="0 0 100 100" className="h-28 w-full">
-        <defs>
-          <linearGradient
-            id={ `${normalizedId}-gradient` }
-            x1="0"
-            x2="0"
-            y1="0"
-            y2="1"
-          >
-            <stop offset="0%" stopColor={ color } stopOpacity="0.4" />
-            <stop offset="100%" stopColor={ color } stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <g className="text-muted-foreground/40">
-          { Array.from({ length: 4, }).map((_, rowIndex) => (
-            <line
-              key={ `grid-${rowIndex}-${normalizedId}` }
-              x1="0"
-              x2="100"
-              y1={ (rowIndex * 25).toString() }
-              y2={ (rowIndex * 25).toString() }
-              stroke="currentColor"
-              strokeWidth="0.3"
-              opacity="0.4"
-            />
-          )) }
-        </g>
-        <polygon points={ areaPath } fill={ `url(#${normalizedId}-gradient)` } />
-        <polyline
-          points={ linePath }
-          fill="none"
-          stroke={ color }
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        { points.map((point, index) => {
-          const [x, y] = point.split(',').map(Number);
+    <div className="w-full space-y-2" aria-label={ `Chart for ${label}` }>
+      <div className="grid h-36 grid-cols-7 items-end gap-2 rounded-md border p-3">
+        { values.map((value, index) => {
+          const heightPercent = Math.max(6, Math.round((value / maxValue) * 100));
           return (
-            <circle
-              key={ `${normalizedId}-dot-${index}` }
-              cx={ x }
-              cy={ y }
-              r="1.5"
-              fill={ color }
-            />
+            <div
+              key={ `${label}-bar-${index}` }
+              className="flex h-full items-end"
+            >
+              <div
+                className="w-full rounded-sm"
+                style={ {
+                  height: `${heightPercent}%`,
+                  backgroundColor: color,
+                  opacity: 0.85,
+                } }
+                aria-hidden="true"
+              />
+            </div>
           );
         }) }
-      </svg>
+      </div>
     </div>
   );
 }
@@ -377,6 +220,9 @@ function FunnelBar({
   );
 }
 
+const formatStatusLabel = (status: BookingStatus) =>
+  status.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+
 export function SpacesAnalyticsPanel() {
   const [dateRange, setDateRange] = useState<DateRangeKey>('7d');
   const [listingFilter, setListingFilter] = useState<string>('all');
@@ -391,8 +237,6 @@ export function SpacesAnalyticsPanel() {
   );
   const [customEnd, setCustomEnd] = useState(() => formatInputDate(new Date()));
 
-  const summary = SUMMARY_DATA[dateRange];
-  const multiplier = RANGE_MULTIPLIERS[dateRange];
   const {
     data: partnerBookings = [],
     isLoading: bookingsLoading,
@@ -423,9 +267,66 @@ export function SpacesAnalyticsPanel() {
     }
   };
 
+  const [rangeStart, rangeEnd] = useMemo(
+    () => resolveDateRangeBounds(dateRange, customStart, customEnd),
+    [customEnd, customStart, dateRange]
+  );
+
+  const filteredBookings = useMemo(() => {
+    const startMs = rangeStart.getTime();
+    const endMs = rangeEnd.getTime();
+
+    return partnerBookings.filter((booking) => {
+      const createdAtMs = new Date(booking.createdAt).getTime();
+      if (createdAtMs < startMs || createdAtMs > endMs) {
+        return false;
+      }
+
+      if (listingFilter !== 'all' && booking.spaceId !== listingFilter) {
+        return false;
+      }
+
+      if (bookingType !== 'all' && resolveBookingType(booking.bookingHours) !== bookingType) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [
+    bookingType,
+    listingFilter,
+    partnerBookings,
+    rangeEnd,
+    rangeStart
+  ]);
+
+  const filteredDashboardFeed = useMemo(() => {
+    const startMs = rangeStart.getTime();
+    const endMs = rangeEnd.getTime();
+
+    return dashboardFeed.filter((item) => {
+      const createdAtMs = new Date(item.createdAt).getTime();
+      if (createdAtMs < startMs || createdAtMs > endMs) {
+        return false;
+      }
+
+      if (listingFilter === 'all') {
+        return true;
+      }
+
+      if (item.type === 'booking') {
+        return item.spaceId === listingFilter;
+      }
+
+      return item.spaceId === listingFilter;
+    });
+  }, [dashboardFeed, listingFilter, rangeEnd, rangeStart]);
+
   const liveListingSource = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
     return partnerSpaces.map((space) => {
-      const spaceBookings = partnerBookings.filter(
+      const spaceBookings = filteredBookings.filter(
         (booking) => booking.spaceId === space.id
       );
       const revenue = spaceBookings.reduce(
@@ -443,19 +344,23 @@ export function SpacesAnalyticsPanel() {
         id: space.id,
         name: space.name,
         status: space.status,
-        views: 0,
-        saves: 0,
-        inquiries: 0,
         bookings,
         revenue,
-        rating: 0,
-        reviews: 0,
         cancellations,
         lastUpdated,
-        bookingTypes: ['hourly', 'daily'],
-      };
+      } as ListingMetrics;
+    }).filter((listing) => {
+      if (listingFilter !== 'all' && listing.id !== listingFilter) {
+        return false;
+      }
+
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      return listing.name.toLowerCase().includes(normalizedSearch);
     });
-  }, [partnerBookings, partnerSpaces]);
+  }, [filteredBookings, listingFilter, partnerSpaces, searchTerm]);
 
   const bookingStatusCounts = useMemo(() => {
     const base: Record<BookingStatus, number> = {
@@ -469,82 +374,117 @@ export function SpacesAnalyticsPanel() {
       completed: 0,
       noshow: 0,
     };
-    partnerBookings.forEach((booking) => {
+    filteredBookings.forEach((booking) => {
       base[booking.status] += 1;
     });
     return base;
-  }, [partnerBookings]);
+  }, [filteredBookings]);
+
+  const totalBookingStatuses = useMemo(
+    () => Object.values(bookingStatusCounts).reduce((sum, value) => sum + value, 0),
+    [bookingStatusCounts]
+  );
+
+  const bookingStatusRows = useMemo(() => {
+    return BOOKING_STATUS_ORDER.map((status) => {
+      const count = bookingStatusCounts[status];
+      const percent = totalBookingStatuses
+        ? Math.round((count / totalBookingStatuses) * 100)
+        : 0;
+
+      let barClassName = 'bg-muted-foreground';
+      if (['confirmed', 'checkedin', 'checkedout', 'completed'].includes(status)) {
+        barClassName = 'bg-emerald-500';
+      } else if (status === 'pending') {
+        barClassName = 'bg-amber-500';
+      } else if (['cancelled', 'rejected', 'expired', 'noshow'].includes(status)) {
+        barClassName = 'bg-destructive';
+      }
+
+      return {
+        status,
+        count,
+        percent,
+        barClassName,
+      };
+    });
+  }, [bookingStatusCounts, totalBookingStatuses]);
 
   const chartSeries = useMemo(() => {
     const points = 7;
-    const now = new Date();
 
-    const [rangeStart, rangeEnd] = (() => {
-      if (dateRange === 'today') {
-        const start = new Date(now);
-        start.setHours(0, 0, 0, 0);
-        return [start, now] as const;
-      }
-      if (dateRange === '7d') {
-        const start = subDays(now, 6);
-        start.setHours(0, 0, 0, 0);
-        return [start, now] as const;
-      }
-      if (dateRange === '30d') {
-        const start = subDays(now, 29);
-        start.setHours(0, 0, 0, 0);
-        return [start, now] as const;
-      }
-      const start = customStart ? new Date(customStart) : subDays(now, 6);
-      const end = customEnd ? new Date(customEnd) : now;
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999);
-      return [start, end] as const;
-    })();
-
-    const bucketDuration =
-      (rangeEnd.getTime() - rangeStart.getTime()) / points || 1;
+    const startMs = rangeStart.getTime();
+    const endMs = rangeEnd.getTime();
+    const duration = Math.max(endMs - startMs, 1);
 
     const bookingsBuckets = Array.from({ length: points, }, () => 0);
     const revenueBuckets = Array.from({ length: points, }, () => 0);
+    const activityBuckets = Array.from({ length: points, }, () => 0);
+    const messageBuckets = Array.from({ length: points, }, () => 0);
 
-    partnerBookings.forEach((booking) => {
+    const resolveBucketIndex = (timestamp: number) => {
+      const progress = (timestamp - startMs) / duration;
+      const rawIndex = Math.floor(progress * points);
+      return Math.min(points - 1, Math.max(0, rawIndex));
+    };
+
+    filteredBookings.forEach((booking) => {
       const created = new Date(booking.createdAt).getTime();
-      if (created < rangeStart.getTime() || created > rangeEnd.getTime()) {
+      if (created < startMs || created > endMs) {
         return;
       }
-      const index = Math.min(
-        points - 1,
-        Math.floor((created - rangeStart.getTime()) / bucketDuration)
-      );
+      const index = resolveBucketIndex(created);
       bookingsBuckets[index] += 1;
       revenueBuckets[index] += booking.price ?? 0;
+    });
+
+    filteredDashboardFeed.forEach((item) => {
+      const created = new Date(item.createdAt).getTime();
+      if (created < startMs || created > endMs) {
+        return;
+      }
+      const index = resolveBucketIndex(created);
+      activityBuckets[index] += 1;
+      if (item.type === 'notification' && item.notificationType === 'message') {
+        messageBuckets[index] += 1;
+      }
+    });
+
+    const tickDuration = duration / Math.max(points - 1, 1);
+    const ticks = Array.from({ length: points, }, (_, index) => {
+      const value = startMs + tickDuration * index;
+      const date = new Date(value);
+      return dateRange === 'today'
+        ? format(date, 'ha')
+        : format(date, 'MMM d');
     });
 
     return {
       bookings: bookingsBuckets,
       revenue: revenueBuckets,
-      views: Array.from({ length: points, }, () => 0),
-      saves: Array.from({ length: points, }, () => 0),
+      views: activityBuckets,
+      saves: messageBuckets,
+      ticks,
     };
   }, [
-    customEnd,
-    customStart,
     dateRange,
-    partnerBookings
+    filteredBookings,
+    filteredDashboardFeed,
+    rangeEnd,
+    rangeStart
   ]);
 
   const funnelSteps = useMemo(() => {
-    const messageCount = dashboardFeed.filter(
+    const messageCount = filteredDashboardFeed.filter(
       (item) => item.type === 'notification' && item.notificationType === 'message'
     ).length;
-    const completedCount = partnerBookings.filter((booking) =>
+    const completedCount = filteredBookings.filter((booking) =>
       ['completed', 'checkedout'].includes(booking.status)
     ).length;
     const base = Math.max(
-      dashboardFeed.length,
+      filteredDashboardFeed.length,
       messageCount,
-      partnerBookings.length,
+      filteredBookings.length,
       completedCount,
       1
     );
@@ -552,9 +492,9 @@ export function SpacesAnalyticsPanel() {
     return [
       {
         label: 'Activity items',
-        value: dashboardFeed.length,
+        value: filteredDashboardFeed.length,
         accent: 'bg-cyan-500',
-        percent: (dashboardFeed.length / base) * 100,
+        percent: (filteredDashboardFeed.length / base) * 100,
       },
       {
         label: 'Messages',
@@ -564,9 +504,9 @@ export function SpacesAnalyticsPanel() {
       },
       {
         label: 'Bookings',
-        value: partnerBookings.length,
+        value: filteredBookings.length,
         accent: 'bg-sky-500',
-        percent: (partnerBookings.length / base) * 100,
+        percent: (filteredBookings.length / base) * 100,
       },
       {
         label: 'Completed',
@@ -575,22 +515,30 @@ export function SpacesAnalyticsPanel() {
         percent: (completedCount / base) * 100,
       }
     ];
-  }, [dashboardFeed, partnerBookings]);
+  }, [filteredBookings, filteredDashboardFeed]);
 
   const recentBookings = useMemo(() => {
-    return [...partnerBookings]
+    return [...filteredBookings]
       .filter((booking) =>
         ['confirmed', 'pending', 'checkedin'].includes(booking.status)
       )
       .sort(
         (first, second) =>
-          new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()
+        new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()
       )
       .slice(0, 3);
-  }, [partnerBookings]);
+  }, [filteredBookings]);
+
+  const openBookingsCount = useMemo(
+    () =>
+      bookingStatusCounts.pending +
+      bookingStatusCounts.confirmed +
+      bookingStatusCounts.checkedin,
+    [bookingStatusCounts]
+  );
 
   const peakDemand = useMemo(() => {
-    if (!partnerBookings.length) {
+    if (!filteredBookings.length) {
       return {
  dayLabel: '—',
 hourLabel: '—', 
@@ -600,7 +548,7 @@ hourLabel: '—',
     const dayCounts = Array.from({ length: 7, }, () => 0);
     const hourCounts = Array.from({ length: 24, }, () => 0);
 
-    partnerBookings.forEach((booking) => {
+    filteredBookings.forEach((booking) => {
       const date = new Date(booking.createdAt);
       dayCounts[date.getDay()] += 1;
       hourCounts[date.getHours()] += 1;
@@ -628,44 +576,16 @@ hourLabel: '—',
       dayLabel: dayNames[peakDayIndex] ?? '—',
       hourLabel: formatHourLabel(peakHourIndex),
     };
-  }, [partnerBookings]);
-
-  const filteredListings = useMemo(() => {
-    return liveListingSource.filter((listing) => {
-      if (
-        bookingType !== 'all' &&
-        !listing.bookingTypes.includes(bookingType)
-      ) {
-        return false;
-      }
-      if (listingFilter !== 'all' && listing.id !== listingFilter) {
-        return false;
-      }
-      if (!searchTerm) {
-        return true;
-      }
-      return listing.name.toLowerCase().includes(searchTerm.toLowerCase());
-    });
-  }, [bookingType, listingFilter, liveListingSource, searchTerm]);
+  }, [filteredBookings]);
 
   const sortedListings = useMemo(() => {
-    const rows = filteredListings.map((listing) => {
-      const computedViews = listing.views ?? 0;
-      const computedBookings = listing.bookings;
-      const computedRevenue = listing.revenue;
-      const conversion = computedViews
-        ? (computedBookings / computedViews) * 100
-        : 0;
-      const cancellations = Math.min(listing.cancellations, Math.max(computedBookings, 1));
-      const cancellationRate = computedBookings
-        ? (cancellations / computedBookings) * 100
+    const rows = liveListingSource.map((listing) => {
+      const cancellations = Math.min(listing.cancellations, Math.max(listing.bookings, 1));
+      const cancellationRate = listing.bookings
+        ? (cancellations / listing.bookings) * 100
         : 0;
       return {
         ...listing,
-        views: computedViews,
-        bookings: computedBookings,
-        revenue: computedRevenue,
-        conversion,
         cancellationRate,
       };
     });
@@ -686,7 +606,7 @@ hourLabel: '—',
     };
 
     return [...rows].sort(comparator);
-  }, [filteredListings, sortDirection, sortKey]);
+  }, [liveListingSource, sortDirection, sortKey]);
 
   const exportCsv = useCallback(() => {
     const headers = [
@@ -694,8 +614,6 @@ hourLabel: '—',
       'Status',
       'Bookings',
       'Revenue',
-      'Rating',
-      'Reviews',
       'Cancellation %',
       'Last updated'
     ];
@@ -704,8 +622,6 @@ hourLabel: '—',
       listing.status,
       listing.bookings.toString(),
       listing.revenue.toString(),
-      listing.rating.toString(),
-      listing.reviews.toString(),
       listing.cancellationRate.toFixed(1),
       listing.lastUpdated
     ]);
@@ -737,284 +653,240 @@ hourLabel: '—',
   const summaryMetrics = [
     {
       label: 'Total revenue (₱)',
-      value: `₱${partnerBookings
+      value: `₱${filteredBookings
         .reduce((sum, booking) => sum + (booking.price ?? 0), 0)
         .toLocaleString('en-US')}`,
-      helper: 'All partner bookings',
+      helper: 'Current filter selection',
       change: 0,
-      accent: 'from-emerald-500/60 via-emerald-500/10 to-transparent',
     },
     {
       label: 'Bookings',
-      value: partnerBookings.length.toString(),
-      helper: 'All partner bookings',
+      value: filteredBookings.length.toString(),
+      helper: 'Current filter selection',
       change: 0,
-      accent: 'from-sky-500/60 via-sky-500/10 to-transparent',
     },
     {
       label: 'Messages',
-      value: dashboardFeed.filter(
+      value: filteredDashboardFeed.filter(
         (item) => item.type === 'notification' && item.notificationType === 'message'
       ).length.toString(),
-      helper: 'Recent partner messages',
+      helper: 'Current filter selection',
       change: 0,
-      accent: 'from-indigo-500/60 via-indigo-500/10 to-transparent',
     },
     {
       label: 'Active listings',
-      value: partnerSpaces.length.toString(),
-      helper: 'Your spaces in UpSpace',
+      value: liveListingSource.filter((listing) => listing.bookings > 0).length.toString(),
+      helper: 'Listings with bookings in range',
       change: 0,
-      accent: 'from-amber-500/60 via-amber-500/10 to-transparent',
     }
   ];
 
-  const rangeLabel =
-    DATE_RANGE_PRESETS.find((range) => range.value === dateRange)?.label ??
-    'Last 7 days';
+  const topFilterRowClass = dateRange === 'custom'
+    ? 'grid gap-2 md:grid-cols-[180px_220px_160px_148px_148px_minmax(240px,1fr)_auto]'
+    : 'grid gap-2 md:grid-cols-[180px_220px_160px_minmax(240px,1fr)_auto]';
+  const dashboardCardClassName = 'rounded-md bg-sidebar dark:bg-card';
 
   return (
-    <div className="space-y-8 mt-8">
-      <Card className="rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5 shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
-        <CardHeader className="items-start gap-4">
-          <div>
-            <CardTitle className="text-lg font-semibold">
-              Partner dashboard
-            </CardTitle>
-            <CardDescription>
-              Space performance for the selected timeframe. Use the filters to
-              slice and export the data you rely on most.
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge
-              variant="outline"
-              className="text-[11px] uppercase tracking-wide"
-            >
-              { rangeLabel }
-            </Badge>
-            <Badge className="text-[11px] uppercase tracking-wide">
-              Live data
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="px-0 pb-6">
-          <div className="px-4 sm:px-6">
-            <PartnerDashboardFeed limit={ 20 } />
-          </div>
-        </CardContent>
-      </Card>
+    <div className="mt-8 space-y-6">
+      <SpacesBreadcrumbs currentPage="Dashboard" />
 
-      <Card className="rounded-3xl border border-[#FFFFFF] shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
-        <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center">
-          <div>
-            <CardTitle>Filters & controls</CardTitle>
-            <CardDescription>
-              Slice the dashboard by date range, listing, or booking type.
-            </CardDescription>
-          </div>
+      <div className="space-y-1">
+        <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
+          Partner dashboard
+        </h2>
+        <p className="text-sm text-muted-foreground md:text-base">
+          Track your bookings, listing performance, and activity across UpSpace.
+        </p>
+      </div>
+
+      <Card className={ dashboardCardClassName }>
+        <CardHeader className="pb-3">
+          <CardTitle>Filters</CardTitle>
+          <CardDescription>
+            Slice the dashboard by date range, listing, or booking type.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 pt-0">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex flex-col">
-              <Label
-                htmlFor="date-range"
-                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-              >
-                Date range
-              </Label>
+        <CardContent className="space-y-3 pt-0">
+          <div className={ topFilterRowClass }>
+            <div className="space-y-1.5">
+              <Label htmlFor="date-range" className="text-xs text-muted-foreground">Date range</Label>
               <Select
                 value={ dateRange }
                 onValueChange={ (value) => setDateRange(value as DateRangeKey) }
               >
-                <SelectTrigger id="date-range" className="w-44">
+                <SelectTrigger
+                  id="date-range"
+                  aria-label="Select date range"
+                  className="h-8"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   { DATE_RANGE_PRESETS.map((preset) => (
-                    <SelectItem key={ preset.value } value={ preset.value } className="hover:!text-white">
+                    <SelectItem key={ preset.value } value={ preset.value }>
                       { preset.label }
                     </SelectItem>
                   )) }
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex flex-col">
-              <Label
-                htmlFor="listing-filter"
-                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-              >
-                Listing
-              </Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="listing-filter" className="text-xs text-muted-foreground">Listing</Label>
               <Select
                 value={ listingFilter }
                 onValueChange={ (value) => setListingFilter(value) }
               >
-                <SelectTrigger id="listing-filter" className="w-48">
+                <SelectTrigger
+                  id="listing-filter"
+                  aria-label="Filter by listing"
+                  className="h-8"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all" className="hover:!text-white">All listings</SelectItem>
+                  <SelectItem value="all">All listings</SelectItem>
                   { liveListingSource.map((listing) => (
-                    <SelectItem key={ listing.id } value={ listing.id } className="hover:!text-white">
+                    <SelectItem key={ listing.id } value={ listing.id }>
                       { listing.name }
                     </SelectItem>
                   )) }
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex flex-col">
-              <Label
-                htmlFor="booking-type"
-                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-              >
-                Booking type
-              </Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="booking-type" className="text-xs text-muted-foreground">Booking type</Label>
               <Select
                 value={ bookingType }
                 onValueChange={ (value) =>
                   setBookingType(value as BookingTypeKey)
                 }
               >
-                <SelectTrigger id="booking-type" className="w-36">
+                <SelectTrigger
+                  id="booking-type"
+                  aria-label="Filter by booking type"
+                  className="h-8"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all" className="hover:!text-white">All</SelectItem>
-                  <SelectItem value="hourly"className="hover:!text-white">Hourly</SelectItem>
-                  <SelectItem value="daily"className="hover:!text-white">Daily</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="hourly">Hourly</SelectItem>
+                  <SelectItem value="daily">Daily</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Input
-              placeholder="Search listing name..."
-              value={ searchTerm }
-              onChange={ (event) => setSearchTerm(event.target.value) }
-              className="min-w-[200px]"
-            />
-            <Button variant="outline" onClick={ exportCsv } className="hover:!text-white">
-              Export CSV
-            </Button>
-          </div>
-          { dateRange === 'custom' && (
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex flex-col">
-                <Label
-                  htmlFor="custom-start"
-                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                >
-                  From
-                </Label>
+            { dateRange === 'custom' && (
+              <>
+                <div className="space-y-1.5">
+                  <Label htmlFor="custom-start" className="text-xs text-muted-foreground">From</Label>
+                  <Input
+                    id="custom-start"
+                    type="date"
+                    aria-label="Custom start date"
+                    value={ customStart }
+                    onChange={ (event) => setCustomStart(event.target.value) }
+                    className="h-8"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="custom-end" className="text-xs text-muted-foreground">To</Label>
+                  <Input
+                    id="custom-end"
+                    type="date"
+                    aria-label="Custom end date"
+                    value={ customEnd }
+                    min={ customStart }
+                    onChange={ (event) => setCustomEnd(event.target.value) }
+                    className="h-8"
+                  />
+                </div>
+              </>
+            ) }
+            <div className="space-y-1.5">
+              <Label htmlFor="listing-search" className="text-xs text-muted-foreground">Search</Label>
+              <div className="relative">
+                <FiSearch
+                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden="true"
+                />
                 <Input
-                  id="custom-start"
-                  type="date"
-                  value={ customStart }
-                  onChange={ (event) => setCustomStart(event.target.value) }
-                  className="min-w-[160px]"
+                  id="listing-search"
+                  placeholder="Search listing name..."
+                  aria-label="Search listings"
+                  value={ searchTerm }
+                  onChange={ (event) => setSearchTerm(event.target.value) }
+                  className="h-8 bg-white pl-9 dark:bg-background"
                 />
               </div>
-              <div className="flex flex-col">
-                <Label
-                  htmlFor="custom-end"
-                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                >
-                  To
-                </Label>
-                <Input
-                  id="custom-end"
-                  type="date"
-                  value={ customEnd }
-                  min={ customStart }
-                  onChange={ (event) => setCustomEnd(event.target.value) }
-                  className="min-w-[160px]"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                { customStart && customEnd
-                  ? `${format(new Date(customStart), 'MMM dd')} – ${format(new Date(customEnd), 'MMM dd')}`
-                  : 'Choose a date span' }
-              </p>
             </div>
-          ) }
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Export</Label>
+              <Button size="sm" onClick={ exportCsv } className="h-8">
+                Export CSV
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         { summaryMetrics.map((metric) => (
-          <Card
-            key={ metric.label }
-            className="rounded-3xl border border-[#FFFFFF]  shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:from-foreground/10 dark:to-transparent"
-          >
-            <CardContent className="space-y-2 px-4 py-5">
+          <Card key={ metric.label } className={ dashboardCardClassName }>
+            <CardContent className="space-y-2 pt-6">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   { metric.label }
                 </p>
                 <ChangeBadge delta={ metric.change } />
               </div>
-              <p className="text-3xl font-semibold text-foreground">
-                { metric.value }
-              </p>
+              <p className="text-3xl font-semibold">{ metric.value }</p>
               <p className="text-xs text-muted-foreground">{ metric.helper }</p>
-              <div
-                className={ `h-1 rounded-full ${metric.accent} mt-2` }
-                aria-hidden="true"
-              />
             </CardContent>
           </Card>
         )) }
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
-        <Card className="rounded-3xl border xl:col-span-2 border-[#FFFFFF]  shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
-          <CardHeader className="flex items-center justify-between gap-2">
-            <div>
-              <CardTitle>Bookings & revenue over time</CardTitle>
-              <CardDescription>
-                Tracks the same range as your filters.
-              </CardDescription>
+        <Card className={ `${dashboardCardClassName} xl:col-span-2` }>
+          <CardHeader className="flex items-center justify-between">
+            <div className="space-y-2">
+              <CardTitle>Bookings and revenue trend</CardTitle>
+              <CardDescription>Tracks the same range as your filters.</CardDescription>
             </div>
-            <Badge
-              variant="outline"
-              className="text-xs uppercase tracking-wide"
-            >
-              Trend
-            </Badge>
+            <Badge variant="outline">Trend</Badge>
           </CardHeader>
-          <CardContent className="space-y-5 px-0">
+          <CardContent className="space-y-5">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              { DATE_TICKS.map((tick) => (
-                <span key={ tick }>{ tick }</span>
+              { chartSeries.ticks.map((tick, index) => (
+                <span key={ `${tick}-${index}` }>{ tick }</span>
               )) }
             </div>
-            <MiniLineChart
+            <MiniBarChart
               values={ chartSeries.bookings }
               color="#0ea5e9"
               label="Bookings"
             />
-            <MiniLineChart
+            <MiniBarChart
               values={ chartSeries.revenue }
-              color="#fb923c"
+              color="#f97316"
               label="Revenue"
             />
           </CardContent>
         </Card>
-        <Card className="rounded-3xl border border-[#FFFFFF]  shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
+        <Card className={ dashboardCardClassName }>
           <CardHeader>
-            <div>
-              <CardTitle>Views vs bookings</CardTitle>
-              <CardDescription>Live bookings; views/saves not yet tracked.</CardDescription>
-            </div>
+            <CardTitle>Views and saves</CardTitle>
+            <CardDescription>
+              Activity and message trend while direct view/save telemetry is pending.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-5 px-0">
-            <MiniLineChart
+          <CardContent className="space-y-5">
+            <MiniBarChart
               values={ chartSeries.views }
               color="#22c55e"
               label="Views"
             />
-            <MiniLineChart
+            <MiniBarChart
               values={ chartSeries.saves }
               color="#a855f7"
               label="Saves"
@@ -1023,22 +895,106 @@ hourLabel: '—',
         </Card>
       </div>
 
-      <Card className="rounded-3xl border border-[#FFFFFF] shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
-        <CardHeader className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <CardTitle>Funnel & engagement</CardTitle>
-            <CardDescription>
-              Live activity from bookings and partner messages.
-            </CardDescription>
-          </div>
+      <div className="grid gap-4 xl:grid-cols-3">
+        <Card className={ `${dashboardCardClassName} xl:col-span-2` }>
+          <CardHeader>
+            <CardTitle>Listing performance</CardTitle>
+            <CardDescription>Sortable and exportable per-listing metrics.</CardDescription>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  { [
+                    {
+                      label: 'Listing',
+                      key: 'name',
+                    },
+                    {
+                      label: 'Bookings',
+                      key: 'bookings',
+                    },
+                    {
+                      label: 'Cancellation %',
+                      key: 'cancellationRate',
+                    },
+                    {
+                      label: 'Revenue',
+                      key: 'revenue',
+                    },
+                    {
+                      label: 'Last activity',
+                      key: 'lastUpdated',
+                    }
+                  ].map((column) => (
+                    <TableHead key={ column.label }>
+                      <button
+                        type="button"
+                        aria-label={
+                          column.key === 'name'
+                            ? undefined
+                            : `Sort by ${column.label}`
+                        }
+                        className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                        onClick={ () =>
+                          column.key !== 'name'
+                            ? cycleSort(column.key as SortKey)
+                            : undefined
+                        }
+                      >
+                        { column.label }
+                      </button>
+                    </TableHead>
+                  )) }
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                { sortedListings.map((listing) => (
+                  <TableRow key={ listing.id }>
+                    <TableCell className="space-y-1">
+                      <p className="text-sm font-semibold">{ listing.name }</p>
+                      <p className="text-xs text-muted-foreground">
+                        { listing.status }
+                      </p>
+                    </TableCell>
+                    <TableCell>{ listing.bookings.toLocaleString() }</TableCell>
+                    <TableCell>{ listing.cancellationRate.toFixed(1) }%</TableCell>
+                    <TableCell>₱{ listing.revenue.toLocaleString('en-US') }</TableCell>
+                    <TableCell>
+                      { format(new Date(listing.lastUpdated), 'MMM dd') }
+                    </TableCell>
+                  </TableRow>
+                )) }
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <Card className={ dashboardCardClassName }>
+          <CardHeader>
+            <CardTitle>Activity feed</CardTitle>
+            <CardDescription>Latest bookings and messages in your workspace.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PartnerDashboardFeed limit={ 20 } />
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className={ dashboardCardClassName }>
+        <CardHeader>
+          <CardTitle>Funnel and engagement</CardTitle>
+          <CardDescription>
+            Live activity from bookings and partner messages.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6 px-0">
+        <CardContent className="space-y-6">
           { (bookingsLoading && feedLoading) ? (
             <div className="grid gap-4 md:grid-cols-2">
               { Array.from({ length: 4, }).map((_, index) => (
                 <div
                   key={ `funnel-skeleton-${index}` }
-                  className="space-y-2 rounded-2xl border border-border/60 p-4"
+                  className="space-y-2 rounded-md border p-4"
                 >
                   <Skeleton className="h-4 w-24 rounded-md" />
                   <Skeleton className="h-3 w-20 rounded-md" />
@@ -1047,9 +1003,7 @@ hourLabel: '—',
               )) }
             </div>
           ) : feedError || bookingsError ? (
-            <p className="text-sm text-destructive px-4">
-              Unable to load engagement data.
-            </p>
+            <p className="text-sm text-destructive">Unable to load engagement data.</p>
           ) : (
             <>
               <div className="grid gap-4 md:grid-cols-2">
@@ -1064,20 +1018,18 @@ hourLabel: '—',
                 )) }
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-1 rounded-2xl border border-border/60 p-3">
+                <div className="space-y-1 rounded-md border p-3">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">
                     Total bookings
                   </p>
-                  <p className="text-2xl font-semibold">
-                    { partnerBookings.length }
-                  </p>
+                  <p className="text-2xl font-semibold">{ filteredBookings.length }</p>
                 </div>
-                <div className="space-y-1 rounded-2xl border border-border/60 p-3">
+                <div className="space-y-1 rounded-md border p-3">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">
                     Messages (last feed)
                   </p>
                   <p className="text-2xl font-semibold">
-                    { dashboardFeed.filter(
+                    { filteredDashboardFeed.filter(
                       (item) =>
                         item.type === 'notification' &&
                         item.notificationType === 'message'
@@ -1090,144 +1042,115 @@ hourLabel: '—',
         </CardContent>
       </Card>
 
-      <Card className="rounded-3xl border border-[#FFFFFF] shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
-        <CardHeader className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <CardTitle>Listing performance</CardTitle>
-            <CardDescription>
-              Sortable & exportable per listing metrics.
-            </CardDescription>
-          </div>
-          <Badge variant="outline" className="text-xs uppercase tracking-wide">
-            { sortedListings.length } listings
-          </Badge>
-        </CardHeader>
-        <CardContent className="px-0 pb-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                { [
-                  {
-                    label: 'Listing',
-                    key: 'name',
-                  },
-                  {
-                    label: 'Bookings',
-                    key: 'bookings',
-                  },
-                  {
-                    label: 'Cancellation %',
-                    key: 'cancellationRate',
-                  },
-                  {
-                    label: 'Revenue',
-                    key: 'revenue',
-                  },
-                  {
-                    label: 'Last activity',
-                    key: 'lastUpdated',
-                  }
-                ].map((column) => (
-                  <TableHead key={ column.label }>
-                    <button
-                      type="button"
-                      aria-label={
-                        column.key === 'name'
-                          ? undefined
-                          : `Sort by ${column.label}`
-                      }
-                      className="flex items-center gap-1 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                      onClick={ () =>
-                        column.key !== 'name'
-                          ? cycleSort(column.key as SortKey)
-                          : undefined
-                      }
-                    >
-                      { column.label }
-                    </button>
-                  </TableHead>
-                )) }
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              { sortedListings.map((listing) => (
-                <TableRow key={ listing.id }>
-                  <TableCell className="space-y-1">
-                    <p className="text-sm font-semibold text-foreground">
-                      { listing.name }
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      { listing.status }
-                    </p>
-                  </TableCell>
-                  <TableCell>{ listing.bookings.toLocaleString() }</TableCell>
-                  <TableCell>
-                    ₱{ listing.revenue.toLocaleString('en-US') }
-                  </TableCell>
-                  <TableCell>{ listing.cancellationRate.toFixed(1) }%</TableCell>
-                  <TableCell>
-                    { format(new Date(listing.lastUpdated), 'MMM dd') }
-                  </TableCell>
-                </TableRow>
-              )) }
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="rounded-3xl border border-[#FFFFFF] shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
+        <Card className={ dashboardCardClassName }>
           <CardHeader>
-            <div>
-              <CardTitle>Booking status</CardTitle>
-              <CardDescription>Track lifecycle health</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            { Object.entries(bookingStatusCounts).map(([status, value]) => {
-              const total = Object.values(bookingStatusCounts).reduce(
-                (sum, current) => sum + current,
-                0
-              );
-              const percent = total ? Math.round((value / total) * 100) : 0;
-              return (
-                <div
-                  key={ status }
-                  className="flex items-center justify-between text-sm"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="capitalize">{ status }</span>
-                    <Badge
-                      variant="outline"
-                      className="text-[10px] uppercase tracking-wide"
-                    >
-                      { percent }%
-                    </Badge>
-                  </div>
-                  <span className="font-semibold">{ value }</span>
-                </div>
-              );
-            }) }
-          </CardContent>
-        </Card>
-        <Card className="rounded-3xl border border-[#FFFFFF] shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
-          <CardHeader>
-            <div>
-              <CardTitle>Operational insights</CardTitle>
-              <CardDescription>Upcoming bookings & peak demand</CardDescription>
-            </div>
+            <CardTitle>Booking status</CardTitle>
+            <CardDescription>Track lifecycle health.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-md border p-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Total statuses tracked
+                </p>
+                <p className="text-2xl font-semibold">{ totalBookingStatuses }</p>
+              </div>
+              <div className="rounded-md border p-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Success ratio
+                </p>
+                <p className="text-2xl font-semibold">
+                  { totalBookingStatuses
+                    ? Math.round(
+                      ((bookingStatusCounts.confirmed +
+                        bookingStatusCounts.checkedin +
+                        bookingStatusCounts.checkedout +
+                        bookingStatusCounts.completed) /
+                        totalBookingStatuses) *
+                      100
+                    )
+                    : 0 }%
+                </p>
+              </div>
+            </div>
+
             <div className="space-y-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Recent bookings
-              </p>
+              { bookingStatusRows.map((row) => (
+                <div key={ row.status } className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <span>{ formatStatusLabel(row.status) }</span>
+                      <Badge variant="outline">{ row.percent }%</Badge>
+                    </div>
+                    <span className="font-semibold">{ row.count }</span>
+                  </div>
+                  <div className="h-2 rounded-md bg-muted">
+                    <div
+                      className={ `h-2 rounded-md ${row.barClassName}` }
+                      style={ { width: `${Math.max(row.percent, row.count > 0 ? 6 : 0)}%`, } }
+                      aria-hidden="true"
+                    />
+                  </div>
+                </div>
+              )) }
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className={ dashboardCardClassName }>
+          <CardHeader className="flex flex-row items-start justify-between">
+            <div>
+              <CardTitle>Operational insights</CardTitle>
+              <CardDescription>Upcoming bookings and peak demand.</CardDescription>
+            </div>
+            <Badge variant="outline">Live</Badge>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-md border p-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Open bookings
+                </p>
+                { bookingsLoading ? (
+                  <Skeleton className="mt-2 h-7 w-16 rounded-md" />
+                ) : (
+                  <p className="mt-1 text-2xl font-semibold">{ openBookingsCount }</p>
+                ) }
+              </div>
+              <div className="rounded-md border p-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Peak window
+                </p>
+                { bookingsLoading ? (
+                  <Skeleton className="mt-2 h-7 w-36 rounded-md" />
+                ) : bookingsError ? (
+                  <p className="mt-1 text-sm text-destructive">
+                    { bookingsErrorObj instanceof Error
+                      ? bookingsErrorObj.message
+                      : 'Unable to load peak times.' }
+                  </p>
+                ) : (
+                  <p className="mt-1 text-sm font-semibold">
+                    { peakDemand.dayLabel } · { peakDemand.hourLabel }
+                  </p>
+                ) }
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Recent bookings
+                </p>
+                <Badge variant="secondary">{ recentBookings.length } shown</Badge>
+              </div>
               { bookingsLoading ? (
                 <div className="space-y-2">
                   { Array.from({ length: 3, }).map((_, index) => (
                     <div
                       key={ `upcoming-skeleton-${index}` }
-                      className="flex items-center justify-between rounded-2xl border border-border/60 px-4 py-3"
+                      className="flex items-center justify-between rounded-md border px-4 py-3"
                     >
                       <div className="space-y-2">
                         <Skeleton className="h-4 w-40 rounded-md" />
@@ -1238,23 +1161,25 @@ hourLabel: '—',
                   )) }
                 </div>
               ) : bookingsError ? (
-                <p className="text-sm text-destructive">
+                <p className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
                   { bookingsErrorObj instanceof Error
                     ? bookingsErrorObj.message
                     : 'Unable to load bookings.' }
                 </p>
               ) : recentBookings.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No recent partner bookings yet.
-                </p>
+                <div className="rounded-md border p-4">
+                  <p className="text-sm text-muted-foreground">
+                    No recent partner bookings yet.
+                  </p>
+                </div>
               ) : (
                 recentBookings.map((booking) => (
                   <div
                     key={ booking.id }
-                    className="flex items-center justify-between rounded-2xl border border-border/60 px-4 py-3"
+                    className="flex items-center justify-between rounded-md border px-4 py-3"
                   >
                     <div>
-                      <p className="font-semibold">{ booking.spaceName }</p>
+                      <p className="text-sm font-semibold">{ booking.spaceName }</p>
                       <p className="text-xs text-muted-foreground">
                         { format(new Date(booking.createdAt), 'MMM d · h:mm a') } ·{ ' ' }
                         { booking.areaName }
@@ -1265,30 +1190,6 @@ hourLabel: '—',
                     </Badge>
                   </div>
                 ))
-              ) }
-            </div>
-            <div className="space-y-1 rounded-2xl border border-border/60 px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Peak performance
-              </p>
-              { bookingsLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-28 rounded-md" />
-                  <Skeleton className="h-4 w-32 rounded-md" />
-                </div>
-              ) : bookingsError ? (
-                <p className="text-sm text-destructive">
-                  { bookingsErrorObj instanceof Error
-                    ? bookingsErrorObj.message
-                    : 'Unable to load peak times.' }
-                </p>
-              ) : (
-                <>
-                  <p className="text-sm font-semibold">Top day: { peakDemand.dayLabel }</p>
-                  <p className="text-sm font-semibold">
-                    Top hour: { peakDemand.hourLabel }
-                  </p>
-                </>
               ) }
             </div>
           </CardContent>
