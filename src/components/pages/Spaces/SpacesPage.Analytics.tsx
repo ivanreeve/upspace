@@ -76,188 +76,6 @@ const DATE_RANGE_PRESETS: {
   }
 ];
 
-const SUMMARY_DATA: Record<
-  DateRangeKey,
-  {
-    revenue: number;
-    revenueChange: number;
-    bookings: number;
-    bookingsChange: number;
-    conversion: number;
-    conversionChange: number;
-    views: number;
-    saves: number;
-    inquiries: number;
-    rating: number;
-    reviews: number;
-  }
-> = {
-  today: {
-    revenue: 145_600,
-    revenueChange: 5,
-    bookings: 18,
-    bookingsChange: 12,
-    conversion: 3.6,
-    conversionChange: 0.4,
-    views: 520,
-    saves: 38,
-    inquiries: 26,
-    rating: 4.7,
-    reviews: 9,
-  },
-  '7d': {
-    revenue: 512_400,
-    revenueChange: 8,
-    bookings: 72,
-    bookingsChange: 5,
-    conversion: 4.1,
-    conversionChange: 0.8,
-    views: 3_480,
-    saves: 240,
-    inquiries: 112,
-    rating: 4.6,
-    reviews: 32,
-  },
-  '30d': {
-    revenue: 1_820_000,
-    revenueChange: 14,
-    bookings: 310,
-    bookingsChange: 9,
-    conversion: 4.9,
-    conversionChange: 0.6,
-    views: 13_000,
-    saves: 920,
-    inquiries: 405,
-    rating: 4.6,
-    reviews: 86,
-  },
-  custom: {
-    revenue: 920_000,
-    revenueChange: 12,
-    bookings: 160,
-    bookingsChange: 6,
-    conversion: 4.4,
-    conversionChange: 0.5,
-    views: 7_200,
-    saves: 520,
-    inquiries: 210,
-    rating: 4.6,
-    reviews: 48,
-  },
-};
-
-const TIME_SERIES_DATA: Record<
-  DateRangeKey,
-  { bookings: number[]; revenue: number[]; views: number[]; saves: number[] }
-> = {
-  today: {
-    bookings: [2, 3, 1, 4, 3, 3, 2],
-    revenue: [28, 32, 24, 45, 40, 35, 31],
-    views: [60, 55, 68, 72, 70, 65, 60],
-    saves: [3, 4, 5, 6, 8, 6, 6],
-  },
-  '7d': {
-    bookings: [8, 10, 9, 7, 11, 12, 15],
-    revenue: [90, 120, 110, 95, 135, 150, 170],
-    views: [400, 420, 380, 390, 420, 450, 490],
-    saves: [28, 30, 27, 34, 38, 40, 43],
-  },
-  '30d': {
-    bookings: [12, 16, 14, 18, 20, 25, 30],
-    revenue: [160, 200, 180, 215, 230, 270, 310],
-    views: [900, 940, 910, 950, 980, 1_050, 1_120],
-    saves: [60, 64, 58, 70, 76, 82, 89],
-  },
-  custom: {
-    bookings: [9, 11, 12, 15, 14, 12, 16],
-    revenue: [110, 140, 135, 170, 165, 150, 190],
-    views: [600, 650, 640, 680, 690, 710, 735],
-    saves: [42, 45, 47, 52, 55, 54, 60],
-  },
-};
-
-const FUNNEL_DATA: Record<
-  DateRangeKey,
-  {
-    views: number;
-    saves: number;
-    inquiries: number;
-    bookings: number;
-    responseRate: number;
-    medianResponseMinutes: number;
-  }
-> = {
-  today: {
-    views: 520,
-    saves: 38,
-    inquiries: 26,
-    bookings: 18,
-    responseRate: 92,
-    medianResponseMinutes: 18,
-  },
-  '7d': {
-    views: 3_480,
-    saves: 240,
-    inquiries: 112,
-    bookings: 72,
-    responseRate: 89,
-    medianResponseMinutes: 26,
-  },
-  '30d': {
-    views: 13_000,
-    saves: 920,
-    inquiries: 405,
-    bookings: 310,
-    responseRate: 91,
-    medianResponseMinutes: 28,
-  },
-  custom: {
-    views: 7_200,
-    saves: 520,
-    inquiries: 210,
-    bookings: 160,
-    responseRate: 90,
-    medianResponseMinutes: 24,
-  },
-};
-
-const BOOKING_STATUS_BREAKDOWN: Record<
-  DateRangeKey,
-  { pending: number; confirmed: number; completed: number; cancelled: number }
-> = {
-  today: {
-    pending: 5,
-    confirmed: 9,
-    completed: 12,
-    cancelled: 2,
-  },
-  '7d': {
-    pending: 17,
-    confirmed: 28,
-    completed: 41,
-    cancelled: 6,
-  },
-  '30d': {
-    pending: 48,
-    confirmed: 82,
-    completed: 118,
-    cancelled: 12,
-  },
-  custom: {
-    pending: 30,
-    confirmed: 52,
-    completed: 70,
-    cancelled: 8,
-  },
-};
-
-const RANGE_MULTIPLIERS: Record<DateRangeKey, number> = {
-  today: 0.15,
-  '7d': 1,
-  '30d': 3.5,
-  custom: 2,
-};
-
 const DATE_TICKS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function MiniLineChart({
@@ -392,8 +210,6 @@ export function SpacesAnalyticsPanel() {
   );
   const [customEnd, setCustomEnd] = useState(() => formatInputDate(new Date()));
 
-  const summary = SUMMARY_DATA[dateRange];
-  const multiplier = RANGE_MULTIPLIERS[dateRange];
   const {
     data: partnerBookings = [],
     isLoading: bookingsLoading,
@@ -743,14 +559,12 @@ hourLabel: '—',
         .toLocaleString('en-US')}`,
       helper: 'All partner bookings',
       change: 0,
-      accent: 'from-emerald-500/60 via-emerald-500/10 to-transparent',
     },
     {
       label: 'Bookings',
       value: partnerBookings.length.toString(),
       helper: 'All partner bookings',
       change: 0,
-      accent: 'from-sky-500/60 via-sky-500/10 to-transparent',
     },
     {
       label: 'Messages',
@@ -759,14 +573,12 @@ hourLabel: '—',
       ).length.toString(),
       helper: 'Recent partner messages',
       change: 0,
-      accent: 'from-indigo-500/60 via-indigo-500/10 to-transparent',
     },
     {
       label: 'Active listings',
       value: partnerSpaces.length.toString(),
       helper: 'Your spaces in UpSpace',
       change: 0,
-      accent: 'from-amber-500/60 via-amber-500/10 to-transparent',
     }
   ];
 

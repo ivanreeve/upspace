@@ -532,7 +532,7 @@ export function SpacesInventoryForm() {
                           type="button"
                           size="icon"
                           variant="outline"
-                          className="ml-auto rounded-md bg-[oklch(0.955_0.02_204.6929)] text-primary hover:bg-[oklch(0.955_0.02_204.6929)] dark:bg-background dark:text-foreground dark:hover:bg-background"
+                          className="ml-auto rounded-md bg-[oklch(0.955_0.02_204.6929)] text-primary hover:bg-[oklch(0.955_0.02_204.6929)] hover:!text-primary hover:[&_svg]:!text-primary dark:bg-background dark:text-foreground dark:hover:bg-background dark:hover:!text-foreground dark:hover:[&_svg]:!text-foreground"
                           aria-label={ `Space actions for ${row.name}` }
                         >
                           <FiMoreHorizontal className="size-4" aria-hidden="true" />
@@ -639,7 +639,7 @@ export function SpacesInventoryForm() {
                           type="button"
                           size="icon"
                           variant="outline"
-                          className="rounded-md bg-[oklch(0.955_0.02_204.6929)] text-primary hover:bg-[oklch(0.955_0.02_204.6929)] dark:bg-background dark:text-foreground dark:hover:bg-background"
+                          className="rounded-md bg-[oklch(0.955_0.02_204.6929)] text-primary hover:bg-[oklch(0.955_0.02_204.6929)] hover:!text-primary hover:[&_svg]:!text-primary dark:bg-background dark:text-foreground dark:hover:bg-background dark:hover:!text-foreground dark:hover:[&_svg]:!text-foreground"
                           aria-label={ `Space actions for ${row.name}` }
                         >
                           <FiMoreHorizontal className="size-4" aria-hidden="true" />

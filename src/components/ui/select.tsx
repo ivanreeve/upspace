@@ -101,7 +101,7 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={ cn(
-         "focus:bg-accent focus:text-white hover:text-white [&_svg:not([class*='text-'])]:text-muted-foreground relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
+         "[&_svg:not([class*='text-'])]:text-muted-foreground relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-accent data-[highlighted]:text-white data-[highlighted]:[&_svg]:text-white hover:text-white hover:[&_svg]:text-white focus:bg-accent focus:text-white focus:[&_svg]:text-white dark:data-[highlighted]:text-accent-foreground dark:data-[highlighted]:[&_svg]:text-accent-foreground dark:hover:text-accent-foreground dark:hover:[&_svg]:text-accent-foreground dark:focus:text-accent-foreground dark:focus:[&_svg]:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
         className
       ) }
       { ...props }
