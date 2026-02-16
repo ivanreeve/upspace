@@ -5,6 +5,7 @@ import { format, subDays } from 'date-fns';
 import { FiArrowDown, FiArrowUpRight } from 'react-icons/fi';
 
 import { PartnerDashboardFeed } from './PartnerDashboardFeed';
+import { SpacesBreadcrumbs } from './SpacesBreadcrumbs';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -775,6 +776,7 @@ hourLabel: '—',
 
   return (
     <div className="space-y-8 mt-8">
+      <SpacesBreadcrumbs currentPage="Dashboard" className="mb-4" />
       <Card className="rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5 shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
         <CardHeader className="items-start gap-4">
           <div>

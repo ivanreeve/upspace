@@ -15,6 +15,8 @@ import {
   FiSearch
 } from 'react-icons/fi';
 
+import { SpacesBreadcrumbs } from './SpacesBreadcrumbs';
+
 import { useBulkUpdateBookingStatusMutation, usePartnerBookingsQuery } from '@/hooks/api/useBookings';
 import { usePartnerStuckBookingsQuery } from '@/hooks/api/usePartnerStuckBookings';
 import type { BookingStatus } from '@/lib/bookings/types';
@@ -261,8 +263,8 @@ export function SpacesBookingsPage() {
     if (isLoading) {
       return (
         <TableBody>
-          { Array.from({ length: 4, }).map((_, index) => (
-            <TableRow key={ `skeleton-${index}` }>
+          {Array.from({ length: 4, }).map((_, index) => (
+            <TableRow key={`skeleton-${index}`}>
               <TableCell className="w-10">
                 <Skeleton className="size-4" />
               </TableCell>
@@ -290,7 +292,7 @@ export function SpacesBookingsPage() {
                 <Skeleton className="h-4 w-24" />
               </TableCell>
             </TableRow>
-          )) }
+          ))}
         </TableBody>
       );
     }
@@ -299,10 +301,10 @@ export function SpacesBookingsPage() {
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={ 8 } className="text-sm text-destructive">
-              { error instanceof Error
+            <TableCell colSpan={8} className="text-sm text-destructive">
+              {error instanceof Error
                 ? error.message
-                : 'Unable to load bookings.' }
+                : 'Unable to load bookings.'}
             </TableCell>
           </TableRow>
         </TableBody>
@@ -313,7 +315,7 @@ export function SpacesBookingsPage() {
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={ 8 }>
+            <TableCell colSpan={8}>
               <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
                 <FiAlertCircle className="size-5" aria-hidden="true" />
                 <p>
@@ -331,7 +333,7 @@ export function SpacesBookingsPage() {
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={ 8 }>
+            <TableCell colSpan={8}>
               <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
                 <FiAlertCircle className="size-5" aria-hidden="true" />
                 <p>No active bookings are filling your areas right now.</p>
@@ -346,7 +348,7 @@ export function SpacesBookingsPage() {
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={ 8 }>
+            <TableCell colSpan={8}>
               <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
                 <FiAlertCircle className="size-5" aria-hidden="true" />
                 <p>No results match your search.</p>
@@ -359,7 +361,7 @@ export function SpacesBookingsPage() {
 
     return (
       <TableBody>
-        { filteredBookings.map((booking) => {
+        {filteredBookings.map((booking) => {
           const capacity = renderCapacity(booking);
           const priceLabel =
             typeof booking.price === 'number'
@@ -372,14 +374,14 @@ export function SpacesBookingsPage() {
 
           return (
             <TableRow
-              key={ booking.id }
-              data-state={ isSelected ? 'selected' : undefined }
+              key={booking.id}
+              data-state={isSelected ? 'selected' : undefined}
             >
               <TableCell>
                 <Checkbox
-                  aria-label={ `Select booking for ${booking.areaName}` }
-                  checked={ isSelected }
-                  onCheckedChange={ (checked) =>
+                  aria-label={`Select booking for ${booking.areaName}`}
+                  checked={isSelected}
+                  onCheckedChange={(checked) =>
                     handleSelectOne(booking.id, Boolean(checked))
                   }
                 />
@@ -387,89 +389,90 @@ export function SpacesBookingsPage() {
               <TableCell>
                 <div className="flex flex-col gap-1">
                   <p className="text-sm font-semibold text-foreground">
-                    { userDisplayName }
+                    {userDisplayName}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    { userHandle.startsWith('@') ? userHandle : `@${userHandle}` }
+                    {userHandle.startsWith('@') ? userHandle : `@${userHandle}`}
                   </p>
                 </div>
               </TableCell>
               <TableCell>
                 <div className="flex flex-col gap-1">
                   <Link
-                    href={ `/marketplace/${booking.spaceId}` }
+                    href={`/marketplace/${booking.spaceId}`}
                     className="inline-flex items-center gap-1 text-sm font-semibold text-foreground hover:text-primary"
                   >
-                    { booking.spaceName }
+                    {booking.spaceName}
                     <FiArrowUpRight className="size-4" aria-hidden="true" />
                   </Link>
                   <p className="text-xs text-muted-foreground">
-                    { booking.areaName }
+                    {booking.areaName}
                   </p>
                 </div>
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-3">
-                  <Badge variant={ statusVariantMap[booking.status] }>
-                    { booking.status }
+                  <Badge variant={statusVariantMap[booking.status]}>
+                    {booking.status}
                   </Badge>
-                  { !['cancelled', 'rejected', 'expired', 'noshow'].includes(
+                  {!['cancelled', 'rejected', 'expired', 'noshow'].includes(
                     booking.status
                   ) ? (
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={ () =>
+                      onClick={() =>
                         bulkUpdate.mutate({
                           ids: [booking.id],
                           status: 'cancelled',
                         })
                       }
-                      disabled={ bulkUpdate.isPending }
+                      disabled={bulkUpdate.isPending}
                     >
                       Cancel
                     </Button>
-                  ) : null }
+                  ) : null}
                 </div>
               </TableCell>
               <TableCell>
-                { booking.bookingHours } hr{ booking.bookingHours === 1 ? '' : 's' }
+                {booking.bookingHours} hr{booking.bookingHours === 1 ? '' : 's'}
               </TableCell>
-              <TableCell>{ priceLabel }</TableCell>
+              <TableCell>{priceLabel}</TableCell>
               <TableCell>
                 <div className="flex flex-col">
                   <span className="text-sm font-semibold">
-                    { capacity.label }
+                    {capacity.label}
                   </span>
                   <span
-                    className={ cn(
+                    className={cn(
                       'text-xs',
                       capacity.status === 'full'
                         ? 'text-destructive'
                         : 'text-muted-foreground'
-                    ) }
+                    )}
                   >
-                    { capacity.helper }
+                    {capacity.helper}
                   </span>
                 </div>
               </TableCell>
               <TableCell>
                 <span className="text-sm text-foreground">
-                  { bookingDateFormatter.format(new Date(booking.createdAt)) }
+                  {bookingDateFormatter.format(new Date(booking.createdAt))}
                 </span>
               </TableCell>
             </TableRow>
           );
-        }) }
+        })}
       </TableBody>
     );
   };
 
   return (
     <div className="space-y-6 px-4 pb-10 sm:px-6 lg:px-10">
+      <SpacesBreadcrumbs currentPage="Bookings" className="mt-6" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-foreground mt-8">
+          <h1 className="text-2xl font-semibold text-foreground">
             Bookings
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -478,37 +481,40 @@ export function SpacesBookingsPage() {
           </p>
         </div>
         <Badge variant="secondary" className="text-xs">
-          { activeCount } active
+          {activeCount} active
         </Badge>
       </div>
 
       <div className="space-y-2">
-        <Badge variant="outline" className="text-xs">
-          { isStuckLoading
+        <Badge
+          variant="outline"
+          className="bg-muted/20 text-sidebar-accent-foreground/20 dark:bg-muted/70 dark:text-muted-foreground text-xs"
+        >
+          {isStuckLoading
             ? 'Checking paid-but-pending bookings...'
-            : `${ stuckData?.pendingPaid ?? 0 } paid bookings need review` }
+            : `${stuckData?.pendingPaid ?? 0} paid bookings need review`}
         </Badge>
-        { stuckData && stuckData.pendingPaid > 0 ? (
-          <div className="rounded-md border border-amber-500/60 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
+        {stuckData && stuckData.pendingPaid > 0 ? (
+          <div className="rounded-md border border-amber-500/60 bg-muted px-3 py-2 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-100">
             Some bookings were paid but are still pending. Open the table below to resolve them.
           </div>
-        ) : null }
+        ) : null}
       </div>
 
       <section
-        aria-labelledby={ headingId }
-        aria-describedby={ descriptionId }
+        aria-labelledby={headingId}
+        aria-describedby={descriptionId}
         className="space-y-4"
       >
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
             <h2
-              id={ headingId }
+              id={headingId}
               className="text-lg font-semibold text-foreground"
             >
               Area capacity overview
             </h2>
-            <p id={ descriptionId } className="text-sm text-muted-foreground">
+            <p id={descriptionId} className="text-sm text-muted-foreground">
               Live bookings with per-area capacity signals, search, and bulk
               edits.
             </p>
@@ -516,9 +522,9 @@ export function SpacesBookingsPage() {
           <Button
             type="button"
             asChild
-            variant="outline"
+            variant="default"
             size="sm"
-            className="gap-2"
+            className="gap-2 dark:bg-background dark:text-foreground dark:hover:bg-background"
           >
             <Link
               href="/partner/spaces/dashboard"
@@ -543,11 +549,11 @@ export function SpacesBookingsPage() {
                 />
                 <Input
                   id="area-capacity-search"
-                  value={ searchTerm }
-                  onChange={ (event) => setSearchTerm(event.target.value) }
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
                   placeholder="Search by user, space, area, or status"
                   aria-label="Search booked users"
-                  className="pl-9"
+                  className="pl-9 !bg-white !border-slate-300 hover:!bg-white focus:!bg-white dark:!bg-input/30 dark:!border-input"
                 />
               </div>
               <p className="text-xs text-muted-foreground">
@@ -557,101 +563,103 @@ export function SpacesBookingsPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary" className="text-xs">
-                { filteredBookings.length } visible
+                {filteredBookings.length} visible
               </Badge>
               <Badge
-                variant={ selectedIds.size ? 'default' : 'secondary' }
+                variant={selectedIds.size ? 'default' : 'secondary'}
                 className="text-xs"
               >
-                { selectedIds.size } selected
+                {selectedIds.size} selected
               </Badge>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    disabled={ selectedIds.size === 0 || bulkUpdate.isPending }
-                  >
-                    { bulkUpdate.isPending ? (
-                      <>
-                        <FiLoader
-                          className="size-4 animate-spin"
-                          aria-hidden="true"
-                        />
-                        Applying...
-                      </>
-                    ) : (
-                      'Bulk edit'
-                    ) }
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>Change status</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  { BULK_STATUS_OPTIONS.map((option) => (
-                    <DropdownMenuItem
-                      key={ option.status }
-                      onSelect={ () => handleBulkStatusChange(option.status) }
+              {selectedIds.size > 0 ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      disabled={bulkUpdate.isPending}
                     >
-                      { option.label }
-                    </DropdownMenuItem>
-                  )) }
-                </DropdownMenuContent>
-              </DropdownMenu>
-              { selectedIds.size > 0 ? (
+                      {bulkUpdate.isPending ? (
+                        <>
+                          <FiLoader
+                            className="size-4 animate-spin"
+                            aria-hidden="true"
+                          />
+                          Applying...
+                        </>
+                      ) : (
+                        'Bulk edit'
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>Change status</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {BULK_STATUS_OPTIONS.map((option) => (
+                      <DropdownMenuItem
+                        key={option.status}
+                        onSelect={() => handleBulkStatusChange(option.status)}
+                      >
+                        {option.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null}
+              {selectedIds.size > 0 ? (
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={ clearSelection }
+                  onClick={clearSelection}
                   className="text-muted-foreground"
                 >
                   Clear
                 </Button>
-              ) : null }
+              ) : null}
             </div>
           </div>
 
-          { bulkUpdate.isError ? (
+          {bulkUpdate.isError ? (
             <p className="text-xs text-destructive">
-              { bulkUpdate.error instanceof Error
+              {bulkUpdate.error instanceof Error
                 ? bulkUpdate.error.message
-                : 'Unable to update bookings.' }
+                : 'Unable to update bookings.'}
             </p>
           ) : bulkUpdate.isSuccess ? (
             <p className="text-xs text-muted-foreground">
               Status updated for selected bookings.
             </p>
-          ) : null }
+          ) : null}
 
-          <Table aria-labelledby={ headingId } aria-describedby={ descriptionId }>
+          <Table aria-labelledby={headingId} aria-describedby={descriptionId}>
             <TableCaption className="sr-only">
               Area capacity overview data table with active bookings, search,
               and bulk actions
             </TableCaption>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-10">
+            <TableHeader className="bg-primary dark:bg-transparent">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-10 text-white dark:text-foreground">
                   <Checkbox
                     aria-label="Select all visible bookings"
-                    checked={ selectionState }
-                    onCheckedChange={ (checked) =>
+                    checked={selectionState}
+                    onCheckedChange={(checked) =>
                       handleSelectAll(Boolean(checked))
                     }
                   />
                 </TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Space / Area</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Capacity</TableHead>
-                <TableHead>Booked at</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">User</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Space / Area</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Status</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Duration</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Price</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Capacity</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Booked at</TableHead>
               </TableRow>
             </TableHeader>
-            { renderBody() }
+            {renderBody()}
           </Table>
         </div>
       </section>

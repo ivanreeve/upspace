@@ -402,7 +402,7 @@ filters,
                   }))
                 }
               >
-                <SelectTrigger size="sm" className="h-9 w-[140px] bg-background/50" aria-label="Filter by transaction type">
+                <SelectTrigger size="sm" className="h-9 w-[140px]" aria-label="Filter by transaction type">
                   <SelectValue placeholder="All types" />
                 </SelectTrigger>
                 <SelectContent>
@@ -423,7 +423,7 @@ filters,
                   }))
                 }
               >
-                <SelectTrigger size="sm" className="h-9 w-[140px] bg-background/50" aria-label="Filter by status">
+                <SelectTrigger size="sm" className="h-9 w-[140px]" aria-label="Filter by status">
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>

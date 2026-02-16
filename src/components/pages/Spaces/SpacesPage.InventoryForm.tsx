@@ -342,7 +342,7 @@ export function SpacesInventoryForm() {
                     <Skeleton className="h-4 w-10" />
                   </TableCell>
                   <TableCell className="text-right">
-                    <Skeleton className="ml-auto h-8 w-16 rounded-md" />
+                    <Skeleton className="ml-auto h-9 w-9 rounded-md" />
                   </TableCell>
                 </TableRow>
               )) }
