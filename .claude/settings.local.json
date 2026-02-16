@@ -26,7 +26,8 @@
       "Bash(npx vitest run:*)",
       "Bash(cat:*)",
       "Bash(git cherry-pick:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

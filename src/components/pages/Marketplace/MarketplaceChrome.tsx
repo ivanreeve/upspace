@@ -16,7 +16,6 @@ import {
   EyeOff,
   FileText,
   Home,
-  Layers,
   LogOut,
   Menu,
   MessageSquare,
@@ -26,11 +25,16 @@ import {
   Ticket,
   User,
   Users,
-  UserX,
-  Wallet
+  UserX
 } from 'lucide-react';
 import { LuMessageSquareText } from 'react-icons/lu';
-import { MdManageSearch, MdOutlineDashboardCustomize, MdOutlineNotificationsNone } from 'react-icons/md';
+import {
+  MdManageSearch,
+  MdOutlineAccountBalanceWallet,
+  MdOutlineDashboardCustomize,
+  MdOutlineNotificationsNone
+} from 'react-icons/md';
+import { TbLocationCog } from 'react-icons/tb';
 import { RiHome6Line } from 'react-icons/ri';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -403,7 +407,7 @@ function SidebarFooterContent({
                     onSelect={ () => onNavigate('/partner/wallet') }
                     className={ sidebarAccountMenuItemClassName }
                   >
-                    <Wallet className="size-4" aria-hidden="true" />
+                    <MdOutlineAccountBalanceWallet className="size-4" aria-hidden="true" />
                     <span>Wallet</span>
                   </DropdownMenuItem>
                 ) }
@@ -1144,7 +1148,7 @@ export function MarketplaceChrome({
         {
           label: 'Spaces',
           href: '/admin/spaces',
-          icon: Layers,
+          icon: TbLocationCog,
         }
       ];
     }
@@ -1161,7 +1165,7 @@ export function MarketplaceChrome({
       actions.push({
         label: 'Wallet',
         href: '/partner/wallet',
-        icon: Wallet,
+        icon: MdOutlineAccountBalanceWallet,
       });
     }
 
@@ -1351,7 +1355,7 @@ export function MarketplaceChrome({
                     <SidebarLinkItem
                       href="/partner/wallet"
                       label="Wallet"
-                      icon={ Wallet }
+                      icon={ MdOutlineAccountBalanceWallet }
                       tooltip="Wallet"
                     />
                   ) }
@@ -1359,7 +1363,7 @@ export function MarketplaceChrome({
                     <SidebarLinkItem
                       href="/partner/spaces"
                       label="Spaces"
-                      icon={ Briefcase }
+                      icon={ TbLocationCog }
                       tooltip="Spaces"
                     />
                   ) }
@@ -1436,7 +1440,7 @@ export function MarketplaceChrome({
                     <SidebarLinkItem
                       href="/admin/spaces"
                       label="Spaces"
-                      icon={ Layers }
+                      icon={ TbLocationCog }
                       tooltip="Manage spaces"
                       iconProps={ { strokeWidth: 2, } }
                     />

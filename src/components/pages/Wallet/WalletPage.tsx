@@ -90,84 +90,82 @@ function TransactionArticle({ transaction, }: { transaction: WalletTransactionRe
   const label = TRANSACTION_TYPE_LABELS[transaction.type] ?? 'Transaction';
   const badgeVariant = STATUS_BADGE_VARIANTS[transaction.status] ?? 'secondary';
   const amountLabel = formatCurrencyMinor(transaction.amountMinor, transaction.currency);
-  const isDebit = transaction.type === 'payout';
+  const isDebit = transaction.type === 'payout' || transaction.type === 'refund'; // Refunds are also debits from partner's perspective if they were the ones paying? Wait, no, refunds to customers are debits from partner's wallet.
+  
+  // Actually, 'charge' is credit to partner, 'payout' is debit, 'refund' is debit (money going back to customer), 'cash_in' is credit.
+  const isCredit = transaction.type === 'charge' || transaction.type === 'cash_in';
 
   return (
-    <article className="group rounded-2xl border border-border/60 bg-background/70 p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-border/80">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3 min-w-0">
-          <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-muted/60">
-            <Icon className="size-4 text-muted-foreground" aria-hidden="true" />
-          </div>
-          <div className="min-w-0 space-y-1">
-            <p className="text-sm font-semibold text-foreground">
-              { label }
-            </p>
-            { transaction.description && (
-              <p className="text-xs text-muted-foreground truncate max-w-[280px]">
-                { transaction.description }
-              </p>
+    <article className="group relative flex items-center justify-between gap-4 rounded-xl border border-border/50 bg-background/50 p-4 transition-all hover:border-border hover:bg-muted/5">
+      <div className="flex items-center gap-4 min-w-0">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted/40 text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+          <Icon className="size-5" aria-hidden="true" />
+        </div>
+        <div className="min-w-0 flex flex-col gap-0.5">
+          <p className="text-sm font-semibold text-foreground truncate">
+            { label }
+          </p>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>{ formatDateTime(transaction.createdAt) }</span>
+            { transaction.bookingId && (
+              <>
+                <span>•</span>
+                <span className="font-mono">{ transaction.bookingId.slice(0, 8) }</span>
+              </>
             ) }
           </div>
         </div>
-        <div className="flex flex-col items-end gap-1 text-right">
-          <p className={ `text-lg font-semibold ${isDebit ? 'text-destructive' : 'text-foreground'}` }>
-            { isDebit ? '-' : '+' }{ amountLabel }
-          </p>
-          <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-            { formatDateTime(transaction.createdAt) }
-          </span>
-          <Badge variant={ badgeVariant }>
-            { STATUS_LABELS[transaction.status] }
-          </Badge>
-        </div>
       </div>
-
-      { transaction.bookingId && (
-        <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
-          <span>Booking { transaction.bookingId.slice(0, 8) }</span>
-          { transaction.metadata && 'testing_mode' in transaction.metadata && (
-            <span>Test payment</span>
-          ) }
-        </div>
-      ) }
+      
+      <div className="flex flex-col items-end gap-1.5 shrink-0">
+        <p className={ `text-sm font-bold tracking-tight ${isCredit ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'}` }>
+          { isCredit ? '+' : '-' }{ amountLabel }
+        </p>
+        <Badge 
+          variant={ badgeVariant } 
+          className="h-5 px-1.5 text-[10px] font-bold uppercase tracking-wider"
+        >
+          { STATUS_LABELS[transaction.status] }
+        </Badge>
+      </div>
     </article>
   );
 }
 
 function WalletPageSkeleton() {
   return (
-    <section className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-      <div className="space-y-2">
-        <Skeleton className="h-3 w-16 rounded-md" />
-        <Skeleton className="h-8 w-32 rounded-md" />
-        <Skeleton className="h-4 w-64 rounded-md" />
-      </div>
-      <div className="grid gap-4 md:grid-cols-3">
-        { [1, 2, 3].map((i) => (
-          <Card key={ i } className="border border-border bg-card/70">
-            <CardHeader className="space-y-1 p-4">
-              <Skeleton className="h-4 w-24 rounded-md" />
-              <Skeleton className="h-3 w-40 rounded-md" />
-            </CardHeader>
-            <CardContent className="p-4">
-              <Skeleton className="h-7 w-28 rounded-md" />
-              <Skeleton className="mt-1 h-4 w-20 rounded-md" />
-            </CardContent>
-          </Card>
-        )) }
-      </div>
-      <Card className="border border-border bg-card/70">
-        <CardHeader className="px-6 py-4">
-          <Skeleton className="h-5 w-40 rounded-md" />
-        </CardHeader>
-        <CardContent className="space-y-4 p-6">
+    <div className="w-full px-4 pb-8 sm:px-6 lg:px-10">
+      <section className="space-y-6 py-8 md:space-y-8 md:py-12">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-24 rounded-md" />
+          <Skeleton className="h-8 w-32 rounded-md" />
+          <Skeleton className="h-4 w-80 rounded-md" />
+        </div>
+        
+        <div className="grid gap-4 md:grid-cols-3">
           { [1, 2, 3].map((i) => (
-            <Skeleton key={ i } className="h-20 rounded-2xl" />
+            <Card key={ i } className="border border-border/70 bg-background/80">
+              <CardHeader className="space-y-2 p-5">
+                <Skeleton className="h-4 w-20 rounded-md" />
+                <Skeleton className="h-8 w-32 rounded-md" />
+                <Skeleton className="h-3 w-40 rounded-md" />
+              </CardHeader>
+            </Card>
           )) }
-        </CardContent>
-      </Card>
-    </section>
+        </div>
+
+        <Card className="border border-border/70 bg-background/80">
+          <CardHeader className="px-6 py-5">
+            <Skeleton className="h-6 w-32 rounded-md" />
+          </CardHeader>
+          <CardContent className="space-y-3 p-6 pt-0">
+            { [1, 2, 3, 4].map((i) => (
+              <Skeleton key={ i } className="h-20 rounded-xl" />
+            )) }
+          </CardContent>
+        </Card>
+      </section>
+    </div>
   );
 }
 
@@ -215,22 +213,24 @@ filters,
 
   if (!isPartnerRole) {
     return (
-      <section className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-        <Card className="border border-border bg-card/70">
-          <CardHeader className="p-6">
-            <CardTitle>Partner wallet only</CardTitle>
-            <CardDescription>
-              Wallets are reserved for partners. Customers pay through the booking
-              checkout, and funds are credited directly to the partner&apos;s wallet.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-6 pb-6">
-            <p className="text-sm text-muted-foreground">
-              Need help or think you should have access? Contact support to review your role.
-            </p>
-          </CardContent>
-        </Card>
-      </section>
+      <div className="w-full px-4 pb-8 sm:px-6 lg:px-10">
+        <section className="space-y-6 py-8 md:space-y-8 md:py-12">
+          <Card className="border-dashed border-border/70 bg-background/60">
+            <CardHeader className="p-8 text-center">
+              <CardTitle className="text-xl">Partner wallet only</CardTitle>
+              <CardDescription className="mx-auto max-w-md text-balance pt-2">
+                Wallets are reserved for partners. Customers pay through the booking
+                checkout, and funds are credited directly to the partner&apos;s wallet.
+              </CardDescription>
+              <div className="pt-6">
+                <Button asChild variant="outline">
+                  <Link href="/marketplace">Return to marketplace</Link>
+                </Button>
+              </div>
+            </CardHeader>
+          </Card>
+        </section>
+      </div>
     );
   }
 
@@ -240,24 +240,26 @@ filters,
 
   if (isError) {
     return (
-      <section className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-        <Card className="border border-border bg-card/70">
-          <CardHeader className="p-6">
-            <CardTitle>Unable to load wallet</CardTitle>
-            <CardDescription>
-              Something went wrong while loading your wallet data.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-6 pb-6">
-            <Button
-              variant="outline"
-              onClick={ () => { refetchSummary(); refetchTx(); } }
-            >
-              Try again
-            </Button>
-          </CardContent>
-        </Card>
-      </section>
+      <div className="w-full px-4 pb-8 sm:px-6 lg:px-10">
+        <section className="space-y-6 py-8 md:space-y-8 md:py-12">
+          <Card className="border-destructive/20 bg-destructive/5">
+            <CardHeader className="p-8 text-center">
+              <CardTitle>Unable to load wallet</CardTitle>
+              <CardDescription className="pt-2">
+                Something went wrong while loading your wallet data.
+              </CardDescription>
+              <div className="pt-6">
+                <Button
+                  variant="outline"
+                  onClick={ () => { refetchSummary(); refetchTx(); } }
+                >
+                  Try again
+                </Button>
+              </div>
+            </CardHeader>
+          </Card>
+        </section>
+      </div>
     );
   }
 
@@ -273,220 +275,226 @@ filters,
   const filteredCount = stats?.transactionCount ?? 0;
 
   return (
-    <section className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-      { /* Breadcrumbs */ }
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link href="/partner/wallet">Partner</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <span className="text-foreground font-medium">Wallet</span>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+    <div className="w-full px-4 pb-8 sm:px-6 lg:px-10">
+      <section className="space-y-6 py-8 md:space-y-8 md:py-12">
+        { /* Breadcrumbs */ }
+        <Breadcrumb className="mb-2">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link href="/partner/spaces">Partner</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <span className="text-foreground font-medium">Wallet</span>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
 
-      { /* Page header */ }
-      <div className="space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-          Partner
-        </p>
-        <h1 className="text-3xl font-semibold text-foreground">Wallet</h1>
-        <p className="text-sm text-muted-foreground">
-          Track your earnings, refunds, and payouts from UpSpace bookings.
-        </p>
-      </div>
+        { /* Page header */ }
+        <div className="space-y-1">
+          <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
+            Wallet
+          </h2>
+          <p className="text-sm text-muted-foreground md:text-base font-sf">
+            Track your earnings, refunds, and payouts from UpSpace bookings.
+          </p>
+        </div>
 
-      { /* Stats cards */ }
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="relative overflow-hidden border border-border bg-card/70">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+        { /* Stats cards */ }
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card className="relative overflow-hidden border border-border/70 bg-background/80">
+            <CardHeader className="space-y-1 p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
                   Available balance
                 </p>
-                <p className="text-3xl font-bold tracking-tight text-foreground">
-                  { availableBalance }
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Settled from bookings
-                </p>
+                <div className="rounded-full bg-primary/10 p-1.5 text-primary">
+                  <FiDollarSign className="size-4" />
+                </div>
               </div>
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                <FiDollarSign className="size-5 text-primary" aria-hidden="true" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              <CardTitle className="text-3xl font-bold tracking-tight">
+                { availableBalance }
+              </CardTitle>
+              <CardDescription className="text-xs font-medium text-muted-foreground">
+                Settled from bookings
+              </CardDescription>
+            </CardHeader>
+          </Card>
 
-        <Card className="relative overflow-hidden border border-border bg-card/70">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          <Card className="relative overflow-hidden border border-border/70 bg-background/80">
+            <CardHeader className="space-y-1 p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
                   Total earned
                 </p>
-                <p className="text-3xl font-bold tracking-tight text-foreground">
-                  { totalEarned }
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Lifetime booking charges
-                </p>
+                <div className="rounded-full bg-emerald-500/10 p-1.5 text-emerald-600 dark:text-emerald-400">
+                  <FiTrendingUp className="size-4" />
+                </div>
               </div>
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10">
-                <FiTrendingUp className="size-5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              <CardTitle className="text-3xl font-bold tracking-tight">
+                { totalEarned }
+              </CardTitle>
+              <CardDescription className="text-xs font-medium text-muted-foreground">
+                Lifetime booking charges
+              </CardDescription>
+            </CardHeader>
+          </Card>
 
-        <Card className="relative overflow-hidden border border-border bg-card/70">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          <Card className="relative overflow-hidden border border-border/70 bg-background/80">
+            <CardHeader className="space-y-1 p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
                   Total refunded
                 </p>
-                <p className="text-3xl font-bold tracking-tight text-foreground">
-                  { totalRefunded }
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Lifetime refunds issued
-                </p>
+                <div className="rounded-full bg-destructive/10 p-1.5 text-destructive">
+                  <FiRotateCcw className="size-4" />
+                </div>
               </div>
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10">
-                <FiRotateCcw className="size-5 text-destructive" aria-hidden="true" />
-              </div>
+              <CardTitle className="text-3xl font-bold tracking-tight">
+                { totalRefunded }
+              </CardTitle>
+              <CardDescription className="text-xs font-medium text-muted-foreground">
+                Lifetime refunds issued
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+
+        { /* Withdrawals info */ }
+        <Card className="border border-border/70 bg-muted/30">
+          <div className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-foreground">Withdrawals</h3>
+              <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
+                Payouts are managed through PayMongo. This balance represents funds collected 
+                from bookings that PayMongo released to you. To move money out, initiate 
+                payouts or withdrawals from your PayMongo dashboard.
+              </p>
             </div>
-          </CardContent>
+            <Button asChild size="sm" variant="outline" className="shrink-0 bg-background/50 hover:text-white">
+              <a 
+                href="https://dashboard.paymongo.com" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2"
+              >
+                Go to PayMongo
+                <FiArrowUpRight className="size-3" />
+              </a>
+            </Button>
+          </div>
         </Card>
-      </div>
 
-      { /* Withdrawals info */ }
-      <Card className="border border-border bg-card/70">
-        <CardHeader className="space-y-1 p-4">
-          <CardTitle className="text-base font-semibold text-foreground">
-            Withdrawals
-          </CardTitle>
-          <CardDescription className="text-xs text-muted-foreground">
-            Payouts are managed through PayMongo
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-1 p-4 pt-0">
-          <p className="text-sm text-muted-foreground">
-            This balance represents funds collected from bookings that PayMongo
-            released to you. To move money out, initiate payouts or withdrawals
-            from your PayMongo dashboard.
-          </p>
-        </CardContent>
-      </Card>
+        { /* Transaction list */ }
+        <div className="space-y-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="text-lg font-semibold tracking-tight">Activity</h3>
+            
+            <div className="flex items-center gap-2">
+              <Select
+                value={ filters.type ?? 'all' }
+                onValueChange={ (value) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    type: value === 'all' ? undefined : value as WalletTransactionType,
+                  }))
+                }
+              >
+                <SelectTrigger size="sm" className="h-9 w-[140px] bg-background/50" aria-label="Filter by transaction type">
+                  <SelectValue placeholder="All types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All types</SelectItem>
+                  <SelectItem value="charge">Booking charge</SelectItem>
+                  <SelectItem value="refund">Refund</SelectItem>
+                  <SelectItem value="payout">Payout</SelectItem>
+                  <SelectItem value="cash_in">Top-up</SelectItem>
+                </SelectContent>
+              </Select>
 
-      { /* Transaction list */ }
-      <Card className="border border-border bg-card/70">
-        <CardHeader className="flex flex-col gap-3 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold text-foreground">
-              Activity
-            </CardTitle>
-            <span className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-              { filteredCount > 0 ? `${filteredCount} entries` : 'Empty' }
-            </span>
-          </div>
-          <CardDescription className="text-sm text-muted-foreground">
-            Synced with your PayMongo partner wallet ledger.
-          </CardDescription>
-          <div className="flex flex-wrap gap-2">
-            <Select
-              value={ filters.type ?? 'all' }
-              onValueChange={ (value) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  type: value === 'all' ? undefined : value as WalletTransactionType,
-                }))
-              }
-            >
-              <SelectTrigger size="sm" className="w-[160px]" aria-label="Filter by transaction type">
-                <SelectValue placeholder="All types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All types</SelectItem>
-                <SelectItem value="charge">Booking charge</SelectItem>
-                <SelectItem value="refund">Refund</SelectItem>
-                <SelectItem value="payout">Payout</SelectItem>
-                <SelectItem value="cash_in">Top-up</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={ filters.status ?? 'all' }
-              onValueChange={ (value) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  status: value === 'all' ? undefined : value as WalletTransactionStatus,
-                }))
-              }
-            >
-              <SelectTrigger size="sm" className="w-[160px]" aria-label="Filter by status">
-                <SelectValue placeholder="All statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="succeeded">Succeeded</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
-
-        <CardContent className="p-0">
-          { transactions.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
-              <FiInbox className="size-8 text-muted-foreground/50" aria-hidden="true" />
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">
-                  No wallet activity yet
-                </p>
-                <p className="text-xs text-muted-foreground/80">
-                  Transactions will appear here once bookings start generating revenue.
-                </p>
-              </div>
+              <Select
+                value={ filters.status ?? 'all' }
+                onValueChange={ (value) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    status: value === 'all' ? undefined : value as WalletTransactionStatus,
+                  }))
+                }
+              >
+                <SelectTrigger size="sm" className="h-9 w-[140px] bg-background/50" aria-label="Filter by status">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="succeeded">Succeeded</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          ) : (
-            <ScrollArea className="max-h-[640px] rounded-b-md border-t border-border/60 bg-card/80">
-              <div className="space-y-4 p-6">
-                { transactions.map((transaction) => (
-                  <TransactionArticle key={ transaction.id } transaction={ transaction } />
-                )) }
+          </div>
 
-                { hasNextPage && (
-                  <div className="flex justify-center pt-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={ isFetchingNextPage }
-                      onClick={ () => fetchNextPage() }
-                    >
-                      { isFetchingNextPage ? (
-                        <>
-                          <FiLoader className="size-4 animate-spin" aria-hidden="true" />
-                          Loading
-                        </>
-                      ) : (
-                        'Load more'
-                      ) }
-                    </Button>
+          <Card className="overflow-hidden border border-border/70 bg-background/80">
+            <CardContent className="p-0">
+              { transactions.length === 0 ? (
+                <div className="flex flex-col items-center gap-3 px-6 py-20 text-center">
+                  <div className="flex size-12 items-center justify-center rounded-full bg-muted/30 text-muted-foreground/50">
+                    <FiInbox className="size-6" aria-hidden="true" />
                   </div>
-                ) }
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-foreground">
+                      No wallet activity yet
+                    </p>
+                    <p className="text-xs text-muted-foreground max-w-[240px]">
+                      Transactions will appear here once bookings start generating revenue.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="divide-y divide-border/40">
+                  <ScrollArea className="max-h-[700px]">
+                    <div className="flex flex-col gap-3 p-5">
+                      { transactions.map((transaction) => (
+                        <TransactionArticle key={ transaction.id } transaction={ transaction } />
+                      )) }
+
+                      { hasNextPage && (
+                        <div className="flex justify-center pt-4">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={ isFetchingNextPage }
+                            onClick={ () => fetchNextPage() }
+                            className="text-muted-foreground hover:text-foreground"
+                          >
+                            { isFetchingNextPage ? (
+                              <>
+                                <FiLoader className="mr-2 size-3 animate-spin" aria-hidden="true" />
+                                Loading more...
+                              </>
+                            ) : (
+                              'Show more activity'
+                            ) }
+                          </Button>
+                        </div>
+                      ) }
+                    </div>
+                  </ScrollArea>
+                </div>
+              ) }
+            </CardContent>
+            { transactions.length > 0 && (
+              <div className="border-t border-border/40 bg-muted/10 px-6 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70">
+                  Showing { transactions.length } { transactions.length === 1 ? 'entry' : 'entries' } • Synced with PayMongo
+                </p>
               </div>
-            </ScrollArea>
-          ) }
-        </CardContent>
-      </Card>
-    </section>
+            ) }
+          </Card>
+        </div>
+      </section>
+    </div>
   );
 }
