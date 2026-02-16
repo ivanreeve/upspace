@@ -180,7 +180,7 @@ function SidebarToggleMenuItem() {
           <span className="leading-tight">UpSpace</span>
         </Link>
         <div className="flex items-center gap-2">
-          <ThemeSwitcher variant="compact" />
+          <ThemeSwitcher variant="compact" shadowless />
           <SidebarMenuButton
             tooltip="Close menu"
             type="button"
@@ -267,7 +267,9 @@ function SidebarFooterContent({
   );
   const skeletonTextClass = isCollapsed ? 'h-3 w-16' : 'h-3 w-24';
   const sidebarAccountMenuItemClassName =
-    'data-[highlighted]:bg-[oklch(0.9117_0.0384_204.6929)] focus-visible:bg-[oklch(0.9117_0.0384_204.6929)] data-[highlighted]:text-primary data-[highlighted]:[&_svg]:text-primary hover:!text-primary hover:[&_svg]:!text-primary';
+    'data-[highlighted]:bg-[oklch(0.955_0.02_204.6929)] focus-visible:bg-[oklch(0.955_0.02_204.6929)] data-[highlighted]:text-primary data-[highlighted]:[&_svg]:text-primary hover:!text-primary hover:[&_svg]:!text-primary';
+  const sidebarLogoutMenuItemClassName =
+    'text-destructive focus-visible:text-destructive data-[highlighted]:bg-[oklch(0.9059_0.0543_19.81)] focus-visible:bg-[oklch(0.9059_0.0543_19.81)] data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive hover:bg-[oklch(0.9059_0.0543_19.81)] hover:text-destructive hover:[&_svg]:text-destructive';
 
   if (isMobile) {
     return null;
@@ -282,6 +284,7 @@ function SidebarFooterContent({
     >
       <ThemeSwitcher
         variant={ isCollapsed ? 'compact' : 'default' }
+        shadowless
         className={ isCollapsed ? undefined : 'w-full justify-between' }
       />
       { isSidebarLoading ? (
@@ -434,10 +437,7 @@ function SidebarFooterContent({
                 ) }
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
-                  className={ cn(
-                    'text-destructive focus-visible:text-destructive',
-                    sidebarAccountMenuItemClassName
-                  ) }
+                  className={ sidebarLogoutMenuItemClassName }
                   onSelect={ () => {
                     void onLogout();
                   } }
@@ -689,7 +689,7 @@ function MobileTopNav({
                 ) }
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
-                  className="text-destructive focus-visible:text-destructive"
+                  className="text-destructive focus-visible:text-destructive data-[highlighted]:bg-[oklch(0.9059_0.0543_19.81)] focus-visible:bg-[oklch(0.9059_0.0543_19.81)] data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive hover:bg-[oklch(0.9059_0.0543_19.81)] hover:text-destructive hover:[&_svg]:text-destructive"
                   onSelect={ () => {
                     void onLogout();
                   } }

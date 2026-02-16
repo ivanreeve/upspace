@@ -157,7 +157,7 @@ function AccountMenu({
           onSelect={ () => {
             onLogout();
           } }
-          className="rounded-sm text-sm font-medium text-destructive focus-visible:text-destructive"
+          className="rounded-sm text-sm font-medium text-destructive focus-visible:text-destructive data-[highlighted]:bg-[oklch(0.9059_0.0543_19.81)] focus-visible:bg-[oklch(0.9059_0.0543_19.81)] data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive hover:bg-[oklch(0.9059_0.0543_19.81)] hover:text-destructive hover:[&_svg]:text-destructive"
         >
           <FiLogOut className="size-4" aria-hidden="true" />
           Logout

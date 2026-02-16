@@ -312,7 +312,7 @@ export function SpacesPriceRulesPage() {
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
-            variant="outline"
+            variant="default"
             onClick={ () => router.push('/partner/spaces/pricing-rules/new') }
             disabled={ !selectedSpaceId }
             className="hover:text-white"
