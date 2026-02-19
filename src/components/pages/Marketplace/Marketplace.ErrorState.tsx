@@ -156,7 +156,7 @@ export function SystemErrorIllustration({ className, }: SystemErrorIllustrationP
 
       </svg>
 
-      <style jsx>{ `
+      <style>{ `
         @keyframes error-float {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-10px); }
@@ -237,7 +237,7 @@ export function SystemErrorIllustrationLight({ className, }: SystemErrorIllustra
 
       </svg>
 
-      <style jsx>{ `
+      <style>{ `
         @keyframes error-float {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-10px); }

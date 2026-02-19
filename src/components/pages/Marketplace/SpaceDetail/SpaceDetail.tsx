@@ -1,12 +1,17 @@
 'use client';
 
 import {
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
-  type ChangeEvent
+  type ChangeEvent,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction
 } from 'react';
 import {
   FiChevronDown,
@@ -17,12 +22,13 @@ import {
 } from 'react-icons/fi';
 import { CgSpinner } from 'react-icons/cg';
 import { toast } from 'sonner';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 
 import SpaceHeader from './SpaceHeader';
 import SpacePhotos from './SpacePhotos';
 import HostInfo from './HostInfo';
 import { BookingCard } from './BookingCard';
+import { SpaceDetailSkeleton } from './SpaceDetail.Skeleton';
 import AmenitiesList from './AmenitiesList';
 import ReviewsSection from './ReviewsSection';
 import WhereYoullBe from './WhereYoullBe';
@@ -33,7 +39,7 @@ import { SpaceChatBubble } from './SpaceChatBubble';
 
 import { SPACE_DESCRIPTION_VIEWER_CLASSNAME } from '@/components/pages/Spaces/space-description-rich-text';
 import type { MarketplaceSpaceDetail } from '@/lib/queries/space';
-import { sanitizeRichText } from '@/lib/rich-text';
+import { richTextToPlainText } from '@/lib/rich-text';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -57,7 +63,6 @@ import {
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle
@@ -78,6 +83,13 @@ const PRICE_FORMATTER = new Intl.NumberFormat('en-PH', {
 const DEFAULT_BOOKING_HOURS = MIN_BOOKING_HOURS;
 const MIN_GUEST_COUNT = 1;
 const MAX_GUEST_COUNT = 99;
+const OVERVIEW_FALLBACK =
+  'Located in the heart of the city, Downtown Space offers a modern and flexible coworking environment designed for entrepreneurs, freelancers, and small teams. With high-speed Wi-Fi, ergonomic workstations, private meeting rooms, and a cozy lounge area, it is the perfect place to stay productive and inspired.';
+
+const getTodayIsoDate = () => {
+  const today = new Date();
+  return today.toISOString().split('T')[0];
+};
 
 const clampGuestCount = (value: number, maxLimit: number | null = null) => {
   if (!Number.isFinite(value)) {
@@ -92,125 +104,187 @@ type SpaceDetailProps = {
   space: MarketplaceSpaceDetail;
 };
 
-export default function SpaceDetail({ space, }: SpaceDetailProps) {
-  const { session, } = useSession();
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
-  const isGuest = !session;
-  const {
- data: userBookings = [], isLoading: isBookingsLoading, 
-} =
-    useUserBookingsQuery({ enabled: !isGuest, });
-  const hasConfirmedBooking = useMemo(
-    () =>
-      userBookings.some(
-        (booking) =>
-          booking.spaceId === space.id && booking.status === 'confirmed'
-      ),
-    [space.id, userBookings]
-  );
-  const canMessageHost = !isGuest;
-  const canLeaveReview = hasConfirmedBooking;
+type SessionValue = ReturnType<typeof useSession>['session'];
 
-  const locationParts = [space.city, space.region, space.countryCode].filter(
-    Boolean
-  );
-  const location =
-    locationParts.length > 0 ? locationParts.join(', ') : 'Global City, Taguig';
-  const hasAreas = space.areas.length > 0;
+type BookingFormState = {
+  bookingHours: number;
+  selectedAreaId: string | null;
+  isPricingLoading: boolean;
+  guestCount: number;
+  scheduledDate: string;
+};
 
-  const defaultHostName = 'Trisha M.';
-  const [isBookingOpen, setIsBookingOpen] = useState(false);
-  const [bookingHours, setBookingHours] = useState(DEFAULT_BOOKING_HOURS);
-  const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
-  const [isPricingLoading, setIsPricingLoading] = useState(false);
-  const [guestCount, setGuestCount] = useState(MIN_GUEST_COUNT);
-  const [scheduledDate, setScheduledDate] = useState(() => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  });
-  const bookingStartAtIso = useMemo(() => {
-    const candidate = new Date(`${scheduledDate}T23:00:00`);
-    const now = new Date();
-    if (!Number.isFinite(candidate.getTime())) {
-      return now.toISOString();
+type BookingFormAction =
+  | { type: 'initialize'; defaultAreaId: string | null }
+  | {
+      type: 'reset';
+      defaultAreaId: string | null;
+      earliestScheduleDate: string;
     }
-    if (candidate.getTime() <= now.getTime()) {
-      return new Date(now.getTime() + 60 * 60 * 1000).toISOString();
+  | { type: 'select-area'; areaId: string }
+  | { type: 'set-booking-hours'; bookingHours: number }
+  | { type: 'set-pricing-loading'; isPricingLoading: boolean }
+  | { type: 'set-guest-count'; guestCount: number }
+  | { type: 'set-scheduled-date'; scheduledDate: string };
+
+type BookingDurationFormProps = {
+  areas: MarketplaceSpaceDetail['areas'];
+  selectedAreaId: string | null;
+  onSelectArea: (areaId: string) => void;
+  scheduledDate: string;
+  earliestScheduleDate: string;
+  onScheduledDateChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  bookingHours: number;
+  onBookingHoursChange: (bookingHours: number) => void;
+  isPricingLoading: boolean;
+  shouldShowHourSelector: boolean;
+  selectedAreaMaxCapacity: number | null;
+  currentGuestLimit: number;
+  guestCount: number;
+  onDecreaseGuestCount: () => void;
+  onIncreaseGuestCount: () => void;
+  onGuestCountInputChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  isOverCapacity: boolean;
+  capacityHelperText: string;
+  pricePreviewLabel: string;
+  priceEvaluation: PriceRuleEvaluationResult | null;
+  isBookingFormPristine: boolean;
+  onResetBookingForm: () => void;
+};
+
+type BookingReservationOverlayProps = {
+  isDesktopViewport: boolean;
+  isBookingOpen: boolean;
+  setIsBookingOpen: Dispatch<SetStateAction<boolean>>;
+  bookingContent: ReactNode;
+  canConfirmBooking: boolean;
+  onConfirmBooking: () => void;
+  onCloseBooking: () => void;
+  isCheckoutPending: boolean;
+  primaryActionLabel: string;
+};
+
+type SpaceDescriptionSectionProps = {
+  spaceId: string;
+  spaceName: string;
+  aboutText: string;
+};
+
+type UseSpaceBookingParams = {
+  hasAreas: boolean;
+  isBookingOpen: boolean;
+  isGuest: boolean;
+  session: SessionValue;
+  setIsBookingOpen: Dispatch<SetStateAction<boolean>>;
+  space: MarketplaceSpaceDetail;
+};
+
+function createInitialBookingFormState(
+  earliestScheduleDate: string
+): BookingFormState {
+  return {
+    bookingHours: DEFAULT_BOOKING_HOURS,
+    selectedAreaId: null,
+    isPricingLoading: false,
+    guestCount: MIN_GUEST_COUNT,
+    scheduledDate: earliestScheduleDate,
+  };
+}
+
+function bookingFormReducer(
+  state: BookingFormState,
+  action: BookingFormAction
+): BookingFormState {
+  switch (action.type) {
+    case 'initialize':
+      return {
+        ...state,
+        bookingHours: DEFAULT_BOOKING_HOURS,
+        selectedAreaId: action.defaultAreaId,
+        isPricingLoading: Boolean(action.defaultAreaId),
+      };
+    case 'reset':
+      return {
+        bookingHours: DEFAULT_BOOKING_HOURS,
+        selectedAreaId: action.defaultAreaId,
+        isPricingLoading: Boolean(action.defaultAreaId),
+        guestCount: MIN_GUEST_COUNT,
+        scheduledDate: action.earliestScheduleDate,
+      };
+    case 'select-area':
+      return {
+        ...state,
+        selectedAreaId: action.areaId,
+        bookingHours: DEFAULT_BOOKING_HOURS,
+        isPricingLoading: true,
+      };
+    case 'set-booking-hours':
+      return {
+        ...state,
+        bookingHours: action.bookingHours,
+      };
+    case 'set-pricing-loading':
+      return {
+        ...state,
+        isPricingLoading: action.isPricingLoading,
+      };
+    case 'set-guest-count':
+      return {
+        ...state,
+        guestCount: action.guestCount,
+      };
+    case 'set-scheduled-date':
+      return {
+        ...state,
+        scheduledDate: action.scheduledDate,
+      };
+    default: {
+      const exhaustiveCheck: never = action;
+      return exhaustiveCheck;
     }
-    return candidate.toISOString();
-  }, [scheduledDate]);
-  const earliestScheduleDate = useMemo(() => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  }, []);
+  }
+}
+
+function useIsDesktopViewport(query: string) {
   const [isDesktopViewport, setIsDesktopViewport] = useState(() => {
     if (typeof window === 'undefined') {
       return false;
     }
-    return window.matchMedia(DESKTOP_BREAKPOINT_QUERY).matches;
+    return window.matchMedia(query).matches;
   });
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const handleOpenChat = useCallback(() => setIsChatOpen(true), []);
-  const handleCloseChat = useCallback(() => setIsChatOpen(false), []);
-  const createCheckoutSession = useCreateCheckoutSessionMutation();
-  const messageHostButtonRef = useRef<HTMLButtonElement | null>(null);
-  const scrollToMessageHostButton = useCallback(() => {
-    const button = messageHostButtonRef.current;
-    if (!button) return;
-
-    button.scrollIntoView({
-      behavior: 'smooth',
-      block: 'center',
-    });
-
-    if (canMessageHost) {
-      button.focus({ preventScroll: true, });
-    }
-  }, [canMessageHost]);
-
-  const findFirstPricedAreaId = useCallback(() => {
-    const areaWithPricing = space.areas.find(
-      (area) => area.pricingRuleId && area.pricingRuleName
-    );
-    return areaWithPricing?.id ?? null;
-  }, [space.areas]);
-
-  const resetBookingState = useCallback(() => {
-    const defaultAreaId = findFirstPricedAreaId();
-    setBookingHours(DEFAULT_BOOKING_HOURS);
-    setSelectedAreaId(defaultAreaId);
-    setIsPricingLoading(Boolean(defaultAreaId));
-    setGuestCount(MIN_GUEST_COUNT);
-    setScheduledDate(earliestScheduleDate);
-  }, [earliestScheduleDate, findFirstPricedAreaId]);
-
-  const handleResetBookingForm = useCallback(() => {
-    resetBookingState();
-    toast.success('Booking form reset.');
-  }, [resetBookingState]);
-
-  const initializeBookingSelection = useCallback(() => {
-    const defaultAreaId = findFirstPricedAreaId();
-    setBookingHours(DEFAULT_BOOKING_HOURS);
-    setSelectedAreaId(defaultAreaId);
-    setIsPricingLoading(Boolean(defaultAreaId));
-  }, [findFirstPricedAreaId]);
-
-  const handleOpenBooking = useCallback(() => {
-    if (!hasAreas) {
-      return;
-    }
-    initializeBookingSelection();
-    setIsBookingOpen(true);
-  }, [hasAreas, initializeBookingSelection]);
-
-  const handleScheduledDateChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    setScheduledDate(event.target.value);
-  }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia(query) as MediaQueryList & {
+      addListener?: (listener: (event: MediaQueryListEvent) => void) => void;
+      removeListener?: (listener: (event: MediaQueryListEvent) => void) => void;
+    };
+    const updateDesktopState = () => {
+      setIsDesktopViewport(mediaQuery.matches);
+    };
+
+    updateDesktopState();
+
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsDesktopViewport(event.matches);
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [query]);
+
+  return isDesktopViewport;
+}
+
+function usePaymentStatusToast(pathname: string) {
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const searchParams = new URLSearchParams(window.location.search);
     const paymentStatus = searchParams.get('payment');
     if (!paymentStatus) {
       return;
@@ -227,57 +301,35 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     const params = new URLSearchParams(searchParams.toString());
     params.delete('payment');
     const nextUrl = `${pathname}${params.toString() ? `?${params}` : ''}`;
-    router.replace(nextUrl, { scroll: false, });
-  }, [pathname, router, searchParams]);
-  const handleCloseBooking = useCallback(() => {
-    resetBookingState();
-    setIsBookingOpen(false);
-  }, [resetBookingState]);
-  const handleSelectArea = useCallback((areaId: string) => {
-    setSelectedAreaId(areaId);
-    setBookingHours(DEFAULT_BOOKING_HOURS);
-    setIsPricingLoading(true);
-  }, []);
+    window.history.replaceState(window.history.state, '', nextUrl);
+  }, [pathname]);
+}
 
+function priceBranchLabel(branch: PriceRuleEvaluationResult['branch']) {
+  switch (branch) {
+    case 'then':
+      return 'Matches rule conditions';
+    case 'else':
+      return 'Fallback pricing applied';
+    case 'unconditional':
+      return 'Flat rate applied';
+    default:
+      return 'Pricing rule';
+  }
+}
 
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return undefined;
-    }
-
-    const mediaQuery = window.matchMedia(DESKTOP_BREAKPOINT_QUERY) as MediaQueryList & {
-      addListener?: (listener: (event: MediaQueryListEvent) => void) => void;
-      removeListener?: (listener: (event: MediaQueryListEvent) => void) => void;
-    };
-    const updateDesktopState = () => {
-      setIsDesktopViewport(mediaQuery.matches);
-    };
-
-    updateDesktopState();
-
-    const handleChange = (event: MediaQueryListEvent) => {
-      setIsDesktopViewport(event.matches);
-    };
-
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
-
-  const overviewFallback =
-    'Located in the heart of the city, Downtown Space offers a modern and flexible coworking environment designed for entrepreneurs, freelancers, and small teams. With high-speed Wi-Fi, ergonomic workstations, private meeting rooms, and a cozy lounge area, it is the perfect place to stay productive and inspired.';
-
-  const rawAbout = space.description?.trim();
-  const aboutSource =
-    rawAbout && rawAbout.length > 0 ? rawAbout : `<p>${overviewFallback}</p>`;
-  const aboutHtml = sanitizeRichText(aboutSource);
-
+function SpaceDescriptionSection({
+  spaceId,
+  spaceName,
+  aboutText,
+}: SpaceDescriptionSectionProps) {
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [isDescriptionOverflowing, setIsDescriptionOverflowing] =
     useState(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const descriptionRef = useRef<HTMLDivElement | null>(null);
   const descriptionSectionRef = useRef<HTMLDivElement | null>(null);
-  const descriptionViewportId = `space-description-${space.id}`;
+  const descriptionViewportId = `space-description-${spaceId}`;
 
   useEffect(() => {
     const element = descriptionRef.current;
@@ -300,9 +352,8 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     }
 
     return undefined;
-  }, [aboutHtml]);
+  }, [aboutText]);
 
-  // Track scroll position to show/hide scroll-to-bottom button
   useEffect(() => {
     if (!isDescriptionExpanded || !isDescriptionOverflowing) {
       setShowScrollToBottom(false);
@@ -311,37 +362,28 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
 
     const handleScroll = () => {
       const section = descriptionSectionRef.current;
-      if (!section) return;
+      if (!section) {
+        return;
+      }
 
       const sectionRect = section.getBoundingClientRect();
       const sectionBottom = sectionRect.bottom;
       const viewportHeight = window.innerHeight;
 
-      // Show button if section bottom is below viewport (user hasn't scrolled to bottom yet)
       const isNotAtBottom = sectionBottom > viewportHeight + 100;
       setShowScrollToBottom(isNotAtBottom);
     };
 
-    handleScroll(); // Check initial state
-    window.addEventListener('scroll', handleScroll);
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true, });
     return () => window.removeEventListener('scroll', handleScroll);
   }, [isDescriptionExpanded, isDescriptionOverflowing]);
 
-  useEffect(() => {
-    if (!isBookingOpen) {
-      resetBookingState();
-    }
-  }, [isBookingOpen, resetBookingState]);
-
-  useEffect(() => {
-    if (!canMessageHost && isChatOpen) {
-      setIsChatOpen(false);
-    }
-  }, [canMessageHost, isChatOpen]);
-
-  const scrollToBottomOfDescription = () => {
+  const scrollToBottomOfDescription = useCallback(() => {
     const section = descriptionSectionRef.current;
-    if (!section) return;
+    if (!section) {
+      return;
+    }
 
     const sectionRect = section.getBoundingClientRect();
     const absoluteTop = window.pageYOffset + sectionRect.top;
@@ -351,145 +393,110 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
       top: absoluteTop + sectionHeight - window.innerHeight + 100,
       behavior: 'smooth',
     });
-  };
+  }, []);
 
   const shouldClampDescription = !isDescriptionExpanded;
   const shouldShowGradient = shouldClampDescription && isDescriptionOverflowing;
 
-  const selectedArea = useMemo(
-    () => space.areas.find((area) => area.id === selectedAreaId) ?? null,
-    [selectedAreaId, space.areas]
+  return (
+    <section ref={ descriptionSectionRef } className="space-y-4 border-b pb-6">
+      <h2 className="text-xl font-medium text-foreground">About { spaceName }</h2>
+      <div className="relative">
+        <div
+          className={ cn(
+            'relative',
+            shouldClampDescription && 'max-h-[360px] overflow-hidden'
+          ) }
+        >
+          <div
+            id={ descriptionViewportId }
+            ref={ descriptionRef }
+            className={ cn(
+              SPACE_DESCRIPTION_VIEWER_CLASSNAME,
+              'whitespace-pre-line',
+              '[&_p]:my-3 [&_p:first-of-type]:mt-0 [&_p:last-of-type]:mb-0',
+              '[&_ul]:my-3 [&_ol]:my-3 [&_li]:leading-relaxed',
+              '[&_h1]:mt-5 [&_h2]:mt-4 [&_h3]:mt-3'
+            ) }
+          >
+            { aboutText }
+          </div>
+          { shouldShowGradient ? (
+            <div className="absolute inset-x-0 bottom-0 h-32">
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+              <div className="absolute bottom-0 inset-x-0 flex justify-center">
+                <button
+                  type="button"
+                  onClick={ () => setIsDescriptionExpanded(true) }
+                  aria-expanded={ false }
+                  aria-controls={ descriptionViewportId }
+                  className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-background px-4 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent hover:text-white"
+                >
+                  Show more
+                  <FiChevronDown className="size-4" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+          ) : null }
+        </div>
+
+        { isDescriptionOverflowing && isDescriptionExpanded ? (
+          <div className="mt-4 flex justify-center">
+            <button
+              type="button"
+              onClick={ () => setIsDescriptionExpanded(false) }
+              aria-expanded={ true }
+              aria-controls={ descriptionViewportId }
+              className="flex items-center gap-2 rounded-lg border border-border bg-background px-6 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent hover:text-white"
+            >
+              Show less
+              <FiChevronUp className="size-4" aria-hidden="true" />
+            </button>
+          </div>
+        ) : null }
+
+        { showScrollToBottom ? (
+          <div className="animate-in fade-in slide-in-from-bottom-4 fixed bottom-8 left-1/2 z-50 -translate-x-1/2">
+            <button
+              type="button"
+              onClick={ scrollToBottomOfDescription }
+              aria-label="Scroll to bottom of description"
+              className="flex items-center justify-center rounded-full border border-border bg-background p-3 text-foreground shadow-lg transition-all hover:scale-110 hover:bg-accent hover:text-white"
+            >
+              <FiChevronDown className="size-5" aria-hidden="true" />
+            </button>
+          </div>
+        ) : null }
+      </div>
+    </section>
   );
+}
 
-  const activePriceRule = useMemo<PriceRuleRecord | null>(() => {
-    if (!selectedArea?.pricingRuleId) {
-      return null;
-    }
-    return (
-      space.pricingRules.find(
-        (rule) => rule.id === selectedArea.pricingRuleId
-      ) ?? null
-    );
-  }, [selectedArea?.pricingRuleId, space.pricingRules]);
-
-  useEffect(() => {
-    if (!selectedAreaId || !isPricingLoading) {
-      return undefined;
-    }
-
-    const timeoutId = window.setTimeout(() => setIsPricingLoading(false), 600);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [isPricingLoading, selectedAreaId]);
-
-  const shouldShowHourSelector = useMemo(
-    () => doesRuleUseBookingDurationVariables(activePriceRule),
-    [activePriceRule]
-  );
-  const defaultPricedAreaId = findFirstPricedAreaId();
-  const isBookingFormPristine =
-    selectedAreaId === defaultPricedAreaId &&
-    guestCount === MIN_GUEST_COUNT &&
-    bookingHours === MIN_BOOKING_HOURS &&
-    scheduledDate === earliestScheduleDate;
-
-  const variableOverrides = useMemo(() => {
-    const overrides: Record<string, number> = { guest_count: guestCount, };
-
-    if (selectedArea) {
-      if (typeof selectedArea.maxCapacity === 'number') {
-        overrides.area_max_capacity = selectedArea.maxCapacity;
-      }
-      if (typeof selectedArea.minCapacity === 'number') {
-        overrides.area_min_capacity = selectedArea.minCapacity;
-      }
-    }
-
-    return overrides;
-  }, [guestCount, selectedArea]);
-
-  const priceEvaluation = useMemo(() => {
-    if (!activePriceRule) {
-      return null;
-    }
-    return evaluatePriceRule(
-      activePriceRule.definition,
-      {
-        bookingHours,
-        now: new Date(bookingStartAtIso),
-        variableOverrides,
-      }
-    );
-  }, [activePriceRule, bookingHours, bookingStartAtIso, variableOverrides]);
-
-  const selectedAreaMaxCapacity = selectedArea?.maxCapacity ?? null;
-  const remainingCapacity =
-    selectedAreaMaxCapacity !== null
-      ? Math.max(selectedAreaMaxCapacity - guestCount, 0)
-      : null;
-  const isOverCapacity =
-    selectedAreaMaxCapacity !== null && guestCount > selectedAreaMaxCapacity;
-  const capacityHelperText = selectedArea
-    ? selectedAreaMaxCapacity === null
-      ? 'This area does not have a capacity limit.'
-      : isOverCapacity
-        ? `Over the ${selectedAreaMaxCapacity}-guest limit`
-        : `${remainingCapacity} slot${remainingCapacity === 1 ? '' : 's'} remaining`
-    : 'Select an area to view capacity limits.';
-
-  const totalPrice = useMemo(() => {
-    if (!priceEvaluation || priceEvaluation.price === null) {
-      return null;
-    }
-    const formulaAlreadyHandlesGuests = priceEvaluation.usedVariables.includes('guest_count');
-    const guestMultiplier = formulaAlreadyHandlesGuests ? 1 : guestCount;
-    return priceEvaluation.price * guestMultiplier;
-  }, [priceEvaluation, guestCount]);
-  const pricePreviewLabel = (() => {
-    if (!selectedArea) {
-      return 'Select an area to preview pricing';
-    }
-    if (!activePriceRule) {
-      return 'Pricing unavailable';
-    }
-    if (totalPrice === null) {
-      return 'Calculating price...';
-    }
-    return PRICE_FORMATTER.format(totalPrice);
-  })();
-
-  const currentGuestLimit = selectedAreaMaxCapacity ?? MAX_GUEST_COUNT;
-  useEffect(() => {
-    setGuestCount((current) => clampGuestCount(current, selectedAreaMaxCapacity));
-  }, [selectedAreaMaxCapacity]);
-
-  const handleDecreaseGuestCount = useCallback(() => {
-    setGuestCount((current) => clampGuestCount(current - 1, currentGuestLimit));
-  }, [currentGuestLimit]);
-
-  const handleIncreaseGuestCount = useCallback(() => {
-    setGuestCount((current) => clampGuestCount(current + 1, currentGuestLimit));
-  }, [currentGuestLimit]);
-
-  const handleGuestCountInputChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    const parsed = Number(event.target.value);
-    setGuestCount(clampGuestCount(parsed, currentGuestLimit));
-  }, [currentGuestLimit]);
-
-  const priceBranchLabel = (branch: PriceRuleEvaluationResult['branch']) => {
-    switch (branch) {
-      case 'then':
-        return 'Matches rule conditions';
-      case 'else':
-        return 'Fallback pricing applied';
-      case 'unconditional':
-        return 'Flat rate applied';
-      default:
-        return 'Pricing rule';
-    }
-  };
-
-  const bookingDurationContent = (
+function BookingDurationForm({
+  areas,
+  selectedAreaId,
+  onSelectArea,
+  scheduledDate,
+  earliestScheduleDate,
+  onScheduledDateChange,
+  bookingHours,
+  onBookingHoursChange,
+  isPricingLoading,
+  shouldShowHourSelector,
+  selectedAreaMaxCapacity,
+  currentGuestLimit,
+  guestCount,
+  onDecreaseGuestCount,
+  onIncreaseGuestCount,
+  onGuestCountInputChange,
+  isOverCapacity,
+  capacityHelperText,
+  pricePreviewLabel,
+  priceEvaluation,
+  isBookingFormPristine,
+  onResetBookingForm,
+}: BookingDurationFormProps) {
+  return (
     <div className="space-y-4">
       <div className="space-y-1">
         <p className="text-lg font-semibold text-left font-sf text-muted-foreground">
@@ -510,18 +517,15 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                 Area selection
               </Label>
               <span className="text-xs text-muted-foreground">
-                { space.areas.length } area{ space.areas.length === 1 ? '' : 's' }
+                { areas.length } area{ areas.length === 1 ? '' : 's' }
               </span>
             </div>
-            { space.areas.length === 0 ? (
+            { areas.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border/60 bg-muted/40 px-3 py-5 text-center text-sm text-muted-foreground">
                 No areas available yet.
               </div>
             ) : (
-              <Select
-                value={ selectedAreaId ?? undefined }
-                onValueChange={ handleSelectArea }
-              >
+              <Select value={ selectedAreaId ?? undefined } onValueChange={ onSelectArea }>
                 <SelectTrigger
                   id="area-select"
                   className="w-full rounded-md"
@@ -530,7 +534,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                   <SelectValue placeholder="Select an area" />
                 </SelectTrigger>
                 <SelectContent className="max-w-[26rem]">
-                  { space.areas.map((area) => {
+                  { areas.map((area) => {
                     const hasPricingRule = Boolean(
                       area.pricingRuleId && area.pricingRuleName
                     );
@@ -564,7 +568,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
               type="date"
               value={ scheduledDate }
               min={ earliestScheduleDate }
-              onChange={ handleScheduledDateChange }
+              onChange={ onScheduledDateChange }
             />
             <p className="text-xs text-muted-foreground">
               We&apos;ll confirm availability with the host for { scheduledDate }.
@@ -591,7 +595,9 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                     : `${bookingHours} hr${bookingHours === 1 ? '' : 's'}` }
                 </p>
                 <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                  { bookingHours === MAX_BOOKING_HOURS ? 'Max duration' : 'Hourly booking' }
+                  { bookingHours === MAX_BOOKING_HOURS
+                    ? 'Max duration'
+                    : 'Hourly booking' }
                 </p>
               </div>
               <Slider
@@ -601,7 +607,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                 step={ 1 }
                 onValueChange={ ([value]) => {
                   const nextValue = value ?? MIN_BOOKING_HOURS;
-                  setBookingHours(nextValue);
+                  onBookingHoursChange(nextValue);
                 } }
                 disabled={ isPricingLoading || !selectedAreaId }
                 className="h-5"
@@ -632,7 +638,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                 type="button"
                 variant="ghost"
                 size="icon"
-                onClick={ handleDecreaseGuestCount }
+                onClick={ onDecreaseGuestCount }
                 disabled={ guestCount <= MIN_GUEST_COUNT }
                 aria-label="Decrease guest count"
               >
@@ -645,14 +651,14 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                 step={ 1 }
                 className="w-16 text-center text-sm"
                 value={ guestCount }
-                onChange={ handleGuestCountInputChange }
+                onChange={ onGuestCountInputChange }
                 aria-label="Number of guests"
               />
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                onClick={ handleIncreaseGuestCount }
+                onClick={ onIncreaseGuestCount }
                 disabled={ guestCount >= currentGuestLimit }
                 aria-label="Increase guest count"
               >
@@ -683,7 +689,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
             </div>
           ) }
         </div>
-        <p className="text-3xl font-semibold text-foreground mt-2">
+        <p className="mt-2 text-3xl font-semibold text-foreground">
           { pricePreviewLabel }
         </p>
         { priceEvaluation && priceEvaluation.branch !== 'no-match' ? (
@@ -692,7 +698,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
           </p>
         ) : null }
         { isOverCapacity && (
-          <p className="text-xs text-destructive font-medium mt-2">
+          <p className="mt-2 text-xs font-medium text-destructive">
             Guest count exceeds this area&apos;s capacity.
           </p>
         ) }
@@ -702,7 +708,7 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
           type="button"
           variant="outline"
           size="sm"
-          onClick={ handleResetBookingForm }
+          onClick={ onResetBookingForm }
           disabled={ isBookingFormPristine }
         >
           Reset form
@@ -714,6 +720,345 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
         </div>
       ) }
     </div>
+  );
+}
+
+function BookingReservationOverlay({
+  isDesktopViewport,
+  isBookingOpen,
+  setIsBookingOpen,
+  bookingContent,
+  canConfirmBooking,
+  onConfirmBooking,
+  onCloseBooking,
+  isCheckoutPending,
+  primaryActionLabel,
+}: BookingReservationOverlayProps) {
+  return (
+    <>
+      <Dialog
+        open={ isDesktopViewport && isBookingOpen }
+        onOpenChange={ setIsBookingOpen }
+      >
+        <DialogContent showCloseButton={ false }>
+          <DialogHeader>
+            <DialogTitle>Book a reservation</DialogTitle>
+            <DialogDescription>
+              Confirm your preferred duration and review the booking summary
+              before checkout.
+            </DialogDescription>
+          </DialogHeader>
+          { bookingContent }
+          <DialogFooter className="mt-4 flex-col gap-3 lg:flex-row lg:items-center">
+            <Button
+              type="button"
+              className="w-full lg:w-auto"
+              onClick={ onConfirmBooking }
+              disabled={ !canConfirmBooking }
+            >
+              { isCheckoutPending && (
+                <CgSpinner className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) }
+              { primaryActionLabel }
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full lg:w-auto hover:text-white"
+              onClick={ onCloseBooking }
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Sheet
+        open={ !isDesktopViewport && isBookingOpen }
+        onOpenChange={ setIsBookingOpen }
+      >
+        <SheetContent side="bottom" className="gap-4">
+          <SheetHeader>
+            <SheetTitle>Book a reservation</SheetTitle>
+          </SheetHeader>
+          <div className="px-6 pb-4">{ bookingContent }</div>
+          <SheetFooter className="mt-4 space-y-3 px-6 pb-6">
+            <Button
+              type="button"
+              className="w-full"
+              onClick={ onConfirmBooking }
+              disabled={ !canConfirmBooking }
+            >
+              { isCheckoutPending && (
+                <CgSpinner className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) }
+              { primaryActionLabel }
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full hover:text-white"
+              onClick={ onCloseBooking }
+            >
+              Cancel
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+    </>
+  );
+}
+
+function useSpaceBooking({
+  hasAreas,
+  isBookingOpen,
+  isGuest,
+  session,
+  setIsBookingOpen,
+  space,
+}: UseSpaceBookingParams) {
+  const createCheckoutSession = useCreateCheckoutSessionMutation();
+  const earliestScheduleDate = useMemo(() => getTodayIsoDate(), []);
+
+  const findFirstPricedAreaId = useCallback(() => {
+    const areaWithPricing = space.areas.find(
+      (area) => area.pricingRuleId && area.pricingRuleName
+    );
+    return areaWithPricing?.id ?? null;
+  }, [space.areas]);
+
+  const [bookingState, dispatchBookingAction] = useReducer(
+    bookingFormReducer,
+    earliestScheduleDate,
+    createInitialBookingFormState
+  );
+
+  const {
+    bookingHours,
+    selectedAreaId,
+    isPricingLoading,
+    guestCount,
+    scheduledDate,
+  } = bookingState;
+
+  const bookingStartAtIso = useMemo(() => {
+    const candidate = new Date(`${scheduledDate}T23:00:00`);
+    const now = new Date();
+    if (!Number.isFinite(candidate.getTime())) {
+      return now.toISOString();
+    }
+    if (candidate.getTime() <= now.getTime()) {
+      return new Date(now.getTime() + 60 * 60 * 1000).toISOString();
+    }
+    return candidate.toISOString();
+  }, [scheduledDate]);
+
+  const resetBookingState = useCallback(() => {
+    dispatchBookingAction({
+      type: 'reset',
+      defaultAreaId: findFirstPricedAreaId(),
+      earliestScheduleDate,
+    });
+  }, [earliestScheduleDate, findFirstPricedAreaId]);
+
+  const handleResetBookingForm = useCallback(() => {
+    resetBookingState();
+    toast.success('Booking form reset.');
+  }, [resetBookingState]);
+
+  const initializeBookingSelection = useCallback(() => {
+    dispatchBookingAction({
+      type: 'initialize',
+      defaultAreaId: findFirstPricedAreaId(),
+    });
+  }, [findFirstPricedAreaId]);
+
+  const handleOpenBooking = useCallback(() => {
+    if (!hasAreas) {
+      return;
+    }
+    initializeBookingSelection();
+    setIsBookingOpen(true);
+  }, [hasAreas, initializeBookingSelection, setIsBookingOpen]);
+
+  const handleCloseBooking = useCallback(() => {
+    resetBookingState();
+    setIsBookingOpen(false);
+  }, [resetBookingState, setIsBookingOpen]);
+
+  const handleSelectArea = useCallback((areaId: string) => {
+    dispatchBookingAction({
+      type: 'select-area',
+      areaId,
+    });
+  }, []);
+
+  const handleBookingHoursChange = useCallback((nextBookingHours: number) => {
+    dispatchBookingAction({
+      type: 'set-booking-hours',
+      bookingHours: nextBookingHours,
+    });
+  }, []);
+
+  const handleScheduledDateChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      dispatchBookingAction({
+        type: 'set-scheduled-date',
+        scheduledDate: event.target.value,
+      });
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (!isBookingOpen) {
+      resetBookingState();
+    }
+  }, [isBookingOpen, resetBookingState]);
+
+  useEffect(() => {
+    if (!selectedAreaId || !isPricingLoading) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(
+      () =>
+        dispatchBookingAction({
+          type: 'set-pricing-loading',
+          isPricingLoading: false,
+        }),
+      600
+    );
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isPricingLoading, selectedAreaId]);
+
+  const selectedArea = useMemo(
+    () => space.areas.find((area) => area.id === selectedAreaId) ?? null,
+    [selectedAreaId, space.areas]
+  );
+
+  const activePriceRule = useMemo<PriceRuleRecord | null>(() => {
+    if (!selectedArea?.pricingRuleId) {
+      return null;
+    }
+    return (
+      space.pricingRules.find(
+        (rule) => rule.id === selectedArea.pricingRuleId
+      ) ?? null
+    );
+  }, [selectedArea?.pricingRuleId, space.pricingRules]);
+
+  const shouldShowHourSelector = useMemo(
+    () => doesRuleUseBookingDurationVariables(activePriceRule),
+    [activePriceRule]
+  );
+
+  const defaultPricedAreaId = findFirstPricedAreaId();
+  const isBookingFormPristine =
+    selectedAreaId === defaultPricedAreaId &&
+    guestCount === MIN_GUEST_COUNT &&
+    bookingHours === MIN_BOOKING_HOURS &&
+    scheduledDate === earliestScheduleDate;
+
+  const variableOverrides = useMemo(() => {
+    const overrides: Record<string, number> = { guest_count: guestCount, };
+
+    if (selectedArea) {
+      if (typeof selectedArea.maxCapacity === 'number') {
+        overrides.area_max_capacity = selectedArea.maxCapacity;
+      }
+      if (typeof selectedArea.minCapacity === 'number') {
+        overrides.area_min_capacity = selectedArea.minCapacity;
+      }
+    }
+
+    return overrides;
+  }, [guestCount, selectedArea]);
+
+  const priceEvaluation = useMemo(() => {
+    if (!activePriceRule) {
+      return null;
+    }
+    return evaluatePriceRule(activePriceRule.definition, {
+      bookingHours,
+      now: new Date(bookingStartAtIso),
+      variableOverrides,
+    });
+  }, [activePriceRule, bookingHours, bookingStartAtIso, variableOverrides]);
+
+  const selectedAreaMaxCapacity = selectedArea?.maxCapacity ?? null;
+  const remainingCapacity =
+    selectedAreaMaxCapacity !== null
+      ? Math.max(selectedAreaMaxCapacity - guestCount, 0)
+      : null;
+  const isOverCapacity =
+    selectedAreaMaxCapacity !== null && guestCount > selectedAreaMaxCapacity;
+  const capacityHelperText = selectedArea
+    ? selectedAreaMaxCapacity === null
+      ? 'This area does not have a capacity limit.'
+      : isOverCapacity
+        ? `Over the ${selectedAreaMaxCapacity}-guest limit`
+        : `${remainingCapacity} slot${remainingCapacity === 1 ? '' : 's'} remaining`
+    : 'Select an area to view capacity limits.';
+
+  const totalPrice = useMemo(() => {
+    if (!priceEvaluation || priceEvaluation.price === null) {
+      return null;
+    }
+    const formulaAlreadyHandlesGuests =
+      priceEvaluation.usedVariables.includes('guest_count');
+    const guestMultiplier = formulaAlreadyHandlesGuests ? 1 : guestCount;
+    return priceEvaluation.price * guestMultiplier;
+  }, [priceEvaluation, guestCount]);
+
+  const pricePreviewLabel = (() => {
+    if (!selectedArea) {
+      return 'Select an area to preview pricing';
+    }
+    if (!activePriceRule) {
+      return 'Pricing unavailable';
+    }
+    if (totalPrice === null) {
+      return 'Calculating price...';
+    }
+    return PRICE_FORMATTER.format(totalPrice);
+  })();
+
+  const currentGuestLimit = selectedAreaMaxCapacity ?? MAX_GUEST_COUNT;
+
+  useEffect(() => {
+    const clampedGuestCount = clampGuestCount(guestCount, selectedAreaMaxCapacity);
+    if (clampedGuestCount !== guestCount) {
+      dispatchBookingAction({
+        type: 'set-guest-count',
+        guestCount: clampedGuestCount,
+      });
+    }
+  }, [guestCount, selectedAreaMaxCapacity]);
+
+  const handleDecreaseGuestCount = useCallback(() => {
+    dispatchBookingAction({
+      type: 'set-guest-count',
+      guestCount: clampGuestCount(guestCount - 1, currentGuestLimit),
+    });
+  }, [currentGuestLimit, guestCount]);
+
+  const handleIncreaseGuestCount = useCallback(() => {
+    dispatchBookingAction({
+      type: 'set-guest-count',
+      guestCount: clampGuestCount(guestCount + 1, currentGuestLimit),
+    });
+  }, [currentGuestLimit, guestCount]);
+
+  const handleGuestCountInputChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const parsed = Number(event.target.value);
+      dispatchBookingAction({
+        type: 'set-guest-count',
+        guestCount: clampGuestCount(parsed, currentGuestLimit),
+      });
+    },
+    [currentGuestLimit]
   );
 
   const primaryActionLabel = (() => {
@@ -735,23 +1080,14 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     return PRICE_FORMATTER.format(totalPrice);
   })();
 
-  const bookingButtonContent = (
-    <>
-      { createCheckoutSession.isPending && (
-        <CgSpinner className="h-4 w-4 animate-spin" aria-hidden="true" />
-      ) }
-      { primaryActionLabel }
-    </>
-  );
-
   const canConfirmBooking = Boolean(
     selectedAreaId &&
-    !isPricingLoading &&
-    activePriceRule &&
-    totalPrice !== null &&
-    !isGuest &&
-    !createCheckoutSession.isPending &&
-    !isOverCapacity
+      !isPricingLoading &&
+      activePriceRule &&
+      totalPrice !== null &&
+      !isGuest &&
+      !createCheckoutSession.isPending &&
+      !isOverCapacity
   );
 
   const handleConfirmBooking = useCallback(async () => {
@@ -778,21 +1114,152 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
     }
   }, [
     bookingHours,
+    bookingStartAtIso,
     canConfirmBooking,
     createCheckoutSession,
-    bookingStartAtIso,
+    guestCount,
     resetBookingState,
     selectedArea,
     session,
+    setIsBookingOpen,
     space.id,
-    totalPrice,
-    guestCount
+    totalPrice
   ]);
+
+  return {
+    bookingHours,
+    canConfirmBooking,
+    capacityHelperText,
+    currentGuestLimit,
+    earliestScheduleDate,
+    guestCount,
+    handleBookingHoursChange,
+    handleCloseBooking,
+    handleConfirmBooking,
+    handleDecreaseGuestCount,
+    handleGuestCountInputChange,
+    handleIncreaseGuestCount,
+    handleOpenBooking,
+    handleResetBookingForm,
+    handleScheduledDateChange,
+    handleSelectArea,
+    isBookingFormPristine,
+    isCheckoutPending: createCheckoutSession.isPending,
+    isOverCapacity,
+    isPricingLoading,
+    priceEvaluation,
+    pricePreviewLabel,
+    primaryActionLabel,
+    scheduledDate,
+    selectedAreaId,
+    selectedAreaMaxCapacity,
+    shouldShowHourSelector,
+  };
+}
+
+function SpaceDetailContent({ space, }: SpaceDetailProps) {
+  const { session, } = useSession();
+  const pathname = usePathname();
+  const isGuest = !session;
+  const { data: userBookings = [], } = useUserBookingsQuery({ enabled: !isGuest, });
+
+  const hasConfirmedBooking = useMemo(
+    () =>
+      userBookings.some(
+        (booking) =>
+          booking.spaceId === space.id && booking.status === 'confirmed'
+      ),
+    [space.id, userBookings]
+  );
+  const canMessageHost = !isGuest;
+  const canLeaveReview = hasConfirmedBooking;
+
+  const locationParts = [space.city, space.region, space.countryCode].filter(
+    Boolean
+  );
+  const location =
+    locationParts.length > 0 ? locationParts.join(', ') : 'Global City, Taguig';
+  const hasAreas = space.areas.length > 0;
+
+  const defaultHostName = 'Trisha M.';
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const isDesktopViewport = useIsDesktopViewport(DESKTOP_BREAKPOINT_QUERY);
+
+  const booking = useSpaceBooking({
+    hasAreas,
+    isBookingOpen,
+    isGuest,
+    session,
+    setIsBookingOpen,
+    space,
+  });
+
+  const messageHostButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  const scrollToMessageHostButton = useCallback(() => {
+    const button = messageHostButtonRef.current;
+    if (!button) {
+      return;
+    }
+
+    button.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+    });
+
+    if (canMessageHost) {
+      button.focus({ preventScroll: true, });
+    }
+  }, [canMessageHost]);
+
+  const handleOpenChat = useCallback(() => setIsChatOpen(true), []);
+  const handleCloseChat = useCallback(() => setIsChatOpen(false), []);
+
+  usePaymentStatusToast(pathname);
+
+  useEffect(() => {
+    if (!canMessageHost && isChatOpen) {
+      setIsChatOpen(false);
+    }
+  }, [canMessageHost, isChatOpen]);
+
+  const rawAbout = space.description?.trim();
+  const aboutSource =
+    rawAbout && rawAbout.length > 0 ? rawAbout : `<p>${OVERVIEW_FALLBACK}</p>`;
+  const aboutText = richTextToPlainText(aboutSource);
+
+  const bookingDurationContent = (
+    <BookingDurationForm
+      areas={ space.areas }
+      selectedAreaId={ booking.selectedAreaId }
+      onSelectArea={ booking.handleSelectArea }
+      scheduledDate={ booking.scheduledDate }
+      earliestScheduleDate={ booking.earliestScheduleDate }
+      onScheduledDateChange={ booking.handleScheduledDateChange }
+      bookingHours={ booking.bookingHours }
+      onBookingHoursChange={ booking.handleBookingHoursChange }
+      isPricingLoading={ booking.isPricingLoading }
+      shouldShowHourSelector={ booking.shouldShowHourSelector }
+      selectedAreaMaxCapacity={ booking.selectedAreaMaxCapacity }
+      currentGuestLimit={ booking.currentGuestLimit }
+      guestCount={ booking.guestCount }
+      onDecreaseGuestCount={ booking.handleDecreaseGuestCount }
+      onIncreaseGuestCount={ booking.handleIncreaseGuestCount }
+      onGuestCountInputChange={ booking.handleGuestCountInputChange }
+      isOverCapacity={ booking.isOverCapacity }
+      capacityHelperText={ booking.capacityHelperText }
+      pricePreviewLabel={ booking.pricePreviewLabel }
+      priceEvaluation={ booking.priceEvaluation }
+      isBookingFormPristine={ booking.isBookingFormPristine }
+      onResetBookingForm={ booking.handleResetBookingForm }
+    />
+  );
 
   return (
     <>
       <div className="bg-background">
-        <div className="mx-auto max-w-[1100px] px-4 py-10 space-y-4">
+        <div className="mx-auto max-w-[1100px] space-y-4 px-4 py-10">
           <SpaceBreadcrumbs spaceName={ space.name } />
 
           <SpaceHeader
@@ -826,102 +1293,28 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
                 messageButtonRef={ messageHostButtonRef }
               />
 
-              { /* Booking card for mobile - shown above description */ }
               { !isGuest && (
                 <div className="lg:hidden">
                   <BookingCard
                     spaceName={ space.name }
-                    onBook={ handleOpenBooking }
+                    onBook={ booking.handleOpenBooking }
                     isDisabled={ !hasAreas }
                   />
                 </div>
               ) }
 
-              <section
-                ref={ descriptionSectionRef }
-                className="space-y-4 border-b pb-6"
-              >
-                <h2 className="text-xl font-medium text-foreground">
-                  About { space.name }
-                </h2>
-                <div className="relative">
-                  <div
-                    className={ `
-                    relative
-                    ${shouldClampDescription ? 'max-h-[360px] overflow-hidden' : ''}
-                  ` }
-                  >
-                    <div
-                      id={ descriptionViewportId }
-                      ref={ descriptionRef }
-                      className={ `
-                      ${SPACE_DESCRIPTION_VIEWER_CLASSNAME}
-                      whitespace-pre-line
-                      [&_p]:my-3 [&_p:first-of-type]:mt-0 [&_p:last-of-type]:mb-0
-                      [&_ul]:my-3 [&_ol]:my-3 [&_li]:leading-relaxed
-                      [&_h1]:mt-5 [&_h2]:mt-4 [&_h3]:mt-3
-                    ` }
-                      dangerouslySetInnerHTML={ { __html: aboutHtml, } }
-                    />
-                    { shouldShowGradient ? (
-                      <div className="absolute inset-x-0 bottom-0 h-32">
-                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-                        <div className="absolute bottom-0 inset-x-0 flex justify-center">
-                          <button
-                            type="button"
-                            onClick={ () => setIsDescriptionExpanded(true) }
-                            aria-expanded={ false }
-                            aria-controls={ descriptionViewportId }
-                            className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-background px-4 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent hover:text-white"
-                          >
-                            Show more
-                            <FiChevronDown
-                              className="size-4"
-                              aria-hidden="true"
-                            />
-                          </button>
-                        </div>
-                      </div>
-                    ) : null }
-                  </div>
-                  { isDescriptionOverflowing && isDescriptionExpanded ? (
-                    <div className="flex justify-center mt-4">
-                      <button
-                        type="button"
-                        onClick={ () => setIsDescriptionExpanded(false) }
-                        aria-expanded={ true }
-                        aria-controls={ descriptionViewportId }
-                         className="flex items-center gap-2 rounded-lg border border-border bg-background px-6 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent hover:text-white"
-                      >
-                        Show less
-                        <FiChevronUp className="size-4" aria-hidden="true" />
-                      </button>
-                    </div>
-                  ) : null }
-
-                  { /* Floating scroll-to-bottom button when expanded and not at bottom */ }
-                  { showScrollToBottom ? (
-                    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4">
-                      <button
-                        type="button"
-                        onClick={ scrollToBottomOfDescription }
-                        aria-label="Scroll to bottom of description"
-                        className="flex items-center justify-center rounded-full border border-border bg-background p-3 text-foreground shadow-lg transition-all hover:bg-accent hover:text-white hover:scale-110"
-                      >
-                        <FiChevronDown className="size-5" aria-hidden="true" />
-                      </button>
-                    </div>
-                  ) : null }
-                </div>
-              </section>
+              <SpaceDescriptionSection
+                spaceId={ space.id }
+                spaceName={ space.name }
+                aboutText={ aboutText }
+              />
             </div>
 
-            { /* Booking card for desktop - shows in sidebar */ }
             { !isGuest && (
               <div className="hidden lg:block">
                 <BookingCard
                   spaceName={ space.name }
-                  onBook={ handleOpenBooking }
+                  onBook={ booking.handleOpenBooking }
                   isDisabled={ !hasAreas }
                 />
               </div>
@@ -947,68 +1340,17 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
           />
         </div>
       </div>
-      <Dialog
-        open={ isDesktopViewport && isBookingOpen }
-        onOpenChange={ setIsBookingOpen }
-      >
-        <DialogContent showCloseButton={ false }>
-          <DialogHeader>
-            <DialogTitle>Book a reservation</DialogTitle>
-            <DialogDescription>
-              Confirm your preferred duration and review the booking summary
-              before checkout.
-            </DialogDescription>
-          </DialogHeader>
-          { bookingDurationContent }
-          <DialogFooter className="flex-col gap-3 lg:flex-row lg:items-center mt-4">
-            <Button
-              type="button"
-              className="w-full lg:w-auto"
-              onClick={ handleConfirmBooking }
-              disabled={ !canConfirmBooking }
-            >
-              { bookingButtonContent }
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full lg:w-auto hover:text-white"
-              onClick={ handleCloseBooking }
-            >
-              Cancel
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Sheet
-        open={ !isDesktopViewport && isBookingOpen }
-        onOpenChange={ setIsBookingOpen }
-      >
-        <SheetContent side="bottom" className="gap-4">
-          <SheetHeader>
-            <SheetTitle>Book a reservation</SheetTitle>
-          </SheetHeader>
-          <div className="px-6 pb-4">{ bookingDurationContent }</div>
-          <SheetFooter className="space-y-3 px-6 pb-6 mt-4">
-            <Button
-              type="button"
-              className="w-full"
-              onClick={ handleConfirmBooking }
-              disabled={ !canConfirmBooking }
-            >
-              { bookingButtonContent }
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full hover:text-white"
-              onClick={ handleCloseBooking }
-            >
-              Cancel
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+      <BookingReservationOverlay
+        isDesktopViewport={ isDesktopViewport }
+        isBookingOpen={ isBookingOpen }
+        setIsBookingOpen={ setIsBookingOpen }
+        bookingContent={ bookingDurationContent }
+        canConfirmBooking={ booking.canConfirmBooking }
+        onConfirmBooking={ booking.handleConfirmBooking }
+        onCloseBooking={ booking.handleCloseBooking }
+        isCheckoutPending={ booking.isCheckoutPending }
+        primaryActionLabel={ booking.primaryActionLabel }
+      />
       { canMessageHost && (
         <SpaceChatBubble
           isOpen={ isChatOpen }
@@ -1034,13 +1376,19 @@ export default function SpaceDetail({ space, }: SpaceDetailProps) {
   );
 }
 
+export default function SpaceDetail(props: SpaceDetailProps) {
+  return (
+    <Suspense fallback={ <SpaceDetailSkeleton /> }>
+      <SpaceDetailContent { ...props } />
+    </Suspense>
+  );
+}
+
 const BOOKING_DURATION_VARIABLE_KEY_SET = new Set(
   BOOKING_DURATION_VARIABLE_KEYS.map((key) => key.toLowerCase())
 );
 
-function isBookingDurationVariableOperand(
-  operand: PriceRuleOperand
-): boolean {
+function isBookingDurationVariableOperand(operand: PriceRuleOperand): boolean {
   return (
     operand.kind === 'variable' &&
     BOOKING_DURATION_VARIABLE_KEY_SET.has(operand.key.trim().toLowerCase())

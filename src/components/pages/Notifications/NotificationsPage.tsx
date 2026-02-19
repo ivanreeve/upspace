@@ -48,10 +48,7 @@ export function NotificationsPage() {
       ),
     [notifications]
   );
-  const unreadCount = useMemo(
-    () => notifications.filter((notification) => !notification.read).length,
-    [notifications]
-  );
+  const unreadCount = notifications.filter((notification) => !notification.read).length;
 
   const handleClick = (notificationId: string, isRead: boolean) => {
     markNotificationRead.mutate(

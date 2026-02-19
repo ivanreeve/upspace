@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Script from 'next/script';
 
 import {
   Accordion,
@@ -141,10 +142,13 @@ export function Faq({
       </Accordion>
 
       { jsonLdData && (
-        <script
+        <Script
+          id="faq-jsonld"
           type="application/ld+json"
-          dangerouslySetInnerHTML={ { __html: JSON.stringify(jsonLdData), } }
-        />
+          strategy="afterInteractive"
+        >
+          { JSON.stringify(jsonLdData) }
+        </Script>
       ) }
     </section>
   );

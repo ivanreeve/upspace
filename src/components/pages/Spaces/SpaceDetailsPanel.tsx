@@ -1,21 +1,20 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
 import {
 useEffect,
 useMemo,
 useRef,
-useState,
+useReducer,
+type MutableRefObject,
 type ReactNode
 } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 import {
   FiChevronLeft,
   FiChevronRight,
   FiEdit,
-  FiLayers,
   FiPlus,
   FiTrash2,
   FiX,
@@ -36,7 +35,7 @@ import { SPACE_DESCRIPTION_VIEWER_CLASSNAME } from './space-description-rich-tex
 
 import { SystemErrorIllustration } from '@/components/pages/Marketplace/Marketplace.ErrorState';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { AreaRecord, SpaceImageRecord } from '@/data/spaces';
+import { AreaRecord, SpaceImageRecord, type SpaceRecord } from '@/data/spaces';
 import {
   useCreateAreaMutation,
   usePartnerSpaceQuery,
@@ -74,7 +73,7 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
-import { richTextPlainTextLength, sanitizeRichText } from '@/lib/rich-text';
+import { richTextPlainTextLength, richTextToPlainText, sanitizeRichText } from '@/lib/rich-text';
 import { cn } from '@/lib/utils';
 import type { AreaFormValues } from '@/lib/validations/spaces';
 
@@ -115,358 +114,216 @@ const descriptionSchema = z.object({
 
 type DescriptionFormValues = z.infer<typeof descriptionSchema>;
 
-export function SpaceDetailsPanel({
-  spaceId,
-  className,
-}: SpaceDetailsPanelProps) {
-  const normalizedSpaceId = spaceId ?? '';
-  const isMobile = useIsMobile();
-  const supabaseUrl =
-    process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '') ?? null;
-  const getPublicImageUrl = (path?: string | null) =>
-    supabaseUrl && path
-      ? `${supabaseUrl}/storage/v1/object/public/${path}`
-      : null;
-  const resolveImageSrc = (image?: SpaceImageRecord | null) => {
-    if (!image) return null;
-    return image.public_url ?? getPublicImageUrl(image.path);
-  };
-  const {
-    data: space,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = usePartnerSpaceQuery(normalizedSpaceId || null);
-  const updateSpaceMutation = useUpdatePartnerSpaceMutation(normalizedSpaceId);
-  const createAreaMutation = useCreateAreaMutation(normalizedSpaceId);
-  const updateAreaMutation = useUpdateAreaMutation(normalizedSpaceId);
-  const deleteAreaMutation = useDeleteAreaMutation(normalizedSpaceId);
-  const requestUnpublishMutation =
-    useRequestUnpublishSpaceMutation(normalizedSpaceId);
-  const descriptionForm = useForm<DescriptionFormValues>({
-    resolver: zodResolver(descriptionSchema),
-    defaultValues: { description: '', },
-  });
-  const [isEditingDescription, setIsEditingDescription] = useState(false);
-  const [areaDialogOpen, setAreaDialogOpen] = useState(false);
-  const [areaDialogValues, setAreaDialogValues] = useState<AreaFormValues>(
-    createAreaFormDefaults()
-  );
-  const [editingAreaId, setEditingAreaId] = useState<string | null>(null);
-  const [areaPendingDelete, setAreaPendingDelete] = useState<AreaRecord | null>(
-    null
-  );
-  const [unpublishDialogOpen, setUnpublishDialogOpen] = useState(false);
-  const [unpublishReason, setUnpublishReason] = useState('');
-  const getDefaultAreaFormValues = () =>
-    createAreaFormDefaults(space?.pricing_rules?.[0]?.id ?? null);
+type PhotoCategoryGroup = {
+  category: string;
+  label: string;
+  anchor: string;
+  images: SpaceImageRecord[];
+};
 
-  // Controls the full-screen gallery modal
-  const [galleryOpen, setGalleryOpen] = useState(false);
-  const [carouselOpen, setCarouselOpen] = useState(false);
-  const [carouselIndex, setCarouselIndex] = useState<number | null>(null);
-  const categoryRefs = useRef<Record<string, HTMLElement | null>>({});
-  const descriptionValue = descriptionForm.watch('description');
-  const descriptionPlainTextLength = richTextPlainTextLength(
-    sanitizeRichText(descriptionValue ?? '')
-  );
-  const descriptionError =
-    descriptionForm.formState.errors.description?.message;
-  const isDescriptionDirty = descriptionForm.formState.isDirty;
-  const isDeletingArea = deleteAreaMutation.isPending;
-  const isUnpublishDisabled =
-    !space || space.status === 'Unpublished' || space.pending_unpublish_request;
+type SpaceDetailsUiState = {
+  isEditingDescription: boolean;
+  areaDialogOpen: boolean;
+  areaDialogValues: AreaFormValues;
+  editingAreaId: string | null;
+  areaPendingDelete: AreaRecord | null;
+  unpublishDialogOpen: boolean;
+  unpublishReason: string;
+  galleryOpen: boolean;
+  carouselOpen: boolean;
+  carouselIndex: number | null;
+};
 
-  const formatCategoryLabel = (category: string | null) => {
-    if (!category) return 'Uncategorized';
-    return category
-      .split(/[\s_-]+/)
-      .filter(Boolean)
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(' ');
-  };
+type SpaceDetailsUiAction =
+  | {
+      type: 'setEditingDescription';
+      value: boolean;
+    }
+  | {
+      type: 'openAreaDialog';
+      areaId: string | null;
+      values: AreaFormValues;
+    }
+  | {
+      type: 'setAreaDialogOpen';
+      value: boolean;
+    }
+  | {
+      type: 'resetAreaDialog';
+      values: AreaFormValues;
+    }
+  | {
+      type: 'setAreaPendingDelete';
+      value: AreaRecord | null;
+    }
+  | {
+      type: 'setUnpublishDialogOpen';
+      value: boolean;
+    }
+  | {
+      type: 'setUnpublishReason';
+      value: string;
+    }
+  | {
+      type: 'setGalleryOpen';
+      value: boolean;
+    }
+  | {
+      type: 'openCarousel';
+      index: number;
+    }
+  | {
+      type: 'closeCarousel';
+    }
+  | {
+      type: 'navigateCarousel';
+      direction: 'prev' | 'next';
+      total: number;
+    }
+  | {
+      type: 'setCarouselOpen';
+      value: boolean;
+    };
 
-  const slugifyCategory = (value: string) =>
-    value
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)+/g, '') || 'category';
+const createInitialSpaceDetailsUiState = (): SpaceDetailsUiState => ({
+  isEditingDescription: false,
+  areaDialogOpen: false,
+  areaDialogValues: createAreaFormDefaults(),
+  editingAreaId: null,
+  areaPendingDelete: null,
+  unpublishDialogOpen: false,
+  unpublishReason: '',
+  galleryOpen: false,
+  carouselOpen: false,
+  carouselIndex: null,
+});
 
-  const categoryGroups = useMemo(() => {
-    const images = space?.images ?? [];
-    if (!images.length) return [];
-
-    const groups = new Map<string, SpaceImageRecord[]>();
-
-    images.forEach((image) => {
-      const categoryKey = image.category?.trim() || 'Uncategorized';
-      const existing = groups.get(categoryKey) ?? [];
-      existing.push(image);
-      groups.set(categoryKey, existing);
-    });
-
-    let index = 0;
-
-    return Array.from(groups.entries()).map(([category, imgs]) => {
-      const label = formatCategoryLabel(category);
-      const anchor = `photo-category-${slugifyCategory(category || 'Uncategorized')}-${index++}`;
+const spaceDetailsUiReducer = (
+  state: SpaceDetailsUiState,
+  action: SpaceDetailsUiAction
+): SpaceDetailsUiState => {
+  switch (action.type) {
+    case 'setEditingDescription':
       return {
-        category,
-        label,
-        anchor,
-        images: imgs,
+        ...state,
+        isEditingDescription: action.value,
       };
-    });
-  }, [space?.images]);
-
-  const totalImages = space?.images?.length ?? 0;
-
-  const activeCarouselIndex = useMemo(() => {
-    const images = space?.images ?? [];
-    if (images.length === 0) return null;
-    if (carouselIndex === null) return null;
-    return Math.min(Math.max(carouselIndex, 0), images.length - 1);
-  }, [carouselIndex, space?.images]);
-
-  const activeCarouselImage =
-    activeCarouselIndex === null
-      ? null
-      : (space?.images ?? [])[activeCarouselIndex];
-
-  const activeCarouselCategoryLabel = activeCarouselImage
-    ? formatCategoryLabel(activeCarouselImage.category ?? null)
-    : 'photo';
-
-  const openCarouselFromImage = (image?: SpaceImageRecord | null) => {
-    if (!image) return;
-    const images = space?.images ?? [];
-    const index = images.findIndex((item) => item.id === image.id);
-    if (index < 0) return;
-    setCarouselIndex(index);
-    setCarouselOpen(true);
-  };
-
-  const isCarouselOpen =
-    carouselOpen &&
-    activeCarouselIndex !== null &&
-    (space?.images?.length ?? 0) > 0;
-
-  const closeCarousel = () => {
-    setCarouselOpen(false);
-    setCarouselIndex(null);
-  };
-
-  const handleSubmitUnpublish = async () => {
-    if (!space) return;
-    try {
-      await requestUnpublishMutation.mutateAsync({ reason: unpublishReason.trim() || undefined, });
-      toast.success('Unpublish request sent for admin review.');
-      setUnpublishDialogOpen(false);
-      setUnpublishReason('');
-      await refetch();
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Unable to submit request.';
-      toast.error(message);
-    }
-  };
-
-  const handleCarouselNavigate = (direction: 'prev' | 'next') => {
-    const images = space?.images ?? [];
-    setCarouselIndex((previous) => {
-      if (previous === null || images.length === 0) return previous;
-      const total = images.length;
-      const currentIndex = Math.min(Math.max(previous, 0), total - 1);
-      const offset = direction === 'next' ? 1 : -1;
-      const nextIndex = (currentIndex + offset + total) % total;
-      return nextIndex;
-    });
-  };
-
-  const handleCategoryClick = (anchor: string) => {
-    const target = categoryRefs.current[anchor];
-    if (target) {
-      target.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      });
-    }
-  };
-
-  useEffect(() => {
-    setGalleryOpen(false);
-    setCarouselOpen(false);
-    setCarouselIndex(null);
-  }, [space?.id]);
-
-  useEffect(() => {
-    if (!space || isEditingDescription) {
-      return;
-    }
-    descriptionForm.reset({ description: sanitizeRichText(space.description ?? ''), });
-  }, [space, descriptionForm, isEditingDescription]);
-
-  const handleStartDescriptionEdit = () => {
-    if (!space) return;
-    setIsEditingDescription(true);
-    descriptionForm.reset({ description: sanitizeRichText(space.description ?? ''), });
-    descriptionForm.clearErrors();
-  };
-
-  const handleCancelDescriptionEdit = () => {
-    if (!space) return;
-    setIsEditingDescription(false);
-    descriptionForm.reset({ description: sanitizeRichText(space.description ?? ''), });
-    descriptionForm.clearErrors();
-  };
-
-  const handleDescriptionSubmit = async (values: DescriptionFormValues) => {
-    if (!space) return;
-    try {
-      await updateSpaceMutation.mutateAsync({
-        ...spaceRecordToFormValues(space),
-        description: values.description,
-      });
-      toast.success('Description updated.');
-      setIsEditingDescription(false);
-    } catch (mutationError) {
-      toast.error(
-        mutationError instanceof Error
-          ? mutationError.message
-          : 'Unable to update description.'
-      );
-    }
-  };
-
-  const handleAddArea = () => {
-    if (!space) return;
-    setEditingAreaId(null);
-    setAreaDialogValues(getDefaultAreaFormValues());
-    setAreaDialogOpen(true);
-  };
-
-  const handleEditArea = (area: AreaRecord) => {
-    if (!space) return;
-    setEditingAreaId(area.id);
-    setAreaDialogValues(areaRecordToFormValues(area));
-    setAreaDialogOpen(true);
-  };
-
-  const handleAreaDialogOpenChange = (open: boolean) => {
-    setAreaDialogOpen(open);
-    if (!open) {
-      setEditingAreaId(null);
-      setAreaDialogValues(getDefaultAreaFormValues());
-    }
-  };
-
-  const handleAreaSubmit = async (values: AreaFormValues) => {
-    if (!space) return;
-    try {
-      if (editingAreaId) {
-        await updateAreaMutation.mutateAsync({
-          areaId: editingAreaId,
-          payload: values,
-        });
-        toast.success(`${values.name} updated.`);
-      } else {
-        await createAreaMutation.mutateAsync(values);
-        toast.success(`${values.name} added.`);
+    case 'openAreaDialog':
+      return {
+        ...state,
+        areaDialogOpen: true,
+        editingAreaId: action.areaId,
+        areaDialogValues: action.values,
+      };
+    case 'setAreaDialogOpen':
+      return {
+        ...state,
+        areaDialogOpen: action.value,
+      };
+    case 'resetAreaDialog':
+      return {
+        ...state,
+        areaDialogOpen: false,
+        editingAreaId: null,
+        areaDialogValues: action.values,
+      };
+    case 'setAreaPendingDelete':
+      return {
+        ...state,
+        areaPendingDelete: action.value,
+      };
+    case 'setUnpublishDialogOpen':
+      return {
+        ...state,
+        unpublishDialogOpen: action.value,
+      };
+    case 'setUnpublishReason':
+      return {
+        ...state,
+        unpublishReason: action.value,
+      };
+    case 'setGalleryOpen':
+      return {
+        ...state,
+        galleryOpen: action.value,
+      };
+    case 'openCarousel':
+      return {
+        ...state,
+        carouselOpen: true,
+        carouselIndex: action.index,
+      };
+    case 'closeCarousel':
+      return {
+        ...state,
+        carouselOpen: false,
+        carouselIndex: null,
+      };
+    case 'navigateCarousel':
+      if (state.carouselIndex === null || action.total === 0) {
+        return state;
       }
-      handleAreaDialogOpenChange(false);
-    } catch (mutationError) {
-      toast.error(
-        mutationError instanceof Error
-          ? mutationError.message
-          : 'Unable to save area.'
-      );
-    }
-  };
-
-  const handleRequestDeleteArea = (area: AreaRecord) => {
-    setAreaPendingDelete(area);
-  };
-
-  const handleDeleteDialogOpenChange = (open: boolean) => {
-    if (!open) {
-      setAreaPendingDelete(null);
-    }
-  };
-
-  const handleConfirmAreaDelete = async () => {
-    if (!areaPendingDelete) {
-      return;
-    }
-
-    try {
-      await deleteAreaMutation.mutateAsync(areaPendingDelete.id);
-      toast.success(`${areaPendingDelete.name} removed.`);
-      setAreaPendingDelete(null);
-    } catch (mutationError) {
-      toast.error(
-        mutationError instanceof Error
-          ? mutationError.message
-          : 'Unable to delete area.'
-      );
-    }
-  };
-
-  const renderStatusCard = (
-    title: string,
-    description: string,
-    action?: ReactNode
-  ) => (
-    <Card className={ cn('border-border/70 bg-background/80', className) }>
-      <CardHeader>
-        <CardTitle>{ title }</CardTitle>
-        <CardDescription>{ description }</CardDescription>
-      </CardHeader>
-      { action ? <CardContent>{ action }</CardContent> : null }
-    </Card>
-  );
-
-  if (!normalizedSpaceId) {
-    return renderStatusCard(
-      'Space not found',
-      'Select a valid listing to continue.'
-    );
+      const current = Math.min(Math.max(state.carouselIndex, 0), action.total - 1);
+      const offset = action.direction === 'next' ? 1 : -1;
+      return {
+        ...state,
+        carouselIndex: (current + offset + action.total) % action.total,
+      };
+    case 'setCarouselOpen':
+      return {
+        ...state,
+        carouselOpen: action.value,
+      };
+    default:
+      return state;
   }
+};
 
-  if (isLoading) {
-    return <SpaceDetailsSkeleton className={ className } />;
-  }
+const formatCategoryLabel = (category: string | null) => {
+  if (!category) return 'Uncategorized';
+  return category
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+};
 
-  if (isError) {
-    return (
-      <Card className={ cn('border-none bg-transparent shadow-none', className) }>
-        <CardContent className="flex flex-col items-center gap-6 px-6 py-10 text-center">
-          <SystemErrorIllustration className="h-auto w-full max-w-[260px] md:max-w-[320px]" />
-          <div className="space-y-2">
-            <CardTitle className="text-xl text-muted-foreground md:text-2xl">
-              Unable to load space
-            </CardTitle>
-            <CardDescription className="text-sm">
-              { error instanceof Error
-                ? error.message
-                : 'Please try again in a moment.' }
-            </CardDescription>
-          </div>
-          <Button variant="outline" onClick={ () => refetch() }>
-            Retry
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
+const slugifyCategory = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)+/g, '') || 'category';
 
-  if (!space) {
-    return renderStatusCard(
-      'Space not found',
-      'The requested space does not exist.'
-    );
-  }
+const renderSpaceDetailsStatusCard = (
+  title: string,
+  description: string,
+  className?: string,
+  action?: ReactNode
+) => (
+  <Card className={ cn('border-border/70 bg-background/80', className) }>
+    <CardHeader>
+      <CardTitle>{ title }</CardTitle>
+      <CardDescription>{ description }</CardDescription>
+    </CardHeader>
+    { action ? <CardContent>{ action }</CardContent> : null }
+  </Card>
+);
 
+type SpacePhotoLayoutProps = {
+  space: SpaceRecord;
+  totalImages: number;
+  isMobile: boolean;
+  resolveImageSrc: (image?: SpaceImageRecord | null) => string | null;
+  onOpenGallery: () => void;
+};
+
+function SpacePhotoLayout({
+  space,
+  totalImages,
+  isMobile,
+  resolveImageSrc,
+  onOpenGallery,
+}: SpacePhotoLayoutProps) {
   const primaryImage =
     space.images.find((image) => image.is_primary) ?? space.images[0] ?? null;
   const stackedImages = space.images.filter(
@@ -476,7 +333,7 @@ export function SpaceDetailsPanel({
   const remainingCount = Math.max(totalImages - 1, 0);
 
   const renderPrimaryFigure = (
-    overlay?: React.ReactNode,
+    overlay?: ReactNode,
     additionalFigureClass?: string
   ) => {
     const isMultiDesktop = !isMobile && totalImages > 1;
@@ -512,7 +369,7 @@ export function SpaceDetailsPanel({
         { primaryImage ? (
           <button
             type="button"
-            onClick={ () => setGalleryOpen(true) }
+            onClick={ onOpenGallery }
             aria-label="Open featured photo"
             className={ `absolute inset-0 z-10 cursor-pointer ${figureRoundedClass} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background` }
             style={ figureRoundedStyle }
@@ -524,417 +381,553 @@ export function SpaceDetailsPanel({
     );
   };
 
-  const renderPhotoTile = (
-    image: SpaceImageRecord | null | undefined,
-    alt: string,
-    tileClass?: string,
-    overlay?: React.ReactNode,
-    blurBackground = false
-  ) => {
-    const imageSrc = resolveImageSrc(image);
-    return (
-      <div
-        className={ `group relative h-full w-full overflow-hidden border border-border/60 bg-muted ${tileClass ?? ''}` }
-      >
-        { imageSrc ? (
-          <Image
-            src={ imageSrc }
-            alt={ alt }
-            fill
-            sizes="(min-width: 1280px) 360px, (min-width: 1024px) 300px, 100vw"
-            className={ `object-cover ${blurBackground ? 'scale-105 blur-[2px] brightness-50' : ''}` }
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-            No preview
-          </div>
-        ) }
-        <div className="pointer-events-none absolute inset-0 bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100" />
-        { overlay }
-        <button
-          type="button"
-          onClick={ () => setGalleryOpen(true) }
-          aria-label={ alt }
-          className="absolute inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        >
-          <span className="sr-only">{ alt }</span>
-        </button>
-      </div>
-    );
-  };
-
-  const renderSeeMoreTile = (
-    previewImage: SpaceImageRecord | null | undefined
-  ) => {
-    return renderPhotoTile(
-      previewImage,
-      'Open full image gallery',
-      'rounded-br-lg',
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50 text-white backdrop-blur-md">
-        <span className="text-base font-semibold">See all photos</span>
-        <span className="text-xs text-white/80">
-          { totalImages } photo{ totalImages === 1 ? '' : 's' }
-        </span>
-      </div>,
-      true
-    );
-  };
-
   const primaryFigure = renderPrimaryFigure();
 
-  const photoLayout = (() => {
-    if (isMobile) {
-      if (totalImages >= 2) {
-        const overlay = (
-          <div className="pointer-events-none absolute inset-0 flex items-end justify-end p-4">
-            <button
-              type="button"
-              onClick={ () => setGalleryOpen(true) }
-              aria-label={ `View ${remainingCount} more photo${remainingCount === 1 ? '' : 's'}` }
-              className="pointer-events-auto flex items-center gap-1 rounded-sm border border-white/10 bg-black/80 px-4 py-2 text-sm font-semibold text-white backdrop-blur-lg min-w-[72px] whitespace-nowrap"
-            >
-              +{ remainingCount } <FaImages className="size-4" />
-            </button>
-          </div>
-        );
-        return renderPrimaryFigure(overlay, 'h-[320px]');
-      }
-
-      return primaryFigure;
-    }
-
-    if (totalImages === 1) {
-      return primaryFigure;
-    }
-
-    if (totalImages === 2) {
-      const secondary = stackedImages[0] ?? null;
-      return (
-        <div className="grid gap-2.5 md:grid-cols-2">
-          { primaryFigure }
-          { renderPhotoTile(
-            secondary,
-            `${space.name} gallery photo 2`,
-            'rounded-r-lg min-h-[16rem]'
-          ) }
+  if (isMobile) {
+    if (totalImages >= 2) {
+      const overlay = (
+        <div className="pointer-events-none absolute inset-0 flex items-end justify-end p-4">
+          <button
+            type="button"
+            onClick={ onOpenGallery }
+            aria-label={ `View ${remainingCount} more photo${remainingCount === 1 ? '' : 's'}` }
+            className="pointer-events-auto flex items-center gap-1 rounded-sm border border-white/10 bg-black/80 px-4 py-2 text-sm font-semibold text-white backdrop-blur-lg min-w-[72px] whitespace-nowrap"
+          >
+            +{ remainingCount } <FaImages className="size-4" />
+          </button>
         </div>
       );
+      return renderPrimaryFigure(overlay, 'h-[320px]');
     }
 
-    if (totalImages === 3) {
-      const [topTile, bottomTile] = stackedImages;
-      return (
-        <div className="grid gap-2.5 md:grid-cols-2">
-          { primaryFigure }
-          <div className="grid h-full min-h-[22rem] grid-rows-2 gap-2.5">
-            { renderPhotoTile(
-              topTile,
-              `${space.name} gallery photo 2`,
-              'rounded-tr-lg'
-            ) }
-            { renderPhotoTile(
-              bottomTile,
-              `${space.name} gallery photo 3`,
-              'rounded-br-lg'
-            ) }
-          </div>
-        </div>
-      );
-    }
+    return primaryFigure;
+  }
 
-    const topLeftTile = stackedImages[0] ?? null;
-    const topRightTile = stackedImages[1] ?? null;
-    const previewTile =
-      stackedImages[2] ?? topLeftTile ?? topRightTile ?? primaryImage;
+  if (totalImages === 1) {
+    return primaryFigure;
+  }
 
+  if (totalImages === 2) {
+    const secondary = stackedImages[0] ?? null;
     return (
       <div className="grid gap-2.5 md:grid-cols-2">
         { primaryFigure }
-        <div className="grid h-full min-h-[24rem] grid-rows-[1fr_3fr] gap-2.5">
-          <div className="grid grid-cols-2 gap-2.5">
-            { renderPhotoTile(
-              topLeftTile,
-              `${space.name} gallery photo 2`,
-              'rounded-none'
-            ) }
-            { renderPhotoTile(
-              topRightTile,
-              `${space.name} gallery photo 3`,
-              'rounded-tr-lg'
-            ) }
-          </div>
-          { renderSeeMoreTile(previewTile) }
+        <PhotoTile
+          image={ secondary }
+          resolveImageSrc={ resolveImageSrc }
+          onOpenGallery={ onOpenGallery }
+          alt={ `${space.name} gallery photo 2` }
+          tileClass="rounded-r-lg min-h-[16rem]"
+        />
+      </div>
+    );
+  }
+
+  if (totalImages === 3) {
+    const [topTile, bottomTile] = stackedImages;
+    return (
+      <div className="grid gap-2.5 md:grid-cols-2">
+        { primaryFigure }
+        <div className="grid h-full min-h-[22rem] grid-rows-2 gap-2.5">
+          <PhotoTile
+            image={ topTile }
+            resolveImageSrc={ resolveImageSrc }
+            onOpenGallery={ onOpenGallery }
+            alt={ `${space.name} gallery photo 2` }
+            tileClass="rounded-tr-lg"
+          />
+          <PhotoTile
+            image={ bottomTile }
+            resolveImageSrc={ resolveImageSrc }
+            onOpenGallery={ onOpenGallery }
+            alt={ `${space.name} gallery photo 3` }
+            tileClass="rounded-br-lg"
+          />
         </div>
       </div>
     );
-  })();
+  }
+
+  const topLeftTile = stackedImages[0] ?? null;
+  const topRightTile = stackedImages[1] ?? null;
+  const previewTile =
+    stackedImages[2] ?? topLeftTile ?? topRightTile ?? primaryImage;
 
   return (
-    <>
-      <div className={ cn('space-y-6', className) }>
+    <div className="grid gap-2.5 md:grid-cols-2">
+      { primaryFigure }
+      <div className="grid h-full min-h-[24rem] grid-rows-[1fr_3fr] gap-2.5">
+        <div className="grid grid-cols-2 gap-2.5">
+          <PhotoTile
+            image={ topLeftTile }
+            resolveImageSrc={ resolveImageSrc }
+            onOpenGallery={ onOpenGallery }
+            alt={ `${space.name} gallery photo 2` }
+            tileClass="rounded-none"
+          />
+          <PhotoTile
+            image={ topRightTile }
+            resolveImageSrc={ resolveImageSrc }
+            onOpenGallery={ onOpenGallery }
+            alt={ `${space.name} gallery photo 3` }
+            tileClass="rounded-tr-lg"
+          />
+        </div>
+        <SeeMorePhotoTile
+          previewImage={ previewTile }
+          resolveImageSrc={ resolveImageSrc }
+          onOpenGallery={ onOpenGallery }
+          totalImages={ totalImages }
+        />
+      </div>
+    </div>
+  );
+}
+
+type SpaceDetailsMainSectionProps = {
+  className?: string;
+  space: SpaceRecord;
+  photoLayout: ReactNode;
+  isEditingDescription: boolean;
+  descriptionForm: UseFormReturn<DescriptionFormValues>;
+  descriptionPlainTextLength: number;
+  descriptionError: string | undefined;
+  isDescriptionDirty: boolean;
+  isDescriptionSaving: boolean;
+  onStartDescriptionEdit: () => void;
+  onCancelDescriptionEdit: () => void;
+  onDescriptionSubmit: (values: DescriptionFormValues) => Promise<void>;
+  onEditArea: (area: AreaRecord) => void;
+  onRequestDeleteArea: (area: AreaRecord) => void;
+  onAddArea: () => void;
+};
+
+function SpaceDetailsMainSection({
+  className,
+  space,
+  photoLayout,
+  isEditingDescription,
+  descriptionForm,
+  descriptionPlainTextLength,
+  descriptionError,
+  isDescriptionDirty,
+  isDescriptionSaving,
+  onStartDescriptionEdit,
+  onCancelDescriptionEdit,
+  onDescriptionSubmit,
+  onEditArea,
+  onRequestDeleteArea,
+  onAddArea,
+}: SpaceDetailsMainSectionProps) {
+  return (
+    <div className={ cn('space-y-6', className) }>
+      <Card className="border-border/70 bg-background/80">
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <CardTitle className="text-xl md:text-2xl">
+              Uploaded photos
+            </CardTitle>
+            <CardDescription className="text-xs md:text-sm">
+              Images stored for this listing.
+            </CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          { space.images.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No photos uploaded yet.
+            </p>
+          ) : (
+            photoLayout
+          ) }
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-[3fr,2fr]">
+        <div className="space-y-4 md:space-y-6">
+          <Card className="border-border/70 bg-background/80">
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between md:gap-4">
+              <div className="space-y-1">
+                <CardTitle className="text-xl md:text-2xl">
+                  Description
+                </CardTitle>
+              </div>
+              { !isEditingDescription ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={ onStartDescriptionEdit }
+                  className="inline-flex w-full items-center gap-2 sm:w-auto md:size-auto py-2"
+                >
+                  <FiEdit className="size-4" aria-hidden="true" />
+                  <span className="md:inline">Edit description</span>
+                </Button>
+              ) : null }
+            </CardHeader>
+            <CardContent>
+              { isEditingDescription ? (
+                <form
+                  className="space-y-4"
+                  onSubmit={ descriptionForm.handleSubmit(onDescriptionSubmit) }
+                >
+                  <Controller
+                    control={ descriptionForm.control }
+                    name="description"
+                    render={ ({ field, }) => (
+                      <DescriptionEditor field={ field } />
+                    ) }
+                  />
+                  <div className="flex flex-col gap-1">
+                    <p className="text-xs text-muted-foreground">
+                      { descriptionPlainTextLength } characters
+                    </p>
+                    { descriptionError ? (
+                      <p className="text-sm text-destructive">
+                        { descriptionError }
+                      </p>
+                    ) : null }
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={ onCancelDescriptionEdit }
+                      disabled={ isDescriptionSaving }
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={ isDescriptionSaving || !isDescriptionDirty }
+                    >
+                      { isDescriptionSaving
+                        ? 'Saving...'
+                        : 'Save description' }
+                    </Button>
+                  </div>
+                </form>
+              ) : space.description ? (
+                <div
+                  className={ cn(
+                    SPACE_DESCRIPTION_VIEWER_CLASSNAME,
+                    'whitespace-pre-wrap'
+                  ) }
+                >
+                  { richTextToPlainText(space.description) }
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No description yet.
+                </p>
+              ) }
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/70 bg-background/80">
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between md:gap-4">
+              <div className="space-y-1">
+                <CardTitle className="text-xl md:text-2xl">
+                  { space.name }&apos;s Address
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2 md:gap-6">
+              <DetailField label="Unit / suite" value={ space.unit_number } />
+              <DetailField label="Address subunit" value={ space.address_subunit } />
+              <DetailField label="Street" value={ space.street } />
+              <DetailField label="City" value={ space.city } />
+              <DetailField label="Region / state" value={ space.region } />
+              <DetailField label="Postal code" value={ space.postal_code } />
+              <DetailField label="Country" value={ space.country_code } />
+              <DetailField label="Latitude" value={ space.lat.toString() } />
+              <DetailField label="Longitude" value={ space.long.toString() } />
+            </CardContent>
+          </Card>
+        </div>
+
         <Card className="border-border/70 bg-background/80">
-          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <CardHeader className="flex flex-col gap-3 md:gap-4">
             <div className="space-y-1">
-              <CardTitle className="text-xl md:text-2xl">
-                Uploaded photos
-              </CardTitle>
-              <CardDescription className="text-xs md:text-sm">
-                Images stored for this listing.
+              <CardTitle className="text-xl md:text-2xl">Areas</CardTitle>
+              <CardDescription className="text-sm text-muted-foreground">
+                Add a new area to capture pricing, capacity, and amenities for
+                this listing.
               </CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
-            { space.images.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No photos uploaded yet.
-              </p>
+          <CardContent className="space-y-3 md:space-y-4">
+            { space.areas.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border/60 p-3 text-xs text-muted-foreground md:p-4 md:text-sm">
+                No areas yet. Use &quot;Add area&quot; to create one.
+              </div>
             ) : (
-              photoLayout
+              <div className="overflow-x-auto rounded-md border border-border/60">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Area</TableHead>
+                      <TableHead className="whitespace-nowrap">
+                        Capacity
+                      </TableHead>
+                      <TableHead className="whitespace-nowrap">
+                        Pricing
+                      </TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    { space.areas.map((area) => (
+                      <TableRow key={ area.id }>
+                        <TableCell className="align-top">
+                          <div className="space-y-1">
+                            <div className="text-sm font-semibold md:text-base">
+                              { area.name }
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Added{ ' ' }
+                              { areaCreatedDateFormatter.format(
+                                new Date(area.created_at)
+                              ) }
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="align-top text-sm text-foreground">
+                          Up to { area.max_capacity } people
+                        </TableCell>
+                        <TableCell className="align-top text-sm text-foreground">
+                          { area.price_rule ? (
+                            <Badge variant="outline" className="text-xs">
+                              { area.price_rule.name }
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">
+                              Pricing rule not set
+                            </span>
+                          ) }
+                        </TableCell>
+                        <TableCell className="align-top">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={ () => onEditArea(area) }
+                              className="h-8 px-2"
+                            >
+                              <FiEdit className="size-4" aria-hidden="true" />
+                              <span className="sr-only">
+                                Edit { area.name }
+                              </span>
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={ () => onRequestDeleteArea(area) }
+                              className="h-8 px-2 text-destructive hover:text-destructive"
+                            >
+                              <FiTrash2
+                                className="size-4"
+                                aria-hidden="true"
+                              />
+                              <span className="sr-only">
+                                Delete { area.name }
+                              </span>
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )) }
+                  </TableBody>
+                </Table>
+              </div>
             ) }
           </CardContent>
+          <CardFooter className="flex justify-end">
+            <div>
+              <Button
+                type="button"
+                size="sm"
+                variant="default"
+                className="inline-flex items-center justify-center gap-2"
+                onClick={ onAddArea }
+              >
+                <FiPlus className="size-4" aria-hidden="true" />
+                Add area
+              </Button>
+            </div>
+          </CardFooter>
         </Card>
-
-        { /* Details and Areas Cards */ }
-        <div className="grid gap-4 md:gap-6 lg:grid-cols-[3fr,2fr]">
-          <div className="space-y-4 md:space-y-6">
-            <Card className="border-border/70 bg-background/80">
-              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between md:gap-4">
-                <div className="space-y-1">
-                  <CardTitle className="text-xl md:text-2xl">
-                    Description
-                  </CardTitle>
-                </div>
-                { !isEditingDescription ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={ handleStartDescriptionEdit }
-                    className="inline-flex w-full items-center gap-2 sm:w-auto md:size-auto py-2"
-                  >
-                    <FiEdit className="size-4" aria-hidden="true" />
-                    <span className="md:inline">Edit description</span>
-                  </Button>
-                ) : null }
-              </CardHeader>
-              <CardContent>
-                { isEditingDescription ? (
-                  <form
-                    className="space-y-4"
-                    onSubmit={ descriptionForm.handleSubmit(
-                      handleDescriptionSubmit
-                    ) }
-                  >
-                    <Controller
-                      control={ descriptionForm.control }
-                      name="description"
-                      render={ ({ field, }) => (
-                        <DescriptionEditor field={ field } />
-                      ) }
-                    />
-                    <div className="flex flex-col gap-1">
-                      <p className="text-xs text-muted-foreground">
-                        { descriptionPlainTextLength } characters
-                      </p>
-                      { descriptionError ? (
-                        <p className="text-sm text-destructive">
-                          { descriptionError }
-                        </p>
-                      ) : null }
-                    </div>
-                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={ handleCancelDescriptionEdit }
-                        disabled={ updateSpaceMutation.isPending }
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={
-                          updateSpaceMutation.isPending || !isDescriptionDirty
-                        }
-                      >
-                        { updateSpaceMutation.isPending
-                          ? 'Saving...'
-                          : 'Save description' }
-                      </Button>
-                    </div>
-                  </form>
-                ) : space.description ? (
-                  <div
-                    className={ cn(
-                      SPACE_DESCRIPTION_VIEWER_CLASSNAME,
-                      '[&_p]:my-3 [&_p:first-of-type]:mt-0 [&_p:last-of-type]:mb-0'
-                    ) }
-                    dangerouslySetInnerHTML={ { __html: sanitizeRichText(space.description), } }
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No description yet.
-                  </p>
-                ) }
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/70 bg-background/80">
-              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between md:gap-4">
-                <div className="space-y-1">
-                  <CardTitle className="text-xl md:text-2xl">
-                    { space.name }&apos;s Address
-                  </CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="grid gap-3 sm:grid-cols-2 md:gap-6">
-                { renderField('Unit / suite', space.unit_number) }
-                { renderField('Address subunit', space.address_subunit) }
-                { renderField('Street', space.street) }
-                { renderField('City', space.city) }
-                { renderField('Region / state', space.region) }
-                { renderField('Postal code', space.postal_code) }
-                { renderField('Country', space.country_code) }
-                { renderField('Latitude', space.lat.toString()) }
-                { renderField('Longitude', space.long.toString()) }
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card className="border-border/70 bg-background/80">
-            <CardHeader className="flex flex-col gap-3 md:gap-4">
-              <div className="space-y-1">
-                <CardTitle className="text-xl md:text-2xl">Areas</CardTitle>
-                <CardDescription className="text-sm text-muted-foreground">
-                  Add a new area to capture pricing, capacity, and amenities for
-                  this listing.
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3 md:space-y-4">
-              { space.areas.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-border/60 p-3 text-xs text-muted-foreground md:p-4 md:text-sm">
-                  No areas yet. Use &quot;Add area&quot; to create one.
-                </div>
-              ) : (
-                <div className="overflow-x-auto rounded-md border border-border/60">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Area</TableHead>
-                        <TableHead className="whitespace-nowrap">
-                          Capacity
-                        </TableHead>
-                        <TableHead className="whitespace-nowrap">
-                          Pricing
-                        </TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      { space.areas.map((area) => (
-                        <TableRow key={ area.id }>
-                          <TableCell className="align-top">
-                            <div className="space-y-1">
-                              <div className="text-sm font-semibold md:text-base">
-                                { area.name }
-                              </div>
-                              <p className="text-xs text-muted-foreground">
-                                Added{ ' ' }
-                                { areaCreatedDateFormatter.format(
-                                  new Date(area.created_at)
-                                ) }
-                              </p>
-                            </div>
-                          </TableCell>
-                          <TableCell className="align-top text-sm text-foreground">
-                            Up to { area.max_capacity } people
-                          </TableCell>
-                          <TableCell className="align-top text-sm text-foreground">
-                            { area.price_rule ? (
-                              <Badge variant="outline" className="text-xs">
-                                { area.price_rule.name }
-                              </Badge>
-                            ) : (
-                              <span className="text-muted-foreground">
-                                Pricing rule not set
-                              </span>
-                            ) }
-                          </TableCell>
-                          <TableCell className="align-top">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={ () => handleEditArea(area) }
-                                className="h-8 px-2"
-                              >
-                                <FiEdit className="size-4" aria-hidden="true" />
-                                <span className="sr-only">
-                                  Edit { area.name }
-                                </span>
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                onClick={ () => handleRequestDeleteArea(area) }
-                                className="h-8 px-2 text-destructive hover:text-destructive"
-                              >
-                                <FiTrash2
-                                  className="size-4"
-                                  aria-hidden="true"
-                                />
-                                <span className="sr-only">
-                                  Delete { area.name }
-                                </span>
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )) }
-                    </TableBody>
-                  </Table>
-                </div>
-              ) }
-            </CardContent>
-            <CardFooter className="flex justify-end">
-              <div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="default"
-                  className="inline-flex items-center justify-center gap-2"
-                  onClick={ handleAddArea }
-                >
-                  <FiPlus className="size-4" aria-hidden="true" />
-                  Add area
-                </Button>
-              </div>
-            </CardFooter>
-          </Card>
-        </div>
       </div>
+    </div>
+  );
+}
 
-      { /* Area Form */ }
+type SpaceDetailsDialogsSectionProps = {
+  space: SpaceRecord;
+  areaDialogOpen: boolean;
+  editingAreaId: string | null;
+  areaDialogValues: AreaFormValues;
+  onAreaDialogOpenChange: (open: boolean) => void;
+  onAreaSubmit: (values: AreaFormValues) => Promise<void>;
+  isAreaSubmitting: boolean;
+  areaPendingDelete: AreaRecord | null;
+  onDeleteDialogOpenChange: (open: boolean) => void;
+  onConfirmAreaDelete: () => Promise<void>;
+  isDeletingArea: boolean;
+  galleryOpen: boolean;
+  onGalleryOpenChange: (open: boolean) => void;
+  categoryGroups: PhotoCategoryGroup[];
+  categoryRefs: MutableRefObject<Record<string, HTMLElement | null>>;
+  onCategoryClick: (anchor: string) => void;
+  totalImages: number;
+  resolveImageSrc: (image?: SpaceImageRecord | null) => string | null;
+  onOpenCarouselFromImage: (image?: SpaceImageRecord | null) => void;
+  isCarouselOpen: boolean;
+  onCarouselDialogOpenChange: (open: boolean) => void;
+  onCloseCarousel: () => void;
+  activeCarouselImage: SpaceImageRecord | null;
+  activeCarouselCategoryLabel: string;
+  activeCarouselIndex: number | null;
+  onCarouselNavigate: (direction: 'prev' | 'next') => void;
+  isUnpublishDisabled: boolean;
+  isRequestUnpublishPending: boolean;
+  onOpenUnpublishDialog: () => void;
+  unpublishDialogOpen: boolean;
+  onUnpublishDialogOpenChange: (open: boolean) => void;
+  unpublishReason: string;
+  onUnpublishReasonChange: (value: string) => void;
+  onSubmitUnpublish: () => Promise<void>;
+};
+
+function SpaceDetailsDialogsSection({
+  space,
+  areaDialogOpen,
+  editingAreaId,
+  areaDialogValues,
+  onAreaDialogOpenChange,
+  onAreaSubmit,
+  isAreaSubmitting,
+  areaPendingDelete,
+  onDeleteDialogOpenChange,
+  onConfirmAreaDelete,
+  isDeletingArea,
+  galleryOpen,
+  onGalleryOpenChange,
+  categoryGroups,
+  categoryRefs,
+  onCategoryClick,
+  totalImages,
+  resolveImageSrc,
+  onOpenCarouselFromImage,
+  isCarouselOpen,
+  onCarouselDialogOpenChange,
+  onCloseCarousel,
+  activeCarouselImage,
+  activeCarouselCategoryLabel,
+  activeCarouselIndex,
+  onCarouselNavigate,
+  isUnpublishDisabled,
+  isRequestUnpublishPending,
+  onOpenUnpublishDialog,
+  unpublishDialogOpen,
+  onUnpublishDialogOpenChange,
+  unpublishReason,
+  onUnpublishReasonChange,
+  onSubmitUnpublish,
+}: SpaceDetailsDialogsSectionProps) {
+  return (
+    <>
+      <AreaDialogsSection
+        space={ space }
+        areaDialogOpen={ areaDialogOpen }
+        editingAreaId={ editingAreaId }
+        areaDialogValues={ areaDialogValues }
+        onAreaDialogOpenChange={ onAreaDialogOpenChange }
+        onAreaSubmit={ onAreaSubmit }
+        isAreaSubmitting={ isAreaSubmitting }
+        areaPendingDelete={ areaPendingDelete }
+        onDeleteDialogOpenChange={ onDeleteDialogOpenChange }
+        onConfirmAreaDelete={ onConfirmAreaDelete }
+        isDeletingArea={ isDeletingArea }
+      />
+      <PhotoDialogsSection
+        space={ space }
+        galleryOpen={ galleryOpen }
+        onGalleryOpenChange={ onGalleryOpenChange }
+        categoryGroups={ categoryGroups }
+        categoryRefs={ categoryRefs }
+        onCategoryClick={ onCategoryClick }
+        totalImages={ totalImages }
+        resolveImageSrc={ resolveImageSrc }
+        onOpenCarouselFromImage={ onOpenCarouselFromImage }
+        isCarouselOpen={ isCarouselOpen }
+        onCarouselDialogOpenChange={ onCarouselDialogOpenChange }
+        onCloseCarousel={ onCloseCarousel }
+        activeCarouselImage={ activeCarouselImage }
+        activeCarouselCategoryLabel={ activeCarouselCategoryLabel }
+        activeCarouselIndex={ activeCarouselIndex }
+        onCarouselNavigate={ onCarouselNavigate }
+      />
+      <UnpublishDialogsSection
+        space={ space }
+        isUnpublishDisabled={ isUnpublishDisabled }
+        isRequestUnpublishPending={ isRequestUnpublishPending }
+        onOpenUnpublishDialog={ onOpenUnpublishDialog }
+        unpublishDialogOpen={ unpublishDialogOpen }
+        onUnpublishDialogOpenChange={ onUnpublishDialogOpenChange }
+        unpublishReason={ unpublishReason }
+        onUnpublishReasonChange={ onUnpublishReasonChange }
+        onSubmitUnpublish={ onSubmitUnpublish }
+      />
+    </>
+  );
+}
+
+type AreaDialogsSectionProps = Pick<
+  SpaceDetailsDialogsSectionProps,
+  | 'space'
+  | 'areaDialogOpen'
+  | 'editingAreaId'
+  | 'areaDialogValues'
+  | 'onAreaDialogOpenChange'
+  | 'onAreaSubmit'
+  | 'isAreaSubmitting'
+  | 'areaPendingDelete'
+  | 'onDeleteDialogOpenChange'
+  | 'onConfirmAreaDelete'
+  | 'isDeletingArea'
+>;
+
+function AreaDialogsSection({
+  space,
+  areaDialogOpen,
+  editingAreaId,
+  areaDialogValues,
+  onAreaDialogOpenChange,
+  onAreaSubmit,
+  isAreaSubmitting,
+  areaPendingDelete,
+  onDeleteDialogOpenChange,
+  onConfirmAreaDelete,
+  isDeletingArea,
+}: AreaDialogsSectionProps) {
+  return (
+    <>
       <AreaDialog
         open={ areaDialogOpen }
         mode={ editingAreaId ? 'edit' : 'create' }
         initialValues={ areaDialogValues }
-        onOpenChange={ handleAreaDialogOpenChange }
-        onSubmit={ handleAreaSubmit }
-        isSubmitting={
-          editingAreaId
-            ? updateAreaMutation.isPending
-            : createAreaMutation.isPending
-        }
+        onOpenChange={ onAreaDialogOpenChange }
+        onSubmit={ onAreaSubmit }
+        isSubmitting={ isAreaSubmitting }
         pricingRules={ space.pricing_rules ?? [] }
       />
 
       <Dialog
         open={ Boolean(areaPendingDelete) }
-        onOpenChange={ handleDeleteDialogOpenChange }
+        onOpenChange={ onDeleteDialogOpenChange }
       >
         <DialogContent>
           <DialogHeader>
@@ -951,7 +944,7 @@ export function SpaceDetailsPanel({
             <Button
               type="button"
               variant="ghost"
-              onClick={ () => handleDeleteDialogOpenChange(false) }
+              onClick={ () => onDeleteDialogOpenChange(false) }
               disabled={ isDeletingArea }
             >
               Cancel
@@ -959,7 +952,7 @@ export function SpaceDetailsPanel({
             <Button
               type="button"
               variant="destructive"
-              onClick={ handleConfirmAreaDelete }
+              onClick={ onConfirmAreaDelete }
               disabled={ isDeletingArea }
             >
               { isDeletingArea ? 'Deleting...' : 'Delete area' }
@@ -967,9 +960,51 @@ export function SpaceDetailsPanel({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </>
+  );
+}
 
-      { /* Full Gallery Dialog */ }
-      <Dialog open={ galleryOpen } onOpenChange={ setGalleryOpen }>
+type PhotoDialogsSectionProps = Pick<
+  SpaceDetailsDialogsSectionProps,
+  | 'space'
+  | 'galleryOpen'
+  | 'onGalleryOpenChange'
+  | 'categoryGroups'
+  | 'categoryRefs'
+  | 'onCategoryClick'
+  | 'totalImages'
+  | 'resolveImageSrc'
+  | 'onOpenCarouselFromImage'
+  | 'isCarouselOpen'
+  | 'onCarouselDialogOpenChange'
+  | 'onCloseCarousel'
+  | 'activeCarouselImage'
+  | 'activeCarouselCategoryLabel'
+  | 'activeCarouselIndex'
+  | 'onCarouselNavigate'
+>;
+
+function PhotoDialogsSection({
+  space,
+  galleryOpen,
+  onGalleryOpenChange,
+  categoryGroups,
+  categoryRefs,
+  onCategoryClick,
+  totalImages,
+  resolveImageSrc,
+  onOpenCarouselFromImage,
+  isCarouselOpen,
+  onCarouselDialogOpenChange,
+  onCloseCarousel,
+  activeCarouselImage,
+  activeCarouselCategoryLabel,
+  activeCarouselIndex,
+  onCarouselNavigate,
+}: PhotoDialogsSectionProps) {
+  return (
+    <>
+      <Dialog open={ galleryOpen } onOpenChange={ onGalleryOpenChange }>
         <DialogContent className="flex h-screen w-screen max-w-[100vw] flex-col p-0 sm:max-w-[100vw]">
           <DialogHeader className="border-b border-border/50 px-6 py-4">
             <DialogTitle>Photo Tour</DialogTitle>
@@ -999,7 +1034,7 @@ export function SpaceDetailsPanel({
                           <button
                             key={ group.anchor }
                             type="button"
-                            onClick={ () => handleCategoryClick(group.anchor) }
+                            onClick={ () => onCategoryClick(group.anchor) }
                             aria-label={ `Jump to ${group.label} photos` }
                             className="group relative inline-flex w-44 min-w-[176px] flex-col text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                           >
@@ -1056,7 +1091,7 @@ export function SpaceDetailsPanel({
                             <button
                               key={ `dialog-gallery-${group.anchor}-${image.id}` }
                               type="button"
-                              onClick={ () => openCarouselFromImage(image) }
+                              onClick={ () => onOpenCarouselFromImage(image) }
                               aria-label={ `Open carousel for ${group.label} photo ${index + 1}` }
                               className="group relative block w-full cursor-pointer overflow-hidden border border-border/60 bg-muted shadow-sm aspect-[3/2] min-h-[220px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                             >
@@ -1087,12 +1122,9 @@ export function SpaceDetailsPanel({
         </DialogContent>
       </Dialog>
 
-      { /* Carousel Dialog */ }
       <Dialog
         open={ isCarouselOpen }
-        onOpenChange={ (open) =>
-          open ? setCarouselOpen(true) : closeCarousel()
-        }
+        onOpenChange={ onCarouselDialogOpenChange }
       >
         <DialogContent
           showCloseButton={ false }
@@ -1101,7 +1133,7 @@ export function SpaceDetailsPanel({
           <DialogHeader className="flex flex-row items-center justify-between border-b border-white/10 px-4 py-3">
             <DialogTitle className="text-sm font-semibold text-white">
               { activeCarouselImage
-                ? `${formatCategoryLabel(activeCarouselImage.category ?? null)} photos`
+                ? `${activeCarouselCategoryLabel} photos`
                 : 'Photo carousel' }
             </DialogTitle>
             <div className="flex items-center gap-3 text-xs text-white/70">
@@ -1112,7 +1144,7 @@ export function SpaceDetailsPanel({
               ) : null }
               <button
                 type="button"
-                onClick={ closeCarousel }
+                onClick={ onCloseCarousel }
                 aria-label="Close carousel"
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
               >
@@ -1139,7 +1171,7 @@ export function SpaceDetailsPanel({
               <>
                 <button
                   type="button"
-                  onClick={ () => handleCarouselNavigate('prev') }
+                  onClick={ () => onCarouselNavigate('prev') }
                   aria-label="Previous photo"
                   className="absolute left-4 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                 >
@@ -1147,7 +1179,7 @@ export function SpaceDetailsPanel({
                 </button>
                 <button
                   type="button"
-                  onClick={ () => handleCarouselNavigate('next') }
+                  onClick={ () => onCarouselNavigate('next') }
                   aria-label="Next photo"
                   className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                 >
@@ -1158,37 +1190,64 @@ export function SpaceDetailsPanel({
           </div>
         </DialogContent>
       </Dialog>
+    </>
+  );
+}
 
-      { /* Unpublish CTA */ }
-      { space ? (
-        <Card className="border-border/70 bg-background/80">
-          <CardHeader className="space-y-2">
-            <CardTitle className="text-2xl">Unpublish this listing</CardTitle>
-            <CardDescription>
-              Hide the space from the marketplace. An admin must approve before
-              it becomes invisible to guests.
-            </CardDescription>
-          </CardHeader>
-          <CardFooter className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <Button
-              type="button"
-              variant="destructive"
-              className="w-full sm:w-auto"
-              disabled={
-                isUnpublishDisabled || requestUnpublishMutation.isPending
-              }
-              onClick={ () => setUnpublishDialogOpen(true) }
-            >
-              <FiEyeOff className="size-4" aria-hidden="true" />
-              { space.pending_unpublish_request
-                ? 'Request sent'
-                : 'Request unpublish' }
-            </Button>
-          </CardFooter>
-        </Card>
-      ) : null }
+type UnpublishDialogsSectionProps = Pick<
+  SpaceDetailsDialogsSectionProps,
+  | 'space'
+  | 'isUnpublishDisabled'
+  | 'isRequestUnpublishPending'
+  | 'onOpenUnpublishDialog'
+  | 'unpublishDialogOpen'
+  | 'onUnpublishDialogOpenChange'
+  | 'unpublishReason'
+  | 'onUnpublishReasonChange'
+  | 'onSubmitUnpublish'
+>;
 
-      <Dialog open={ unpublishDialogOpen } onOpenChange={ setUnpublishDialogOpen }>
+function UnpublishDialogsSection({
+  space,
+  isUnpublishDisabled,
+  isRequestUnpublishPending,
+  onOpenUnpublishDialog,
+  unpublishDialogOpen,
+  onUnpublishDialogOpenChange,
+  unpublishReason,
+  onUnpublishReasonChange,
+  onSubmitUnpublish,
+}: UnpublishDialogsSectionProps) {
+  return (
+    <>
+      <Card className="border-border/70 bg-background/80">
+        <CardHeader className="space-y-2">
+          <CardTitle className="text-2xl">Unpublish this listing</CardTitle>
+          <CardDescription>
+            Hide the space from the marketplace. An admin must approve before
+            it becomes invisible to guests.
+          </CardDescription>
+        </CardHeader>
+        <CardFooter className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Button
+            type="button"
+            variant="destructive"
+            className="w-full sm:w-auto"
+            disabled={ isUnpublishDisabled || isRequestUnpublishPending }
+            onClick={ onOpenUnpublishDialog }
+          >
+            <FiEyeOff className="size-4" aria-hidden="true" />
+            { space.pending_unpublish_request
+              ? 'Request sent'
+              : 'Request unpublish' }
+          </Button>
+        </CardFooter>
+      </Card>
+
+      <Dialog
+        open={ unpublishDialogOpen }
+        onOpenChange={ onUnpublishDialogOpenChange }
+      >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Request to unpublish</DialogTitle>
@@ -1201,7 +1260,7 @@ export function SpaceDetailsPanel({
             <p className="text-sm text-muted-foreground">Reason (optional)</p>
             <Textarea
               value={ unpublishReason }
-              onChange={ (e) => setUnpublishReason(e.target.value) }
+              onChange={ (event) => onUnpublishReasonChange(event.target.value) }
               maxLength={ 500 }
               aria-label="Reason for unpublishing"
               placeholder="Share context for the reviewer"
@@ -1214,17 +1273,17 @@ export function SpaceDetailsPanel({
             <Button
               type="button"
               variant="outline"
-              onClick={ () => setUnpublishDialogOpen(false) }
-              disabled={ requestUnpublishMutation.isPending }
+              onClick={ () => onUnpublishDialogOpenChange(false) }
+              disabled={ isRequestUnpublishPending }
             >
               Cancel
             </Button>
             <Button
               type="button"
-              onClick={ handleSubmitUnpublish }
-              disabled={ requestUnpublishMutation.isPending }
+              onClick={ onSubmitUnpublish }
+              disabled={ isRequestUnpublishPending }
             >
-              { requestUnpublishMutation.isPending ? 'Sending…' : 'Send request' }
+              { isRequestUnpublishPending ? 'Sending…' : 'Send request' }
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1233,7 +1292,637 @@ export function SpaceDetailsPanel({
   );
 }
 
-function renderField(label: string, value: string) {
+function useSpaceDetailsPanelController(spaceId: string | null) {
+  const normalizedSpaceId = spaceId ?? '';
+  const isMobile = useIsMobile();
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '') ?? null;
+  const getPublicImageUrl = (path?: string | null) =>
+    supabaseUrl && path
+      ? `${supabaseUrl}/storage/v1/object/public/${path}`
+      : null;
+  const resolveImageSrc = (image?: SpaceImageRecord | null) => {
+    if (!image) return null;
+    return image.public_url ?? getPublicImageUrl(image.path);
+  };
+
+  const {
+    data: space,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = usePartnerSpaceQuery(normalizedSpaceId || null);
+
+  const updateSpaceMutation = useUpdatePartnerSpaceMutation(normalizedSpaceId);
+  const createAreaMutation = useCreateAreaMutation(normalizedSpaceId);
+  const updateAreaMutation = useUpdateAreaMutation(normalizedSpaceId);
+  const deleteAreaMutation = useDeleteAreaMutation(normalizedSpaceId);
+  const requestUnpublishMutation =
+    useRequestUnpublishSpaceMutation(normalizedSpaceId);
+  const descriptionForm = useForm<DescriptionFormValues>({
+    resolver: zodResolver(descriptionSchema),
+    defaultValues: { description: '', },
+  });
+  const [uiState, dispatchUiState] = useReducer(
+    spaceDetailsUiReducer,
+    undefined,
+    createInitialSpaceDetailsUiState
+  );
+
+  const {
+    isEditingDescription,
+    areaDialogOpen,
+    areaDialogValues,
+    editingAreaId,
+    areaPendingDelete,
+    unpublishDialogOpen,
+    unpublishReason,
+    galleryOpen,
+    carouselOpen,
+    carouselIndex,
+  } = uiState;
+
+  const getDefaultAreaFormValues = () =>
+    createAreaFormDefaults(space?.pricing_rules?.[0]?.id ?? null);
+
+  const categoryRefs = useRef<Record<string, HTMLElement | null>>({});
+  const descriptionValue = descriptionForm.watch('description');
+  const descriptionPlainTextLength = richTextPlainTextLength(
+    sanitizeRichText(descriptionValue ?? '')
+  );
+  const descriptionError = descriptionForm.formState.errors.description?.message;
+  const isDescriptionDirty = descriptionForm.formState.isDirty;
+  const isDeletingArea = deleteAreaMutation.isPending;
+  const isUnpublishDisabled =
+    !space || space.status === 'Unpublished' || space.pending_unpublish_request;
+
+  const categoryGroups = useMemo<PhotoCategoryGroup[]>(() => {
+    const images = space?.images ?? [];
+    if (!images.length) return [];
+
+    const groups = new Map<string, SpaceImageRecord[]>();
+
+    images.forEach((image) => {
+      const categoryKey = image.category?.trim() || 'Uncategorized';
+      const existing = groups.get(categoryKey) ?? [];
+      existing.push(image);
+      groups.set(categoryKey, existing);
+    });
+
+    let index = 0;
+
+    return Array.from(groups.entries()).map(([category, imgs]) => {
+      const label = formatCategoryLabel(category);
+      const anchor = `photo-category-${slugifyCategory(category || 'Uncategorized')}-${index++}`;
+      return {
+        category,
+        label,
+        anchor,
+        images: imgs,
+      };
+    });
+  }, [space?.images]);
+
+  const totalImages = space?.images?.length ?? 0;
+
+  const activeCarouselIndex = useMemo(() => {
+    const images = space?.images ?? [];
+    if (images.length === 0) return null;
+    if (carouselIndex === null) return null;
+    return Math.min(Math.max(carouselIndex, 0), images.length - 1);
+  }, [carouselIndex, space?.images]);
+
+  const activeCarouselImage =
+    activeCarouselIndex === null
+      ? null
+      : (space?.images ?? [])[activeCarouselIndex];
+  const activeCarouselCategoryLabel = activeCarouselImage
+    ? formatCategoryLabel(activeCarouselImage.category ?? null)
+    : 'photo';
+  const isCarouselOpen =
+    carouselOpen &&
+    activeCarouselIndex !== null &&
+    (space?.images?.length ?? 0) > 0;
+
+  const closeCarousel = () => {
+    dispatchUiState({ type: 'closeCarousel', });
+  };
+
+  const openCarouselFromImage = (image?: SpaceImageRecord | null) => {
+    if (!image) return;
+    const images = space?.images ?? [];
+    const index = images.findIndex((item) => item.id === image.id);
+    if (index < 0) return;
+    dispatchUiState({
+      type: 'openCarousel',
+      index,
+    });
+  };
+
+  const handleCarouselNavigate = (direction: 'prev' | 'next') => {
+    dispatchUiState({
+      type: 'navigateCarousel',
+      direction,
+      total: space?.images?.length ?? 0,
+    });
+  };
+
+  const handleCategoryClick = (anchor: string) => {
+    const target = categoryRefs.current[anchor];
+    if (target) {
+      target.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }
+  };
+
+  const setGalleryOpen = (open: boolean) => {
+    dispatchUiState({
+      type: 'setGalleryOpen',
+      value: open,
+    });
+  };
+
+  const setCarouselDialogOpen = (open: boolean) => {
+    if (open) {
+      dispatchUiState({
+        type: 'setCarouselOpen',
+        value: true,
+      });
+      return;
+    }
+    closeCarousel();
+  };
+
+  const openUnpublishDialog = () => {
+    dispatchUiState({
+      type: 'setUnpublishDialogOpen',
+      value: true,
+    });
+  };
+
+  const setUnpublishDialogOpen = (open: boolean) => {
+    dispatchUiState({
+      type: 'setUnpublishDialogOpen',
+      value: open,
+    });
+  };
+
+  const setUnpublishReason = (value: string) => {
+    dispatchUiState({
+      type: 'setUnpublishReason',
+      value,
+    });
+  };
+
+  useEffect(() => {
+    if (!space || isEditingDescription) {
+      return;
+    }
+    descriptionForm.reset({ description: sanitizeRichText(space.description ?? ''), });
+  }, [descriptionForm, isEditingDescription, space]);
+
+  const handleStartDescriptionEdit = () => {
+    if (!space) return;
+    dispatchUiState({
+      type: 'setEditingDescription',
+      value: true,
+    });
+    descriptionForm.reset({ description: sanitizeRichText(space.description ?? ''), });
+    descriptionForm.clearErrors();
+  };
+
+  const handleCancelDescriptionEdit = () => {
+    if (!space) return;
+    dispatchUiState({
+      type: 'setEditingDescription',
+      value: false,
+    });
+    descriptionForm.reset({ description: sanitizeRichText(space.description ?? ''), });
+    descriptionForm.clearErrors();
+  };
+
+  const handleDescriptionSubmit = async (values: DescriptionFormValues) => {
+    if (!space) return;
+    try {
+      await updateSpaceMutation.mutateAsync({
+        ...spaceRecordToFormValues(space),
+        description: values.description,
+      });
+      toast.success('Description updated.');
+      dispatchUiState({
+        type: 'setEditingDescription',
+        value: false,
+      });
+    } catch (mutationError) {
+      toast.error(
+        mutationError instanceof Error
+          ? mutationError.message
+          : 'Unable to update description.'
+      );
+    }
+  };
+
+  const handleAddArea = () => {
+    if (!space) return;
+    dispatchUiState({
+      type: 'openAreaDialog',
+      areaId: null,
+      values: getDefaultAreaFormValues(),
+    });
+  };
+
+  const handleEditArea = (area: AreaRecord) => {
+    if (!space) return;
+    dispatchUiState({
+      type: 'openAreaDialog',
+      areaId: area.id,
+      values: areaRecordToFormValues(area),
+    });
+  };
+
+  const handleAreaDialogOpenChange = (open: boolean) => {
+    if (open) {
+      dispatchUiState({
+        type: 'setAreaDialogOpen',
+        value: true,
+      });
+      return;
+    }
+    dispatchUiState({
+      type: 'resetAreaDialog',
+      values: getDefaultAreaFormValues(),
+    });
+  };
+
+  const handleAreaSubmit = async (values: AreaFormValues) => {
+    if (!space) return;
+    try {
+      if (editingAreaId) {
+        await updateAreaMutation.mutateAsync({
+          areaId: editingAreaId,
+          payload: values,
+        });
+        toast.success(`${values.name} updated.`);
+      } else {
+        await createAreaMutation.mutateAsync(values);
+        toast.success(`${values.name} added.`);
+      }
+      handleAreaDialogOpenChange(false);
+    } catch (mutationError) {
+      toast.error(
+        mutationError instanceof Error
+          ? mutationError.message
+          : 'Unable to save area.'
+      );
+    }
+  };
+
+  const handleRequestDeleteArea = (area: AreaRecord) => {
+    dispatchUiState({
+      type: 'setAreaPendingDelete',
+      value: area,
+    });
+  };
+
+  const handleDeleteDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      dispatchUiState({
+        type: 'setAreaPendingDelete',
+        value: null,
+      });
+    }
+  };
+
+  const handleConfirmAreaDelete = async () => {
+    if (!areaPendingDelete) {
+      return;
+    }
+
+    try {
+      await deleteAreaMutation.mutateAsync(areaPendingDelete.id);
+      toast.success(`${areaPendingDelete.name} removed.`);
+      dispatchUiState({
+        type: 'setAreaPendingDelete',
+        value: null,
+      });
+    } catch (mutationError) {
+      toast.error(
+        mutationError instanceof Error
+          ? mutationError.message
+          : 'Unable to delete area.'
+      );
+    }
+  };
+
+  const handleSubmitUnpublish = async () => {
+    if (!space) return;
+    try {
+      await requestUnpublishMutation.mutateAsync({ reason: unpublishReason.trim() || undefined, });
+      toast.success('Unpublish request sent for admin review.');
+      dispatchUiState({
+        type: 'setUnpublishDialogOpen',
+        value: false,
+      });
+      dispatchUiState({
+        type: 'setUnpublishReason',
+        value: '',
+      });
+      await refetch();
+    } catch (mutationError) {
+      const message =
+        mutationError instanceof Error
+          ? mutationError.message
+          : 'Unable to submit request.';
+      toast.error(message);
+    }
+  };
+
+  return {
+    normalizedSpaceId,
+    isMobile,
+    space,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    descriptionForm,
+    isEditingDescription,
+    descriptionPlainTextLength,
+    descriptionError,
+    isDescriptionDirty,
+    isDescriptionSaving: updateSpaceMutation.isPending,
+    handleStartDescriptionEdit,
+    handleCancelDescriptionEdit,
+    handleDescriptionSubmit,
+    handleEditArea,
+    handleRequestDeleteArea,
+    handleAddArea,
+    areaDialogOpen,
+    editingAreaId,
+    areaDialogValues,
+    handleAreaDialogOpenChange,
+    handleAreaSubmit,
+    isAreaSubmitting:
+      editingAreaId
+        ? updateAreaMutation.isPending
+        : createAreaMutation.isPending,
+    areaPendingDelete,
+    handleDeleteDialogOpenChange,
+    handleConfirmAreaDelete,
+    isDeletingArea,
+    galleryOpen,
+    setGalleryOpen,
+    categoryGroups,
+    categoryRefs,
+    handleCategoryClick,
+    totalImages,
+    resolveImageSrc,
+    openCarouselFromImage,
+    isCarouselOpen,
+    setCarouselDialogOpen,
+    closeCarousel,
+    activeCarouselImage,
+    activeCarouselCategoryLabel,
+    activeCarouselIndex,
+    handleCarouselNavigate,
+    isUnpublishDisabled,
+    isRequestUnpublishPending: requestUnpublishMutation.isPending,
+    openUnpublishDialog,
+    unpublishDialogOpen,
+    setUnpublishDialogOpen,
+    unpublishReason,
+    setUnpublishReason,
+    handleSubmitUnpublish,
+  };
+}
+
+type SpaceDetailsPanelController = ReturnType<
+  typeof useSpaceDetailsPanelController
+>;
+
+type SpaceDetailsLoadedViewProps = {
+  className?: string;
+  controller: SpaceDetailsPanelController;
+};
+
+function SpaceDetailsLoadedView({
+  className,
+  controller,
+}: SpaceDetailsLoadedViewProps) {
+  const { space, } = controller;
+  if (!space) return null;
+
+  const photoLayout = (
+    <SpacePhotoLayout
+      space={ space }
+      totalImages={ controller.totalImages }
+      isMobile={ controller.isMobile }
+      resolveImageSrc={ controller.resolveImageSrc }
+      onOpenGallery={ () => controller.setGalleryOpen(true) }
+    />
+  );
+
+  return (
+    <>
+      <SpaceDetailsMainSection
+        className={ className }
+        space={ space }
+        photoLayout={ photoLayout }
+        isEditingDescription={ controller.isEditingDescription }
+        descriptionForm={ controller.descriptionForm }
+        descriptionPlainTextLength={ controller.descriptionPlainTextLength }
+        descriptionError={ controller.descriptionError }
+        isDescriptionDirty={ controller.isDescriptionDirty }
+        isDescriptionSaving={ controller.isDescriptionSaving }
+        onStartDescriptionEdit={ controller.handleStartDescriptionEdit }
+        onCancelDescriptionEdit={ controller.handleCancelDescriptionEdit }
+        onDescriptionSubmit={ controller.handleDescriptionSubmit }
+        onEditArea={ controller.handleEditArea }
+        onRequestDeleteArea={ controller.handleRequestDeleteArea }
+        onAddArea={ controller.handleAddArea }
+      />
+      <SpaceDetailsDialogsSection
+        space={ space }
+        areaDialogOpen={ controller.areaDialogOpen }
+        editingAreaId={ controller.editingAreaId }
+        areaDialogValues={ controller.areaDialogValues }
+        onAreaDialogOpenChange={ controller.handleAreaDialogOpenChange }
+        onAreaSubmit={ controller.handleAreaSubmit }
+        isAreaSubmitting={ controller.isAreaSubmitting }
+        areaPendingDelete={ controller.areaPendingDelete }
+        onDeleteDialogOpenChange={ controller.handleDeleteDialogOpenChange }
+        onConfirmAreaDelete={ controller.handleConfirmAreaDelete }
+        isDeletingArea={ controller.isDeletingArea }
+        galleryOpen={ controller.galleryOpen }
+        onGalleryOpenChange={ controller.setGalleryOpen }
+        categoryGroups={ controller.categoryGroups }
+        categoryRefs={ controller.categoryRefs }
+        onCategoryClick={ controller.handleCategoryClick }
+        totalImages={ controller.totalImages }
+        resolveImageSrc={ controller.resolveImageSrc }
+        onOpenCarouselFromImage={ controller.openCarouselFromImage }
+        isCarouselOpen={ controller.isCarouselOpen }
+        onCarouselDialogOpenChange={ controller.setCarouselDialogOpen }
+        onCloseCarousel={ controller.closeCarousel }
+        activeCarouselImage={ controller.activeCarouselImage }
+        activeCarouselCategoryLabel={ controller.activeCarouselCategoryLabel }
+        activeCarouselIndex={ controller.activeCarouselIndex }
+        onCarouselNavigate={ controller.handleCarouselNavigate }
+        isUnpublishDisabled={ controller.isUnpublishDisabled }
+        isRequestUnpublishPending={ controller.isRequestUnpublishPending }
+        onOpenUnpublishDialog={ controller.openUnpublishDialog }
+        unpublishDialogOpen={ controller.unpublishDialogOpen }
+        onUnpublishDialogOpenChange={ controller.setUnpublishDialogOpen }
+        unpublishReason={ controller.unpublishReason }
+        onUnpublishReasonChange={ controller.setUnpublishReason }
+        onSubmitUnpublish={ controller.handleSubmitUnpublish }
+      />
+    </>
+  );
+}
+
+export function SpaceDetailsPanel({
+  spaceId,
+  className,
+}: SpaceDetailsPanelProps) {
+  const controller = useSpaceDetailsPanelController(spaceId);
+
+  if (!controller.normalizedSpaceId) {
+    return renderSpaceDetailsStatusCard(
+      'Space not found',
+      'Select a valid listing to continue.',
+      className
+    );
+  }
+
+  if (controller.isLoading) {
+    return <SpaceDetailsSkeleton className={ className } />;
+  }
+
+  if (controller.isError) {
+    return (
+      <Card className={ cn('border-none bg-transparent shadow-none', className) }>
+        <CardContent className="flex flex-col items-center gap-6 px-6 py-10 text-center">
+          <SystemErrorIllustration className="h-auto w-full max-w-[260px] md:max-w-[320px]" />
+          <div className="space-y-2">
+            <CardTitle className="text-xl text-muted-foreground md:text-2xl">
+              Unable to load space
+            </CardTitle>
+            <CardDescription className="text-sm">
+              { controller.error instanceof Error
+                ? controller.error.message
+                : 'Please try again in a moment.' }
+            </CardDescription>
+          </div>
+          <Button variant="outline" onClick={ () => controller.refetch() }>
+            Retry
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!controller.space) {
+    return renderSpaceDetailsStatusCard(
+      'Space not found',
+      'The requested space does not exist.',
+      className
+    );
+  }
+
+  return <SpaceDetailsLoadedView className={ className } controller={ controller } />;
+}
+
+type PhotoTileProps = {
+  alt: string;
+  image: SpaceImageRecord | null | undefined;
+  resolveImageSrc: (image?: SpaceImageRecord | null) => string | null;
+  onOpenGallery: () => void;
+  tileClass?: string;
+  overlay?: ReactNode;
+  blurBackground?: boolean;
+};
+
+function PhotoTile({
+  alt,
+  image,
+  resolveImageSrc,
+  onOpenGallery,
+  tileClass,
+  overlay,
+  blurBackground = false,
+}: PhotoTileProps) {
+  const imageSrc = resolveImageSrc(image);
+  return (
+    <div
+      className={ `group relative h-full w-full overflow-hidden border border-border/60 bg-muted ${tileClass ?? ''}` }
+    >
+      { imageSrc ? (
+        <Image
+          src={ imageSrc }
+          alt={ alt }
+          fill
+          sizes="(min-width: 1280px) 360px, (min-width: 1024px) 300px, 100vw"
+          className={ `object-cover ${blurBackground ? 'scale-105 blur-[2px] brightness-50' : ''}` }
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+          No preview
+        </div>
+      ) }
+      <div className="pointer-events-none absolute inset-0 bg-black/25 opacity-0 transition duration-200 group-hover:opacity-100" />
+      { overlay }
+      <button
+        type="button"
+        onClick={ onOpenGallery }
+        aria-label={ alt }
+        className="absolute inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      >
+        <span className="sr-only">{ alt }</span>
+      </button>
+    </div>
+  );
+}
+
+type SeeMorePhotoTileProps = {
+  previewImage: SpaceImageRecord | null | undefined;
+  resolveImageSrc: (image?: SpaceImageRecord | null) => string | null;
+  onOpenGallery: () => void;
+  totalImages: number;
+};
+
+function SeeMorePhotoTile({
+  previewImage,
+  resolveImageSrc,
+  onOpenGallery,
+  totalImages,
+}: SeeMorePhotoTileProps) {
+  return (
+    <PhotoTile
+      image={ previewImage }
+      resolveImageSrc={ resolveImageSrc }
+      onOpenGallery={ onOpenGallery }
+      alt="Open full image gallery"
+      tileClass="rounded-br-lg"
+      blurBackground
+      overlay={ (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50 text-white backdrop-blur-md">
+          <span className="text-base font-semibold">See all photos</span>
+          <span className="text-xs text-white/80">
+            { totalImages } photo{ totalImages === 1 ? '' : 's' }
+          </span>
+        </div>
+      ) }
+    />
+  );
+}
+
+function DetailField({
+ label, value, 
+}: { label: string; value: string }) {
   return (
     <div className="space-y-1 rounded-md border border-border/50 bg-muted/20 p-3">
       <span className="text-xs uppercase tracking-wide text-muted-foreground">
