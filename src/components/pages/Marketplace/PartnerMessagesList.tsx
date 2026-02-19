@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { FiMessageSquare } from 'react-icons/fi';
+import type { ReactNode } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import {
@@ -17,6 +18,16 @@ import { usePartnerChatRooms } from '@/hooks/api/useChat';
 import { useChatRoomsSubscription } from '@/hooks/use-chat-subscription';
 import { cn } from '@/lib/utils';
 
+function PartnerChatsListSkeleton() {
+  return (
+    <div className="space-y-3 py-4 px-2">
+      <Skeleton className="h-10 w-full rounded-2xl" />
+      <Skeleton className="h-10 w-full rounded-2xl" />
+      <Skeleton className="h-10 w-3/4 rounded-2xl" />
+    </div>
+  );
+}
+
 export function PartnerMessagesList() {
   const {
     data: rooms,
@@ -26,36 +37,23 @@ export function PartnerMessagesList() {
 
   useChatRoomsSubscription(rooms?.map((room) => room.id) ?? []);
 
-  const ChatsListSkeleton = () => (
-    <div className="space-y-3 py-4 px-2">
-      <Skeleton className="h-10 w-full rounded-2xl" />
-      <Skeleton className="h-10 w-full rounded-2xl" />
-      <Skeleton className="h-10 w-3/4 rounded-2xl" />
-    </div>
-  );
-
-  const renderConversations = () => {
-    if (roomsLoading) {
-      return (
-        <div className="flex flex-1 items-center justify-center">
-          <ChatsListSkeleton />
-        </div>
-      );
-    }
-
-    if (roomsError) {
-      return <p className="text-sm text-destructive">Unable to load conversations.</p>;
-    }
-
-    if (!rooms?.length) {
-      return (
-        <p className="text-sm text-muted-foreground">
-          No conversations yet. Customers will appear here once they message a space.
-        </p>
-      );
-    }
-
-    return (
+  let conversationsContent: ReactNode;
+  if (roomsLoading) {
+    conversationsContent = (
+      <div className="flex flex-1 items-center justify-center">
+        <PartnerChatsListSkeleton />
+      </div>
+    );
+  } else if (roomsError) {
+    conversationsContent = <p className="text-sm text-destructive">Unable to load conversations.</p>;
+  } else if (!rooms?.length) {
+    conversationsContent = (
+      <p className="text-sm text-muted-foreground">
+        No conversations yet. Customers will appear here once they message a space.
+      </p>
+    );
+  } else {
+    conversationsContent = (
       <ScrollArea className="h-[32rem] rounded-2xl border border-border/60 bg-background/60">
         <div className="space-y-2 p-3">
           { rooms.map((room) => {
@@ -101,7 +99,7 @@ export function PartnerMessagesList() {
         </div>
       </ScrollArea>
     );
-  };
+  }
 
   return (
     <section className="space-y-6 py-6">
@@ -121,7 +119,7 @@ export function PartnerMessagesList() {
             Select a customer to view the message thread.
           </CardDescription>
         </CardHeader>
-        <CardContent>{ renderConversations() }</CardContent>
+        <CardContent>{ conversationsContent }</CardContent>
       </Card>
     </section>
   );

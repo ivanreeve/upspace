@@ -4,10 +4,12 @@ import {
   ChangeEvent,
   Dispatch,
   KeyboardEvent,
+  type MutableRefObject,
   SetStateAction,
   useCallback,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
   useState
 } from 'react';
@@ -1687,32 +1689,40 @@ export function usePriceRuleFormState(
   const [newVariableUserInput, setNewVariableUserInput] = useState(false);
   const [conditionExpression, setConditionExpression] = useState('');
   const [conditionError, setConditionError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (resetTrigger === false) {
-      return;
-    }
-
-    if (initialValues) {
-      const clonedDefinition = cloneDefinition(initialValues.definition);
-      setValues({
-        ...initialValues,
-        definition: clonedDefinition,
-      });
-      setConditionExpression(
-        buildConditionExpressionFromDefinition(clonedDefinition)
-      );
-    } else {
-      setValues(createDefaultRule());
-      setConditionExpression('');
-    }
+  const resetTransientState = useCallback(() => {
     setErrorMessage(null);
     setNewVariableLabel('');
     setNewVariableType('text');
     setNewVariableValue('');
     setNewVariableUserInput(false);
     setConditionError(null);
-  }, [initialValues, resetTrigger]);
+  }, []);
+  const applyInitialValues = useCallback(
+    (nextInitialValues?: PriceRuleFormValues) => {
+      if (nextInitialValues) {
+        const clonedDefinition = cloneDefinition(nextInitialValues.definition);
+        setValues({
+          ...nextInitialValues,
+          definition: clonedDefinition,
+        });
+        setConditionExpression(
+          buildConditionExpressionFromDefinition(clonedDefinition)
+        );
+      } else {
+        setValues(createDefaultRule());
+        setConditionExpression('');
+      }
+      resetTransientState();
+    },
+    [resetTransientState]
+  );
+
+  useEffect(() => {
+    if (resetTrigger === false) {
+      return;
+    }
+    applyInitialValues(initialValues);
+  }, [applyInitialValues, initialValues, resetTrigger]);
 
   const updateDefinition = (
     updater: (definition: PriceRuleDefinition) => PriceRuleDefinition
@@ -1979,34 +1989,166 @@ const computeTokenRange = (text: string, cursor: number): TokenRange => {
   };
 };
 
-function RuleLanguageEditor({
+type RuleLanguageEditorState = {
+  expressionField: string;
+  suggestionCandidates: Suggestion[];
+  activeSuggestionIndex: number;
+  tokenRange: TokenRange | null;
+  expressionError: string | null;
+  selectedIndices: Set<number>;
+};
+
+type RuleLanguageEditorAction =
+  | {
+      type: 'setExpressionField';
+      value: string;
+    }
+  | {
+      type: 'setSuggestionCandidates';
+      value: Suggestion[];
+    }
+  | {
+      type: 'setActiveSuggestionIndex';
+      value: number;
+    }
+  | {
+      type: 'setTokenRange';
+      value: TokenRange | null;
+    }
+  | {
+      type: 'setExpressionError';
+      value: string | null;
+    }
+  | {
+      type: 'toggleSelectedIndex';
+      index: number;
+    }
+  | {
+      type: 'setSelectedIndices';
+      indices: number[];
+    }
+  | {
+      type: 'clearSelectedIndices';
+    }
+  | {
+      type: 'trimSelectedIndices';
+      maxLength: number;
+    }
+  | {
+      type: 'resetComposer';
+    };
+
+const createInitialRuleLanguageEditorState = (): RuleLanguageEditorState => ({
+  expressionField: '',
+  suggestionCandidates: [],
+  activeSuggestionIndex: 0,
+  tokenRange: null,
+  expressionError: null,
+  selectedIndices: new Set<number>(),
+});
+
+const ruleLanguageEditorReducer = (
+  state: RuleLanguageEditorState,
+  action: RuleLanguageEditorAction
+): RuleLanguageEditorState => {
+  switch (action.type) {
+    case 'setExpressionField':
+      return {
+        ...state,
+        expressionField: action.value,
+      };
+    case 'setSuggestionCandidates':
+      return {
+        ...state,
+        suggestionCandidates: action.value,
+      };
+    case 'setActiveSuggestionIndex':
+      return {
+        ...state,
+        activeSuggestionIndex: action.value,
+      };
+    case 'setTokenRange':
+      return {
+        ...state,
+        tokenRange: action.value,
+      };
+    case 'setExpressionError':
+      return {
+        ...state,
+        expressionError: action.value,
+      };
+    case 'toggleSelectedIndex': {
+      const next = new Set(state.selectedIndices);
+      if (next.has(action.index)) {
+        next.delete(action.index);
+      } else {
+        next.add(action.index);
+      }
+      return {
+        ...state,
+        selectedIndices: next,
+      };
+    }
+    case 'setSelectedIndices':
+      return {
+        ...state,
+        selectedIndices: new Set(action.indices),
+      };
+    case 'clearSelectedIndices':
+      return {
+        ...state,
+        selectedIndices: new Set<number>(),
+      };
+    case 'trimSelectedIndices': {
+      const next = new Set<number>();
+      state.selectedIndices.forEach((index) => {
+        if (index < action.maxLength) {
+          next.add(index);
+        }
+      });
+      return {
+        ...state,
+        selectedIndices: next,
+      };
+    }
+    case 'resetComposer':
+      return {
+        ...state,
+        expressionField: '',
+        suggestionCandidates: [],
+        activeSuggestionIndex: 0,
+        tokenRange: null,
+        expressionError: null,
+      };
+    default:
+      return state;
+  }
+};
+
+type RuleLanguageEditorControllerArgs = Pick<
+  RuleLanguageEditorProps,
+  'definition' | 'conditionExpression' | 'handleConditionExpressionChange'
+>;
+
+function useRuleLanguageEditorController({
   definition,
-  newVariableLabel,
-  setNewVariableLabel,
-  newVariableType,
-  setNewVariableType,
-  newVariableValue,
-  setNewVariableValue,
-  newVariableUserInput,
-  setNewVariableUserInput,
-  handleAddVariable,
-  usedVariables,
-  removeVariable,
   conditionExpression,
-  conditionError,
   handleConditionExpressionChange,
-}: RuleLanguageEditorProps) {
-  const [expressionField, setExpressionField] = useState('');
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const [suggestionCandidates, setSuggestionCandidates] = useState<
-    Suggestion[]
-  >([]);
-  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
-  const [tokenRange, setTokenRange] = useState<TokenRange | null>(null);
-  const [expressionError, setExpressionError] = useState<string | null>(null);
-  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(
-    () => new Set()
+}: RuleLanguageEditorControllerArgs) {
+  const [editorState, dispatchEditor] = useReducer(
+    ruleLanguageEditorReducer,
+    undefined,
+    createInitialRuleLanguageEditorState
   );
+  const {
+    expressionField,
+    suggestionCandidates,
+    activeSuggestionIndex,
+    tokenRange,
+    expressionError,
+    selectedIndices,
+  } = editorState;
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const comparatorDescriptions = useMemo<Record<PriceRuleComparator, string>>(
     () => ({
       '<': 'Less than',
@@ -2091,6 +2233,30 @@ function RuleLanguageEditor({
     () => computeHighlightSegments(expressionField),
     [expressionField]
   );
+  const conditionFieldHighlightItems = useMemo(() => {
+    const seen = new Map<string, number>();
+    return conditionFieldHighlights.map((segment) => {
+      const fingerprint = `${segment.type}:${segment.text}`;
+      const occurrence = seen.get(fingerprint) ?? 0;
+      seen.set(fingerprint, occurrence + 1);
+      return {
+        ...segment,
+        id: `condition-highlight-${fingerprint}-${occurrence}`,
+      };
+    });
+  }, [conditionFieldHighlights]);
+  const expressionSegmentRows = useMemo(() => {
+    const seen = new Map<string, number>();
+    return expressionSegments.map((segment, segmentIndex) => {
+      const occurrence = seen.get(segment) ?? 0;
+      seen.set(segment, occurrence + 1);
+      return {
+        id: `condition-row-${segment}-${occurrence}`,
+        segment,
+        segmentIndex,
+      };
+    });
+  }, [expressionSegments]);
   const isConditionFieldEmpty = expressionField.length === 0;
 
   const expressionConditionKeys = useMemo(
@@ -2102,14 +2268,9 @@ function RuleLanguageEditor({
   );
 
   useEffect(() => {
-    setSelectedIndices((prev) => {
-      const next = new Set<number>();
-      prev.forEach((index) => {
-        if (index < expressionSegments.length) {
-          next.add(index);
-        }
-      });
-      return next;
+    dispatchEditor({
+      type: 'trimSelectedIndices',
+      maxLength: expressionSegments.length,
     });
   }, [expressionSegments.length]);
 
@@ -2118,14 +2279,9 @@ function RuleLanguageEditor({
     selectedIndices.size === expressionSegments.length;
 
   const toggleSegmentSelection = useCallback((index: number) => {
-    setSelectedIndices((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
-      } else {
-        next.add(index);
-      }
-      return next;
+    dispatchEditor({
+      type: 'toggleSelectedIndex',
+      index,
     });
   }, []);
 
@@ -2134,28 +2290,32 @@ function RuleLanguageEditor({
       return;
     }
     if (allConditionsSelected) {
-      setSelectedIndices(new Set());
+      dispatchEditor({ type: 'clearSelectedIndices', });
       return;
     }
-    setSelectedIndices(
-      new Set(
-        Array.from({ length: expressionSegments.length, }, (_, index) => index)
-      )
-    );
+    dispatchEditor({
+      type: 'setSelectedIndices',
+      indices: Array.from(
+        { length: expressionSegments.length, },
+        (_, index) => index
+      ),
+    });
   }, [allConditionsSelected, expressionSegments.length]);
 
   const handleBulkDelete = useCallback(() => {
-    setSelectedIndices((prev) => {
-      if (prev.size === 0) {
-        return prev;
-      }
-      const remainingExpression = expressionSegments
-        .filter((_, index) => !prev.has(index))
-        .join(' AND ');
-      handleConditionExpressionChange(remainingExpression);
-      return new Set();
-    });
-  }, [expressionSegments, handleConditionExpressionChange]);
+    if (selectedIndices.size === 0) {
+      return;
+    }
+    const remainingExpression = expressionSegments
+      .filter((_, index) => !selectedIndices.has(index))
+      .join(' AND ');
+    handleConditionExpressionChange(remainingExpression);
+    dispatchEditor({ type: 'clearSelectedIndices', });
+  }, [
+    expressionSegments,
+    handleConditionExpressionChange,
+    selectedIndices
+  ]);
 
   const validateClause = useCallback(
     (text: string) => {
@@ -2246,11 +2406,17 @@ function RuleLanguageEditor({
   useEffect(() => {
     const trimmed = expressionField.trim();
     if (!trimmed) {
-      setExpressionError(null);
+      dispatchEditor({
+        type: 'setExpressionError',
+        value: null,
+      });
       return;
     }
 
-    setExpressionError(validateClause(expressionField));
+    dispatchEditor({
+      type: 'setExpressionError',
+      value: validateClause(expressionField),
+    });
   }, [expressionField, validateClause]);
 
   const allSuggestions = useMemo<Suggestion[]>(() => {
@@ -2306,12 +2472,21 @@ function RuleLanguageEditor({
   const updateSuggestions = useCallback(
     (text: string, cursor: number) => {
       const range = computeTokenRange(text, cursor);
-      setTokenRange(range);
+      dispatchEditor({
+        type: 'setTokenRange',
+        value: range,
+      });
       const prefix = range.token.trim();
 
       if (!prefix) {
-        setSuggestionCandidates([]);
-        setActiveSuggestionIndex(0);
+        dispatchEditor({
+          type: 'setSuggestionCandidates',
+          value: [],
+        });
+        dispatchEditor({
+          type: 'setActiveSuggestionIndex',
+          value: 0,
+        });
         return;
       }
 
@@ -2326,8 +2501,14 @@ function RuleLanguageEditor({
         })
         .slice(0, 8);
 
-      setSuggestionCandidates(filtered);
-      setActiveSuggestionIndex(0);
+      dispatchEditor({
+        type: 'setSuggestionCandidates',
+        value: filtered,
+      });
+      dispatchEditor({
+        type: 'setActiveSuggestionIndex',
+        value: 0,
+      });
     },
     [allSuggestions]
   );
@@ -2342,9 +2523,15 @@ function RuleLanguageEditor({
       const nextExpression = `${before}${suggestion.insert}${after}`;
       const normalized = normalizeConditionKeywords(nextExpression);
       const cursor = before.length + suggestion.insert.length;
-      setExpressionField(normalized);
+      dispatchEditor({
+        type: 'setExpressionField',
+        value: normalized,
+      });
       updateSuggestions(normalized, cursor);
-      setSuggestionCandidates([]);
+      dispatchEditor({
+        type: 'setSuggestionCandidates',
+        value: [],
+      });
     },
     [expressionField, tokenRange, updateSuggestions]
   );
@@ -2354,7 +2541,10 @@ function RuleLanguageEditor({
   ) => {
     const next = event.target.value;
     const normalized = normalizeConditionKeywords(next);
-    setExpressionField(normalized);
+    dispatchEditor({
+      type: 'setExpressionField',
+      value: normalized,
+    });
     const cursor = event.target.selectionStart ?? next.length;
     updateSuggestions(normalized, cursor);
   };
@@ -2371,7 +2561,10 @@ function RuleLanguageEditor({
         (segment) => normalizeConditionSegment(segment) === normalizedSegment
       )
     ) {
-      setExpressionError('This condition already exists.');
+      dispatchEditor({
+        type: 'setExpressionError',
+        value: 'This condition already exists.',
+      });
       return;
     }
     const clauseConditionKey = getConditionTargetKey(trimmed, definition);
@@ -2379,7 +2572,10 @@ function RuleLanguageEditor({
       clauseConditionKey &&
       expressionConditionKeys.includes(clauseConditionKey)
     ) {
-      setExpressionError('This condition already exists.');
+      dispatchEditor({
+        type: 'setExpressionError',
+        value: 'This condition already exists.',
+      });
       return;
     }
     try {
@@ -2394,23 +2590,23 @@ function RuleLanguageEditor({
         definition
       );
       if (collisionError) {
-        setExpressionError(collisionError);
+        dispatchEditor({
+          type: 'setExpressionError',
+          value: collisionError,
+        });
         return;
       }
     } catch (error) {
-      setExpressionError(
-        error instanceof Error ? error.message : 'Invalid condition.'
-      );
+      dispatchEditor({
+        type: 'setExpressionError',
+        value: error instanceof Error ? error.message : 'Invalid condition.',
+      });
       return;
     }
     const baseExpression = conditionExpression.trim();
     const separator = baseExpression ? ' AND ' : '';
     handleConditionExpressionChange(`${baseExpression}${separator}${trimmed}`);
-    setExpressionField('');
-    setSuggestionCandidates([]);
-    setActiveSuggestionIndex(0);
-    setTokenRange(null);
-    setExpressionError(null);
+    dispatchEditor({ type: 'resetComposer', });
   }, [
     conditionExpression,
     definition,
@@ -2426,18 +2622,20 @@ function RuleLanguageEditor({
     if (suggestionCandidates.length > 0) {
       if (event.key === 'ArrowDown') {
         event.preventDefault();
-        setActiveSuggestionIndex(
-          (prev) => (prev + 1) % suggestionCandidates.length
-        );
+        dispatchEditor({
+          type: 'setActiveSuggestionIndex',
+          value: (activeSuggestionIndex + 1) % suggestionCandidates.length,
+        });
         return;
       }
       if (event.key === 'ArrowUp') {
         event.preventDefault();
-        setActiveSuggestionIndex(
-          (prev) =>
-            (prev - 1 + suggestionCandidates.length) %
-            suggestionCandidates.length
-        );
+        dispatchEditor({
+          type: 'setActiveSuggestionIndex',
+          value:
+            (activeSuggestionIndex - 1 + suggestionCandidates.length) %
+            suggestionCandidates.length,
+        });
         return;
       }
       if (event.key === 'Enter' || event.key === 'Tab') {
@@ -2446,8 +2644,14 @@ function RuleLanguageEditor({
         return;
       }
       if (event.key === 'Escape') {
-        setSuggestionCandidates([]);
-        setActiveSuggestionIndex(0);
+        dispatchEditor({
+          type: 'setSuggestionCandidates',
+          value: [],
+        });
+        dispatchEditor({
+          type: 'setActiveSuggestionIndex',
+          value: 0,
+        });
         return;
       }
     }
@@ -2458,18 +2662,6 @@ function RuleLanguageEditor({
     }
   };
 
-  const insertSnippet = useCallback(
-    (value: string) => {
-      setExpressionField((prev) => {
-        const next = `${prev}${value}`;
-        const normalized = normalizeConditionKeywords(next);
-        updateSuggestions(normalized, normalized.length);
-        return normalized;
-      });
-    },
-    [updateSuggestions]
-  );
-
   const removeExpressionSegment = useCallback(
     (index: number) => {
       const updatedSegments = expressionSegments.filter(
@@ -2479,6 +2671,546 @@ function RuleLanguageEditor({
     },
     [expressionSegments, handleConditionExpressionChange]
   );
+
+  return {
+    inputRef,
+    expressionField,
+    suggestionCandidates,
+    activeSuggestionIndex,
+    conditionFieldHighlightItems,
+    expressionSegmentRows,
+    isConditionFieldEmpty,
+    allConditionsSelected,
+    selectedIndices,
+    expressionError,
+    isExpressionFieldValid,
+    handleExpressionFieldChange,
+    handleExpressionFieldKeyDown,
+    addExpressionSegment,
+    insertSuggestion,
+    handleBulkDelete,
+    toggleSelectAll,
+    toggleSegmentSelection,
+    removeExpressionSegment,
+  };
+}
+
+type ConditionFieldHighlightItem = HighlightToken & {
+  id: string;
+};
+
+type RuleLanguageVariablesSectionProps = Pick<
+  RuleLanguageEditorProps,
+  | 'definition'
+  | 'newVariableLabel'
+  | 'setNewVariableLabel'
+  | 'newVariableType'
+  | 'setNewVariableType'
+  | 'newVariableValue'
+  | 'setNewVariableValue'
+  | 'newVariableUserInput'
+  | 'setNewVariableUserInput'
+  | 'handleAddVariable'
+  | 'usedVariables'
+  | 'removeVariable'
+>;
+
+function RuleLanguageVariablesSection({
+  definition,
+  newVariableLabel,
+  setNewVariableLabel,
+  newVariableType,
+  setNewVariableType,
+  newVariableValue,
+  setNewVariableValue,
+  newVariableUserInput,
+  setNewVariableUserInput,
+  handleAddVariable,
+  usedVariables,
+  removeVariable,
+}: RuleLanguageVariablesSectionProps) {
+  return (
+    <div className="space-y-3 rounded-xl border border-border/80 bg-muted/20 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <Label>Variables</Label>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        { definition.variables
+          .filter(
+            (variable) => !RESERVED_VARIABLE_KEYS.includes(variable.key)
+          )
+          .map((variable) => (
+            <div
+              key={ variable.key }
+              className="flex items-center gap-2 rounded-md border border-border/80 bg-white dark:bg-transparent pr-1 pl-3 py-1 text-[11px] font-semibold tracking-wide"
+            >
+              <div className="flex items-center gap-2">
+                <TypeIcon type={ variable.type } />
+                <span className="text-xs">
+                  { variable.label.toLowerCase() }
+                </span>
+              </div>
+              { variable.userInput ? (
+                <span className="text-[9px] font-semibold text-muted-foreground">
+                  Input
+                </span>
+              ) : variable.initialValue ? (
+                <span className="text-[9px] text-muted-foreground">
+                  Default: { variable.initialValue }
+                </span>
+              ) : null }
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:bg-[oklch(0.9647_0.0345_19.81)] dark:hover:bg-[oklch(0.26_0.04_19.81)] hover:text-destructive"
+                onClick={ () => removeVariable(variable.key) }
+                disabled={ usedVariables.has(variable.key) }
+                aria-label="Remove variable"
+              >
+                <FiTrash2 className="size-3" aria-hidden="true" />
+              </Button>
+            </div>
+          )) }
+      </div>
+      <div className="flex items-center gap-3 flex-nowrap overflow-x-auto">
+        <Button
+          type="button"
+          className="h-full w-10"
+          onClick={ handleAddVariable }
+        >
+          <FiPlus className="size-4" aria-hidden="true" />
+          <span className="sr-only">Add variable</span>
+        </Button>
+        <Input
+          className="min-w-[12rem] bg-white"
+          placeholder="New variable label"
+          value={ newVariableLabel }
+          onChange={ (event) =>
+            setNewVariableLabel(normalizeVariableName(event.target.value))
+          }
+        />
+        <Select
+          value={ newVariableType }
+          onValueChange={ (value) => {
+            const nextType = value as DataType;
+            setNewVariableType(nextType);
+            if (nextType === 'date' || nextType === 'time') {
+              setNewVariableUserInput(false);
+            }
+          } }
+        >
+          <SelectTrigger className="min-w-[8rem] bg-muted/20">
+            <SelectValue placeholder="Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="text">
+              <div className="flex items-center gap-2">
+                <TypeIcon type="text" />
+                Text
+              </div>
+            </SelectItem>
+            <SelectItem value="number">
+              <div className="flex items-center gap-2">
+                <TypeIcon type="number" />
+                Number
+              </div>
+            </SelectItem>
+            <SelectItem value="date">
+              <div className="flex items-center gap-2">
+                <TypeIcon type="date" />
+                Date
+              </div>
+            </SelectItem>
+            <SelectItem value="time">
+              <div className="flex items-center gap-2">
+                <TypeIcon type="time" />
+                Time
+              </div>
+            </SelectItem>
+          </SelectContent>
+        </Select>
+        { newVariableType === 'date' ? (
+          <div className="w-full">
+            <DatePickerInput
+              value={ newVariableValue }
+              onChange={ (nextValue) => setNewVariableValue(nextValue) }
+              disabled={ newVariableUserInput }
+            />
+          </div>
+        ) : newVariableType === 'time' ? (
+          <div className="w-full rounded-md border border-input bg-white">
+            <Input
+              readOnly={ newVariableUserInput }
+              className="w-full border-none bg-white pl-4 focus-visible:outline-none"
+              placeholder="Default value"
+              type="time"
+              value={ newVariableValue }
+              onChange={ (event) => setNewVariableValue(event.target.value) }
+              disabled={ newVariableUserInput }
+            />
+          </div>
+        ) : (
+          <Input
+            className="min-w-[8rem] bg-white"
+            placeholder="Default value"
+            type={ newVariableType === 'number' ? 'number' : 'text' }
+            inputMode={ newVariableType === 'number' ? 'decimal' : undefined }
+            value={ newVariableValue }
+            onChange={ (event) => {
+              const nextValue = event.target.value;
+              if (newVariableType === 'number') {
+                const sanitized = nextValue.replace(/[^0-9.-]/g, '');
+                const match = sanitized.match(/^-?(?:\d+)?(?:\.\d*)?/);
+                setNewVariableValue(match ? match[0] : '');
+                return;
+              }
+              setNewVariableValue(nextValue);
+            } }
+            disabled={ newVariableUserInput }
+            step={ newVariableType === 'number' ? 'any' : undefined }
+            onKeyDown={ (event) => {
+              if (newVariableType !== 'number') {
+                return;
+              }
+
+              const allowed = [
+                'Backspace',
+                'Tab',
+                'ArrowLeft',
+                'ArrowRight',
+                'Delete',
+                'Home',
+                'End',
+                'Enter',
+                'Escape',
+                '.',
+                '-'
+              ];
+
+              if (
+                allowed.includes(event.key) ||
+                event.ctrlKey ||
+                event.metaKey
+              ) {
+                return;
+              }
+
+              if (/^[0-9]$/.test(event.key)) {
+                return;
+              }
+
+              event.preventDefault();
+            } }
+          />
+        ) }
+        <div className="flex items-center gap-2 whitespace-nowrap">
+          { /* Date/Time variables must be derived, not user-provided. */ }
+          <Switch
+            id="variable-user-input"
+            checked={
+              newVariableUserInput &&
+              newVariableType !== 'date' &&
+              newVariableType !== 'time'
+            }
+            disabled={
+              newVariableType === 'date' || newVariableType === 'time'
+            }
+            onCheckedChange={ (checked) => {
+              const allowed =
+                newVariableType === 'text' || newVariableType === 'number';
+              setNewVariableUserInput(allowed && Boolean(checked));
+              if (checked && !allowed) {
+                setNewVariableValue('');
+              }
+            } }
+          />
+          <label
+            htmlFor="variable-user-input"
+            className="text-xs text-muted-foreground"
+          >
+            User Input
+            { newVariableType === 'date' || newVariableType === 'time'
+              ? ' (not available for date/time)'
+              : '' }
+          </label>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type RuleLanguageConditionsSectionProps = {
+  conditionError: string | null;
+  expressionField: string;
+  inputRef: MutableRefObject<HTMLInputElement | null>;
+  isConditionFieldEmpty: boolean;
+  conditionFieldHighlightItems: ConditionFieldHighlightItem[];
+  suggestionCandidates: Suggestion[];
+  activeSuggestionIndex: number;
+  expressionError: string | null;
+  expressionSegmentRows: {
+    id: string;
+    segment: string;
+    segmentIndex: number;
+  }[];
+  selectedIndices: Set<number>;
+  allConditionsSelected: boolean;
+  isExpressionFieldValid: boolean;
+  onExpressionFieldChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onExpressionFieldKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
+  onAddExpressionSegment: () => void;
+  onInsertSuggestion: (suggestion: Suggestion) => void;
+  onToggleSelectAll: () => void;
+  onToggleSegmentSelection: (index: number) => void;
+  onRemoveExpressionSegment: (index: number) => void;
+  onBulkDelete: () => void;
+};
+
+function RuleLanguageConditionsSection({
+  conditionError,
+  expressionField,
+  inputRef,
+  isConditionFieldEmpty,
+  conditionFieldHighlightItems,
+  suggestionCandidates,
+  activeSuggestionIndex,
+  expressionError,
+  expressionSegmentRows,
+  selectedIndices,
+  allConditionsSelected,
+  isExpressionFieldValid,
+  onExpressionFieldChange,
+  onExpressionFieldKeyDown,
+  onAddExpressionSegment,
+  onInsertSuggestion,
+  onToggleSelectAll,
+  onToggleSegmentSelection,
+  onRemoveExpressionSegment,
+  onBulkDelete,
+}: RuleLanguageConditionsSectionProps) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <Label htmlFor="condition-field">Conditions</Label>
+      </div>
+      <div className="flex items-start gap-2">
+        <div className="relative flex-1">
+          <div className="relative">
+            <div
+              aria-hidden="true"
+              className={ `pointer-events-none absolute inset-0 z-0 flex items-center overflow-hidden rounded-md px-3 py-1 text-foreground/70 ${CONDITION_FIELD_TEXT_STYLES}` }
+            >
+              { isConditionFieldEmpty ? (
+                <span className="m-0 w-full whitespace-pre text-muted-foreground">
+                  { CONDITION_FIELD_PLACEHOLDER }
+                </span>
+              ) : (
+                <pre className="m-0 w-full whitespace-pre">
+                  { conditionFieldHighlightItems.map((segment) => (
+                    <span
+                      key={ segment.id }
+                      className={ getHighlightSegmentClassName(segment.type) }
+                    >
+                      { segment.text }
+                    </span>
+                  )) }
+                </pre>
+              ) }
+            </div>
+            <Input
+              id="condition-field"
+              ref={ inputRef }
+              value={ expressionField }
+              onChange={ onExpressionFieldChange }
+              onKeyDown={ onExpressionFieldKeyDown }
+              className={ `relative z-10 text-transparent placeholder:text-transparent ${CONDITION_FIELD_TEXT_STYLES}` }
+              placeholder={ CONDITION_FIELD_PLACEHOLDER }
+              aria-label="Add condition expression"
+              style={ CONDITION_FIELD_CARET_STYLE }
+            />
+          </div>
+          { suggestionCandidates.length > 0 && (
+            <div className="absolute left-0 right-0 z-20 mt-1 max-h-48 overflow-y-auto rounded-lg border border-border/70 bg-popover shadow-lg">
+              <ul className="divide-y divide-border/60" role="listbox">
+                { suggestionCandidates.map((suggestion, index) => (
+                  <li key={ suggestion.id }>
+                    <button
+                      type="button"
+                      className={ `flex w-full items-center justify-between gap-3 px-3 py-1 text-left text-xs ${
+                        index === activeSuggestionIndex
+                          ? 'bg-primary/10'
+                          : 'hover:bg-border/60'
+                      }` }
+                      onMouseDown={ (event) => {
+                        event.preventDefault();
+                        onInsertSuggestion(suggestion);
+                      } }
+                      role="option"
+                      aria-selected={ index === activeSuggestionIndex }
+                    >
+                      <span
+                        className={ `font-medium tracking-wide${suggestion.category === 'variable' ? '' : ' uppercase'}` }
+                      >
+                        { suggestion.label }
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        { suggestion.description }
+                      </span>
+                    </button>
+                  </li>
+                )) }
+              </ul>
+            </div>
+          ) }
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-10 aspect-square p-0 hover:text-white"
+          onClick={ onAddExpressionSegment }
+          disabled={ !expressionField.trim() || !isExpressionFieldValid }
+          aria-label="Add expression"
+        >
+          <FiPlus className="size-4" aria-hidden="true" />
+          <span className="sr-only">Add expression</span>
+        </Button>
+      </div>
+      { expressionError && (
+        <p className="text-xs text-destructive font-sf">
+          { expressionError }
+        </p>
+      ) }
+      { expressionSegmentRows.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            { selectedIndices.size > 0 && (
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={ onBulkDelete }
+                className="gap-2"
+              >
+                <FiTrash2 className="size-3" aria-hidden="true" />
+                <span>Delete selected</span>
+              </Button>
+            ) }
+          </div>
+          <Table className="rounded-lg border border-border/80 bg-background/80">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12 px-2">
+                  <Checkbox
+                    checked={ allConditionsSelected }
+                    onCheckedChange={ onToggleSelectAll }
+                    aria-label={
+                      allConditionsSelected
+                        ? 'Deselect all conditions'
+                        : 'Select all conditions'
+                    }
+                  />
+                </TableHead>
+                <TableHead className="w-12 text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                  ID
+                </TableHead>
+                <TableHead className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                  Rule
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              { expressionSegmentRows.map((segmentRow) => {
+                const isSelected = selectedIndices.has(segmentRow.segmentIndex);
+                return (
+                  <TableRow
+                    key={ segmentRow.id }
+                    data-state={ isSelected ? 'selected' : undefined }
+                  >
+                    <TableCell className="px-2">
+                      <Checkbox
+                        checked={ isSelected }
+                        onCheckedChange={ () =>
+                          onToggleSegmentSelection(segmentRow.segmentIndex)
+                        }
+                        aria-label={ `Select condition ${segmentRow.segmentIndex + 1}` }
+                      />
+                    </TableCell>
+                    <TableCell>{ segmentRow.segmentIndex + 1 }</TableCell>
+                    <TableCell className="max-w-[1px]">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate text-[12px] font-semibold">
+                          { segmentRow.segment }
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={ () =>
+                            onRemoveExpressionSegment(segmentRow.segmentIndex)
+                          }
+                          className="hover:text-white"
+                        >
+                          <FiTrash2 className="size-3" aria-hidden="true" />
+                          <span className="sr-only">Delete clause</span>
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              }) }
+            </TableBody>
+          </Table>
+        </div>
+      ) }
+      { conditionError ? (
+        <p className="text-xs text-destructive font-sf">{ conditionError }</p>
+      ) : (
+        <p
+          id="condition-language-help"
+          className="text-xs text-muted-foreground font-sf space-y-1"
+        >
+          <span>
+            Use <strong>IF ... THEN ...</strong> for conditional logic or
+            type a standalone expression such as{ ' ' }
+            <code>booking_hours * 1.5</code>. Use <strong>AND</strong>/
+            <strong>OR</strong> to chain conditions.
+          </span>
+          <span>
+            You can also reference <strong>booking_days</strong>,{ ' ' }
+            <strong>booking_weeks</strong>, and{ ' ' }
+            <strong>booking_months</strong> when comparing longer stays.
+          </span>
+        </p>
+      ) }
+    </div>
+  );
+}
+
+function RuleLanguageEditor({
+  definition,
+  newVariableLabel,
+  setNewVariableLabel,
+  newVariableType,
+  setNewVariableType,
+  newVariableValue,
+  setNewVariableValue,
+  newVariableUserInput,
+  setNewVariableUserInput,
+  handleAddVariable,
+  usedVariables,
+  removeVariable,
+  conditionExpression,
+  conditionError,
+  handleConditionExpressionChange,
+}: RuleLanguageEditorProps) {
+  const controller = useRuleLanguageEditorController({
+    definition,
+    conditionExpression,
+    handleConditionExpressionChange,
+  });
 
   return (
     <section className="space-y-4 rounded-xl border border-border bg-background p-4">
@@ -2497,407 +3229,42 @@ function RuleLanguageEditor({
         </div>
       </div>
       <div className="space-y-4">
-        <div className="space-y-3 rounded-xl border border-border/80 bg-muted/20 p-3">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <Label>Variables</Label>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            { definition.variables
-              .filter(
-                (variable) => !RESERVED_VARIABLE_KEYS.includes(variable.key)
-              )
-              .map((variable) => (
-                <div
-                  key={ variable.key }
-                  className="flex items-center gap-2 rounded-md border border-border/80 bg-white dark:bg-transparent pr-1 pl-3 py-1 text-[11px] font-semibold tracking-wide"
-                >
-                  <div className="flex items-center gap-2">
-                    <TypeIcon type={ variable.type } />
-                    <span className="text-xs">
-                      { variable.label.toLowerCase() }
-                    </span>
-                  </div>
-                  { variable.userInput ? (
-                    <span className="text-[9px] font-semibold text-muted-foreground">
-                      Input
-                    </span>
-                  ) : variable.initialValue ? (
-                    <span className="text-[9px] text-muted-foreground">
-                      Default: { variable.initialValue }
-                    </span>
-                  ) : null }
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:bg-[oklch(0.9647_0.0345_19.81)] dark:hover:bg-[oklch(0.26_0.04_19.81)] hover:text-destructive"
-                    onClick={ () => removeVariable(variable.key) }
-                    disabled={ usedVariables.has(variable.key) }
-                    aria-label="Remove variable"
-                  >
-                    <FiTrash2 className="size-3" aria-hidden="true" />
-                  </Button>
-                </div>
-              )) }
-          </div>
-          <div className="flex items-center gap-3 flex-nowrap overflow-x-auto">
-            <Button
-              type="button"
-              className="h-full w-10"
-              onClick={ handleAddVariable }
-            >
-              <FiPlus className="size-4" aria-hidden="true" />
-              <span className="sr-only">Add variable</span>
-            </Button>
-            <Input
-              className="min-w-[12rem] bg-white"
-              placeholder="New variable label"
-              value={ newVariableLabel }
-              onChange={ (event) =>
-                setNewVariableLabel(normalizeVariableName(event.target.value))
-              }
-            />
-            <Select
-              value={ newVariableType }
-              onValueChange={ (value) => {
-                const nextType = value as DataType;
-                setNewVariableType(nextType);
-                if (nextType === 'date' || nextType === 'time') {
-                  setNewVariableUserInput(false);
-                }
-              } }
-            >
-              <SelectTrigger className="min-w-[8rem] bg-muted/20">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="text">
-                  <div className="flex items-center gap-2">
-                    <TypeIcon type="text" />
-                    Text
-                  </div>
-                </SelectItem>
-                <SelectItem value="number">
-                  <div className="flex items-center gap-2">
-                    <TypeIcon type="number" />
-                    Number
-                  </div>
-                </SelectItem>
-                <SelectItem value="date">
-                  <div className="flex items-center gap-2">
-                    <TypeIcon type="date" />
-                    Date
-                  </div>
-                </SelectItem>
-                <SelectItem value="time">
-                  <div className="flex items-center gap-2">
-                    <TypeIcon type="time" />
-                    Time
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            { newVariableType === 'date' ? (
-              <div className="w-full">
-                <DatePickerInput
-                  value={ newVariableValue }
-                  onChange={ (nextValue) => setNewVariableValue(nextValue) }
-                  disabled={ newVariableUserInput }
-                />
-              </div>
-            ) : newVariableType === 'time' ? (
-              <div className="w-full rounded-md border border-input bg-white">
-                <Input
-                  readOnly={ newVariableUserInput }
-                  className="w-full border-none bg-white pl-4 focus-visible:outline-none"
-                  placeholder="Default value"
-                  type="time"
-                  value={ newVariableValue }
-                  onChange={ (event) => setNewVariableValue(event.target.value) }
-                  disabled={ newVariableUserInput }
-                />
-              </div>
-            ) : (
-              <Input
-                className="min-w-[8rem] bg-white"
-                placeholder="Default value"
-                type={ newVariableType === 'number' ? 'number' : 'text' }
-                inputMode={ newVariableType === 'number' ? 'decimal' : undefined }
-                value={ newVariableValue }
-                onChange={ (event) => {
-                  const nextValue = event.target.value;
-                  if (newVariableType === 'number') {
-                    const sanitized = nextValue.replace(/[^0-9.-]/g, '');
-                    const match = sanitized.match(/^-?(?:\d+)?(?:\.\d*)?/);
-                    setNewVariableValue(match ? match[0] : '');
-                    return;
-                  }
-                  setNewVariableValue(nextValue);
-                } }
-                disabled={ newVariableUserInput }
-                step={ newVariableType === 'number' ? 'any' : undefined }
-                onKeyDown={ (event) => {
-                  if (newVariableType !== 'number') {
-                    return;
-                  }
-
-                  const allowed = [
-                    'Backspace',
-                    'Tab',
-                    'ArrowLeft',
-                    'ArrowRight',
-                    'Delete',
-                    'Home',
-                    'End',
-                    'Enter',
-                    'Escape',
-                    '.',
-                    '-'
-                  ];
-
-                  if (
-                    allowed.includes(event.key) ||
-                    event.ctrlKey ||
-                    event.metaKey
-                  ) {
-                    return;
-                  }
-
-                  if (/^[0-9]$/.test(event.key)) {
-                    return;
-                  }
-
-                  event.preventDefault();
-                } }
-              />
-            ) }
-            <div className="flex items-center gap-2 whitespace-nowrap">
-              { /* Date/Time variables must be derived, not user-provided. */ }
-              <Switch
-                id="variable-user-input"
-                checked={
-                  newVariableUserInput &&
-                  newVariableType !== 'date' &&
-                  newVariableType !== 'time'
-                }
-                disabled={
-                  newVariableType === 'date' || newVariableType === 'time'
-                }
-                onCheckedChange={ (checked) => {
-                  const allowed =
-                    newVariableType === 'text' || newVariableType === 'number';
-                  setNewVariableUserInput(allowed && Boolean(checked));
-                  if (checked && !allowed) {
-                    setNewVariableValue('');
-                  }
-                } }
-              />
-              <label
-                htmlFor="variable-user-input"
-                className="text-xs text-muted-foreground"
-              >
-                User Input
-                { newVariableType === 'date' || newVariableType === 'time'
-                  ? ' (not available for date/time)'
-                  : '' }
-              </label>
-            </div>
-          </div>
-        </div>
-        <div className="space-y-3">
-          <div className="flex items-baseline justify-between gap-2">
-            <Label htmlFor="condition-field">Conditions</Label>
-          </div>
-          <div className="flex items-start gap-2">
-            <div className="relative flex-1">
-              <div className="relative">
-                <div
-                  aria-hidden="true"
-                  className={ `pointer-events-none absolute inset-0 z-0 flex items-center overflow-hidden rounded-md px-3 py-1 text-foreground/70 ${CONDITION_FIELD_TEXT_STYLES}` }
-                >
-                  { isConditionFieldEmpty ? (
-                    <span className="m-0 w-full whitespace-pre text-muted-foreground">
-                      { CONDITION_FIELD_PLACEHOLDER }
-                    </span>
-                  ) : (
-                    <pre className="m-0 w-full whitespace-pre">
-                      { conditionFieldHighlights.map((segment, index) => (
-                        <span
-                          key={ `condition-highlight-${index}-${segment.text}` }
-                          className={ getHighlightSegmentClassName(segment.type) }
-                        >
-                          { segment.text }
-                        </span>
-                      )) }
-                    </pre>
-                  ) }
-                </div>
-                <Input
-                  id="condition-field"
-                  ref={ inputRef }
-                  value={ expressionField }
-                  onChange={ handleExpressionFieldChange }
-                  onKeyDown={ handleExpressionFieldKeyDown }
-                  className={ `relative z-10 text-transparent placeholder:text-transparent ${CONDITION_FIELD_TEXT_STYLES}` }
-                  placeholder={ CONDITION_FIELD_PLACEHOLDER }
-                  aria-label="Add condition expression"
-                  style={ CONDITION_FIELD_CARET_STYLE }
-                />
-              </div>
-              { suggestionCandidates.length > 0 && (
-                <div className="absolute left-0 right-0 z-20 mt-1 max-h-48 overflow-y-auto rounded-lg border border-border/70 bg-popover shadow-lg">
-                  <ul className="divide-y divide-border/60" role="listbox">
-                    { suggestionCandidates.map((suggestion, index) => (
-                      <li key={ suggestion.id }>
-                        <button
-                          type="button"
-                          className={ `flex w-full items-center justify-between gap-3 px-3 py-1 text-left text-xs ${
-                            index === activeSuggestionIndex
-                              ? 'bg-primary/10'
-                              : 'hover:bg-border/60'
-                          }` }
-                          onMouseDown={ (event) => {
-                            event.preventDefault();
-                            insertSuggestion(suggestion);
-                          } }
-                          role="option"
-                          aria-selected={ index === activeSuggestionIndex }
-                        >
-                          <span
-                            className={ `font-medium tracking-wide${suggestion.category === 'variable' ? '' : ' uppercase'}` }
-                          >
-                            { suggestion.label }
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">
-                            { suggestion.description }
-                          </span>
-                        </button>
-                      </li>
-                    )) }
-                  </ul>
-                </div>
-              ) }
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-10 aspect-square p-0 hover:text-white"
-              onClick={ addExpressionSegment }
-              disabled={ !expressionField.trim() || !isExpressionFieldValid }
-              aria-label="Add expression"
-            >
-              <FiPlus className="size-4" aria-hidden="true" />
-              <span className="sr-only">Add expression</span>
-            </Button>
-          </div>
-          { expressionError && (
-            <p className="text-xs text-destructive font-sf">
-              { expressionError }
-            </p>
-          ) }
-          { expressionSegments.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                { selectedIndices.size > 0 && (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    onClick={ handleBulkDelete }
-                    className="gap-2"
-                  >
-                    <FiTrash2 className="size-3" aria-hidden="true" />
-                    <span>Delete selected</span>
-                  </Button>
-                ) }
-              </div>
-              <Table className="rounded-lg border border-border/80 bg-background/80">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12 px-2">
-                      <Checkbox
-                        checked={ allConditionsSelected }
-                        onCheckedChange={ toggleSelectAll }
-                        aria-label={
-                          allConditionsSelected
-                            ? 'Deselect all conditions'
-                            : 'Select all conditions'
-                        }
-                      />
-                    </TableHead>
-                    <TableHead className="w-12 text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                      ID
-                    </TableHead>
-                    <TableHead className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                      Rule
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  { expressionSegments.map((segment, index) => {
-                    const isSelected = selectedIndices.has(index);
-                    return (
-                      <TableRow
-                        key={ `${segment}-${index}` }
-                        data-state={ isSelected ? 'selected' : undefined }
-                      >
-                        <TableCell className="px-2">
-                          <Checkbox
-                            checked={ isSelected }
-                            onCheckedChange={ () =>
-                              toggleSegmentSelection(index)
-                            }
-                            aria-label={ `Select condition ${index + 1}` }
-                          />
-                        </TableCell>
-                        <TableCell>{ index + 1 }</TableCell>
-                        <TableCell className="max-w-[1px]">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="truncate text-[12px] font-semibold">
-                              { segment }
-                            </span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={ () => removeExpressionSegment(index) }
-                              className="hover:text-white"
-                            >
-                              <FiTrash2 className="size-3" aria-hidden="true" />
-                              <span className="sr-only">Delete clause</span>
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  }) }
-                </TableBody>
-              </Table>
-            </div>
-          ) }
-          { conditionError ? (
-            <p className="text-xs text-destructive font-sf">{ conditionError }</p>
-          ) : (
-            <p
-              id="condition-language-help"
-              className="text-xs text-muted-foreground font-sf space-y-1"
-            >
-              <span>
-                Use <strong>IF ... THEN ...</strong> for conditional logic or
-                type a standalone expression such as{ ' ' }
-                <code>booking_hours * 1.5</code>. Use <strong>AND</strong>/
-                <strong>OR</strong> to chain conditions.
-              </span>
-              <span>
-                You can also reference <strong>booking_days</strong>,{ ' ' }
-                <strong>booking_weeks</strong>, and{ ' ' }
-                <strong>booking_months</strong> when comparing longer stays.
-              </span>
-            </p>
-          ) }
-        </div>
+        <RuleLanguageVariablesSection
+          definition={ definition }
+          newVariableLabel={ newVariableLabel }
+          setNewVariableLabel={ setNewVariableLabel }
+          newVariableType={ newVariableType }
+          setNewVariableType={ setNewVariableType }
+          newVariableValue={ newVariableValue }
+          setNewVariableValue={ setNewVariableValue }
+          newVariableUserInput={ newVariableUserInput }
+          setNewVariableUserInput={ setNewVariableUserInput }
+          handleAddVariable={ handleAddVariable }
+          usedVariables={ usedVariables }
+          removeVariable={ removeVariable }
+        />
+        <RuleLanguageConditionsSection
+          conditionError={ conditionError }
+          expressionField={ controller.expressionField }
+          inputRef={ controller.inputRef }
+          isConditionFieldEmpty={ controller.isConditionFieldEmpty }
+          conditionFieldHighlightItems={ controller.conditionFieldHighlightItems }
+          suggestionCandidates={ controller.suggestionCandidates }
+          activeSuggestionIndex={ controller.activeSuggestionIndex }
+          expressionError={ controller.expressionError }
+          expressionSegmentRows={ controller.expressionSegmentRows }
+          selectedIndices={ controller.selectedIndices }
+          allConditionsSelected={ controller.allConditionsSelected }
+          isExpressionFieldValid={ controller.isExpressionFieldValid }
+          onExpressionFieldChange={ controller.handleExpressionFieldChange }
+          onExpressionFieldKeyDown={ controller.handleExpressionFieldKeyDown }
+          onAddExpressionSegment={ controller.addExpressionSegment }
+          onInsertSuggestion={ controller.insertSuggestion }
+          onToggleSelectAll={ controller.toggleSelectAll }
+          onToggleSegmentSelection={ controller.toggleSegmentSelection }
+          onRemoveExpressionSegment={ controller.removeExpressionSegment }
+          onBulkDelete={ controller.handleBulkDelete }
+        />
       </div>
     </section>
   );

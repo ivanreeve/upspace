@@ -37,12 +37,14 @@ type ConversationEmptyStateProps = {
 };
 
 function ConversationLoadingSkeleton() {
+  const loadingIds = ['loading-message-1', 'loading-message-2', 'loading-message-3'] as const;
+
   return (
     <div className="space-y-3 px-1">
       <Skeleton className="h-3 w-24 rounded-full" />
       <Skeleton className="h-3 w-32 rounded-full" />
-      { [1, 2, 3].map((_, index) => (
-        <Skeleton key={ `loading-${index}` } className="h-12 rounded-2xl" />
+      { loadingIds.map((loadingId) => (
+        <Skeleton key={ loadingId } className="h-12 rounded-2xl" />
       )) }
     </div>
   );
