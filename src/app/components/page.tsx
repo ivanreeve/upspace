@@ -1,3 +1,5 @@
+import type { Metadata } from 'next';
+
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -7,6 +9,11 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ThemeSwitcher } from '@/components/ui/theme-switcher';
 import { SemanticSearchIcon } from '@/components/pages/LandingPage/LandingPage.Feature.SemanticSearchIcon';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+
+export const metadata: Metadata = {
+  title: 'Component Playground | UpSpace',
+  description: 'Preview core UI building blocks used across UpSpace pages.',
+};
 
 export default function Home() {
   return (

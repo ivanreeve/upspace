@@ -29,6 +29,37 @@ type CustomerChatRoomViewProps = {
   roomId: string;
 };
 
+function CustomerChatsListSkeleton() {
+  return (
+    <div className="space-y-3 py-4 px-2">
+      <Skeleton className="h-10 w-full rounded-2xl" />
+      <Skeleton className="h-10 w-full rounded-2xl" />
+      <Skeleton className="h-10 w-3/4 rounded-2xl" />
+    </div>
+  );
+}
+
+function CustomerConversationLoadingSkeleton() {
+  return (
+    <div className="flex h-full min-h-full flex-col justify-center space-y-3 px-4 py-6">
+      <Skeleton className="h-4 w-32 rounded-full" />
+      <div className="space-y-3">
+        <Skeleton className="h-12 rounded-2xl" />
+        <Skeleton className="h-12 rounded-2xl" />
+        <Skeleton className="h-12 rounded-2xl" />
+      </div>
+    </div>
+  );
+}
+
+function CustomerConversationPlaceholder({ children, }: { children: ReactNode }) {
+  return (
+    <div className="flex h-full min-h-full flex-col items-center justify-center px-4 py-6 text-center">
+      { children }
+    </div>
+  );
+}
+
 export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
   const {
     data: rooms,
@@ -44,16 +75,13 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
     data: messageRows,
     isPending: messagesLoading,
   } = useChatMessages(activeRoom?.id ?? null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [realtimeMessagesByRoom, setRealtimeMessagesByRoom] = useState<Record<string, ChatMessage[]>>({});
   const sendMessage = useSendChatMessage();
   const [draft, setDraft] = useState('');
   const draftRef = useRef<HTMLTextAreaElement | null>(null);
   const maxDraftHeight = 96; // px, matches Tailwind max-h-24
   const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    setMessages([]);
-  }, [activeRoom?.id]);
+  const currentRoomId = activeRoom?.id ?? null;
 
   const hostLabel = activeRoom?.partnerName ?? 'Host';
   const headerDisplayName = activeRoom?.spaceName ?? activeRoom?.partnerName ?? 'Conversation';
@@ -83,25 +111,43 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
     [hostLabel]
   );
 
-  useEffect(() => {
-    if (messageRows) {
-    setMessages(messageRows.map(normalizeMessage));
-  }
-  }, [messageRows, normalizeMessage]);
+  const normalizedMessageRows = useMemo(
+    () => (messageRows ?? []).map(normalizeMessage),
+    [messageRows, normalizeMessage]
+  );
+  const realtimeMessages = useMemo(
+    () => (currentRoomId ? realtimeMessagesByRoom[currentRoomId] ?? [] : []),
+    [currentRoomId, realtimeMessagesByRoom]
+  );
+  const messages = useMemo(() => {
+    if (!realtimeMessages.length) {
+      return normalizedMessageRows;
+    }
+    const existingIds = new Set(normalizedMessageRows.map((message) => message.id));
+    return [
+      ...normalizedMessageRows,
+      ...realtimeMessages.filter((message) => !existingIds.has(message.id))
+    ];
+  }, [normalizedMessageRows, realtimeMessages]);
 
   const appendMessage = useCallback(
     (message: ChatMessage) => {
-      setMessages((previous) => {
-        if (previous.some((entry) => entry.id === message.id)) {
+      const normalizedMessage = normalizeMessage(message);
+      setRealtimeMessagesByRoom((previous) => {
+        const roomMessages = previous[normalizedMessage.roomId] ?? [];
+        if (roomMessages.some((entry) => entry.id === normalizedMessage.id)) {
           return previous;
         }
-        return [...previous, normalizeMessage(message)];
+        return {
+          ...previous,
+          [normalizedMessage.roomId]: [...roomMessages, normalizedMessage],
+        };
       });
     },
     [normalizeMessage]
   );
 
-  useChatSubscription(activeRoom?.id ?? null, appendMessage);
+  useChatSubscription(currentRoomId, appendMessage);
   useChatRoomsSubscription(rooms?.map((room) => room.id) ?? []);
 
   useEffect(() => {
@@ -237,36 +283,23 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
     });
   }, [normalizedQuery, sortedRooms]);
 
-  const ChatsListSkeleton = () => (
-    <div className="space-y-3 py-4 px-2">
-      <Skeleton className="h-10 w-full rounded-2xl" />
-      <Skeleton className="h-10 w-full rounded-2xl" />
-      <Skeleton className="h-10 w-3/4 rounded-2xl" />
-    </div>
-  );
-
-  const renderList = () => {
-    if (roomsLoading) {
-      return (
-        <div className="flex flex-1 items-center justify-center">
-          <ChatsListSkeleton />
-        </div>
-      );
-    }
-
-    if (roomsError) {
-      return <p className="text-sm text-destructive">Unable to load conversations.</p>;
-    }
-
-    if (!filteredRooms.length) {
-      return (
-        <p className="text-sm text-muted-foreground">
-          No conversations yet. Start a chat from a space listing to keep the conversation going.
-        </p>
-      );
-    }
-
-    return (
+  let listContent: ReactNode;
+  if (roomsLoading) {
+    listContent = (
+      <div className="flex flex-1 items-center justify-center">
+        <CustomerChatsListSkeleton />
+      </div>
+    );
+  } else if (roomsError) {
+    listContent = <p className="text-sm text-destructive">Unable to load conversations.</p>;
+  } else if (!filteredRooms.length) {
+    listContent = (
+      <p className="text-sm text-muted-foreground">
+        No conversations yet. Start a chat from a space listing to keep the conversation going.
+      </p>
+    );
+  } else {
+    listContent = (
       <ScrollArea className="flex-1 h-full min-h-0">
         <div className="space-y-1 py-1">
           { filteredRooms.map((room) => {
@@ -315,19 +348,19 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                   <AvatarFallback className="text-white">{ initials }</AvatarFallback>
                 </Avatar>
                 <div className="flex min-w-0 flex-1 flex-col">
-            <div className="flex items-center justify-between gap-2">
-              <p className="truncate text-sm font-semibold text-foreground">
-                { room.spaceName }
-              </p>
-              { lastMessageTime ? (
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  { lastMessageTime }
-                </span>
-              ) : null }
-            </div>
-            { hasNewMessage && !isActive ? (
-              <span className="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-destructive" aria-label="New message" />
-            ) : null }
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      { room.spaceName }
+                    </p>
+                    { lastMessageTime ? (
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        { lastMessageTime }
+                      </span>
+                    ) : null }
+                  </div>
+                  { hasNewMessage && !isActive ? (
+                    <span className="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-destructive" aria-label="New message" />
+                  ) : null }
                   <p className="truncate text-xs text-muted-foreground">
                     { location ?? 'Location unavailable' }
                   </p>
@@ -349,68 +382,49 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
         </div>
       </ScrollArea>
     );
-  };
+  }
 
-  const ConversationLoadingSkeleton = () => (
-    <div className="flex h-full min-h-full flex-col justify-center space-y-3 px-4 py-6">
-      <Skeleton className="h-4 w-32 rounded-full" />
-      <div className="space-y-3">
-        <Skeleton className="h-12 rounded-2xl" />
-        <Skeleton className="h-12 rounded-2xl" />
-        <Skeleton className="h-12 rounded-2xl" />
-      </div>
-    </div>
-  );
-
-  const ConversationPlaceholder = ({ children, }: { children: ReactNode }) => (
-    <div className="flex h-full min-h-full flex-col items-center justify-center px-4 py-6 text-center">
-      { children }
-    </div>
-  );
-
-  const renderMessages = () => {
-    let content: ReactNode;
-
-    if (!activeRoom) {
-      if (roomsLoading) {
-        content = <ConversationLoadingSkeleton />;
-      } else if (roomsError) {
-        content = (
-          <ConversationPlaceholder>
-            <p className="text-sm text-destructive">Unable to load conversation.</p>
-          </ConversationPlaceholder>
-        );
-      } else {
-        content = (
-          <ConversationPlaceholder>
-            <p className="text-sm text-muted-foreground">
-              Conversation not found. Go back to messages and pick another thread.
-            </p>
-          </ConversationPlaceholder>
-        );
-      }
-    } else if (messagesLoading && messages.length === 0) {
-      content = <ConversationLoadingSkeleton />;
-    } else if (messages.length === 0) {
-      content = (
-        <ConversationPlaceholder>
-          <p className="text-sm text-muted-foreground">
-            No messages yet in this conversation. Send a quick note to get things moving.
-          </p>
-        </ConversationPlaceholder>
+  let messagesContent: ReactNode;
+  if (!activeRoom) {
+    if (roomsLoading) {
+      messagesContent = <CustomerConversationLoadingSkeleton />;
+    } else if (roomsError) {
+      messagesContent = (
+        <CustomerConversationPlaceholder>
+          <p className="text-sm text-destructive">Unable to load conversation.</p>
+        </CustomerConversationPlaceholder>
       );
     } else {
-      content = (
-        <div className="space-y-3 px-5 py-4 text-sm text-muted-foreground">
-          { messages.map((message) => {
-            const isCustomerMessage = message.senderRole === 'customer';
-            const alignClass = isCustomerMessage ? 'items-end justify-end' : 'items-start justify-start';
-            const bubbleClass = isCustomerMessage
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-muted text-foreground';
-            const timestamp = formatTimestamp(message.createdAt);
+      messagesContent = (
+        <CustomerConversationPlaceholder>
+          <p className="text-sm text-muted-foreground">
+            Conversation not found. Go back to messages and pick another thread.
+          </p>
+        </CustomerConversationPlaceholder>
+      );
+    }
+  } else if (messagesLoading && messages.length === 0) {
+    messagesContent = <CustomerConversationLoadingSkeleton />;
+  } else if (messages.length === 0) {
+    messagesContent = (
+      <CustomerConversationPlaceholder>
+        <p className="text-sm text-muted-foreground">
+          No messages yet in this conversation. Send a quick note to get things moving.
+        </p>
+      </CustomerConversationPlaceholder>
+    );
+  } else {
+    messagesContent = (
+      <div className="space-y-3 px-5 py-4 text-sm text-muted-foreground">
+        { messages.map((message) => {
+          const isCustomerMessage = message.senderRole === 'customer';
+          const alignClass = isCustomerMessage ? 'items-end justify-end' : 'items-start justify-start';
+          const bubbleClass = isCustomerMessage
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-muted text-foreground';
+          const timestamp = formatTimestamp(message.createdAt);
 
-            return (
+          return (
             <div key={ message.id } className={ `flex ${alignClass}` }>
               <div className="max-w-full sm:max-w-[520px] space-y-1">
                 <div
@@ -435,19 +449,12 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                 </p>
               </div>
             </div>
-            );
-          }) }
-          <div ref={ scrollAnchorRef } />
-        </div>
-      );
-    }
-
-    return (
-      <ScrollArea className="flex-1 h-full min-h-0">
-        { content }
-      </ScrollArea>
+          );
+        }) }
+        <div ref={ scrollAnchorRef } />
+      </div>
     );
-  };
+  }
 
   const showListPane = !isMobile || !showThread;
   const showThreadPane = !isMobile || showThread;
@@ -477,7 +484,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
               />
             </div>
             <div className="flex min-h-0 flex-1 flex-col">
-              { renderList() }
+              { listContent }
             </div>
           </>
         ) }
@@ -526,7 +533,9 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
           </header>
 
           <div className="flex min-h-0 flex-1 flex-col h-full overflow-hidden">
-            { renderMessages() }
+            <ScrollArea className="flex-1 h-full min-h-0">
+              { messagesContent }
+            </ScrollArea>
             { activeRoom ? (
               <form
                 className="sticky bottom-[calc(var(--safe-area-bottom)+3.25rem)] z-10 border-t bg-card/80 px-3 py-3 md:bottom-0"

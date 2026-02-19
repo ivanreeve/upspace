@@ -56,9 +56,10 @@ export default function SpaceHeader({
   const isGuest = !session;
 
   const [isSaving, setIsSaving] = useState(false);
-  const [isSaved, setIsSaved] = useState(isBookmarked);
+  const [savedOverride, setSavedOverride] = useState<boolean | null>(null);
   const [isCopying, setIsCopying] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
+  const isSaved = savedOverride ?? isBookmarked;
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -66,7 +67,7 @@ export default function SpaceHeader({
     }
   }, []);
 
-  const shareMessage = useMemo(() => `Check out ${name} on UpSpace.`, [name]);
+  const shareMessage = `Check out ${name} on UpSpace.`;
 
   const shareOptions = useMemo<ShareOption[]>(() => {
     if (!shareUrl) {
@@ -171,7 +172,7 @@ icon: FaTelegramPlane,
         );
       }
 
-      setIsSaved(!shouldRemove);
+      setSavedOverride(!shouldRemove);
       toast.success(shouldRemove ? 'Removed from your bookmarks.' : 'Saved to your bookmarks.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to save right now.');

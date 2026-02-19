@@ -10,6 +10,11 @@ type TeamMember = {
   photo: string;
 };
 
+type CarouselMember = TeamMember & {
+  marqueeId: string;
+  preloadImage: boolean;
+};
+
 const TEAM_MEMBERS: TeamMember[] = [
   {
     name: 'Mark Armas',
@@ -39,7 +44,18 @@ const TEAM_MEMBERS: TeamMember[] = [
 ];
 
 export function Team() {
-  const carouselMembers = [...TEAM_MEMBERS, ...TEAM_MEMBERS];
+  const carouselMembers: CarouselMember[] = [
+    ...TEAM_MEMBERS.map((member) => ({
+      ...member,
+      marqueeId: `${member.name.toLowerCase().replace(/\s+/g, '-')}-a`,
+      preloadImage: member.name === TEAM_MEMBERS[0]?.name,
+    })),
+    ...TEAM_MEMBERS.map((member) => ({
+      ...member,
+      marqueeId: `${member.name.toLowerCase().replace(/\s+/g, '-')}-b`,
+      preloadImage: false,
+    }))
+  ];
 
   return (
     <section id="team" className="py-32 sm:py-36">
@@ -67,9 +83,9 @@ export function Team() {
               className="flex min-w-max gap-12 px-6"
               style={ { animation: 'team-marquee 28s linear infinite', } }
             >
-              { carouselMembers.map((member, index) => (
+              { carouselMembers.map((member) => (
                 <article
-                  key={ `${member.name}-${index}` }
+                  key={ member.marqueeId }
                   className="relative flex shrink-0 flex-col items-left gap-4 bg-background/80 text-left backdrop-blur"
                 >
                   <div className="relative h-64 w-48 overflow-hidden border border-border/60 bg-muted/40 rounded-md">
@@ -79,7 +95,7 @@ export function Team() {
                       fill
                       sizes="192px"
                       className="object-cover"
-                      priority={ index === 0 }
+                      priority={ member.preloadImage }
                       unoptimized
                     />
                   </div>
@@ -94,7 +110,7 @@ export function Team() {
         </div>
       </div>
 
-      <style jsx>{ `
+      <style>{ `
         @keyframes team-marquee {
           0% {
             transform: translateX(0);

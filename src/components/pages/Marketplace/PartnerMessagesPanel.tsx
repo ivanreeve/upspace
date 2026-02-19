@@ -2,6 +2,7 @@
 
 import {
   FormEvent,
+  type ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -29,6 +30,29 @@ import { useChatRoomsSubscription, useChatSubscription } from '@/hooks/use-chat-
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/types/chat';
 
+function PartnerChatsListSkeleton() {
+  return (
+    <div className="space-y-3 py-4 px-2">
+      <Skeleton className="h-12 w-full rounded-2xl" />
+      <Skeleton className="h-12 w-full rounded-2xl" />
+      <Skeleton className="h-12 w-3/4 rounded-2xl" />
+    </div>
+  );
+}
+
+function PartnerConversationLoadingSkeleton() {
+  return (
+    <div className="space-y-3 px-4 py-6">
+      <Skeleton className="h-4 w-32 rounded-full" />
+      <div className="space-y-3">
+        <Skeleton className="h-12 rounded-2xl" />
+        <Skeleton className="h-12 rounded-2xl" />
+        <Skeleton className="h-12 rounded-2xl" />
+      </div>
+    </div>
+  );
+}
+
 export function PartnerMessagesPanel() {
   const {
     data: rooms,
@@ -48,24 +72,10 @@ export function PartnerMessagesPanel() {
     data: messageRows,
     isPending: messagesLoading,
   } = useChatMessages(currentRoomId);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [realtimeMessagesByRoom, setRealtimeMessagesByRoom] = useState<Record<string, ChatMessage[]>>({});
   const sendMessage = useSendChatMessage();
   const [draft, setDraft] = useState('');
   const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!rooms?.length) {
-      setSelectedRoomId(null);
-      return;
-    }
-    if (!selectedRoomId || rooms.every((room) => room.id !== selectedRoomId)) {
-      setSelectedRoomId(rooms[0].id);
-    }
-  }, [rooms, selectedRoomId]);
-
-  useEffect(() => {
-    setMessages([]);
-  }, [currentRoomId]);
 
   const customerLabel = activeRoom?.customerName ?? activeRoom?.customerHandle ?? 'Customer';
   const partnerId = activeRoom?.partnerId ?? null;
@@ -82,12 +92,24 @@ export function PartnerMessagesPanel() {
     },
     [customerLabel, partnerId]
   );
-
-  useEffect(() => {
-    if (messageRows) {
-      setMessages(messageRows.map(normalizeMessage));
+  const normalizedMessageRows = useMemo(
+    () => (messageRows ?? []).map(normalizeMessage),
+    [messageRows, normalizeMessage]
+  );
+  const realtimeMessages = useMemo(
+    () => (currentRoomId ? realtimeMessagesByRoom[currentRoomId] ?? [] : []),
+    [currentRoomId, realtimeMessagesByRoom]
+  );
+  const messages = useMemo(() => {
+    if (!realtimeMessages.length) {
+      return normalizedMessageRows;
     }
-  }, [messageRows, normalizeMessage]);
+    const existingIds = new Set(normalizedMessageRows.map((message) => message.id));
+    return [
+      ...normalizedMessageRows,
+      ...realtimeMessages.filter((message) => !existingIds.has(message.id))
+    ];
+  }, [normalizedMessageRows, realtimeMessages]);
 
   useEffect(() => {
     scrollAnchorRef.current?.scrollIntoView({ behavior: 'smooth', });
@@ -95,11 +117,16 @@ export function PartnerMessagesPanel() {
 
   const appendMessage = useCallback(
     (message: ChatMessage) => {
-      setMessages((previous) => {
-        if (previous.some((entry) => entry.id === message.id)) {
+      const normalizedMessage = normalizeMessage(message);
+      setRealtimeMessagesByRoom((previous) => {
+        const roomMessages = previous[normalizedMessage.roomId] ?? [];
+        if (roomMessages.some((entry) => entry.id === normalizedMessage.id)) {
           return previous;
         }
-        return [...previous, normalizeMessage(message)];
+        return {
+          ...previous,
+          [normalizedMessage.roomId]: [...roomMessages, normalizedMessage],
+        };
       });
     },
     [normalizeMessage]
@@ -107,25 +134,6 @@ export function PartnerMessagesPanel() {
 
   useChatSubscription(currentRoomId, appendMessage);
   useChatRoomsSubscription(rooms?.map((room) => room.id) ?? []);
-
-  const ChatsListSkeleton = () => (
-    <div className="space-y-3 py-4 px-2">
-      <Skeleton className="h-12 w-full rounded-2xl" />
-      <Skeleton className="h-12 w-full rounded-2xl" />
-      <Skeleton className="h-12 w-3/4 rounded-2xl" />
-    </div>
-  );
-
-  const ConversationLoadingSkeleton = () => (
-    <div className="space-y-3 px-4 py-6">
-      <Skeleton className="h-4 w-32 rounded-full" />
-      <div className="space-y-3">
-        <Skeleton className="h-12 rounded-2xl" />
-        <Skeleton className="h-12 rounded-2xl" />
-        <Skeleton className="h-12 rounded-2xl" />
-      </div>
-    </div>
-  );
 
   const handleSend = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -157,29 +165,21 @@ export function PartnerMessagesPanel() {
         })
       : '';
 
-  const renderMessages = () => {
-    if (!activeRoom) {
-      if (roomsLoading) {
-        return <ConversationLoadingSkeleton />;
-      }
-      return (
-        <p className="text-sm text-muted-foreground">Select a conversation to start replying.</p>
-      );
-    }
-
-    if (messagesLoading && messages.length === 0) {
-      return <ConversationLoadingSkeleton />;
-    }
-
-    if (messages.length === 0) {
-      return (
-        <p className="text-sm text-muted-foreground">
-          No messages yet for this conversation. Once a customer replies, the thread will appear here.
-        </p>
-      );
-    }
-
-    return (
+  let messagesContent: ReactNode;
+  if (!activeRoom) {
+    messagesContent = roomsLoading
+      ? <PartnerConversationLoadingSkeleton />
+      : <p className="text-sm text-muted-foreground">Select a conversation to start replying.</p>;
+  } else if (messagesLoading && messages.length === 0) {
+    messagesContent = <PartnerConversationLoadingSkeleton />;
+  } else if (messages.length === 0) {
+    messagesContent = (
+      <p className="text-sm text-muted-foreground">
+        No messages yet for this conversation. Once a customer replies, the thread will appear here.
+      </p>
+    );
+  } else {
+    messagesContent = (
       <ScrollArea className="h-full min-h-0 rounded-2xl border border-border/60 bg-background/80">
         <div className="space-y-3 px-4 py-3">
           { messages.map((message) => {
@@ -198,40 +198,35 @@ export function PartnerMessagesPanel() {
                     <span>{ timestamp }</span>
                   </div>
                   <p className={ `whitespace-pre-line break-all ${bubbleClass} px-0 py-0 font-medium` }>
-                  { message.content }
-                </p>
+                    { message.content }
+                  </p>
+                </div>
               </div>
-            </div>
             );
           }) }
           <div ref={ scrollAnchorRef } />
         </div>
       </ScrollArea>
     );
-  };
+  }
 
-  const renderConversations = () => {
-    if (roomsLoading) {
-      return (
-        <div className="flex flex-1 items-center justify-center">
-          <ChatsListSkeleton />
-        </div>
-      );
-    }
-
-    if (roomsError) {
-      return <p className="text-sm text-destructive">Unable to load conversations.</p>;
-    }
-
-    if (!rooms?.length) {
-      return (
-        <p className="text-sm text-muted-foreground">
-          No conversations yet. Customers will appear here once they message a space.
-        </p>
-      );
-    }
-
-    return (
+  let conversationsContent: ReactNode;
+  if (roomsLoading) {
+    conversationsContent = (
+      <div className="flex flex-1 items-center justify-center">
+        <PartnerChatsListSkeleton />
+      </div>
+    );
+  } else if (roomsError) {
+    conversationsContent = <p className="text-sm text-destructive">Unable to load conversations.</p>;
+  } else if (!rooms?.length) {
+    conversationsContent = (
+      <p className="text-sm text-muted-foreground">
+        No conversations yet. Customers will appear here once they message a space.
+      </p>
+    );
+  } else {
+    conversationsContent = (
       <ScrollArea className="h-[40vh] min-h-[32vh] sm:h-full sm:min-h-0 rounded-2xl border border-border/60 bg-background/60">
         <div className="space-y-2 p-3">
           { rooms.map((room) => {
@@ -292,7 +287,7 @@ export function PartnerMessagesPanel() {
         </div>
       </ScrollArea>
     );
-  };
+  }
 
   return (
     <section className="space-y-6 py-6 min-h-screen">
@@ -313,7 +308,7 @@ export function PartnerMessagesPanel() {
               Select a customer to view the message thread.
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 min-h-0 overflow-hidden">{ renderConversations() }</CardContent>
+          <CardContent className="flex-1 min-h-0 overflow-hidden">{ conversationsContent }</CardContent>
         </Card>
         <Card className="flex min-h-0 flex-col lg:h-full">
           <CardHeader>
@@ -327,10 +322,10 @@ export function PartnerMessagesPanel() {
               <Badge variant="outline">Live</Badge>
             </div>
           </CardHeader>
-        <CardContent className="flex flex-1 min-h-0 flex-col gap-4 overflow-hidden">
-          <div className="flex-1 min-h-0">
-            { renderMessages() }
-          </div>
+          <CardContent className="flex flex-1 min-h-0 flex-col gap-4 overflow-hidden">
+            <div className="flex-1 min-h-0">
+              { messagesContent }
+            </div>
           { activeRoom ? (
             <form className="space-y-3 mt-auto" onSubmit={ handleSend } noValidate>
               <Textarea

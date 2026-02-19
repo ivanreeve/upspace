@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 
@@ -5,6 +6,7 @@ import { prisma } from '@/lib/prisma';
 import { getSpaceDetail } from '@/lib/queries/space';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import SpaceDetail from '@/components/pages/Marketplace/SpaceDetail/SpaceDetail';
+import { SpaceDetailSkeleton } from '@/components/pages/Marketplace/SpaceDetail/SpaceDetail.Skeleton';
 import { SpaceDetailShell } from '@/components/pages/Marketplace/SpaceDetail/SpaceDetailShell';
 import { MarketplaceErrorState } from '@/components/pages/Marketplace/Marketplace.ErrorState';
 
@@ -89,7 +91,9 @@ export default async function SpaceDetailPage({ params, }: Props) {
   }
   return (
     <SpaceDetailShell>
-      <SpaceDetail space={ space } />
+      <Suspense fallback={ <SpaceDetailSkeleton /> }>
+        <SpaceDetail space={ space } />
+      </Suspense>
     </SpaceDetailShell>
   );
 }

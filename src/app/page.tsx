@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 
 import LandingPage from '@/components/pages/LandingPage/LandingPage';
@@ -7,6 +8,10 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 // Use ISR with 1 hour revalidation for static landing page content
 // Session check still happens dynamically via cookies
 export const revalidate = 3600;
+export const metadata: Metadata = {
+  title: 'UpSpace | Coworking Marketplace',
+  description: 'Discover flexible coworking spaces, compare amenities, and book work-ready locations in minutes.',
+};
 
 export default async function Home() {
   // Force dynamic cookie access to check auth state

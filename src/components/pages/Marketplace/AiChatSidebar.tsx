@@ -98,14 +98,26 @@ function ConversationItem({
       handleCancelRename();
     }
   };
+  const handleItemKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (isRenaming) {
+      return;
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onSelect();
+    }
+  };
 
   return (
     <div
+      role="button"
+      tabIndex={ isRenaming ? -1 : 0 }
       onClick={ () => {
         if (!isRenaming) {
           onSelect();
         }
       } }
+      onKeyDown={ handleItemKeyDown }
       className={ cn(
         'group flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors',
         isActive

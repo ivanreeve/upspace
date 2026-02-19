@@ -248,7 +248,7 @@ export function VoiceSearchDialog({
             </Button>
           </div>
         </div>
-        <style jsx>{ `
+        <style>{ `
           @keyframes meshSpin {
             0% {
               transform: rotate(0deg) scale(1);

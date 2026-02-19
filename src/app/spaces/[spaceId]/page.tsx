@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 
 import { SpaceDetailsPanel } from '@/components/pages/Spaces/SpaceDetailsPanel';
@@ -9,6 +10,11 @@ import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
 
 type SpaceDetailRouteProps = {
   params: Promise<{ spaceId: string }>;
+};
+
+export const metadata: Metadata = {
+  title: 'Manage Space | UpSpace',
+  description: 'Review listing details, update availability, and keep your space information up to date.',
 };
 
 export default async function SpaceDetailRoute({ params, }: SpaceDetailRouteProps) {
