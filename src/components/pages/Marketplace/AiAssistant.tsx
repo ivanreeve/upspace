@@ -429,27 +429,27 @@ function MessageBubble({
   return (
     <div
       className={ cn(
-        'flex gap-4 w-full',
+        'flex gap-3',
         isUser ? 'justify-end' : 'justify-start items-start'
       ) }
     >
       { !isUser && (
         <div
           ref={ iconRef }
-          className="relative z-10 flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary dark:bg-primary/20"
+          className="relative z-10 mt-0.5 flex size-12 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-cyan-900 dark:bg-cyan-900/30 dark:text-cyan-100"
         >
-          <GradientSparklesIcon isThinking={ isThinking } className="size-5" />
+          <GradientSparklesIcon isThinking={ isThinking } />
           <span className="sr-only">OpenRouter assistant</span>
         </div>
       ) }
-      <div className={ cn('flex min-w-0 flex-col gap-3 w-full', isUser ? 'items-end' : 'items-start') }>
+      <div className={ cn('flex min-w-0 flex-col gap-3', isUser ? 'items-end' : 'items-start') }>
         { shouldShowBubble ? (
           <div
             className={ cn(
-              'max-w-[720px] px-5 py-4 text-[15px]',
+              'max-w-[720px] rounded-md border px-4 py-3 text-sm',
               isUser
-                ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm'
-                : 'bg-muted/30 dark:bg-muted/20 border border-border/40 text-foreground rounded-2xl rounded-tl-sm'
+                ? 'bg-primary/10 border-primary/30 text-foreground'
+                : 'bg-muted/20 dark:bg-muted/60 border-border/60 text-foreground'
             ) }
           >
             { isThinking ? (
@@ -459,10 +459,7 @@ function MessageBubble({
                 </span>
               </span>
             ) : (
-              <div className={ cn(
-                'prose max-w-none [&>*]:text-[15px] leading-relaxed',
-                isUser ? 'text-primary-foreground' : 'dark:prose-invert'
-              ) }>
+              <div className="prose prose-sm max-w-none dark:prose-invert [&>*]:text-sm">
                 <ReactMarkdown
                   remarkPlugins={ [remarkGfm] }
                   components={ isUser ? undefined : markdownComponents }
