@@ -13,8 +13,7 @@ FiWifi,
 FiCalendar,
 FiClock,
 FiUsers,
-FiCheckCircle,
-FiMenu
+FiCheckCircle
 } from 'react-icons/fi';
 import { IoStop } from 'react-icons/io5';
 import { toast } from 'sonner';
@@ -516,7 +515,6 @@ export function AiAssistant() {
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [activeConversationId, setActiveConversationId] = React.useState<string | null>(null);
-  const [chatSidebarOpen, setChatSidebarOpen] = React.useState(false);
   const {
     isSupported: isVoiceSupported,
     status: voiceStatus,
@@ -588,11 +586,8 @@ export function AiAssistant() {
         );
       }
 
-      if (isMobile) {
-        setChatSidebarOpen(false);
-      }
     },
-    [fetchConversationDetail, isMobile, queryClient]
+    [fetchConversationDetail, queryClient]
   );
 
   const greetingName = React.useMemo(() => {
@@ -967,7 +962,7 @@ conversationId: finalConversationId,
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:bg-muted/60 hover:border-border border-border/50 transition-colors"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:text-foreground hover:bg-muted/60 hover:border-border border-border/50 transition-colors"
           onClick={ () => setPromptInput('Find coworking spaces near me with good Wi-Fi') }
           disabled={ aiSearchMutation.isPending }
         >
@@ -982,7 +977,7 @@ conversationId: finalConversationId,
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:bg-muted/60 hover:border-border border-border/50 transition-colors"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:text-foreground hover:bg-muted/60 hover:border-border border-border/50 transition-colors"
           onClick={ () => setPromptInput('What are the most affordable workspaces available?') }
           disabled={ aiSearchMutation.isPending }
         >
@@ -997,7 +992,7 @@ conversationId: finalConversationId,
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:bg-muted/60 hover:border-border border-border/50 transition-colors"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:text-foreground hover:bg-muted/60 hover:border-border border-border/50 transition-colors"
           onClick={ () => setPromptInput('Find spaces with high-speed Wi-Fi and quiet environment') }
           disabled={ aiSearchMutation.isPending }
         >
@@ -1012,7 +1007,7 @@ conversationId: finalConversationId,
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:bg-muted/60 hover:border-border border-border/50 transition-colors"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:text-foreground hover:bg-muted/60 hover:border-border border-border/50 transition-colors"
           onClick={ () => setPromptInput('Help me book a workspace for tomorrow') }
           disabled={ aiSearchMutation.isPending }
         >
@@ -1146,14 +1141,6 @@ conversationId: finalConversationId,
 
   return (
     <div className="relative flex h-full min-h-screen w-full">
-      { chatSidebarOpen ? (
-        <AiChatSidebar
-          activeConversationId={ activeConversationId }
-          onSelectConversation={ handleSelectConversation }
-          onNewConversation={ handleNewConversation }
-        />
-      ) : null }
-
       <div
         className={ cn(
           'relative mx-auto flex h-full min-h-full min-h-screen w-full max-w-4xl flex-1 flex-col gap-4 px-4 pb-32 sm:pb-36 md:pb-40',
@@ -1161,17 +1148,11 @@ conversationId: finalConversationId,
         ) }
       >
         <div className="flex items-center gap-2 pt-6">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="rounded-full gap-2 px-4 shadow-sm"
-            onClick={ () => setChatSidebarOpen((prev) => !prev) }
-            aria-label={ chatSidebarOpen ? 'Close chat history' : 'Open chat history' }
-          >
-            <FiMenu className="size-4" />
-            <span className="text-sm font-medium">History</span>
-          </Button>
+          <AiChatSidebar
+            activeConversationId={ activeConversationId }
+            onSelectConversation={ handleSelectConversation }
+            onNewConversation={ handleNewConversation }
+          />
         </div>
 
       { !hasMessages ? (

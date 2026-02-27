@@ -8,13 +8,15 @@ import {
   FiMessageSquare,
   FiMoreHorizontal,
   FiCheck,
-  FiX
+  FiX,
+  FiMenu
 } from 'react-icons/fi';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -119,13 +121,13 @@ function ConversationItem({
       } }
       onKeyDown={ handleItemKeyDown }
       className={ cn(
-        'group flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors',
+        'group flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm transition-colors',
         isActive
-          ? 'bg-primary/10 text-foreground'
-          : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+          ? 'bg-primary/8 text-foreground'
+          : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
       ) }
     >
-      <FiMessageSquare className="size-4 shrink-0" aria-hidden="true" />
+      <FiMessageSquare className="size-3.5 shrink-0" aria-hidden="true" />
 
       { isRenaming ? (
         <div className="flex flex-1 items-center gap-1">
@@ -178,11 +180,11 @@ function ConversationItem({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="size-6 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-muted/50 data-[state=open]:bg-muted/50 dark:hover:bg-muted/40 dark:data-[state=open]:bg-muted/40"
+                className="size-5 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-muted/50 data-[state=open]:bg-muted/50 dark:hover:bg-muted/40 dark:data-[state=open]:bg-muted/40"
                 onClick={ (event) => event.stopPropagation() }
                 aria-label="Conversation options"
               >
-                <FiMoreHorizontal className="size-3.5" />
+                <FiMoreHorizontal className="size-3" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-36 bg-popover p-1">
@@ -224,6 +226,7 @@ export function AiChatSidebar({
   const deleteMutation = useDeleteAiConversationMutation();
   const renameMutation = useRenameAiConversationMutation();
   const [deleteTarget, setDeleteTarget] = React.useState<AiConversationSummary | null>(null);
+  const [open, setOpen] = React.useState(false);
 
   const handleDelete = (conversation: AiConversationSummary) => {
     setDeleteTarget(conversation);
@@ -249,7 +252,7 @@ export function AiChatSidebar({
   const handleRename = (id: string, title: string) => {
     renameMutation.mutate({
  id,
-title, 
+title,
 }, {
       onError: (error) => {
         toast.error(error.message);
@@ -257,58 +260,88 @@ title,
     });
   };
 
+  const handleSelectAndClose = (id: string) => {
+    onSelectConversation(id);
+    setOpen(false);
+  };
+
+  const handleNewAndClose = () => {
+    onNewConversation();
+    setOpen(false);
+  };
+
   return (
     <>
-      <div className="flex h-full w-64 flex-col border-r border-border/50 bg-background">
-        <div className="flex items-center justify-between border-b border-border/50 px-3 py-3">
-          <span className="text-sm font-semibold">Chats</span>
+      <Popover open={ open } onOpenChange={ setOpen }>
+        <PopoverTrigger asChild>
           <Button
             type="button"
-            variant="ghost"
-            size="icon"
-            className="size-7"
-            onClick={ onNewConversation }
-            aria-label="New conversation"
+            variant="outline"
+            size="sm"
+            className="rounded-full gap-2 px-4 shadow-sm"
+            aria-label={ open ? 'Close chat history' : 'Open chat history' }
           >
-            <FiPlus className="size-4" />
+            <FiMenu className="size-4" aria-hidden="true" />
+            <span className="text-sm font-medium">History</span>
           </Button>
-        </div>
-
-        <ScrollArea className="flex-1">
-          <div className="space-y-1 p-2">
-            { isLoading ? (
-              <div className="space-y-2 px-2 py-1">
-                { Array.from({ length: 4, }).map((_, index) => (
-                  <div
-                    key={ `skeleton-${index}` }
-                    className="h-10 animate-pulse rounded-md bg-muted/40"
-                  />
-                )) }
-              </div>
-            ) : conversations && conversations.length > 0 ? (
-              conversations.map((conversation) => (
-                <ConversationItem
-                  key={ conversation.id }
-                  conversation={ conversation }
-                  isActive={ conversation.id === activeConversationId }
-                  onSelect={ () => onSelectConversation(conversation.id) }
-                  onDelete={ () => handleDelete(conversation) }
-                  onRename={ (title) => handleRename(conversation.id, title) }
-                />
-              ))
-            ) : (
-              <p className="px-2 py-4 text-center text-xs text-muted-foreground">
-                No conversations yet. Start a new chat!
-              </p>
-            ) }
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          sideOffset={ 8 }
+          className="w-72 rounded-xl border border-border/60 bg-popover p-0 shadow-lg shadow-black/8 dark:shadow-black/20"
+        >
+          <div className="flex items-center justify-between border-b border-border/40 px-3.5 py-2.5">
+            <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              Chats
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-6 rounded-md text-muted-foreground hover:text-foreground"
+              onClick={ handleNewAndClose }
+              aria-label="New conversation"
+            >
+              <FiPlus className="size-3.5" />
+            </Button>
           </div>
-        </ScrollArea>
-      </div>
+
+          <ScrollArea className="max-h-80">
+            <div className="space-y-0.5 p-1.5">
+              { isLoading ? (
+                <div className="space-y-1.5 px-2 py-1">
+                  { Array.from({ length: 4, }).map((_, index) => (
+                    <div
+                      key={ `skeleton-${index}` }
+                      className="h-10 animate-pulse rounded-lg bg-muted/30"
+                    />
+                  )) }
+                </div>
+              ) : conversations && conversations.length > 0 ? (
+                conversations.map((conversation) => (
+                  <ConversationItem
+                    key={ conversation.id }
+                    conversation={ conversation }
+                    isActive={ conversation.id === activeConversationId }
+                    onSelect={ () => handleSelectAndClose(conversation.id) }
+                    onDelete={ () => handleDelete(conversation) }
+                    onRename={ (title) => handleRename(conversation.id, title) }
+                  />
+                ))
+              ) : (
+                <p className="px-2 py-6 text-center text-xs text-muted-foreground">
+                  No conversations yet
+                </p>
+              ) }
+            </div>
+          </ScrollArea>
+        </PopoverContent>
+      </Popover>
 
       <Dialog
         open={ Boolean(deleteTarget) }
-        onOpenChange={ (open) => {
-          if (!open) setDeleteTarget(null);
+        onOpenChange={ (dialogOpen) => {
+          if (!dialogOpen) setDeleteTarget(null);
         } }
       >
         <DialogContent className="sm:max-w-sm">
