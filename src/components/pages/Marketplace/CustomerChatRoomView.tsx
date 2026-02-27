@@ -78,10 +78,22 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
   const [realtimeMessagesByRoom, setRealtimeMessagesByRoom] = useState<Record<string, ChatMessage[]>>({});
   const sendMessage = useSendChatMessage();
   const [draft, setDraft] = useState('');
+  const prevRoomIdRef = useRef<string | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
   const draftRef = useRef<HTMLTextAreaElement | null>(null);
   const maxDraftHeight = 96; // px, matches Tailwind max-h-24
   const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
   const currentRoomId = activeRoom?.id ?? null;
+
+  useEffect(() => {
+    if (prevRoomIdRef.current !== null && prevRoomIdRef.current !== currentRoomId) {
+      setDraft('');
+      if (draftRef.current) {
+        draftRef.current.style.height = '';
+      }
+    }
+    prevRoomIdRef.current = currentRoomId;
+  }, [currentRoomId]);
 
   const hostLabel = activeRoom?.partnerName ?? 'Host';
   const headerDisplayName = activeRoom?.spaceName ?? activeRoom?.partnerName ?? 'Conversation';
@@ -147,8 +159,13 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
     [normalizeMessage]
   );
 
+  const otherRoomIds = useMemo(
+    () => (rooms ?? []).map((room) => room.id).filter((id) => id !== currentRoomId),
+    [rooms, currentRoomId]
+  );
+
   useChatSubscription(currentRoomId, appendMessage);
-  useChatRoomsSubscription(rooms?.map((room) => room.id) ?? []);
+  useChatRoomsSubscription(otherRoomIds);
 
   useEffect(() => {
     scrollAnchorRef.current?.scrollIntoView({ behavior: 'smooth', });
@@ -203,6 +220,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
   const handleDraftKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
+      formRef.current?.requestSubmit();
     }
   };
 
@@ -576,6 +594,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
             </ScrollArea>
             { activeRoom ? (
               <form
+                ref={ formRef }
                 className="sticky bottom-[calc(var(--safe-area-bottom)+3.25rem)] z-10 border-t px-4 py-4 md:bottom-0 bg-card"
                 onSubmit={ handleSend }
                 noValidate

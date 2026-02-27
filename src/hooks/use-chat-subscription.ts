@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { chatKeys } from '@/hooks/api/useChat';
@@ -50,14 +50,22 @@ export function useChatSubscription(roomId: string | null, onMessage: Subscripti
             if (!previous) {
               return previous;
             }
-            return previous.map((room) =>
-              room.id === roomId
-                ? {
-                    ...room,
-                    lastMessage: payload,
-                  }
-                : room
-            );
+            return previous.map((room) => {
+              if (room.id !== roomId) {
+                return room;
+              }
+              const senderName =
+                payload.senderRole === 'customer'
+                  ? room.customerName
+                  : room.partnerName;
+              return {
+                ...room,
+                lastMessage: {
+ ...payload,
+senderName, 
+},
+              };
+            });
           });
         }
       )
@@ -71,6 +79,13 @@ export function useChatSubscription(roomId: string | null, onMessage: Subscripti
 
 export function useChatRoomsSubscription(roomIds: string[]) {
   const queryClient = useQueryClient();
+  const roomIdsRef = useRef<string[]>(roomIds);
+
+  const serializedIds = roomIds.slice().sort().join(',');
+
+  useEffect(() => {
+    roomIdsRef.current = roomIds;
+  }, [roomIds]);
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
@@ -95,18 +110,19 @@ export function useChatRoomsSubscription(roomIds: string[]) {
   }, [queryClient]);
 
   useEffect(() => {
-    if (!roomIds.length) {
+    const ids = roomIdsRef.current;
+    if (!ids.length) {
       return undefined;
     }
 
     const supabase = getSupabaseBrowserClient();
     const filter =
-      roomIds.length === 1
-        ? `room_id=eq.${roomIds[0]}`
-        : `room_id=in.(${roomIds.map((id) => `"${id}"`).join(',')})`;
+      ids.length === 1
+        ? `room_id=eq.${ids[0]}`
+        : `room_id=in.(${ids.map((id) => `"${id}"`).join(',')})`;
 
     const channel = supabase
-      .channel(`chat-rooms:${roomIds.join(',')}`)
+      .channel(`chat-rooms:${ids.join(',')}`)
       .on(
         'postgres_changes',
         {
@@ -138,14 +154,22 @@ export function useChatRoomsSubscription(roomIds: string[]) {
             if (!previous) {
               return previous;
             }
-            return previous.map((room) =>
-              room.id === payload.roomId
-                ? {
-                    ...room,
-                    lastMessage: payload,
-                  }
-                : room
-            );
+            return previous.map((room) => {
+              if (room.id !== payload.roomId) {
+                return room;
+              }
+              const senderName =
+                payload.senderRole === 'customer'
+                  ? room.customerName
+                  : room.partnerName;
+              return {
+                ...room,
+                lastMessage: {
+ ...payload,
+senderName, 
+},
+              };
+            });
           });
         }
       )
@@ -154,5 +178,6 @@ export function useChatRoomsSubscription(roomIds: string[]) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient, roomIds]);
+     
+  }, [queryClient, serializedIds]);
 }
