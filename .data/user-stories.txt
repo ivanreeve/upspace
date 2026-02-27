@@ -1,0 +1,394 @@
+[
+  {
+    "EPIC ID": "USC-EPIC-001",
+    "STORY ID": "USC-US-001",
+    "NAME": "List spaces with basic info",
+    "DESCRIPTION": "As a customer, I want to see a list of spaces in cards with a thumbnail, name, location, seat types, price, rating, and key amenities so I can compare quickly.\n\nClicking a card item should reveal  more information about the listing such as description, reviews, map route, and communication channels.",
+    "ACCEPTANCE": "Given I open “Explore,” when results load, then I see ≥ 10 cards with the fields above. \n\nWhen I scroll, more results load without a full page refresh."
+  },
+  {
+    "EPIC ID": "USC-EPIC-001",
+    "STORY ID": "USC-US-002",
+    "NAME": "Keyword search",
+    "DESCRIPTION": "As a customer, I want to type a keyword to narrow visible spaces by name.",
+    "ACCEPTANCE": "Typing updates results after 300–500ms debounce.\n\nUnavailable listings are de-prioritized; a toggle can include them.\n\n“No results” state is shown with a clear reset action."
+  },
+  {
+    "EPIC ID": "USC-EPIC-001",
+    "STORY ID": "USC-US-003",
+    "NAME": "Semantic search",
+    "DESCRIPTION": "As a customer, I want to search in my own words, using natural language (e.g., “Space near TUP Manila with high-speed internet, at 9 am to 12 noon”) so I can quickly find relevant spaces.",
+    "ACCEPTANCE": "Semantic and keyword matches are combined; typos and synonyms still find good results.\n\nFallback to keyword-only search if the semantic service errors (with toast)."
+  },
+  {
+    "EPIC ID": "USC-EPIC-018",
+    "STORY ID": "USC-US-004",
+    "NAME": "Map View & Area Search",
+    "DESCRIPTION": "As a customer, I want to see spaces on a map and search within a specific area so I can find locations that work for me.",
+    "ACCEPTANCE": "Pan and zoom on map automatically updates search results.\n\nDistance calculated from user-set search center point.\n\nGraceful fallback when geolocation permission denied (city-level search).\n\nMap markers show basic space info (name, price, rating) on hover."
+  },
+  {
+    "EPIC ID": "USC-EPIC-001",
+    "STORY ID": "USC-US-005",
+    "NAME": "Personalized recommendations",
+    "DESCRIPTION": "As a customer, I want a “Recommended for you” section on Explore that adapts to my recent searches, filters, views, bookmarks, and location so I can quickly discover relevant spaces to shortlist.",
+    "ACCEPTANCE": "A \"Recommended for you\" module appears on Explore when there are ≥ 3 eligible listings; otherwise it is hidden.\n\nRanking signals include (at minimum): recent searches/filters, proximity to the current or set search location, previously viewed listings, bookmarks, and overall popularity. Unavailable or unpublished listings are excluded.\n\nEach card shows a brief \"Why this\" hint (e.g., \"near Makati CBD\", \"has Wi-Fi & meeting rooms\").\n\nChanging search query, filters, or map area re-ranks the module within 1s without a full page refresh.\n\nCold start: if no personalization signals exist, show a \"Popular near you\" fallback based on the user’s city; if location is unknown, show trending nationwide.\n\nModule respects the user’s visibility preferences and does not surface blocked listings; no notifications are sent as part of this feature."
+  },
+  {
+    "EPIC ID": "USC-EPIC-001",
+    "STORY ID": "USC-US-006",
+    "NAME": "Filter results",
+    "DESCRIPTION": "As a customer, I want to filter by location, price range, amenities, opening hours, and rating so I can narrow options.",
+    "ACCEPTANCE": "Applying any filter updates results in <2s.\n\nClearing filters restores the full list.\n\nMultiple filters combine with AND logic."
+  },
+  {
+    "EPIC ID": "USC-EPIC-001",
+    "STORY ID": "USC-US-007",
+    "NAME": "Sort results",
+    "DESCRIPTION": "As a customer, I want to sort by price, rating, and distance so I can choose my preferred ordering.",
+    "ACCEPTANCE": "The default sort is “Near You”\n\nSelecting a sort updates the visible order immediately."
+  },
+  {
+    "EPIC ID": "USC-EPIC-001",
+    "STORY ID": "USC-US-008",
+    "NAME": "Bookmark / unbookmark a space",
+    "DESCRIPTION": " As a customer, I want to bookmark a space so I can revisit it later.",
+    "ACCEPTANCE": "Clicking the “Save” icon toggles the state and persists to my account.\n\nSaved state is visible on cards and the detail page."
+  },
+  {
+    "EPIC ID": "USC-EPIC-001",
+    "STORY ID": "USC-US-009",
+    "NAME": "View saved list",
+    "DESCRIPTION": "As a customer, I want a Saved list so I can see all my bookmarks in one place.",
+    "ACCEPTANCE": "Saved shows the same card format and supports remove-from-saved inline."
+  },
+  {
+    "EPIC ID": "USC-EPIC-002",
+    "STORY ID": "USC-US-010",
+    "NAME": "Transactions history",
+    "DESCRIPTION": "As a customer, I want to see my previous bookings and charges so I can track spending.",
+    "ACCEPTANCE": "The list shows booking ID, space, dates, status, subtotal, fees, and total.\n\nDefault range: last 12 months with a date range filter."
+  },
+  {
+    "EPIC ID": "USC-EPIC-015",
+    "STORY ID": "USC-US-011",
+    "NAME": "Checkout & Pay",
+    "DESCRIPTION": "As a customer, I want to complete payment for my booking with a clear price breakdown and secure payment options so I can confirm my reservation with confidence.",
+    "ACCEPTANCE": "Price breakdown shows base price, fees, taxes, and any discounts applied.\n\nSupports credit/debit cards and popular e-wallets (GCash, PayMaya, etc.).\n\n3-D Secure authentication triggered when required by issuer.\n\nAPI calls are idempotent to prevent duplicate charges.\n\nSuccess creates confirmed or pending booking status based on payment method.\n\nPayment failures show actionable error messages with retry options.\n\nEmail receipt sent immediately upon successful payment."
+  },
+  {
+    "EPIC ID": "USC-EPIC-017",
+    "STORY ID": "USC-US-012",
+    "NAME": "Instant Book vs Request to Book",
+    "DESCRIPTION": "As a customer, I want to know whether I can book immediately or need partner approval so I can plan accordingly.",
+    "ACCEPTANCE": "Listings clearly marked as \"Instant Book\" or \"Request to Book\".\n\nFor Request to Book, inventory held for 24 hours pending partner response.\n\nAuto-expire mechanism cancels expired requests with customer notification.\n\nPartner accept/decline transitions update booking status immediately.\n\nAutomated notifications sent to both parties on status changes."
+  },
+  {
+    "EPIC ID": "USC-EPIC-017",
+    "STORY ID": "USC-US-013",
+    "NAME": "Modify/Reschedule",
+    "DESCRIPTION": "As a customer, I want to modify my booking dates or details so I can adapt to changing plans.",
+    "ACCEPTANCE": "Modification request shows price difference (additional charge or refund).\n\nPartner approval required for modifications within 48 hours of original booking.\n\nNew invoice issued reflecting changes with itemized adjustments.\n\nOriginal booking marked as modified with audit trail of changes."
+  },
+  {
+    "EPIC ID": "USC-EPIC-015",
+    "STORY ID": "USC-US-014",
+    "NAME": "Saved Payment Methods",
+    "DESCRIPTION": "As a customer, I want to save my payment methods securely so I can check out faster on future bookings.",
+    "ACCEPTANCE": "Payment methods are tokenized and stored securely by payment service provider.\n\nUsers can set a default payment method and delete saved methods."
+  },
+  {
+    "EPIC ID": "USC-EPIC-015",
+    "STORY ID": "USC-US-015",
+    "NAME": "Promotions & Credits",
+    "DESCRIPTION": "As a customer, I want to apply promo codes and use account credits so I can get discounts on my bookings.",
+    "ACCEPTANCE": "Promo codes validated against date range, usage limits, minimum spend, and stacking rules.\n\nDiscounts immediately reflected in price breakdown during checkout.\n\nAccount credits automatically applied or manually selected by user.\n\nAll discount applications logged in audit trail."
+  },
+  {
+    "EPIC ID": "USC-EPIC-015",
+    "STORY ID": "USC-US-016",
+    "NAME": "Refunds & Partial Refunds",
+    "DESCRIPTION": "As a customer, I want to initiate refunds for cancelled bookings and track the refund status so I know when to expect my money back.",
+    "ACCEPTANCE": "Refund can be initiated from booking detail page based on cancellation policy.\n\nRefund status shows pending/processed/failed with clear timelines.\n\nRefund progress visible to customer with expected completion date.\n\nUpdated receipt/invoice issued showing refund amounts and dates."
+  },
+  {
+    "EPIC ID": "USC-EPIC-017",
+    "STORY ID": "USC-US-017",
+    "NAME": "Availability & Time Slots",
+    "DESCRIPTION": "As a customer, I want to select specific dates and times for my booking with real-time availability checking so I don't encounter conflicts.",
+    "ACCEPTANCE": "Date/time picker shows only available slots with real-time conflict checking.\n\nShows next 3-5 available time slots if selected slot is unavailable.\n\nBooking holds inventory for 10-15 minutes during checkout process."
+  },
+  {
+    "EPIC ID": "USC-EPIC-002",
+    "STORY ID": "USC-US-018",
+    "NAME": "Transaction detail",
+    "DESCRIPTION": "As a customer, I want to open a transaction to see line items and payment status.",
+    "ACCEPTANCE": "Detail shows taxes, discounts, and payment method (masked).\n\nIf refunded/partial, show amounts and dates."
+  },
+  {
+    "EPIC ID": "USC-EPIC-002",
+    "STORY ID": "USC-US-019",
+    "NAME": "Download receipt/invoice",
+    "DESCRIPTION": "As a customer, I want to download a PDF receipt for any completed booking.",
+    "ACCEPTANCE": "“Download PDF” generates a file with the legal entity, totals, and a unique invoice number."
+  },
+  {
+    "EPIC ID": "USC-EPIC-003",
+    "STORY ID": "USC-US-020",
+    "NAME": "Create account & sign in",
+    "DESCRIPTION": "Sign in solely using OAuth (e.g., Google), must be supported.",
+    "ACCEPTANCE": "OAuth (e.g., Google), are supported."
+  },
+  {
+    "EPIC ID": "USC-EPIC-003",
+    "STORY ID": "USC-US-021",
+    "NAME": "Edit profile",
+    "DESCRIPTION": "As a customer, I want to update my name, avatar, phone, and preferred currency so my info is current.",
+    "ACCEPTANCE": "Changes persist immediately and are reflected on the next view."
+  },
+  {
+    "EPIC ID": "USC-EPIC-003",
+    "STORY ID": "USC-US-022",
+    "NAME": "Notification preferences",
+    "DESCRIPTION": "As a customer, I want to opt in/out of email/SMS/app notifications per category (bookings, and messages).",
+    "ACCEPTANCE": "Toggling a category updates my preference and is respected by outbound comms."
+  },
+  {
+    "EPIC ID": "USC-EPIC-004",
+    "STORY ID": "USC-US-023",
+    "NAME": "Leave a rating & review",
+    "DESCRIPTION": "As a customer, I want to submit a star rating and a written review after a verified visit so others can gauge quality.",
+    "ACCEPTANCE": "Review form available only for completed bookings.\n\nRating is 1–5 stars; review text 20–1,000 chars."
+  },
+  {
+    "EPIC ID": "USC-EPIC-004",
+    "STORY ID": "USC-US-024",
+    "NAME": "Attach photos to a review",
+    "DESCRIPTION": "As a customer, I want to add up to 3 images to my review to show real conditions.",
+    "ACCEPTANCE": "JPEG/PNG, size limit enforced; thumbnails appear on the review."
+  },
+  {
+    "EPIC ID": "USC-EPIC-004",
+    "STORY ID": "USC-US-025",
+    "NAME": "Edit or withdraw my review",
+    "DESCRIPTION": " As a customer, I want to edit or delete my review within 30 days so I can correct mistakes.",
+    "ACCEPTANCE": "Edited reviews are timestamped; deleted reviews are removed from aggregates."
+  },
+  {
+    "EPIC ID": "USC-EPIC-004",
+    "STORY ID": "USC-US-026",
+    "NAME": "See aggregated scores",
+    "DESCRIPTION": "As a customer, I want to see an overall rating and sub-ratings (e.g., Wi-Fi, noise, cleanliness) so I can evaluate quickly.",
+    "ACCEPTANCE": "Sub-ratings show averaged scores with the count of reviews.\n\nDistribution histogram shown (e.g., % of 5★, 4★…)."
+  },
+  {
+    "EPIC ID": "USC-EPIC-005",
+    "STORY ID": "USC-US-027",
+    "NAME": "Submit business verification",
+    "DESCRIPTION": "As a partner, I want to upload business documents and contact details so I can be verified.",
+    "ACCEPTANCE": "Required fields validated; upload supports multiple files.\n\nDocuments to be collected are Business Permit, DTI Registration and address\n\nStatus: Submitted → In Review → Approved/Rejected with reasons."
+  },
+  {
+    "EPIC ID": "USC-EPIC-005",
+    "STORY ID": "USC-US-028",
+    "NAME": "Track verification status & re-submit",
+    "DESCRIPTION": "As a partner, I want to see my verification status and respond to rework requests.",
+    "ACCEPTANCE": "If Rejected or Needs Info, I can add documents/notes and resubmit."
+  },
+  {
+    "EPIC ID": "USC-EPIC-005",
+    "STORY ID": "USC-US-029",
+    "NAME": "Track permit expirations & re-verification",
+    "DESCRIPTION": "As a partner, I want the system to track the expiry dates of my permits (e.g., Business Permit, SEC/DTI registration) and remind me to renew so my verification stays valid.",
+    "ACCEPTANCE": "Each uploaded document must include: document type, issuing authority, document number (optional), expiry date (required), and file(s).\n\nAutomated reminders: email + in-app at 30 days and 7 days before expiry, and day-of expiry; includes a one-click “Update documents” link.\n\nOn expiry, partner verification switches to Expired and:\n\n- All published listings auto-unpublish until re-approved.\n- New listing publishes are blocked with a clear reason.\n\nResubmission flows reuse the existing In Review > Approved/Rejected path; approval resets the validity window.\n\nAll changes (document uploads, status changes, auto-unpublish) are written to the audit log."
+  },
+  {
+    "EPIC ID": "USC-EPIC-006",
+    "STORY ID": "USC-US-030",
+    "NAME": "Create a new listing",
+    "DESCRIPTION": "As a partner, I want to create a space listing with address, description, amenities, seat types, capacity, photos, and base pricing so customers can find it.",
+    "ACCEPTANCE": "Required fields enforced; draft vs. published states.\n\nPhotos reorderable; primary photo set."
+  },
+  {
+    "EPIC ID": "USC-EPIC-006",
+    "STORY ID": "USC-US-031",
+    "NAME": "Set availability & pricing rules",
+    "DESCRIPTION": "As a partner, I want to define open hours, blackout dates, and special pricing (peak/weekday) so inventory is accurate.",
+    "ACCEPTANCE": "Calendar UI supports recurring schedules and exceptions.\n\nRules preview shows final “price from”."
+  },
+  {
+    "EPIC ID": "USC-EPIC-006",
+    "STORY ID": "USC-US-032",
+    "NAME": "Edit/publish/unpublish listing",
+    "DESCRIPTION": "As a partner, I want to update a listing and control visibility.",
+    "ACCEPTANCE": "Changes to published listings require explicit “Publish updates.”\n\nUnpublished listings are not discoverable by customers."
+  },
+  {
+    "EPIC ID": "USC-EPIC-006",
+    "STORY ID": "USC-US-033",
+    "NAME": "Manage amenities & policies",
+    "DESCRIPTION": "As a partner, I want to specify amenities and house rules (e.g., noise policy) so expectations are clear.",
+    "ACCEPTANCE": "Amenities appear as filters on customer browsing.\n\nPolicies surface on the detail page and at checkout."
+  },
+  {
+    "EPIC ID": "USC-EPIC-007",
+    "STORY ID": "USC-US-034",
+    "NAME": "Booking inbox",
+    "DESCRIPTION": "As a partner, I want a timeline of booking requests and confirmed bookings so I can act promptly.",
+    "ACCEPTANCE": "Filter by status (pending/confirmed/cancelled/checked-in/checked-out).\n\nEach item shows customer name (masked until confirmed, if required), dates, headcount, and total."
+  },
+  {
+    "EPIC ID": "USC-EPIC-007",
+    "STORY ID": "USC-US-035",
+    "NAME": "Calendar view",
+    "DESCRIPTION": "As a partner, I want a monthly/weekly occupancy calendar so I can see availability at a glance.",
+    "ACCEPTANCE": "Clicking an entry opens the booking detail; conflicting requests are highlighted."
+  },
+  {
+    "EPIC ID": "USC-EPIC-007",
+    "STORY ID": "USC-US-036",
+    "NAME": "Export bookings",
+    "DESCRIPTION": "As a partner, I want to export bookings to CSV so I can reconcile offline.",
+    "ACCEPTANCE": "CSV includes booking ID, listing, dates, price, fees, customer, and status."
+  },
+  {
+    "EPIC ID": "USC-EPIC-008",
+    "STORY ID": "USC-US-037",
+    "NAME": "Automated status notifications",
+    "DESCRIPTION": "As a partner, I want the system to notify customers when a booking is accepted, declined, or changed so they are kept informed.",
+    "ACCEPTANCE": "Triggers on status change; respects customer notification preferences.\n\nMessage templates use dynamic fields (name, dates, listing)."
+  },
+  {
+    "EPIC ID": "USC-EPIC-008",
+    "STORY ID": "USC-US-038",
+    "NAME": "Manual message on status",
+    "DESCRIPTION": "As a partner, I want to add a custom note when I accept/decline so I can provide context.",
+    "ACCEPTANCE": "Custom note appended to the notification; stored in thread."
+  },
+  {
+    "EPIC ID": "USC-EPIC-009",
+    "STORY ID": "USC-US-039",
+    "NAME": "In-app messaging thread",
+    "DESCRIPTION": "As a partner, I want a secure message thread per booking so I can answer questions.",
+    "ACCEPTANCE": "Supports text\n\nShows read/unread indicators; notifications fire on new messages."
+  },
+  {
+    "EPIC ID": "USC-EPIC-009",
+    "STORY ID": "USC-US-040",
+    "NAME": "Quick replies",
+    "DESCRIPTION": "As a partner, I want canned responses so I can answer frequent questions faster.",
+    "ACCEPTANCE": "Partner can create/edit templates; insert into a thread."
+  },
+  {
+    "EPIC ID": "USC-EPIC-009",
+    "STORY ID": "USC-US-041",
+    "NAME": "Report abuse/block",
+    "DESCRIPTION": "As a partner, I want to report abusive messages and block a user so my staff is protected.",
+    "ACCEPTANCE": "Reporting flags the thread for admin review; blocking prevents new messages/requests."
+  },
+  {
+    "EPIC ID": "USC-EPIC-010",
+    "STORY ID": "USC-US-042",
+    "NAME": "Performance overview",
+    "DESCRIPTION": "As a partner, I want a dashboard showing views, saves, inquiries, bookings, conversion rate, and revenue so I can gauge performance.",
+    "ACCEPTANCE": "Date range filter; charts update accordingly.\n\nKPIs list the current period and delta vs. the previous period."
+  },
+  {
+    "EPIC ID": "USC-EPIC-010",
+    "STORY ID": "USC-US-043",
+    "NAME": "Listing-level metrics",
+    "DESCRIPTION": "As a partner, I want to compare metrics by listing so I can optimize.",
+    "ACCEPTANCE": "Table sortable by any metric; exportable to CSV."
+  },
+  {
+    "EPIC ID": "USC-EPIC-011",
+    "STORY ID": "USC-US-044",
+    "NAME": "View current plan & usage",
+    "DESCRIPTION": "As a partner, I want to see my current subscription and renewal date so I avoid overages.",
+    "ACCEPTANCE": "Shows plan name, price, next charge date, and usage bars."
+  },
+  {
+    "EPIC ID": "USC-EPIC-011",
+    "STORY ID": "USC-US-045",
+    "NAME": "Change plan (upgrade/downgrade) or cancel",
+    "DESCRIPTION": "As a partner, I want to switch plans or cancel at cycle end so I can control costs.",
+    "ACCEPTANCE": "Proration rules are displayed before confirmation.\n\nConfirmation email sent; new plan effective at the correct time."
+  },
+  {
+    "EPIC ID": "USC-EPIC-011",
+    "STORY ID": "USC-US-046",
+    "NAME": "Access billing documents",
+    "DESCRIPTION": "As a partner, I want to view and download my subscription invoices so I can handle accounting.",
+    "ACCEPTANCE": "Invoice list with status and PDF download."
+  },
+  {
+    "EPIC ID": "USC-EPIC-016",
+    "STORY ID": "USC-US-047",
+    "NAME": "Payout Schedule & Methods",
+    "DESCRIPTION": "As a partner, I want to choose my payout frequency and method so I can manage my cash flow effectively.",
+    "ACCEPTANCE": "Supports weekly, bi-weekly, and monthly payout schedules.\n\nMinimum payout threshold configurable (e.g., ₱500).\n\nFailed payouts automatically retry with partner notification.\n\nPartners can update bank account or e-wallet information.\n\nPayout history shows dates, amounts, and status for each transfer."
+  },
+  {
+    "EPIC ID": "USC-EPIC-012",
+    "STORY ID": "USC-US-048",
+    "NAME": "Partner subscription console",
+    "DESCRIPTION": "As an admin, I want to view and adjust partner subscriptions so I can correct issues.",
+    "ACCEPTANCE": "Search by partner; view plan, status, and history.\n\nActions: change plan, pause/resume, set next renewal date (with reason logged).\n\nShould notify the entity."
+  },
+  {
+    "EPIC ID": "USC-EPIC-012",
+    "STORY ID": "USC-US-049",
+    "NAME": "Approve exceptional requests",
+    "DESCRIPTION": "As an admin, I want to apply credits or extend trials so I can resolve escalations.",
+    "ACCEPTANCE": "Any manual adjustment requires a reason; it appears in the audit log."
+  },
+  {
+    "EPIC ID": "USC-EPIC-013",
+    "STORY ID": "USC-US-050",
+    "NAME": "Unified audit log",
+    "DESCRIPTION": "As an admin, I want a searchable log of critical actions (login, listing changes, booking state changes, subscription changes) so I can audit behavior.",
+    "ACCEPTANCE": "Each entry includes actor ID/role, timestamp (UTC), action, object, and before/after snapshot.\n\nFilters by actor, action, date range; export CSV."
+  },
+  {
+    "EPIC ID": "USC-EPIC-013",
+    "STORY ID": "USC-US-051",
+    "NAME": "Review content flags",
+    "DESCRIPTION": "As an admin, I want a queue of flagged reviews/messages so I can moderate.",
+    "ACCEPTANCE": "Actions: dismiss, remove content, warn user/partner.\n\nAll actions are written to the audit log."
+  },
+  {
+    "EPIC ID": "USC-EPIC-014",
+    "STORY ID": "USC-US-052",
+    "NAME": "User search and directory",
+    "DESCRIPTION": "As an admin, I want to search for users by name, email, phone, or user ID so I can quickly locate accounts for support or investigation.",
+    "ACCEPTANCE": "Search supports partial matches and filters by user type (customer/partner), account status, and registration date range\n\nResults show key info: name, email (masked), registration date, last activity, account status, and user type\n\nPagination supports large result sets"
+  },
+  {
+    "EPIC ID": "USC-EPIC-014",
+    "STORY ID": "USC-US-053",
+    "NAME": "View user profile and activity",
+    "DESCRIPTION": "As an admin, I want to view a user's complete profile, booking history, and account activity so I can understand their usage patterns and resolve issues.",
+    "ACCEPTANCE": "Shows profile details, verification status, total bookings/listings, spending/earnings, and recent activity timeline\n\nActivity includes logins, bookings, messages, reviews, and any flags or violations.\n\nAll data respects privacy regulations with audit logging of admin access."
+  },
+  {
+    "EPIC ID": "USC-EPIC-014",
+    "STORY ID": "USC-US-054",
+    "NAME": "Suspend/unsuspend user accounts",
+    "DESCRIPTION": "As an admin, I want to suspend or unsuspend user accounts so I can prevent platform abuse while allowing appeals.",
+    "ACCEPTANCE": "Suspension requires a reason (dropdown + custom text) and optional duration.\n\nSuspended users cannot book, list, or message; existing bookings handled per policy.\n\nUser receives notification with reason and appeal process; action logged in audit trail."
+  },
+  {
+    "EPIC ID": "USC-EPIC-014",
+    "STORY ID": "USC-US-055",
+    "NAME": "Manage user roles and permissions",
+    "DESCRIPTION": "As an admin, I want to assign admin or moderator roles to users so I can delegate platform management tasks.",
+    "ACCEPTANCE": "All permission changes logged with justification."
+  },
+  {
+    "EPIC ID": "USC-EPIC-014",
+    "STORY ID": "USC-US-056",
+    "NAME": "Handle account deletion requests",
+    "DESCRIPTION": "As an admin, I want to process user account deletion requests so I can comply with privacy regulations.",
+    "ACCEPTANCE": "Process respects data retention policies and partner/booking obligations"
+  }
+]
