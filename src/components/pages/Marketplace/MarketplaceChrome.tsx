@@ -489,6 +489,56 @@ function SidebarLoadingSkeleton() {
 
 type SidebarRole = 'guest' | 'customer' | 'partner' | 'admin';
 
+type SidebarPathMatchMode = 'exact' | 'prefix';
+
+type SidebarPathMatchOptions = {
+  excludePrefixes?: string[];
+};
+
+function normalizeSidebarPath(path: string | null | undefined): string {
+  if (!path) {
+    return '/';
+  }
+
+  const normalized = path.split('?')[0]?.replace(/\/+$/, '') ?? '';
+  return normalized.length > 0 ? normalized : '/';
+}
+
+function isSidebarPathActive(
+  pathname: string | null | undefined,
+  href: string,
+  mode: SidebarPathMatchMode = 'exact',
+  options?: SidebarPathMatchOptions
+): boolean {
+  const currentPath = normalizeSidebarPath(pathname);
+  const targetPath = normalizeSidebarPath(href);
+
+  if (currentPath === targetPath) {
+    return true;
+  }
+
+  if (mode === 'exact') {
+    return false;
+  }
+
+  if (!currentPath.startsWith(`${targetPath}/`)) {
+    return false;
+  }
+
+  const excludedPrefixes = options?.excludePrefixes;
+  if (!excludedPrefixes?.length) {
+    return true;
+  }
+
+  return !excludedPrefixes.some((excludedPrefix) => {
+    const normalizedExcludedPrefix = normalizeSidebarPath(excludedPrefix);
+    return (
+      currentPath === normalizedExcludedPrefix ||
+      currentPath.startsWith(`${normalizedExcludedPrefix}/`)
+    );
+  });
+}
+
 type SidebarLinkItemProps = {
   href: string;
   label: string;
@@ -497,6 +547,7 @@ type SidebarLinkItemProps = {
   iconProps?: React.SVGProps<SVGSVGElement>;
   className?: string;
   labelBadge?: React.ReactNode;
+  isActive?: boolean;
 };
 
 function SidebarLinkItem({
@@ -507,6 +558,7 @@ function SidebarLinkItem({
   iconProps,
   className,
   labelBadge,
+  isActive = false,
 }: SidebarLinkItemProps) {
   const {
  className: iconClassName, ...restIconProps 
@@ -514,8 +566,13 @@ function SidebarLinkItem({
 
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild tooltip={ tooltip } className={ className }>
-        <Link href={ href }>
+      <SidebarMenuButton
+        asChild
+        tooltip={ tooltip }
+        className={ className }
+        isActive={ isActive }
+      >
+        <Link href={ href } aria-current={ isActive ? 'page' : undefined }>
           <span className="sidebar-link-icon" aria-hidden="true">
             <Icon
               className={ cn('size-4', iconClassName) }
@@ -1295,6 +1352,7 @@ export function MarketplaceChrome({
                     icon={ SidebarHomeIcon }
                     tooltip="Home"
                     iconProps={ { className: 'size-[18px]', } }
+                    isActive={ isSidebarPathActive(pathname, '/marketplace') }
                   />
                   <SidebarMenuItem>
                     <SidebarMenuButton
@@ -1317,6 +1375,11 @@ export function MarketplaceChrome({
                       label="AI Assistant"
                       icon={ GradientSparklesIcon }
                       tooltip="AI Assistant"
+                      isActive={ isSidebarPathActive(
+                        pathname,
+                        '/marketplace/ai-assistant',
+                        'prefix'
+                      ) }
                       labelBadge={
                         <Badge
                           variant="outline"
@@ -1334,6 +1397,7 @@ export function MarketplaceChrome({
                       icon={ Bookmark }
                       tooltip="Bookmarks"
                       iconProps={ { strokeWidth: 2, } }
+                      isActive={ isSidebarPathActive(pathname, '/customer/bookmarks') }
                     />
                   ) }
                   { shouldShowNotifications && (
@@ -1343,6 +1407,10 @@ export function MarketplaceChrome({
                       icon={ NotificationIcon }
                       tooltip="Notifications"
                       iconProps={ { className: 'size-[19px] -translate-y-px', } }
+                      isActive={ isSidebarPathActive(
+                        pathname,
+                        '/customer/notifications'
+                      ) }
                     />
                   ) }
                   { isCustomerRole && (
@@ -1352,6 +1420,7 @@ export function MarketplaceChrome({
                       icon={ Ticket }
                       tooltip="Bookings"
                       iconProps={ { strokeWidth: 1.5, } }
+                      isActive={ isSidebarPathActive(pathname, '/customer/bookings') }
                     />
                   ) }
                   { shouldShowNotifications && (
@@ -1361,6 +1430,11 @@ export function MarketplaceChrome({
                       icon={ SidebarMessageIcon }
                       tooltip="Messages"
                       iconProps={ { strokeWidth: 2, } }
+                      isActive={ isSidebarPathActive(
+                        pathname,
+                        resolvedMessageHref,
+                        'prefix'
+                      ) }
                     />
                   ) }
                   { isPartnerRole && (
@@ -1369,6 +1443,7 @@ export function MarketplaceChrome({
                       label="Wallet"
                       icon={ MdOutlineAccountBalanceWallet }
                       tooltip="Wallet"
+                      isActive={ isSidebarPathActive(pathname, '/partner/wallet') }
                     />
                   ) }
                   { isPartnerRole && (
@@ -1377,6 +1452,18 @@ export function MarketplaceChrome({
                       label="Spaces"
                       icon={ TbLocationCog }
                       tooltip="Spaces"
+                      isActive={ isSidebarPathActive(
+                        pathname,
+                        '/partner/spaces',
+                        'prefix',
+                        {
+                          excludePrefixes: [
+                            '/partner/spaces/bookings',
+                            '/partner/spaces/dashboard',
+                            '/partner/spaces/pricing-rules'
+                          ],
+                        }
+                      ) }
                     />
                   ) }
                   { isPartnerRole && (
@@ -1385,6 +1472,11 @@ export function MarketplaceChrome({
                       label="Price Rules"
                       icon={ DollarSign }
                       tooltip="Price rules"
+                      isActive={ isSidebarPathActive(
+                        pathname,
+                        '/partner/spaces/pricing-rules',
+                        'prefix'
+                      ) }
                     />
                   ) }
                   { isPartnerRole && (
@@ -1393,6 +1485,10 @@ export function MarketplaceChrome({
                       label="Dashboard"
                       icon={ MdOutlineDashboardCustomize }
                       tooltip="Dashboard"
+                      isActive={ isSidebarPathActive(
+                        pathname,
+                        '/partner/spaces/dashboard'
+                      ) }
                     />
                   ) }
                   { isPartnerRole && (
@@ -1401,6 +1497,10 @@ export function MarketplaceChrome({
                       label="Bookings"
                       icon={ Ticket }
                       tooltip="Bookings"
+                      isActive={ isSidebarPathActive(
+                        pathname,
+                        '/partner/spaces/bookings'
+                      ) }
                     />
                   ) }
                   { isAdminRole && (
@@ -1410,6 +1510,10 @@ export function MarketplaceChrome({
                       icon={ BarChart3 }
                       tooltip="Dashboard"
                       iconProps={ { strokeWidth: 2, } }
+                      isActive={ isSidebarPathActive(
+                        pathname,
+                        '/marketplace/dashboard'
+                      ) }
                     />
                   ) }
                   { isAdminRole && (
@@ -1419,6 +1523,7 @@ export function MarketplaceChrome({
                       icon={ FileText }
                       tooltip="Verification queue"
                       iconProps={ { strokeWidth: 2, } }
+                      isActive={ isSidebarPathActive(pathname, '/admin') }
                     />
                   ) }
                   { isAdminRole && (
@@ -1428,6 +1533,10 @@ export function MarketplaceChrome({
                       icon={ UserX }
                       tooltip="Deactivation requests"
                       iconProps={ { strokeWidth: 2, } }
+                      isActive={ isSidebarPathActive(
+                        pathname,
+                        '/admin/deactivation-requests'
+                      ) }
                     />
                   ) }
                   { isAdminRole && (
@@ -1437,6 +1546,10 @@ export function MarketplaceChrome({
                       icon={ EyeOff }
                       tooltip="Unpublish requests"
                       iconProps={ { strokeWidth: 2, } }
+                      isActive={ isSidebarPathActive(
+                        pathname,
+                        '/admin/unpublish-requests'
+                      ) }
                     />
                   ) }
                   { isAdminRole && (
@@ -1446,6 +1559,7 @@ export function MarketplaceChrome({
                       icon={ Users }
                       tooltip="Manage users"
                       iconProps={ { strokeWidth: 2, } }
+                      isActive={ isSidebarPathActive(pathname, '/admin/users') }
                     />
                   ) }
                   { isAdminRole && (
@@ -1455,6 +1569,7 @@ export function MarketplaceChrome({
                       icon={ TbLocationCog }
                       tooltip="Manage spaces"
                       iconProps={ { strokeWidth: 2, } }
+                      isActive={ isSidebarPathActive(pathname, '/admin/spaces') }
                     />
                   ) }
                 </>
