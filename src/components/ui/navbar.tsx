@@ -427,6 +427,9 @@ export default function NavBar({
                   side="right"
                   className="w-full max-w-[480px] overflow-hidden border-l bg-background/95 p-0 backdrop-blur-xl"
                 >
+                  <SheetHeader className="sr-only">
+                    <SheetTitle>Navigation menu</SheetTitle>
+                  </SheetHeader>
                   <div className="relative flex h-full flex-col">
                     <div className="pointer-events-none absolute inset-0">
                       <div className="absolute -left-10 top-6 size-44 rounded-full bg-primary/12 blur-3xl" />

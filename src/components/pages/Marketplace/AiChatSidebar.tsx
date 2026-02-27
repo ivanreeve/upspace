@@ -11,6 +11,7 @@ import {
   FiX,
   FiMenu
 } from 'react-icons/fi';
+import { CgSpinner } from 'react-icons/cg';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -191,14 +192,14 @@ function ConversationItem({
                 onClick={ handleStartRename }
                 className="data-[highlighted]:bg-primary/8 data-[highlighted]:text-primary dark:data-[highlighted]:bg-secondary/15 dark:data-[highlighted]:text-secondary"
               >
-                <FiEdit2 className="mr-2 size-3.5" aria-hidden="true" />
+                <FiEdit2 className="mr-2 size-3.5 text-current" aria-hidden="true" />
                 Rename
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={ onDelete }
-                className="text-destructive data-[highlighted]:bg-destructive/8 data-[highlighted]:text-destructive dark:data-[highlighted]:bg-destructive/15"
+                className="text-destructive data-[highlighted]:bg-destructive/8 data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive focus-visible:[&_svg]:text-destructive dark:data-[highlighted]:bg-destructive/15"
               >
-                <FiTrash2 className="mr-2 size-3.5" aria-hidden="true" />
+                <FiTrash2 className="mr-2 size-3.5 text-destructive" aria-hidden="true" />
                 Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -297,7 +298,7 @@ title,
               type="button"
               variant="ghost"
               size="icon"
-              className="size-6 rounded-md text-muted-foreground hover:text-foreground"
+              className="size-6 rounded-md text-muted-foreground hover:bg-[oklch(0.955_0.02_204.6929)] dark:hover:bg-[oklch(0.24_0.02_204.6929)] hover:text-foreground"
               onClick={ handleNewAndClose }
               aria-label="New conversation"
             >
@@ -368,6 +369,9 @@ title,
               onClick={ handleConfirmDelete }
               disabled={ deleteMutation.isPending }
             >
+              { deleteMutation.isPending && (
+                <CgSpinner className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) }
               { deleteMutation.isPending ? 'Deleting...' : 'Delete' }
             </Button>
           </DialogFooter>
