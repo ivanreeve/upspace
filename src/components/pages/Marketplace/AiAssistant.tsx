@@ -1025,7 +1025,7 @@ conversationId: finalConversationId,
       <form
         onSubmit={ handleSubmit }
         className={ cn(
-          'mx-auto flex w-full max-w-4xl flex-col gap-2 rounded-full border border-border/50 bg-background p-1 ring-1 ring-border/20 backdrop-blur supports-[backdrop-filter]:bg-background/90 sm:flex-row sm:items-center sm:gap-3',
+          'mx-auto flex w-full max-w-4xl flex-row items-center gap-1 rounded-full border border-border/50 bg-background p-1 ring-1 ring-border/20 backdrop-blur supports-[backdrop-filter]:bg-background/90',
           placement === 'inline' ? 'mt-8 mb-8' : ''
         ) }
       >
@@ -1039,7 +1039,7 @@ conversationId: finalConversationId,
           placeholder="Ask me to find your perfect workspace..."
           aria-label="AI assistant query"
           disabled={ aiSearchMutation.isPending }
-          className="h-14 border-none bg-transparent text-white text-base focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-lg"
+          className="h-14 flex-1 rounded-full border-none bg-transparent text-base focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-lg"
         />
         <div className="flex items-center justify-end gap-2 pr-2 sm:justify-end">
           <Button
@@ -1074,12 +1074,17 @@ conversationId: finalConversationId,
               aiSearchMutation.isPending ? 'Stop AI response' : 'Send message to AI assistant'
             }
             disabled={ !aiSearchMutation.isPending && query.trim().length === 0 }
-            className="rounded-full size-10 bg-primary text-primary-foreground dark:bg-secondary dark:text-background dark:hover:bg-secondary/85"
+            className={ cn(
+              'rounded-full size-10',
+              aiSearchMutation.isPending
+                ? 'bg-[oklch(0.9647_0.0345_19.81)] dark:bg-[oklch(0.24_0.04_19.81)] hover:bg-[oklch(0.9647_0.0345_19.81)] dark:hover:bg-[oklch(0.24_0.04_19.81)]'
+                : 'bg-primary text-primary-foreground dark:bg-secondary dark:text-background dark:hover:bg-secondary/85'
+            ) }
           >
             { aiSearchMutation.isPending ? (
-              <IoStop className="size-4 text-background" aria-hidden="true" />
+              <IoStop className="size-5 text-destructive" aria-hidden="true" />
             ) : (
-              <CiLocationArrow1 className="size-4 text-background" strokeWidth={ 2 } aria-hidden="true" />
+              <CiLocationArrow1 className="size-5 text-background" strokeWidth={ 2 } aria-hidden="true" />
             ) }
           </Button>
         </div>
