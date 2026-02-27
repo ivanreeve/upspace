@@ -112,14 +112,14 @@ const BookingFeedRow = ({ item, }: { item: BookingFeedItem }) => {
   return (
     <Link
       href={ item.href }
-      className="group flex items-start gap-3 rounded-md border border-border/60 bg-background/70 p-3 transition hover:border-primary/50 hover:bg-primary/5 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+      className="group flex items-start gap-3 overflow-hidden rounded-md border border-border/60 bg-background/70 p-3 transition hover:border-primary/50 hover:bg-primary/5 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
     >
       <div className="rounded-md bg-primary/10 p-2 text-primary">
         <FiCalendar className="size-4" aria-hidden="true" />
       </div>
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-semibold leading-tight text-foreground">
+          <p className="min-w-0 break-words text-sm font-semibold leading-tight text-foreground">
             { item.title }
           </p>
           <Badge
@@ -129,14 +129,16 @@ const BookingFeedRow = ({ item, }: { item: BookingFeedItem }) => {
             { item.status }
           </Badge>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="break-words text-xs text-muted-foreground">
           { item.body }
           { priceLabel ? ` · ${ priceLabel }` : '' }
         </p>
         { item.customerHandle || item.customerName ? (
-          <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+          <div className="flex min-w-0 items-center gap-1 text-[11px] text-muted-foreground">
             <FiUser className="size-3.5" aria-hidden="true" />
-            <span>{ item.customerHandle ? `@${ item.customerHandle }` : item.customerName }</span>
+            <span className="break-all">
+              { item.customerHandle ? `@${ item.customerHandle }` : item.customerName }
+            </span>
           </div>
         ) : null }
         <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -153,7 +155,7 @@ const BookingFeedRow = ({ item, }: { item: BookingFeedItem }) => {
 const NotificationFeedRow = ({ item, }: { item: NotificationFeedItem }) => (
   <Link
     href={ item.href }
-    className="group flex items-start gap-3 rounded-md border border-border/60 bg-background/70 p-3 transition hover:border-primary/50 hover:bg-primary/5 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+    className="group flex items-start gap-3 overflow-hidden rounded-md border border-border/60 bg-background/70 p-3 transition hover:border-primary/50 hover:bg-primary/5 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
   >
     <div className={ cn(
       'rounded-md p-2',
@@ -163,8 +165,8 @@ const NotificationFeedRow = ({ item, }: { item: NotificationFeedItem }) => (
       <FiBell className="size-4" aria-hidden="true" />
     </div>
     <div className="min-w-0 flex-1 space-y-1">
-      <div className="flex items-center gap-2">
-        <p className="text-sm font-semibold leading-tight text-foreground">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="min-w-0 break-words text-sm font-semibold leading-tight text-foreground">
           { item.title }
         </p>
         { item.read ? null : (
@@ -173,7 +175,7 @@ const NotificationFeedRow = ({ item, }: { item: NotificationFeedItem }) => (
           </Badge>
         ) }
       </div>
-      <p className="text-xs text-muted-foreground">{ item.body }</p>
+      <p className="break-words text-xs text-muted-foreground">{ item.body }</p>
       <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
         <FiClock className="size-3.5" aria-hidden="true" />
         <span>{ formatRelativeTime(item.createdAt) }</span>

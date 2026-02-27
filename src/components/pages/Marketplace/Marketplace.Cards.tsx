@@ -25,6 +25,9 @@ const peso = new Intl.NumberFormat('en-PH', {
   maximumFractionDigits: 0,
 });
 
+const isSupabaseSignedStorageUrl = (value: string | null | undefined) =>
+  Boolean(value && /\/storage\/v1\/object\/sign\//.test(value));
+
 export function SkeletonGrid({ count = 12, }: { count?: number }) {
   return (
     <div className="grid w-full justify-items-stretch grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
@@ -92,6 +95,7 @@ function SpaceCardComponent({
         ? `${Math.round(space.distance_meters)} m away`
         : `${(space.distance_meters / 1000).toFixed(1)} km away`
       : null;
+  const shouldBypassOptimization = isSupabaseSignedStorageUrl(space.image_url);
 
   const handleToggleSave = useCallback(async () => {
     if (isSaving) {
@@ -135,6 +139,7 @@ function SpaceCardComponent({
             alt={ space.name }
             fill
             sizes="(min-width: 1280px) 20vw, (min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+            unoptimized={ shouldBypassOptimization }
             className="object-cover transition-transform duration-500 rounded-md"
           />
         ) : (

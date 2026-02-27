@@ -3,6 +3,11 @@ import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 const SUPABASE_DEFAULT_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const SUPABASE_BASE_URL = SUPABASE_DEFAULT_URL.replace(/\/+$/, '');
 const SIGNED_URL_TTL_SECONDS = 60 * 60; // 1 hour
+const SPACE_IMAGES_BUCKET =
+  process.env.NEXT_PUBLIC_SPACE_IMAGES_BUCKET ?? 'upspace-uploads-space-images';
+const PUBLIC_STORAGE_BUCKETS = new Set<string>(
+  [SPACE_IMAGES_BUCKET].map((bucket) => bucket.trim()).filter(Boolean)
+);
 
 export const isAbsoluteUrl = (value: string | null | undefined): value is string =>
   Boolean(value && /^https?:\/\//i.test(value));
@@ -27,6 +32,8 @@ type StoragePathParts = {
   objectPath: string;
   fullPath: string;
 };
+
+const shouldSignBucket = (bucket: string) => !PUBLIC_STORAGE_BUCKETS.has(bucket);
 
 const parseStoragePath = (path: string | null | undefined): StoragePathParts | null => {
   if (!path || isAbsoluteUrl(path)) {
@@ -62,7 +69,9 @@ export async function resolveSignedImageUrls(
 
   const candidates = images
     .map((image) => parseStoragePath(image.path))
-    .filter((value): value is StoragePathParts => Boolean(value));
+    .filter((value): value is StoragePathParts => Boolean(value))
+    // Keep marketplace image URLs stable for browser/CDN cache hits.
+    .filter((value) => shouldSignBucket(value.bucket));
 
   if (!candidates.length) {
     return urlMap;

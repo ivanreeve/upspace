@@ -18,6 +18,9 @@ const remotePatterns: NonNullable<NextConfig['images']>['remotePatterns'] = [
 ];
 
 const nextConfig: NextConfig = {
+  experimental: {
+    webpackMemoryOptimizations: true,
+  },
   images: { remotePatterns },
 };
 

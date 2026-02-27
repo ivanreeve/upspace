@@ -2,7 +2,6 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 
 import Marketplace from '@/components/pages/Marketplace/Marketplace';
-import { SkeletonGrid } from '@/components/pages/Marketplace/Marketplace.Cards';
 
 export const metadata: Metadata = {
   title: 'Marketplace | UpSpace',
@@ -11,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function MarketplacePage() {
   return (
-    <Suspense fallback={ <SkeletonGrid count={ 6 } /> }>
+    <Suspense fallback={ null }>
       <Marketplace />
     </Suspense>
   );
