@@ -53,9 +53,7 @@ export function CardsGrid({
     if (isLoading) {
       return <SkeletonGrid />;
     }
-    return (
-      <div className="text-sm text-muted-foreground">No spaces found. Try adjusting filters.</div>
-    );
+    return null;
   }
   return (
     <div className="grid w-full justify-items-stretch grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
