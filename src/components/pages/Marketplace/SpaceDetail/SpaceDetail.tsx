@@ -419,7 +419,7 @@ function SpaceDescriptionSection({
               '[&_h1]:mt-5 [&_h2]:mt-4 [&_h3]:mt-3'
             ) }
           >
-            <div dangerouslySetInnerHTML={{ __html: aboutText }} />
+            <div dangerouslySetInnerHTML={ { __html: aboutText, } } />
           </div>
           { shouldShowGradient ? (
             <div className="absolute inset-x-0 bottom-0 h-32">
