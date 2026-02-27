@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
 FiAlertCircle,
-FiSend,
 FiMapPin,
 FiDollarSign,
 FiWifi,
@@ -15,6 +14,7 @@ FiClock,
 FiUsers,
 FiCheckCircle
 } from 'react-icons/fi';
+import { CiLocationArrow1 } from 'react-icons/ci';
 import { IoStop } from 'react-icons/io5';
 import { toast } from 'sonner';
 import remarkGfm from 'remark-gfm';
@@ -1025,8 +1025,8 @@ conversationId: finalConversationId,
       <form
         onSubmit={ handleSubmit }
         className={ cn(
-          'mx-auto flex w-full max-w-4xl flex-col gap-2 rounded-[2rem] border border-border/50 bg-background p-1 ring-1 ring-border/20 backdrop-blur supports-[backdrop-filter]:bg-background/90 sm:flex-row sm:items-center sm:gap-3',
-          placement === 'inline' ? 'mt-8' : ''
+          'mx-auto flex w-full max-w-4xl flex-col gap-2 rounded-full border border-border/50 bg-background p-1 ring-1 ring-border/20 backdrop-blur supports-[backdrop-filter]:bg-background/90 sm:flex-row sm:items-center sm:gap-3',
+          placement === 'inline' ? 'mt-8 mb-8' : ''
         ) }
       >
         <label htmlFor="ai-assistant-input" className="sr-only">
@@ -1039,7 +1039,7 @@ conversationId: finalConversationId,
           placeholder="Ask me to find your perfect workspace..."
           aria-label="AI assistant query"
           disabled={ aiSearchMutation.isPending }
-          className="h-14 border-none bg-transparent text-base focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-lg"
+          className="h-14 border-none bg-transparent text-white text-base focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-lg"
         />
         <div className="flex items-center justify-end gap-2 pr-2 sm:justify-end">
           <Button
@@ -1079,7 +1079,7 @@ conversationId: finalConversationId,
             { aiSearchMutation.isPending ? (
               <IoStop className="size-4 text-background" aria-hidden="true" />
             ) : (
-              <FiSend className="size-4 text-background" aria-hidden="true" />
+              <CiLocationArrow1 className="size-4 text-background" strokeWidth={ 2 } aria-hidden="true" />
             ) }
           </Button>
         </div>
