@@ -99,11 +99,13 @@ export async function PATCH(
 
         const metadataPayload = JSON.stringify({ [DEACTIVATION_APPROVED_METADATA_KEY]: now.toISOString(), });
 
-        await prisma.$executeRaw`
-          UPDATE auth.users
-          SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || ${metadataPayload}::jsonb
-          WHERE id = ${request.auth_user_id}::uuid
-        `;
+        updates.push(
+          prisma.$executeRaw`
+            UPDATE auth.users
+            SET raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || ${metadataPayload}::jsonb
+            WHERE id = ${request.auth_user_id}::uuid
+          `
+        );
       } else {
         const deadline = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
         updates.push(

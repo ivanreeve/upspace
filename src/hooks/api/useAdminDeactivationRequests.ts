@@ -8,6 +8,7 @@ import { type DeactivationReasonCategory } from '@/lib/deactivation-requests';
 
 export type DeactivationRequest = {
   id: string;
+  type: 'deactivate' | 'delete';
   status: 'pending' | 'approved' | 'rejected';
   reason_category: DeactivationReasonCategory;
   custom_reason: string | null;
@@ -89,9 +90,7 @@ export function useAdminDeactivationRequestsQuery({
       };
 
       return {
-        data: [...payload.data].sort(
-          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        ),
+        data: payload.data,
         nextCursor: payload.nextCursor ?? null,
       };
     },
