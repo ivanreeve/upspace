@@ -15,7 +15,6 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   DropdownMenu,
@@ -121,7 +120,7 @@ function ConversationItem({
       } }
       onKeyDown={ handleItemKeyDown }
       className={ cn(
-        'group flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm transition-colors',
+        'group flex min-w-0 cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm transition-colors',
         isActive
           ? 'bg-primary/8 text-foreground'
           : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
@@ -278,7 +277,7 @@ title,
             type="button"
             variant="outline"
             size="sm"
-            className="rounded-full gap-2 px-4 shadow-sm"
+            className="rounded-full gap-2 px-4"
             aria-label={ open ? 'Close chat history' : 'Open chat history' }
           >
             <FiMenu className="size-4" aria-hidden="true" />
@@ -288,7 +287,7 @@ title,
         <PopoverContent
           align="start"
           sideOffset={ 8 }
-          className="w-72 rounded-xl border border-border/60 bg-popover p-0 shadow-lg shadow-black/8 dark:shadow-black/20"
+          className="w-72 rounded-xl border border-border/60 bg-popover p-0"
         >
           <div className="flex items-center justify-between border-b border-border/40 px-3.5 py-2.5">
             <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
@@ -306,7 +305,7 @@ title,
             </Button>
           </div>
 
-          <ScrollArea className="max-h-80">
+          <div className="max-h-80 overflow-y-auto">
             <div className="space-y-0.5 p-1.5">
               { isLoading ? (
                 <div className="space-y-1.5 px-2 py-1">
@@ -334,7 +333,7 @@ title,
                 </p>
               ) }
             </div>
-          </ScrollArea>
+          </div>
         </PopoverContent>
       </Popover>
 

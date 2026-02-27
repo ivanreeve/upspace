@@ -331,7 +331,7 @@ function BookingConfirmationCard({ bookingAction, }: {
   });
 
   return (
-    <Card className="w-full border-primary/20 bg-primary/[0.03] shadow-sm rounded-2xl overflow-hidden mt-2">
+    <Card className="w-full border-primary/20 bg-primary/[0.03] rounded-2xl overflow-hidden mt-2">
       <CardContent className="space-y-4 p-5">
         <div className="flex items-center gap-2.5">
           <FiCheckCircle className="size-5 text-primary" aria-hidden="true" />
@@ -448,8 +448,8 @@ function MessageBubble({
             className={ cn(
               'max-w-[720px] px-5 py-4 text-[15px]',
               isUser
-                ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm shadow-sm'
-                : 'bg-muted/30 dark:bg-muted/20 border border-border/40 text-foreground rounded-2xl rounded-tl-sm shadow-sm'
+                ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm'
+                : 'bg-muted/30 dark:bg-muted/20 border border-border/40 text-foreground rounded-2xl rounded-tl-sm'
             ) }
           >
             { isThinking ? (
@@ -1025,8 +1025,8 @@ conversationId: finalConversationId,
       <form
         onSubmit={ handleSubmit }
         className={ cn(
-          'mx-auto flex w-full max-w-4xl flex-col gap-2 rounded-[2rem] border border-border/50 bg-background shadow-sm p-1 ring-1 ring-border/20 backdrop-blur supports-[backdrop-filter]:bg-background/90 sm:flex-row sm:items-center sm:gap-3',
-          placement === 'inline' ? 'mt-8' : 'shadow-lg shadow-black/5 dark:shadow-none'
+          'mx-auto flex w-full max-w-4xl flex-col gap-2 rounded-[2rem] border border-border/50 bg-background p-1 ring-1 ring-border/20 backdrop-blur supports-[backdrop-filter]:bg-background/90 sm:flex-row sm:items-center sm:gap-3',
+          placement === 'inline' ? 'mt-8' : ''
         ) }
       >
         <label htmlFor="ai-assistant-input" className="sr-only">
@@ -1039,7 +1039,7 @@ conversationId: finalConversationId,
           placeholder="Ask me to find your perfect workspace..."
           aria-label="AI assistant query"
           disabled={ aiSearchMutation.isPending }
-          className="h-14 border-none bg-transparent shadow-none text-base focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-lg"
+          className="h-14 border-none bg-transparent text-base focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-lg"
         />
         <div className="flex items-center justify-end gap-2 pr-2 sm:justify-end">
           <Button
@@ -1147,7 +1147,7 @@ conversationId: finalConversationId,
           'overflow-hidden'
         ) }
       >
-        <div className="flex items-center gap-2 pt-6">
+        <div className="relative z-10 flex items-center gap-2 pt-6">
           <AiChatSidebar
             activeConversationId={ activeConversationId }
             onSelectConversation={ handleSelectConversation }
@@ -1171,7 +1171,7 @@ conversationId: finalConversationId,
       ) : (
         <>
           <div className="flex flex-1 flex-col gap-6 overflow-hidden max-w-4xl mx-auto w-full">
-            <Card className="border-none h-full shadow-none bg-transparent">
+            <Card className="border-none h-full bg-transparent">
               <CardContent className="flex h-full flex-col space-y-6 p-0 sm:p-2">
                 <div className="flex-1 overflow-hidden rounded-md border-none bg-transparent">
                   <ScrollArea className="h-full w-full">
