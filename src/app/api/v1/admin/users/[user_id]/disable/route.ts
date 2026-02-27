@@ -44,11 +44,19 @@ export async function PATCH(
         user_id: true,
         auth_user_id: true,
         status: true,
+        role: true,
       },
     });
 
     if (!targetUser) {
       return NextResponse.json({ error: 'User not found.', }, { status: 404, });
+    }
+
+    if (targetUser.role === 'admin') {
+      return NextResponse.json(
+        { error: 'Admin accounts cannot be modified.', },
+        { status: 403, }
+      );
     }
 
     if (targetUser.status !== user_status.active) {
