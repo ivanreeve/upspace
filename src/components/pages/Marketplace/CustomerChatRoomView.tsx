@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/types/chat';
 
 type CustomerChatRoomViewProps = {
-  roomId: string;
+  roomId?: string;
 };
 
 function CustomerChatsListSkeleton() {
@@ -294,9 +294,13 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
     listContent = <p className="text-sm text-destructive">Unable to load conversations.</p>;
   } else if (!filteredRooms.length) {
     listContent = (
-      <p className="text-sm text-muted-foreground">
-        No conversations yet. Start a chat from a space listing to keep the conversation going.
-      </p>
+      <div className="p-4 text-center">
+        <p className="text-sm text-muted-foreground">
+          { rooms && rooms.length === 0 
+            ? 'No conversations yet.' 
+            : 'No conversations found.' }
+        </p>
+      </div>
     );
   } else {
     listContent = (
@@ -394,11 +398,43 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
           <p className="text-sm text-destructive">Unable to load conversation.</p>
         </CustomerConversationPlaceholder>
       );
+    } else if (rooms && rooms.length === 0) {
+      messagesContent = (
+        <div className="flex h-full min-h-full w-full flex-col items-center justify-center p-8 text-center">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 mb-6">
+            <svg
+              className="h-10 w-10 text-primary"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={ 2 }
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+              />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground mb-2">
+            No conversations yet
+          </h2>
+          <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mb-6">
+            Start a chat from any space listing to keep the conversation going.
+            Once someone replies, your inbox will show up here.
+          </p>
+          <Button asChild size="lg" className="text-white bg-primary hover:bg-primary/90 font-medium rounded-xl">
+            <Link href="/marketplace">
+              Browse spaces
+            </Link>
+          </Button>
+        </div>
+      );
     } else {
       messagesContent = (
         <CustomerConversationPlaceholder>
           <p className="text-sm text-muted-foreground">
-            Conversation not found. Go back to messages and pick another thread.
+            Select a chat from your inbox.
           </p>
         </CustomerConversationPlaceholder>
       );
@@ -500,37 +536,39 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
         ) }
       >
         <div className="flex min-h-0 flex-1 flex-col h-full overflow-hidden">
-          <header className="sticky top-0 z-10 flex items-center justify-between border-b px-6 py-4">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={ handleBackToList }
-                className={ cn(
-                  'inline-flex items-center text-xs text-muted-foreground hover:text-foreground md:hidden',
-                  showThreadPane ? 'flex' : 'hidden'
-                ) }
-              >
-                <FiArrowLeft className="size-4" aria-hidden="true" />
-                <span className="sr-only">Back</span>
-              </button>
+          { rooms && rooms.length > 0 ? (
+            <header className="sticky top-0 z-10 flex items-center justify-between border-b px-6 py-4">
               <div className="flex items-center gap-3">
-                <Avatar className="h-11 w-11 border border-border/60 bg-card">
-                  { headerAvatarUrl ? (
-                    <AvatarImage src={ headerAvatarUrl } alt={ activeRoom?.spaceName ?? 'Space avatar' } />
-                  ) : null }
-                  <AvatarFallback className="text-white">{ headerAvatarInitials }</AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col">
-                  <span className="text-2xl font-semibold tracking-tight text-foreground">
-                    { headerDisplayName }
-                  </span>
-                  <span className="text-sm text-muted-foreground/90">
-                    { headerLocationLabel }
-                  </span>
+                <button
+                  type="button"
+                  onClick={ handleBackToList }
+                  className={ cn(
+                    'inline-flex items-center text-xs text-muted-foreground hover:text-foreground md:hidden',
+                    showThreadPane ? 'flex' : 'hidden'
+                  ) }
+                >
+                  <FiArrowLeft className="size-4" aria-hidden="true" />
+                  <span className="sr-only">Back</span>
+                </button>
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-11 w-11 border border-border/60 bg-card">
+                    { headerAvatarUrl ? (
+                      <AvatarImage src={ headerAvatarUrl } alt={ activeRoom?.spaceName ?? 'Space avatar' } />
+                    ) : null }
+                    <AvatarFallback className="text-white">{ headerAvatarInitials }</AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col">
+                    <span className="text-2xl font-semibold tracking-tight text-foreground">
+                      { headerDisplayName }
+                    </span>
+                    <span className="text-sm text-muted-foreground/90">
+                      { headerLocationLabel }
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </header>
+            </header>
+          ) : null }
 
           <div className="flex min-h-0 flex-1 flex-col h-full overflow-hidden">
             <ScrollArea className="flex-1 h-full min-h-0">

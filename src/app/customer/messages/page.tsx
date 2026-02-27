@@ -13,6 +13,7 @@ import {
   BreadcrumbSeparator
 } from '@/components/ui/breadcrumb';
 import { MarketplaceChrome } from '@/components/pages/Marketplace/MarketplaceChrome';
+import { CustomerChatRoomView } from '@/components/pages/Marketplace/CustomerChatRoomView';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/prisma';
@@ -72,46 +73,17 @@ export default async function CustomerMessagesPage() {
   return (
     <MarketplaceChrome
       initialSidebarOpen={ initialSidebarOpen }
+      insetClassName="p-2"
       insetStyle={ {
         height: '100svh',
         overflow: 'hidden',
         marginTop: 0,
         marginBottom: 0,
-        paddingBottom: 'calc(1rem + var(--safe-area-bottom))',
+        paddingBottom: 'calc(0.75rem + var(--safe-area-bottom))',
       } }
     >
-      <div className="flex h-full w-full items-center justify-center px-4 py-8">
-        <div className="max-w-md space-y-6 rounded-3xl border border-border/40 bg-card p-10 text-center shadow-lg shadow-black/5">
-          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-            <svg
-              className="h-10 w-10 text-primary"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={ 2 }
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-              />
-            </svg>
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              No conversations yet
-            </h1>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Start a chat from any space listing to keep the conversation going.
-              Once someone replies, your inbox will show up here.
-            </p>
-          </div>
-          <Button asChild size="lg" className="w-full text-white bg-primary hover:bg-primary/90 font-medium rounded-xl">
-            <Link href="/marketplace">
-              Browse spaces
-            </Link>
-          </Button>
-        </div>
+      <div className="flex h-full w-full flex-col overflow-hidden p-0 sm:p-2">
+        <CustomerChatRoomView />
       </div>
     </MarketplaceChrome>
   );
