@@ -983,7 +983,7 @@ function MarketplaceSearchDialog({
             <CommandItem
               value="apply filters"
               onSelect={ () => setIsFilterDialogOpen(true) }
-              className="hover:text-white data-[selected=true]:text-white"
+              className="text-muted-foreground hover:!bg-[oklch(0.955_0.02_204.6929)] dark:hover:!bg-[oklch(0.24_0.02_204.6929)] hover:!text-primary hover:[&_svg]:!text-primary data-[selected=true]:!bg-[oklch(0.955_0.02_204.6929)] dark:data-[selected=true]:!bg-[oklch(0.24_0.02_204.6929)] data-[selected=true]:!text-foreground"
             >
               <CgOptions className="size-4" aria-hidden="true" />
               <span>Apply filters</span>
@@ -998,7 +998,7 @@ function MarketplaceSearchDialog({
                 trimmedValue ? `search ${trimmedValue}` : 'search marketplace'
               }
               onSelect={ () => void onSearchSubmit() }
-              className="group hover:text-white data-[selected=true]:text-white"
+              className="group text-muted-foreground hover:!bg-[oklch(0.955_0.02_204.6929)] dark:hover:!bg-[oklch(0.24_0.02_204.6929)] hover:!text-primary hover:[&_svg]:!text-primary data-[selected=true]:!bg-[oklch(0.955_0.02_204.6929)] dark:data-[selected=true]:!bg-[oklch(0.24_0.02_204.6929)] data-[selected=true]:!text-foreground"
             >
               <FiSearch className="size-4" aria-hidden="true" />
               <span>Search marketplace</span>
@@ -1008,7 +1008,9 @@ function MarketplaceSearchDialog({
                 </span>
               ) }
               <CommandShortcut className="flex items-center gap-1">
-                <Kbd>Enter</Kbd>
+                <Kbd className="bg-primary border-primary text-primary-foreground dark:bg-muted/70 dark:border-border dark:text-muted-foreground">
+                  Enter
+                </Kbd>
               </CommandShortcut>
             </CommandItem>
             { hasActiveSearch && (
