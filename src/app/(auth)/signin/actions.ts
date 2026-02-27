@@ -1,6 +1,6 @@
 'use server';
 
-import { AuthApiError, type Session } from '@supabase/supabase-js';
+import { AuthApiError, type Session, type User } from '@supabase/supabase-js';
 import { user_status } from '@prisma/client';
 import { z } from 'zod';
 
@@ -26,6 +26,21 @@ export type LoginState = {
   redirectTo?: string;
   supabaseSession?: SupabaseSessionPayload;
 };
+
+function normalizeCallbackUrl(rawCallbackUrl: string): string {
+  if (!rawCallbackUrl) return '/';
+
+  if (rawCallbackUrl.startsWith('/') && !rawCallbackUrl.startsWith('//')) {
+    return rawCallbackUrl;
+  }
+
+  try {
+    const parsed = new URL(rawCallbackUrl);
+    return `${parsed.pathname}${parsed.search}${parsed.hash}` || '/';
+  } catch {
+    return '/';
+  }
+}
 
 function extractSupabaseSession(session: Session | null): SupabaseSessionPayload | undefined {
   if (!session?.access_token || !session?.refresh_token) {
@@ -57,7 +72,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     };
   }
 
-  const callbackUrl = String(formData.get('callbackUrl') ?? '/');
+  const callbackUrl = normalizeCallbackUrl(String(formData.get('callbackUrl') ?? '/'));
 
   try {
     const supabase = await createSupabaseServerClient();
@@ -92,14 +107,27 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
       };
     }
 
-    const authedUser = signInData?.user;
+    let authedUser: User | null = signInData?.user ?? null;
+
+    if (!authedUser && signInData?.session?.access_token) {
+      const {
+        data: fallbackUserData,
+        error: fallbackUserError,
+      } = await supabase.auth.getUser(signInData.session.access_token);
+
+      if (fallbackUserError) {
+        console.error('Supabase sign-in succeeded but follow-up user lookup failed', fallbackUserError);
+      }
+
+      authedUser = fallbackUserData?.user ?? null;
+    }
 
     if (!authedUser) {
       console.warn('Supabase sign-in succeeded but returned no user payload');
+      await supabase.auth.signOut();
       return {
-        ok: true,
-        redirectTo: callbackUrl,
-        supabaseSession,
+        ok: false,
+        message: 'Unable to resolve your account after sign-in. Please try again.',
       };
     }
 

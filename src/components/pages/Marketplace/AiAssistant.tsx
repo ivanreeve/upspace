@@ -334,11 +334,11 @@ function BookingConfirmationCard({ bookingAction, }: {
   });
 
   return (
-    <Card className="w-full border-primary/30 bg-primary/5">
-      <CardContent className="space-y-3 p-4">
-        <div className="flex items-center gap-2">
+    <Card className="w-full border-primary/20 bg-primary/[0.03] shadow-sm rounded-2xl overflow-hidden mt-2">
+      <CardContent className="space-y-4 p-5">
+        <div className="flex items-center gap-2.5">
           <FiCheckCircle className="size-5 text-primary" aria-hidden="true" />
-          <span className="text-sm font-semibold">Booking Summary</span>
+          <span className="text-base font-semibold">Booking Summary</span>
         </div>
 
         <div className="space-y-2 text-sm">
@@ -432,27 +432,27 @@ function MessageBubble({
   return (
     <div
       className={ cn(
-        'flex gap-3',
+        'flex gap-4 w-full',
         isUser ? 'justify-end' : 'justify-start items-start'
       ) }
     >
       { !isUser && (
         <div
           ref={ iconRef }
-          className="relative z-10 mt-0.5 flex size-12 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-cyan-900 dark:bg-cyan-900/30 dark:text-cyan-100"
+          className="relative z-10 flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary dark:bg-primary/20"
         >
-          <GradientSparklesIcon isThinking={ isThinking } />
+          <GradientSparklesIcon isThinking={ isThinking } className="size-5" />
           <span className="sr-only">OpenRouter assistant</span>
         </div>
       ) }
-      <div className={ cn('flex min-w-0 flex-col gap-3', isUser ? 'items-end' : 'items-start') }>
+      <div className={ cn('flex min-w-0 flex-col gap-3 w-full', isUser ? 'items-end' : 'items-start') }>
         { shouldShowBubble ? (
           <div
             className={ cn(
-              'max-w-[720px] rounded-md border px-4 py-3 text-sm',
+              'max-w-[720px] px-5 py-4 text-[15px]',
               isUser
-                ? 'bg-primary/10 border-primary/30 text-foreground'
-                : 'bg-muted/20 dark:bg-muted/60 border-border/60 text-foreground'
+                ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm shadow-sm'
+                : 'bg-muted/30 dark:bg-muted/20 border-border/50 text-foreground rounded-2xl rounded-tl-sm shadow-sm'
             ) }
           >
             { isThinking ? (
@@ -462,10 +462,13 @@ function MessageBubble({
                 </span>
               </span>
             ) : (
-              <div className="prose prose-sm max-w-none dark:prose-invert [&>*]:text-sm">
+              <div className={ cn(
+                'prose max-w-none [&>*]:text-[15px] leading-relaxed',
+                isUser ? 'text-primary-foreground' : 'dark:prose-invert'
+              ) }>
                 <ReactMarkdown
                   remarkPlugins={ [remarkGfm] }
-                  components={ markdownComponents }
+                  components={ isUser ? undefined : markdownComponents }
                 >
                   { message.content }
                 </ReactMarkdown>
@@ -477,7 +480,7 @@ function MessageBubble({
           <div className="w-full max-w-[720px]">
             { (message.spaceResults?.length ?? 0) > 1 ? (
               <div className="relative">
-                <div className="flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory touch-pan-x">
+                <div className="flex gap-4 overflow-x-auto pb-4 pt-1 snap-x snap-mandatory touch-pan-x scrollbar-hide">
                   { message.spaceResults!.map((space) => (
                     <div
                       key={ space.space_id }
@@ -770,7 +773,6 @@ conversationId: finalConversationId,
   const isThinking = aiSearchMutation.isPending;
   const isListening = voiceStatus === 'listening';
   const isVoiceActive = isListening;
-  const containerTopPadding = 'pt-0 sm:pt-0 md:pt-0';
   const bottomBarOffsets = React.useMemo<React.CSSProperties>(() => {
     if (isMobile) {
       return {
@@ -967,61 +969,61 @@ conversationId: finalConversationId,
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-muted/30 px-4 py-3 text-left text-primary hover:bg-accent/10 dark:text-foreground dark:hover:bg-accent/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:bg-accent/50 dark:hover:bg-accent/50 border-border/50"
           onClick={ () => setPromptInput('Find coworking spaces near me with good Wi-Fi') }
           disabled={ aiSearchMutation.isPending }
         >
-          <span className="flex h-10 w-10 items-center justify-center">
-            <FiMapPin className="size-5 text-primary dark:text-foreground" aria-hidden="true" />
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <FiMapPin className="size-5" aria-hidden="true" />
           </span>
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-primary dark:text-foreground">Find spaces near me</span>
-            <span className="text-xs text-primary/80 dark:text-muted-foreground">Discover local coworking options</span>
+            <span className="text-sm font-medium">Find spaces near me</span>
+            <span className="text-xs text-muted-foreground">Discover local coworking options</span>
           </div>
         </Button>
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-muted/30 px-4 py-3 text-left text-primary hover:bg-accent/10 dark:text-foreground dark:hover:bg-accent/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:bg-accent/50 dark:hover:bg-accent/50 border-border/50"
           onClick={ () => setPromptInput('What are the most affordable workspaces available?') }
           disabled={ aiSearchMutation.isPending }
         >
-          <span className="flex h-10 w-10 items-center justify-center">
-            <FiDollarSign className="size-5 text-primary dark:text-foreground" aria-hidden="true" />
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
+            <FiDollarSign className="size-5" aria-hidden="true" />
           </span>
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-primary dark:text-foreground">Show budget-friendly options</span>
-            <span className="text-xs text-primary/80 dark:text-muted-foreground">Find affordable workspace deals</span>
+            <span className="text-sm font-medium">Budget-friendly options</span>
+            <span className="text-xs text-muted-foreground">Find affordable workspace deals</span>
           </div>
         </Button>
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-muted/30 px-4 py-3 text-left text-primary hover:bg-accent/10 dark:text-foreground dark:hover:bg-accent/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:bg-accent/50 dark:hover:bg-accent/50 border-border/50"
           onClick={ () => setPromptInput('Find spaces with high-speed Wi-Fi and quiet environment') }
           disabled={ aiSearchMutation.isPending }
         >
-          <span className="flex h-10 w-10 items-center justify-center">
-            <FiWifi className="size-5 text-primary dark:text-foreground" aria-hidden="true" />
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-cyan-500/10 text-cyan-500">
+            <FiWifi className="size-5" aria-hidden="true" />
           </span>
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-primary dark:text-foreground">Spaces with best amenities</span>
-            <span className="text-xs text-primary/80 dark:text-muted-foreground">Fast Wi-Fi, meeting rooms, and more</span>
+            <span className="text-sm font-medium">Best amenities</span>
+            <span className="text-xs text-muted-foreground">Fast Wi-Fi, meeting rooms, and more</span>
           </div>
         </Button>
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-muted/30 px-4 py-3 text-left text-primary hover:bg-accent/10 dark:text-foreground dark:hover:bg-accent/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:bg-accent/50 dark:hover:bg-accent/50 border-border/50"
           onClick={ () => setPromptInput('Help me book a workspace for tomorrow') }
           disabled={ aiSearchMutation.isPending }
         >
-          <span className="flex h-10 w-10 items-center justify-center">
-            <FiCalendar className="size-5 text-primary dark:text-foreground" aria-hidden="true" />
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-500/10 text-purple-500">
+            <FiCalendar className="size-5" aria-hidden="true" />
           </span>
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-primary dark:text-foreground">Book for tomorrow</span>
-            <span className="text-xs text-primary/80 dark:text-muted-foreground">Quick booking assistance</span>
+            <span className="text-sm font-medium">Book for tomorrow</span>
+            <span className="text-xs text-muted-foreground">Quick booking assistance</span>
           </div>
         </Button>
       </div>
@@ -1030,8 +1032,8 @@ conversationId: finalConversationId,
       <form
         onSubmit={ handleSubmit }
         className={ cn(
-          'mx-auto flex w-full max-w-4xl flex-col gap-2 rounded-md border border-border/50 bg-background/95 p-2 ring-1 ring-border/40 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:flex-row sm:items-center sm:gap-3',
-          placement === 'inline' && 'mt-6 bg-background/80'
+          'mx-auto flex w-full max-w-4xl flex-col gap-2 rounded-[2rem] border border-border/50 bg-background shadow-sm p-1 ring-1 ring-border/20 backdrop-blur supports-[backdrop-filter]:bg-background/90 sm:flex-row sm:items-center sm:gap-3',
+          placement === 'inline' ? 'mt-8' : 'shadow-lg shadow-black/5 dark:shadow-none'
         ) }
       >
         <label htmlFor="ai-assistant-input" className="sr-only">
@@ -1041,29 +1043,27 @@ conversationId: finalConversationId,
           id="ai-assistant-input"
           value={ query }
           onChange={ (event) => setQuery(event.target.value) }
-          placeholder="How can I assist you?"
+          placeholder="Ask me to find your perfect workspace..."
           aria-label="AI assistant query"
           disabled={ aiSearchMutation.isPending }
-          className="h-16 border-none bg-gray-100 dark:bg-border/10 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 sm:h-12 sm:text-base"
+          className="h-14 border-none bg-transparent shadow-none text-base focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-lg"
         />
-        <div className="flex items-center justify-end gap-2 sm:justify-end">
+        <div className="flex items-center justify-end gap-2 pr-2 sm:justify-end">
           <Button
             type="button"
             aria-label="Use voice input"
             aria-pressed={ isVoiceActive }
             onClick={ handleVoiceButtonClick }
             disabled={ !isVoiceSupported || aiSearchMutation.isPending }
+            variant="ghost"
             className={ cn(
-              'relative h-10 w-10 rounded-full p-[2px] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary',
-              isVoiceActive
-                ? 'bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400'
-                : 'bg-background'
+              'relative h-10 w-10 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary',
+              isVoiceActive && 'text-primary hover:text-primary hover:bg-primary/10'
             ) }
           >
             <span
               className={ cn(
-                'flex h-full w-full items-center justify-center rounded-full bg-background dark:bg-background',
-                isVoiceActive && 'bg-background dark:bg-background text-foreground'
+                'flex h-full w-full items-center justify-center rounded-full'
               ) }
             >
               <MicGradientIcon
@@ -1081,7 +1081,7 @@ conversationId: finalConversationId,
               aiSearchMutation.isPending ? 'Stop AI response' : 'Send message to AI assistant'
             }
             disabled={ !aiSearchMutation.isPending && query.trim().length === 0 }
-            className="dark:bg-cyan-400 text-background dark:hover:bg-cyan-300 bg-primary"
+            className="rounded-full size-10 dark:bg-cyan-400 text-background dark:hover:bg-cyan-300 bg-primary"
           >
             { aiSearchMutation.isPending ? (
               <IoStop className="size-4 text-background" aria-hidden="true" />
@@ -1097,22 +1097,24 @@ conversationId: finalConversationId,
       <div
         className={
           placement === 'fixed'
-            ? 'fixed inset-x-0 bottom-0 z-30 px-4'
+            ? 'fixed inset-x-0 bottom-0 z-30 px-4 flex justify-center'
             : 'w-full max-w-4xl px-4'
         }
         style={ placement === 'fixed' ? bottomBarOffsets : undefined }
       >
-        { form }
-        { shouldShowPrebuiltPrompts ? (
-          <div className="mx-auto mt-4 w-full max-w-2xl">
-            { prebuiltPrompts }
-          </div>
-        ) : null }
-        { locationError && (
-          <p className="mt-1 text-center text-xs text-muted-foreground">
-            { locationError }
-          </p>
-        ) }
+        <div className="w-full max-w-3xl">
+          { form }
+          { shouldShowPrebuiltPrompts ? (
+            <div className="mx-auto mt-6 w-full max-w-2xl">
+              { prebuiltPrompts }
+            </div>
+          ) : null }
+          { locationError && (
+            <p className="mt-2 text-center text-xs text-muted-foreground">
+              { locationError }
+            </p>
+          ) }
+        </div>
       </div>
     );
   };
@@ -1156,31 +1158,32 @@ conversationId: finalConversationId,
 
       <div
         className={ cn(
-          'relative mx-auto flex h-full min-h-full min-h-screen w-full max-w-5xl flex-1 flex-col gap-6 px-4 pb-32 sm:pb-36 md:pb-40',
-          containerTopPadding,
+          'relative mx-auto flex h-full min-h-full min-h-screen w-full max-w-4xl flex-1 flex-col gap-4 px-4 pb-32 sm:pb-36 md:pb-40',
           'overflow-hidden'
         ) }
       >
-        <div className="flex items-center gap-2 pt-3">
+        <div className="flex items-center gap-2 pt-6">
           <Button
             type="button"
-            variant="ghost"
-            size="icon"
-            className="size-8"
+            variant="outline"
+            size="sm"
+            className="rounded-full gap-2 px-4 shadow-sm"
             onClick={ () => setChatSidebarOpen((prev) => !prev) }
             aria-label={ chatSidebarOpen ? 'Close chat history' : 'Open chat history' }
           >
             <FiMenu className="size-4" />
+            <span className="text-sm font-medium">History</span>
           </Button>
         </div>
 
       { !hasMessages ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-          <div className="space-y-3">
-            <h1 className="greeting-appear text-3xl font-instrument-serif font-semibold leading-tight bg-gradient-to-t from-[color-mix(in_srgb,var(--primary)_70%,black)] to-primary dark:from-gray-400 dark:to-white bg-clip-text text-transparent sm:text-4xl md:text-6xl lg:text-7xl">
+        <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center -mt-20 relative">
+          <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent blur-2xl opacity-50" />
+          <div className="space-y-4">
+            <h1 className="greeting-appear text-4xl font-instrument-serif font-semibold leading-tight bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-transparent sm:text-5xl md:text-6xl lg:text-7xl">
               Hi, { greetingName }
             </h1>
-            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            <p className="text-base text-muted-foreground max-w-md mx-auto">
               I can help you find spaces, compare options, estimate costs, and guide you through booking your ideal workspace.
             </p>
           </div>
@@ -1188,17 +1191,17 @@ conversationId: finalConversationId,
         </div>
       ) : (
         <>
-          <div className="flex flex-1 flex-col gap-6 overflow-hidden">
-            <Card className="border-none h-full">
-              <CardContent className="flex h-full flex-col space-y-6 p-6 sm:p-8">
-                <div className="flex-1 overflow-hidden rounded-md border-none bg-background/60">
+          <div className="flex flex-1 flex-col gap-6 overflow-hidden max-w-4xl mx-auto w-full">
+            <Card className="border-none h-full shadow-none bg-transparent">
+              <CardContent className="flex h-full flex-col space-y-6 p-0 sm:p-2">
+                <div className="flex-1 overflow-hidden rounded-md border-none bg-transparent">
                   <ScrollArea className="h-full w-full">
                     <div
                       ref={ lineContainerRef }
-                      className="relative space-y-4 px-3 py-4"
+                      className="relative space-y-6 px-1 py-4"
                     >
                       <div
-                        className="pointer-events-none absolute left-[2.15rem] border-l-2 border-dotted border-muted opacity-80 z-0"
+                        className="pointer-events-none absolute left-[1.5rem] w-px border-l-2 border-dashed border-muted/50 z-0"
                         aria-hidden="true"
                         style={
                           linePosition
