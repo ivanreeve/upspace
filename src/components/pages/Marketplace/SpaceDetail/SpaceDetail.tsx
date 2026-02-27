@@ -39,7 +39,7 @@ import { SpaceChatBubble } from './SpaceChatBubble';
 
 import { SPACE_DESCRIPTION_VIEWER_CLASSNAME } from '@/components/pages/Spaces/space-description-rich-text';
 import type { MarketplaceSpaceDetail } from '@/lib/queries/space';
-import { richTextToPlainText } from '@/lib/rich-text';
+import { sanitizeRichText } from '@/lib/rich-text';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -419,7 +419,7 @@ function SpaceDescriptionSection({
               '[&_h1]:mt-5 [&_h2]:mt-4 [&_h3]:mt-3'
             ) }
           >
-            { aboutText }
+            <div dangerouslySetInnerHTML={ { __html: aboutText, } } />
           </div>
           { shouldShowGradient ? (
             <div className="absolute inset-x-0 bottom-0 h-32">
@@ -1227,7 +1227,7 @@ function SpaceDetailContent({ space, }: SpaceDetailProps) {
   const rawAbout = space.description?.trim();
   const aboutSource =
     rawAbout && rawAbout.length > 0 ? rawAbout : `<p>${OVERVIEW_FALLBACK}</p>`;
-  const aboutText = richTextToPlainText(aboutSource);
+  const aboutText = sanitizeRichText(aboutSource);
 
   const bookingDurationContent = (
     <BookingDurationForm
