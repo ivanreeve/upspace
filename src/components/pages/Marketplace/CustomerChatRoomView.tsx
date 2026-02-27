@@ -428,12 +428,12 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
             <div key={ message.id } className={ `flex ${alignClass}` }>
               <div className="max-w-full sm:max-w-[520px] space-y-1">
                 <div
-                  className={ cn('inline-block rounded-2xl px-4 py-2 text-base shadow', bubbleClass) }
+                  className={ cn('inline-block rounded-[20px] px-4 py-2.5 text-[15px] shadow-sm', bubbleClass) }
                 >
                   <p
                     className={ cn(
-                      'whitespace-pre-line break-all font-semibold text-base',
-                      isCustomerMessage && 'text-white'
+                      'whitespace-pre-line break-words text-foreground',
+                      isCustomerMessage && 'text-white font-medium'
                     ) }
                   >
                     { message.content }
@@ -460,13 +460,13 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
   const showThreadPane = !isMobile || showThread;
 
   return (
-    <section className="flex h-full min-h-0 flex-1 w-full gap-3 overflow-hidden p-0 md:p-3">
+    <section className="flex h-full min-h-0 flex-1 w-full gap-4 overflow-hidden p-0 md:p-4">
       { /* Left sidebar: conversations */ }
       <aside
         className={ cn(
           'h-full min-h-0 flex-col gap-3 max-h-[100dvh] overflow-hidden',
-          showListPane ? 'flex w-full rounded-2xl bg-card/80 p-3 shadow-sm md:border md:border-border/60' : 'hidden',
-          !isMobile && 'w-[420px]'
+          showListPane ? 'flex w-full rounded-3xl bg-card p-4 shadow-sm md:border md:border-border/60' : 'hidden',
+          !isMobile && 'w-[400px]'
         ) }
       >
         { showListPane && (
@@ -495,12 +495,12 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
         className={ cn(
           'flex min-w-0 min-h-0 flex-1 flex-col h-full',
           showThreadPane
-            ? 'flex rounded-2xl md:border md:border-border/60'
+            ? 'flex rounded-3xl md:border md:border-border/60 bg-card shadow-sm'
             : 'hidden'
         ) }
       >
-        <div className="flex min-h-0 flex-1 flex-col h-full rounded-2xl bg-card/80 shadow-sm overflow-hidden">
-          <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-card/80 px-3 py-3">
+        <div className="flex min-h-0 flex-1 flex-col h-full overflow-hidden">
+          <header className="sticky top-0 z-10 flex items-center justify-between border-b px-6 py-4">
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -538,11 +538,11 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
             </ScrollArea>
             { activeRoom ? (
               <form
-                className="sticky bottom-[calc(var(--safe-area-bottom)+3.25rem)] z-10 border-t bg-card/80 px-3 py-3 md:bottom-0"
+                className="sticky bottom-[calc(var(--safe-area-bottom)+3.25rem)] z-10 border-t px-4 py-4 md:bottom-0 bg-card"
                 onSubmit={ handleSend }
                 noValidate
               >
-                <div className="flex max-w-full items-end gap-3">
+                <div className="flex max-w-full items-end gap-3 rounded-2xl border bg-background p-2 focus-within:ring-1 focus-within:ring-primary focus-within:border-primary shadow-sm">
                   <Textarea
                     ref={ draftRef }
                     value={ draft }
@@ -550,17 +550,17 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                     placeholder="Type your message…"
                     aria-label="Message the host"
                     rows={ 1 }
-                    className="min-h-[40px] max-h-24 flex-1 min-w-0 resize-none overflow-y-auto text-sm leading-4"
+                    className="min-h-[40px] max-h-24 flex-1 min-w-0 resize-none overflow-y-auto text-[15px] border-0 focus-visible:ring-0 shadow-none bg-transparent"
                     disabled={ sendMessage.isPending }
                     onKeyDown={ handleDraftKeyDown }
                   />
                   <Button
                     type="submit"
                     disabled={ sendMessage.isPending || !draft.trim() }
-                    className="inline-flex h-10 shrink-0 items-center gap-2 px-4"
+                    className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl px-4"
                   >
                     <FiSend className="size-4" aria-hidden="true" />
-                    <span>{ sendMessage.isPending ? 'Sending…' : 'Send' }</span>
+                    <span className="sr-only sm:not-sr-only sm:ml-2">Send</span>
                   </Button>
                 </div>
               </form>
