@@ -13,6 +13,7 @@ import {
   BreadcrumbSeparator
 } from '@/components/ui/breadcrumb';
 import { SpacesChrome } from '@/components/pages/Spaces/SpacesChrome';
+import { PartnerChatRoomView } from '@/components/pages/Marketplace/PartnerChatRoomView';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/prisma';
@@ -72,45 +73,17 @@ export default async function SpacesMessagesPage() {
   return (
     <SpacesChrome
       initialSidebarOpen={ initialSidebarOpen }
+      insetClassName="p-2"
       insetStyle={ {
         height: '100svh',
         overflow: 'hidden',
         marginTop: 0,
         marginBottom: 0,
-        paddingBottom: 'calc(1rem + var(--safe-area-bottom))',
+        paddingBottom: 'calc(0.75rem + var(--safe-area-bottom))',
       } }
     >
-      <div className="flex h-full w-full items-center justify-center px-4 py-8">
-        <div className="max-w-xl space-y-4 rounded-2xl border border-border/60 bg-card/80 p-8 text-center shadow-sm">
-          <Breadcrumb className="mx-auto w-fit">
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink asChild>
-                  <Link href="/partner/spaces">Spaces</Link>
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage className="text-sm font-medium">Messages</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            Messages
-          </p>
-          <h1 className="text-3xl font-semibold text-foreground">
-            No customer chats yet
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Customers will land here as soon as they send a message about your spaces.
-            Keep your listings updated to spark new conversations.
-          </p>
-          <Button asChild variant="secondary" className="mt-2 text-white hover:bg-[#0A5057]">
-            <Link href="/partner/spaces">
-              View your spaces
-            </Link>
-          </Button>
-        </div>
+      <div className="flex h-full w-full flex-col overflow-hidden p-0 sm:p-2">
+        <PartnerChatRoomView />
       </div>
     </SpacesChrome>
   );

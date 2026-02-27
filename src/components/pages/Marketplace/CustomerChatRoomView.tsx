@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/types/chat';
 
 type CustomerChatRoomViewProps = {
-  roomId: string;
+  roomId?: string;
 };
 
 function CustomerChatsListSkeleton() {
@@ -294,9 +294,13 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
     listContent = <p className="text-sm text-destructive">Unable to load conversations.</p>;
   } else if (!filteredRooms.length) {
     listContent = (
-      <p className="text-sm text-muted-foreground">
-        No conversations yet. Start a chat from a space listing to keep the conversation going.
-      </p>
+      <div className="p-4 text-center">
+        <p className="text-sm text-muted-foreground">
+          { rooms && rooms.length === 0 
+            ? 'No conversations yet.' 
+            : 'No conversations found.' }
+        </p>
+      </div>
     );
   } else {
     listContent = (
@@ -394,11 +398,43 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
           <p className="text-sm text-destructive">Unable to load conversation.</p>
         </CustomerConversationPlaceholder>
       );
+    } else if (rooms && rooms.length === 0) {
+      messagesContent = (
+        <div className="flex h-full min-h-full w-full flex-col items-center justify-center p-8 text-center">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 mb-6">
+            <svg
+              className="h-10 w-10 text-primary"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={ 2 }
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+              />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground mb-2">
+            No conversations yet
+          </h2>
+          <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mb-6">
+            Start a chat from any space listing to keep the conversation going.
+            Once someone replies, your inbox will show up here.
+          </p>
+          <Button asChild size="lg" className="text-white bg-primary hover:bg-primary/90 font-medium rounded-xl">
+            <Link href="/marketplace">
+              Browse spaces
+            </Link>
+          </Button>
+        </div>
+      );
     } else {
       messagesContent = (
         <CustomerConversationPlaceholder>
           <p className="text-sm text-muted-foreground">
-            Conversation not found. Go back to messages and pick another thread.
+            Select a chat from your inbox.
           </p>
         </CustomerConversationPlaceholder>
       );
@@ -428,12 +464,12 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
             <div key={ message.id } className={ `flex ${alignClass}` }>
               <div className="max-w-full sm:max-w-[520px] space-y-1">
                 <div
-                  className={ cn('inline-block rounded-2xl px-4 py-2 text-base shadow', bubbleClass) }
+                  className={ cn('inline-block rounded-[20px] px-4 py-2.5 text-[15px] shadow-sm', bubbleClass) }
                 >
                   <p
                     className={ cn(
-                      'whitespace-pre-line break-all font-semibold text-base',
-                      isCustomerMessage && 'text-white'
+                      'whitespace-pre-line break-words text-foreground',
+                      isCustomerMessage && 'text-white font-medium'
                     ) }
                   >
                     { message.content }
@@ -460,13 +496,13 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
   const showThreadPane = !isMobile || showThread;
 
   return (
-    <section className="flex h-full min-h-0 flex-1 w-full gap-3 overflow-hidden p-0 md:p-3">
+    <section className="flex h-full min-h-0 flex-1 w-full gap-4 overflow-hidden p-0 md:p-4">
       { /* Left sidebar: conversations */ }
       <aside
         className={ cn(
           'h-full min-h-0 flex-col gap-3 max-h-[100dvh] overflow-hidden',
-          showListPane ? 'flex w-full rounded-2xl bg-card/80 p-3 shadow-sm md:border md:border-border/60' : 'hidden',
-          !isMobile && 'w-[420px]'
+          showListPane ? 'flex w-full rounded-3xl bg-card p-4 shadow-sm md:border md:border-border/60' : 'hidden',
+          !isMobile && 'w-[400px]'
         ) }
       >
         { showListPane && (
@@ -495,42 +531,44 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
         className={ cn(
           'flex min-w-0 min-h-0 flex-1 flex-col h-full',
           showThreadPane
-            ? 'flex rounded-2xl md:border md:border-border/60'
+            ? 'flex rounded-3xl md:border md:border-border/60 bg-card shadow-sm'
             : 'hidden'
         ) }
       >
-        <div className="flex min-h-0 flex-1 flex-col h-full rounded-2xl bg-card/80 shadow-sm overflow-hidden">
-          <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-card/80 px-3 py-3">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={ handleBackToList }
-                className={ cn(
-                  'inline-flex items-center text-xs text-muted-foreground hover:text-foreground md:hidden',
-                  showThreadPane ? 'flex' : 'hidden'
-                ) }
-              >
-                <FiArrowLeft className="size-4" aria-hidden="true" />
-                <span className="sr-only">Back</span>
-              </button>
+        <div className="flex min-h-0 flex-1 flex-col h-full overflow-hidden">
+          { rooms && rooms.length > 0 ? (
+            <header className="sticky top-0 z-10 flex items-center justify-between border-b px-6 py-4">
               <div className="flex items-center gap-3">
-                <Avatar className="h-11 w-11 border border-border/60 bg-card">
-                  { headerAvatarUrl ? (
-                    <AvatarImage src={ headerAvatarUrl } alt={ activeRoom?.spaceName ?? 'Space avatar' } />
-                  ) : null }
-                  <AvatarFallback className="text-white">{ headerAvatarInitials }</AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col">
-                  <span className="text-2xl font-semibold tracking-tight text-foreground">
-                    { headerDisplayName }
-                  </span>
-                  <span className="text-sm text-muted-foreground/90">
-                    { headerLocationLabel }
-                  </span>
+                <button
+                  type="button"
+                  onClick={ handleBackToList }
+                  className={ cn(
+                    'inline-flex items-center text-xs text-muted-foreground hover:text-foreground md:hidden',
+                    showThreadPane ? 'flex' : 'hidden'
+                  ) }
+                >
+                  <FiArrowLeft className="size-4" aria-hidden="true" />
+                  <span className="sr-only">Back</span>
+                </button>
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-11 w-11 border border-border/60 bg-card">
+                    { headerAvatarUrl ? (
+                      <AvatarImage src={ headerAvatarUrl } alt={ activeRoom?.spaceName ?? 'Space avatar' } />
+                    ) : null }
+                    <AvatarFallback className="text-white">{ headerAvatarInitials }</AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col">
+                    <span className="text-2xl font-semibold tracking-tight text-foreground">
+                      { headerDisplayName }
+                    </span>
+                    <span className="text-sm text-muted-foreground/90">
+                      { headerLocationLabel }
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </header>
+            </header>
+          ) : null }
 
           <div className="flex min-h-0 flex-1 flex-col h-full overflow-hidden">
             <ScrollArea className="flex-1 h-full min-h-0">
@@ -538,11 +576,11 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
             </ScrollArea>
             { activeRoom ? (
               <form
-                className="sticky bottom-[calc(var(--safe-area-bottom)+3.25rem)] z-10 border-t bg-card/80 px-3 py-3 md:bottom-0"
+                className="sticky bottom-[calc(var(--safe-area-bottom)+3.25rem)] z-10 border-t px-4 py-4 md:bottom-0 bg-card"
                 onSubmit={ handleSend }
                 noValidate
               >
-                <div className="flex max-w-full items-end gap-3">
+                <div className="flex max-w-full items-end gap-3 rounded-2xl border bg-background p-2 focus-within:ring-1 focus-within:ring-primary focus-within:border-primary shadow-sm">
                   <Textarea
                     ref={ draftRef }
                     value={ draft }
@@ -550,17 +588,17 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                     placeholder="Type your message…"
                     aria-label="Message the host"
                     rows={ 1 }
-                    className="min-h-[40px] max-h-24 flex-1 min-w-0 resize-none overflow-y-auto text-sm leading-4"
+                    className="min-h-[40px] max-h-24 flex-1 min-w-0 resize-none overflow-y-auto text-[15px] border-0 focus-visible:ring-0 shadow-none bg-transparent"
                     disabled={ sendMessage.isPending }
                     onKeyDown={ handleDraftKeyDown }
                   />
                   <Button
                     type="submit"
                     disabled={ sendMessage.isPending || !draft.trim() }
-                    className="inline-flex h-10 shrink-0 items-center gap-2 px-4"
+                    className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl px-4"
                   >
                     <FiSend className="size-4" aria-hidden="true" />
-                    <span>{ sendMessage.isPending ? 'Sending…' : 'Send' }</span>
+                    <span className="sr-only sm:not-sr-only sm:ml-2">Send</span>
                   </Button>
                 </div>
               </form>

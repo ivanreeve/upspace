@@ -296,14 +296,19 @@ export function AdminUsersPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         { (() => {
+                          const isDeleted = user.status === 'deleted';
+                          const canToggleUser = user.role !== 'admin' && !isDeleted;
                           const isProcessingUser = processingState?.userId === user.id;
-                          const isDisabling = processingState?.type === 'disable';
-                          const isEnabling = processingState?.type === 'enable';
-                          const showEnableAction = user.status !== 'active';
-                           const isActionLoading = showEnableAction ? enableMutation.status === 'pending' : disableMutation.status === 'pending';
-                          const canToggleUser = user.role !== 'admin';
+                          const showEnableAction = user.status !== 'active' && !isDeleted;
+                          const isActionLoading = showEnableAction ? enableMutation.status === 'pending' : disableMutation.status === 'pending';
                           const actionLabel = showEnableAction ? 'Enable account' : 'Disable account';
                           const processingLabel = showEnableAction ? 'Enabling…' : 'Disabling…';
+
+                          if (isDeleted) {
+                            return (
+                              <span className="text-xs text-muted-foreground">No actions</span>
+                            );
+                          }
 
                           return (
                             <AdminRowActions disabled={ isProcessingUser || !canToggleUser }>

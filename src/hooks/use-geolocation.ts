@@ -40,9 +40,11 @@ export function useGeolocation(): GeolocationState {
         if (canceled) {
           return;
         }
-        setError(
-          geoError?.message ?? 'Unable to determine location. Please try again.'
-        );
+        let message = geoError?.message ?? 'Unable to determine location. Please try again.';
+        if (message.toLowerCase().includes('timeout')) {
+          message = 'Location request timed out. Please enable location services or try again.';
+        }
+        setError(message);
         setStatus('error');
       },
       {

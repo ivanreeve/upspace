@@ -135,6 +135,13 @@ status: true,
       return NextResponse.json({ error: 'Verification not found.', }, { status: 404, });
     }
 
+    if (verification.status !== 'in_review') {
+      return NextResponse.json(
+        { error: 'This verification has already been processed.', },
+        { status: 400, }
+      );
+    }
+
     const updated = await prisma.verification.update({
       where: { id: verification_id, },
       data: {

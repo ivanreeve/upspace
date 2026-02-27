@@ -43,11 +43,19 @@ export async function PATCH(
         user_id: true,
         auth_user_id: true,
         status: true,
+        role: true,
       },
     });
 
     if (!targetUser) {
       return NextResponse.json({ error: 'User not found.', }, { status: 404, });
+    }
+
+    if (targetUser.role === 'admin') {
+      return NextResponse.json(
+        { error: 'Admin accounts cannot be modified.', },
+        { status: 403, }
+      );
     }
 
     if (targetUser.status === user_status.active) {
@@ -77,7 +85,7 @@ export async function PATCH(
         where: { user_id: targetUser.user_id, },
         data: {
           status: user_status.active,
-          cancelled_at: now,
+          cancelled_at: null,
           pending_deletion_at: null,
           expires_at: null,
           deleted_at: null,

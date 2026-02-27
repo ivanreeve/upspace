@@ -25,10 +25,10 @@ import {
 } from '@/lib/ai/search-reference-data';
 import { assistantAgentSystemPromptTemplate } from '@/lib/assistant-agent';
 import {
-getBookingAvailability,
-getBookingPricing,
-validateBookingRequest,
-createBookingCheckout
+  getBookingAvailability,
+  getBookingPricing,
+  validateBookingRequest,
+  createBookingCheckout
 } from '@/lib/ai/booking-tools';
 import { compareSpaces } from '@/lib/ai/comparison-tools';
 import { estimateMonthlyCost, findBudgetOptimalSpaces } from '@/lib/ai/budget-tools';
@@ -587,8 +587,8 @@ const buildSpaceSearchToolInput = (
 
   const keywordInput = keywordSearchToolInputSchema.parse(normalizedArgs);
   const {
- keywords, ...sharedFilters 
-} = keywordInput;
+    keywords, ...sharedFilters
+  } = keywordInput;
   const query = keywords.map((keyword) => keyword.trim()).join(' ');
 
   return {
@@ -619,9 +619,9 @@ const sanitizeMessageContent = (
   return content.map((item) =>
     item.type === 'text'
       ? {
- ...item,
-text: sanitizeOpenRouterString(item.text), 
-}
+        ...item,
+        text: sanitizeOpenRouterString(item.text),
+      }
       : item
   );
 };
@@ -819,7 +819,7 @@ const getUserLocationFunctionDefinition: AiFunctionDefinition = {
   },
 };
 
-const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL ?? 'z-ai/glm-4.7';
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL ?? 'z-ai/glm-5';
 
 const TOOL_DEFINITIONS: ToolDefinitionJson[] = [
   getUserLocationFunctionDefinition,
@@ -876,11 +876,12 @@ export async function POST(request: NextRequest) {
       user_id:
         typeof payload.user_id === 'string' ? payload.user_id : undefined,
       location: payload.location,
+      conversation_id: payload.conversation_id,
     });
 
     const {
- messages, query, user_id, location, conversation_id,
-} = parsed;
+      messages, query, user_id, location, conversation_id,
+    } = parsed;
     const trimmedQuery = query?.trim();
 
     const conversation: ConversationMessage[] =
@@ -888,11 +889,11 @@ export async function POST(request: NextRequest) {
         ? messages
         : trimmedQuery
           ? [
-              {
-                role: 'user',
-                content: trimmedQuery,
-              }
-            ]
+            {
+              role: 'user',
+              content: trimmedQuery,
+            }
+          ]
           : [];
 
     const conversationMessages = buildConversationMessages(conversation);
@@ -987,11 +988,11 @@ export async function POST(request: NextRequest) {
       if (functionCallName === 'get_user_location') {
         const locationPayload = location
           ? {
-              location: {
-                lat: location.lat,
-                long: location.long,
-              },
-            }
+            location: {
+              lat: location.lat,
+              long: location.long,
+            },
+          }
           : { error: 'Location access was not granted.', };
 
         historyMessages.push(

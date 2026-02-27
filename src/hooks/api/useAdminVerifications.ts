@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
 import { adminUnpublishRequestKeys } from '@/hooks/api/useAdminUnpublishRequests';
+import { adminSpacesKeys } from '@/hooks/api/useAdminSpaces';
 
 export type VerificationDocument = {
   id: string;
@@ -227,6 +228,8 @@ export function useAdminSpaceVisibilityMutation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminVerificationKeys.all, });
+      queryClient.invalidateQueries({ queryKey: adminSpacesKeys.all, });
+      queryClient.invalidateQueries({ queryKey: adminUnpublishRequestKeys.all, });
     },
   });
 }

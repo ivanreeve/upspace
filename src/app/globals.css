@@ -256,10 +256,8 @@
   background-color: var(--secondary);
   background-image: linear-gradient(120deg,
       var(--secondary) 0%,
-      #28a745 35%,
-      #ffc107 60%,
-      #ff8c00 85%,
-      #ff6f00 100%);
+      oklch(0.68 0.16 145) 50%,
+      oklch(0.72 0.14 75) 100%);
   background-size: 250% 100%;
   animation: shimmerLoading 1.3s linear infinite;
 }

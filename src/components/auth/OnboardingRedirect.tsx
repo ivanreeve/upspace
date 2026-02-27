@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
-import { ONBOARDING_PATH, ROLE_REDIRECT_MAP } from '@/lib/constants';
+import { ONBOARDING_PATH, PUBLIC_PATHS, ROLE_REDIRECT_MAP } from '@/lib/constants';
 import { useSession } from '@/components/auth/SessionProvider';
 import { useUserProfile } from '@/hooks/use-user-profile';
 
@@ -22,6 +22,7 @@ export function OnboardingRedirect() {
 
   const isOnboardingRoute =
     pathname === ONBOARDING_PATH || pathname.startsWith(`${ONBOARDING_PATH}/`);
+  const isPublicRoute = PUBLIC_PATHS.has(pathname);
   const isProfileLoading = isLoading || isFetching;
   const isSessionResolved = Boolean(session) || !isSessionLoading;
   const redirectTarget = profile?.role ? ROLE_REDIRECT_MAP[profile.role] : '/marketplace';
@@ -38,6 +39,11 @@ export function OnboardingRedirect() {
       return;
     }
 
+    if (isPublicRoute && pathname !== redirectTarget) {
+      router.replace(redirectTarget);
+      return;
+    }
+
     const isRestrictedRoute =
       pathname === ONBOARDING_PATH ||
       pathname.startsWith(`${ONBOARDING_PATH}/`);
@@ -47,6 +53,7 @@ export function OnboardingRedirect() {
     }
   }, [
     isOnboardingRoute,
+    isPublicRoute,
     isProfileLoading,
     profile,
     redirectTarget,

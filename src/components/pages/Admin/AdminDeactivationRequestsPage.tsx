@@ -93,6 +93,16 @@ const getStatusLabel = (status: DeactivationRequest['status']) => {
   return 'Pending review';
 };
 
+const getTypeLabel = (type: DeactivationRequest['type']) => {
+  if (type === 'delete') return 'Delete';
+  return 'Deactivate';
+};
+
+const getTypeVariant = (type: DeactivationRequest['type']) => {
+  if (type === 'delete') return 'destructive' as const;
+  return 'secondary' as const;
+};
+
 export function AdminDeactivationRequestsPage() {
   const [activeTab, setActiveTab] = useState<RequestFilterValue>('pending');
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(PAGE_SIZE_OPTIONS[1]);
@@ -237,6 +247,7 @@ export function AdminDeactivationRequestsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Requester</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Reason</TableHead>
                 <TableHead>Submitted</TableHead>
                 <TableHead>Status</TableHead>
@@ -248,6 +259,9 @@ export function AdminDeactivationRequestsPage() {
                 <TableRow key={ `skeleton-${index}` }>
                   <TableCell>
                     <Skeleton className="h-4 w-28" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-6 w-16 rounded-full" />
                   </TableCell>
                   <TableCell>
                     <Skeleton className="h-4 w-24" />
@@ -306,6 +320,7 @@ export function AdminDeactivationRequestsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Requester</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Reason</TableHead>
                 <TableHead>Submitted</TableHead>
                 <TableHead>Status</TableHead>
@@ -321,6 +336,11 @@ export function AdminDeactivationRequestsPage() {
                       <span className="text-xs text-muted-foreground">@{ request.user.handle }</span>
                       <span className="text-xs text-muted-foreground">{ request.email }</span>
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={ getTypeVariant(request.type) }>
+                      { getTypeLabel(request.type) }
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1">
@@ -397,6 +417,12 @@ export function AdminDeactivationRequestsPage() {
               </CardHeader>
               <div className="border-t border-border/50 px-6 py-3">
                 <div className="space-y-2 text-sm">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Type</p>
+                    <Badge variant={ getTypeVariant(request.type) } className="mt-0.5">
+                      { getTypeLabel(request.type) }
+                    </Badge>
+                  </div>
                   <div>
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">Reason</p>
                     <p className="font-semibold">{ DEACTIVATION_REASON_LABELS[request.reason_category] }</p>
@@ -548,7 +574,7 @@ export function AdminDeactivationRequestsPage() {
             onChange={ (event) => setRejectionReason(event.target.value) }
             placeholder="Explain why this request cannot be processed."
             rows={ 4 }
-            maxLength={ 400 }
+            maxLength={ 1000 }
           />
           <DialogFooter className="mt-4">
             <Button variant="outline" onClick={ () => setIsRejectDialogOpen(false) } disabled={ isRejecting }>

@@ -6,16 +6,15 @@ import Link from 'next/link';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
 FiAlertCircle,
-FiSend,
 FiMapPin,
 FiDollarSign,
 FiWifi,
 FiCalendar,
 FiClock,
 FiUsers,
-FiCheckCircle,
-FiMenu
+FiCheckCircle
 } from 'react-icons/fi';
+import { CiLocationArrow1 } from 'react-icons/ci';
 import { IoStop } from 'react-icons/io5';
 import { toast } from 'sonner';
 import remarkGfm from 'remark-gfm';
@@ -102,7 +101,7 @@ const getFriendlyAiErrorMessage = (error: Error) => {
 
 const shimmerTextStyle: React.CSSProperties = {
   backgroundImage:
-    'linear-gradient(120deg, var(--secondary) 0%, #28a745 35%, #ffc107 60%, #ff8c00 85%, #ff6f00 100%)',
+    'linear-gradient(120deg, var(--secondary) 0%, oklch(0.68 0.16 145) 50%, oklch(0.72 0.14 75) 100%)',
   backgroundSize: '250% 100%',
   animation: 'shimmerLoading 1.3s linear infinite',
   WebkitBackgroundClip: 'text',
@@ -238,10 +237,8 @@ function GradientSparklesIcon({
           gradientTransform="rotate(120 0.5 0.5)"
         >
           <stop offset="0%" stopColor="var(--secondary)" />
-          <stop offset="35%" stopColor="#28a745" />
-          <stop offset="60%" stopColor="#ffc107" />
-          <stop offset="85%" stopColor="#ff8c00" />
-          <stop offset="100%" stopColor="#ff6f00" />
+          <stop offset="50%" stopColor="oklch(0.68 0.16 145)" />
+          <stop offset="100%" stopColor="oklch(0.72 0.14 75)" />
         </linearGradient>
         <filter id={ motionBlurId } x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur in="SourceGraphic" stdDeviation="0">
@@ -279,9 +276,9 @@ function MicGradientIcon({ className, }: { className?: string }) {
     >
       <defs>
         <linearGradient id={ gradientId } x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#22d3ee" />
-          <stop offset="50%" stopColor="#34d399" />
-          <stop offset="100%" stopColor="#f59e0b" />
+          <stop offset="0%" stopColor="var(--secondary)" />
+          <stop offset="50%" stopColor="oklch(0.68 0.16 145)" />
+          <stop offset="100%" stopColor="oklch(0.72 0.14 75)" />
         </linearGradient>
       </defs>
       <path
@@ -334,11 +331,11 @@ function BookingConfirmationCard({ bookingAction, }: {
   });
 
   return (
-    <Card className="w-full border-primary/30 bg-primary/5">
-      <CardContent className="space-y-3 p-4">
-        <div className="flex items-center gap-2">
+    <Card className="w-full border-primary/20 bg-primary/[0.03] rounded-2xl overflow-hidden mt-2">
+      <CardContent className="space-y-4 p-5">
+        <div className="flex items-center gap-2.5">
           <FiCheckCircle className="size-5 text-primary" aria-hidden="true" />
-          <span className="text-sm font-semibold">Booking Summary</span>
+          <span className="text-base font-semibold">Booking Summary</span>
         </div>
 
         <div className="space-y-2 text-sm">
@@ -465,7 +462,7 @@ function MessageBubble({
               <div className="prose prose-sm max-w-none dark:prose-invert [&>*]:text-sm">
                 <ReactMarkdown
                   remarkPlugins={ [remarkGfm] }
-                  components={ markdownComponents }
+                  components={ isUser ? undefined : markdownComponents }
                 >
                   { message.content }
                 </ReactMarkdown>
@@ -477,7 +474,7 @@ function MessageBubble({
           <div className="w-full max-w-[720px]">
             { (message.spaceResults?.length ?? 0) > 1 ? (
               <div className="relative">
-                <div className="flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory touch-pan-x">
+                <div className="flex gap-4 overflow-x-auto pb-4 pt-1 snap-x snap-mandatory touch-pan-x scrollbar-hide">
                   { message.spaceResults!.map((space) => (
                     <div
                       key={ space.space_id }
@@ -515,7 +512,6 @@ export function AiAssistant() {
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [activeConversationId, setActiveConversationId] = React.useState<string | null>(null);
-  const [chatSidebarOpen, setChatSidebarOpen] = React.useState(false);
   const {
     isSupported: isVoiceSupported,
     status: voiceStatus,
@@ -587,11 +583,8 @@ export function AiAssistant() {
         );
       }
 
-      if (isMobile) {
-        setChatSidebarOpen(false);
-      }
     },
-    [fetchConversationDetail, isMobile, queryClient]
+    [fetchConversationDetail, queryClient]
   );
 
   const greetingName = React.useMemo(() => {
@@ -770,7 +763,6 @@ conversationId: finalConversationId,
   const isThinking = aiSearchMutation.isPending;
   const isListening = voiceStatus === 'listening';
   const isVoiceActive = isListening;
-  const containerTopPadding = 'pt-0 sm:pt-0 md:pt-0';
   const bottomBarOffsets = React.useMemo<React.CSSProperties>(() => {
     if (isMobile) {
       return {
@@ -967,61 +959,61 @@ conversationId: finalConversationId,
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-muted/30 px-4 py-3 text-left text-primary hover:bg-accent/10 dark:text-foreground dark:hover:bg-accent/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:text-foreground hover:bg-muted/60 hover:border-border border-border/50 transition-colors"
           onClick={ () => setPromptInput('Find coworking spaces near me with good Wi-Fi') }
           disabled={ aiSearchMutation.isPending }
         >
-          <span className="flex h-10 w-10 items-center justify-center">
-            <FiMapPin className="size-5 text-primary dark:text-foreground" aria-hidden="true" />
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/8 text-primary">
+            <FiMapPin className="size-5" aria-hidden="true" />
           </span>
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-primary dark:text-foreground">Find spaces near me</span>
-            <span className="text-xs text-primary/80 dark:text-muted-foreground">Discover local coworking options</span>
+            <span className="text-sm font-medium">Find spaces near me</span>
+            <span className="text-xs text-muted-foreground">Discover local coworking options</span>
           </div>
         </Button>
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-muted/30 px-4 py-3 text-left text-primary hover:bg-accent/10 dark:text-foreground dark:hover:bg-accent/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:text-foreground hover:bg-muted/60 hover:border-border border-border/50 transition-colors"
           onClick={ () => setPromptInput('What are the most affordable workspaces available?') }
           disabled={ aiSearchMutation.isPending }
         >
-          <span className="flex h-10 w-10 items-center justify-center">
-            <FiDollarSign className="size-5 text-primary dark:text-foreground" aria-hidden="true" />
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/8 text-primary">
+            <FiDollarSign className="size-5" aria-hidden="true" />
           </span>
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-primary dark:text-foreground">Show budget-friendly options</span>
-            <span className="text-xs text-primary/80 dark:text-muted-foreground">Find affordable workspace deals</span>
+            <span className="text-sm font-medium">Budget-friendly options</span>
+            <span className="text-xs text-muted-foreground">Find affordable workspace deals</span>
           </div>
         </Button>
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-muted/30 px-4 py-3 text-left text-primary hover:bg-accent/10 dark:text-foreground dark:hover:bg-accent/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:text-foreground hover:bg-muted/60 hover:border-border border-border/50 transition-colors"
           onClick={ () => setPromptInput('Find spaces with high-speed Wi-Fi and quiet environment') }
           disabled={ aiSearchMutation.isPending }
         >
-          <span className="flex h-10 w-10 items-center justify-center">
-            <FiWifi className="size-5 text-primary dark:text-foreground" aria-hidden="true" />
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/8 text-primary">
+            <FiWifi className="size-5" aria-hidden="true" />
           </span>
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-primary dark:text-foreground">Spaces with best amenities</span>
-            <span className="text-xs text-primary/80 dark:text-muted-foreground">Fast Wi-Fi, meeting rooms, and more</span>
+            <span className="text-sm font-medium">Best amenities</span>
+            <span className="text-xs text-muted-foreground">Fast Wi-Fi, meeting rooms, and more</span>
           </div>
         </Button>
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 bg-muted/30 px-4 py-3 text-left text-primary hover:bg-accent/10 dark:text-foreground dark:hover:bg-accent/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:text-foreground hover:bg-muted/60 hover:border-border border-border/50 transition-colors"
           onClick={ () => setPromptInput('Help me book a workspace for tomorrow') }
           disabled={ aiSearchMutation.isPending }
         >
-          <span className="flex h-10 w-10 items-center justify-center">
-            <FiCalendar className="size-5 text-primary dark:text-foreground" aria-hidden="true" />
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/8 text-primary">
+            <FiCalendar className="size-5" aria-hidden="true" />
           </span>
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-primary dark:text-foreground">Book for tomorrow</span>
-            <span className="text-xs text-primary/80 dark:text-muted-foreground">Quick booking assistance</span>
+            <span className="text-sm font-medium">Book for tomorrow</span>
+            <span className="text-xs text-muted-foreground">Quick booking assistance</span>
           </div>
         </Button>
       </div>
@@ -1030,8 +1022,8 @@ conversationId: finalConversationId,
       <form
         onSubmit={ handleSubmit }
         className={ cn(
-          'mx-auto flex w-full max-w-4xl flex-col gap-2 rounded-md border border-border/50 bg-background/95 p-2 ring-1 ring-border/40 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:flex-row sm:items-center sm:gap-3',
-          placement === 'inline' && 'mt-6 bg-background/80'
+          'mx-auto flex w-full max-w-4xl flex-row items-center gap-1 rounded-full border border-border/50 bg-muted/30 p-1 ring-1 ring-border/20 backdrop-blur dark:bg-background supports-[backdrop-filter]:dark:bg-background/90',
+          placement === 'inline' ? 'mt-8 mb-8' : ''
         ) }
       >
         <label htmlFor="ai-assistant-input" className="sr-only">
@@ -1041,29 +1033,27 @@ conversationId: finalConversationId,
           id="ai-assistant-input"
           value={ query }
           onChange={ (event) => setQuery(event.target.value) }
-          placeholder="How can I assist you?"
+          placeholder="Ask me to find your perfect workspace..."
           aria-label="AI assistant query"
           disabled={ aiSearchMutation.isPending }
-          className="h-16 border-none bg-gray-100 dark:bg-border/10 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 sm:h-12 sm:text-base"
+          className="h-14 flex-1 rounded-full border-none bg-background text-base focus-visible:ring-0 focus-visible:ring-offset-0 dark:bg-transparent sm:text-lg"
         />
-        <div className="flex items-center justify-end gap-2 sm:justify-end">
+        <div className="flex items-center justify-end gap-2 pr-2 sm:justify-end">
           <Button
             type="button"
             aria-label="Use voice input"
             aria-pressed={ isVoiceActive }
             onClick={ handleVoiceButtonClick }
             disabled={ !isVoiceSupported || aiSearchMutation.isPending }
+            variant="ghost"
             className={ cn(
-              'relative h-10 w-10 rounded-full p-[2px] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary',
-              isVoiceActive
-                ? 'bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400'
-                : 'bg-background'
+              'relative h-10 w-10 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary',
+              isVoiceActive && 'text-primary hover:text-primary hover:bg-primary/10'
             ) }
           >
             <span
               className={ cn(
-                'flex h-full w-full items-center justify-center rounded-full bg-background dark:bg-background',
-                isVoiceActive && 'bg-background dark:bg-background text-foreground'
+                'flex h-full w-full items-center justify-center rounded-full'
               ) }
             >
               <MicGradientIcon
@@ -1081,12 +1071,17 @@ conversationId: finalConversationId,
               aiSearchMutation.isPending ? 'Stop AI response' : 'Send message to AI assistant'
             }
             disabled={ !aiSearchMutation.isPending && query.trim().length === 0 }
-            className="dark:bg-cyan-400 text-background dark:hover:bg-cyan-300 bg-primary"
+            className={ cn(
+              'rounded-full size-10',
+              aiSearchMutation.isPending
+                ? 'bg-[oklch(0.9647_0.0345_19.81)] dark:bg-[oklch(0.24_0.04_19.81)] hover:bg-[oklch(0.9647_0.0345_19.81)] dark:hover:bg-[oklch(0.24_0.04_19.81)]'
+                : 'bg-primary text-primary-foreground dark:bg-secondary dark:text-background dark:hover:bg-secondary/85'
+            ) }
           >
             { aiSearchMutation.isPending ? (
-              <IoStop className="size-4 text-background" aria-hidden="true" />
+              <IoStop className="size-5 text-destructive" aria-hidden="true" />
             ) : (
-              <FiSend className="size-4 text-background" aria-hidden="true" />
+              <CiLocationArrow1 className="size-5 text-background" strokeWidth={ 2 } aria-hidden="true" />
             ) }
           </Button>
         </div>
@@ -1097,22 +1092,24 @@ conversationId: finalConversationId,
       <div
         className={
           placement === 'fixed'
-            ? 'fixed inset-x-0 bottom-0 z-30 px-4'
+            ? 'fixed inset-x-0 bottom-0 z-30 px-4 flex justify-center'
             : 'w-full max-w-4xl px-4'
         }
         style={ placement === 'fixed' ? bottomBarOffsets : undefined }
       >
-        { form }
-        { shouldShowPrebuiltPrompts ? (
-          <div className="mx-auto mt-4 w-full max-w-2xl">
-            { prebuiltPrompts }
-          </div>
-        ) : null }
-        { locationError && (
-          <p className="mt-1 text-center text-xs text-muted-foreground">
-            { locationError }
-          </p>
-        ) }
+        <div className="w-full max-w-3xl">
+          { form }
+          { shouldShowPrebuiltPrompts ? (
+            <div className="mx-auto mt-6 w-full max-w-2xl">
+              { prebuiltPrompts }
+            </div>
+          ) : null }
+          { locationError && (
+            <p className="mt-2 text-center text-xs text-muted-foreground">
+              { locationError }
+            </p>
+          ) }
+        </div>
       </div>
     );
   };
@@ -1146,41 +1143,28 @@ conversationId: finalConversationId,
 
   return (
     <div className="relative flex h-full min-h-screen w-full">
-      { chatSidebarOpen ? (
-        <AiChatSidebar
-          activeConversationId={ activeConversationId }
-          onSelectConversation={ handleSelectConversation }
-          onNewConversation={ handleNewConversation }
-        />
-      ) : null }
-
       <div
         className={ cn(
-          'relative mx-auto flex h-full min-h-full min-h-screen w-full max-w-5xl flex-1 flex-col gap-6 px-4 pb-32 sm:pb-36 md:pb-40',
-          containerTopPadding,
+          'relative mx-auto flex h-full min-h-full min-h-screen w-full max-w-4xl flex-1 flex-col gap-4 px-4 pb-32 sm:pb-36 md:pb-40',
           'overflow-hidden'
         ) }
       >
-        <div className="flex items-center gap-2 pt-3">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-8"
-            onClick={ () => setChatSidebarOpen((prev) => !prev) }
-            aria-label={ chatSidebarOpen ? 'Close chat history' : 'Open chat history' }
-          >
-            <FiMenu className="size-4" />
-          </Button>
+        <div className="relative z-10 flex items-center gap-2 pt-6">
+          <AiChatSidebar
+            activeConversationId={ activeConversationId }
+            onSelectConversation={ handleSelectConversation }
+            onNewConversation={ handleNewConversation }
+          />
         </div>
 
       { !hasMessages ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-          <div className="space-y-3">
-            <h1 className="greeting-appear text-3xl font-instrument-serif font-semibold leading-tight bg-gradient-to-t from-[color-mix(in_srgb,var(--primary)_70%,black)] to-primary dark:from-gray-400 dark:to-white bg-clip-text text-transparent sm:text-4xl md:text-6xl lg:text-7xl">
+        <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center -mt-20 relative">
+          <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent blur-2xl opacity-50" />
+          <div className="space-y-4">
+            <h1 className="greeting-appear text-4xl font-instrument-serif font-semibold leading-tight bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-transparent sm:text-5xl md:text-6xl lg:text-7xl">
               Hi, { greetingName }
             </h1>
-            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            <p className="text-base text-muted-foreground max-w-md mx-auto">
               I can help you find spaces, compare options, estimate costs, and guide you through booking your ideal workspace.
             </p>
           </div>
@@ -1188,17 +1172,17 @@ conversationId: finalConversationId,
         </div>
       ) : (
         <>
-          <div className="flex flex-1 flex-col gap-6 overflow-hidden">
-            <Card className="border-none h-full">
-              <CardContent className="flex h-full flex-col space-y-6 p-6 sm:p-8">
-                <div className="flex-1 overflow-hidden rounded-md border-none bg-background/60">
+          <div className="flex flex-1 flex-col gap-6 overflow-hidden max-w-4xl mx-auto w-full">
+            <Card className="border-none h-full bg-transparent">
+              <CardContent className="flex h-full flex-col space-y-6 p-0 sm:p-2">
+                <div className="flex-1 overflow-hidden rounded-md border-none bg-transparent">
                   <ScrollArea className="h-full w-full">
                     <div
                       ref={ lineContainerRef }
-                      className="relative space-y-4 px-3 py-4"
+                      className="relative space-y-6 px-1 py-4"
                     >
                       <div
-                        className="pointer-events-none absolute left-[2.15rem] border-l-2 border-dotted border-muted opacity-80 z-0"
+                        className="pointer-events-none absolute left-[1.5rem] w-px border-l-2 border-dashed border-muted/50 z-0"
                         aria-hidden="true"
                         style={
                           linePosition
@@ -1241,7 +1225,7 @@ conversationId: finalConversationId,
             </Card>
           </div>
 
-          <BottomGradientOverlay heightClassName="h-[28vh]" className="z-20" />
+          <BottomGradientOverlay heightClassName="h-[20vh]" className="z-20" />
 
           { renderPromptForm('fixed') }
         </>
