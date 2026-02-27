@@ -1025,7 +1025,7 @@ conversationId: finalConversationId,
       <form
         onSubmit={ handleSubmit }
         className={ cn(
-          'mx-auto flex w-full max-w-4xl flex-row items-center gap-1 rounded-full border border-border/50 bg-background p-1 ring-1 ring-border/20 backdrop-blur supports-[backdrop-filter]:bg-background/90',
+          'mx-auto flex w-full max-w-4xl flex-row items-center gap-1 rounded-full border border-border/50 bg-muted/30 p-1 ring-1 ring-border/20 backdrop-blur dark:bg-background supports-[backdrop-filter]:dark:bg-background/90',
           placement === 'inline' ? 'mt-8 mb-8' : ''
         ) }
       >
@@ -1039,7 +1039,7 @@ conversationId: finalConversationId,
           placeholder="Ask me to find your perfect workspace..."
           aria-label="AI assistant query"
           disabled={ aiSearchMutation.isPending }
-          className="h-14 flex-1 rounded-full border-none bg-transparent text-base focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-lg"
+          className="h-14 flex-1 rounded-full border-none bg-background text-base focus-visible:ring-0 focus-visible:ring-offset-0 dark:bg-transparent sm:text-lg"
         />
         <div className="flex items-center justify-end gap-2 pr-2 sm:justify-end">
           <Button

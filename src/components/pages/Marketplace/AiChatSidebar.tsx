@@ -275,7 +275,7 @@ title,
         <PopoverTrigger asChild>
           <Button
             type="button"
-            variant="outline"
+            variant="default"
             size="sm"
             className="rounded-full gap-2 px-4"
             aria-label={ open ? 'Close chat history' : 'Open chat history' }
