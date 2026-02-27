@@ -102,7 +102,7 @@ const getFriendlyAiErrorMessage = (error: Error) => {
 
 const shimmerTextStyle: React.CSSProperties = {
   backgroundImage:
-    'linear-gradient(120deg, var(--secondary) 0%, #28a745 35%, #ffc107 60%, #ff8c00 85%, #ff6f00 100%)',
+    'linear-gradient(120deg, var(--secondary) 0%, oklch(0.68 0.16 145) 50%, oklch(0.72 0.14 75) 100%)',
   backgroundSize: '250% 100%',
   animation: 'shimmerLoading 1.3s linear infinite',
   WebkitBackgroundClip: 'text',
@@ -238,10 +238,8 @@ function GradientSparklesIcon({
           gradientTransform="rotate(120 0.5 0.5)"
         >
           <stop offset="0%" stopColor="var(--secondary)" />
-          <stop offset="35%" stopColor="#28a745" />
-          <stop offset="60%" stopColor="#ffc107" />
-          <stop offset="85%" stopColor="#ff8c00" />
-          <stop offset="100%" stopColor="#ff6f00" />
+          <stop offset="50%" stopColor="oklch(0.68 0.16 145)" />
+          <stop offset="100%" stopColor="oklch(0.72 0.14 75)" />
         </linearGradient>
         <filter id={ motionBlurId } x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur in="SourceGraphic" stdDeviation="0">
@@ -279,9 +277,9 @@ function MicGradientIcon({ className, }: { className?: string }) {
     >
       <defs>
         <linearGradient id={ gradientId } x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#22d3ee" />
-          <stop offset="50%" stopColor="#34d399" />
-          <stop offset="100%" stopColor="#f59e0b" />
+          <stop offset="0%" stopColor="var(--secondary)" />
+          <stop offset="50%" stopColor="oklch(0.68 0.16 145)" />
+          <stop offset="100%" stopColor="oklch(0.72 0.14 75)" />
         </linearGradient>
       </defs>
       <path
@@ -452,7 +450,7 @@ function MessageBubble({
               'max-w-[720px] px-5 py-4 text-[15px]',
               isUser
                 ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm shadow-sm'
-                : 'bg-muted/30 dark:bg-muted/20 border-border/50 text-foreground rounded-2xl rounded-tl-sm shadow-sm'
+                : 'bg-muted/30 dark:bg-muted/20 border border-border/40 text-foreground rounded-2xl rounded-tl-sm shadow-sm'
             ) }
           >
             { isThinking ? (
@@ -969,11 +967,11 @@ conversationId: finalConversationId,
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:bg-accent/50 dark:hover:bg-accent/50 border-border/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:bg-muted/60 hover:border-border border-border/50 transition-colors"
           onClick={ () => setPromptInput('Find coworking spaces near me with good Wi-Fi') }
           disabled={ aiSearchMutation.isPending }
         >
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/8 text-primary">
             <FiMapPin className="size-5" aria-hidden="true" />
           </span>
           <div className="flex flex-col gap-1">
@@ -984,11 +982,11 @@ conversationId: finalConversationId,
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:bg-accent/50 dark:hover:bg-accent/50 border-border/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:bg-muted/60 hover:border-border border-border/50 transition-colors"
           onClick={ () => setPromptInput('What are the most affordable workspaces available?') }
           disabled={ aiSearchMutation.isPending }
         >
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/8 text-primary">
             <FiDollarSign className="size-5" aria-hidden="true" />
           </span>
           <div className="flex flex-col gap-1">
@@ -999,11 +997,11 @@ conversationId: finalConversationId,
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:bg-accent/50 dark:hover:bg-accent/50 border-border/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:bg-muted/60 hover:border-border border-border/50 transition-colors"
           onClick={ () => setPromptInput('Find spaces with high-speed Wi-Fi and quiet environment') }
           disabled={ aiSearchMutation.isPending }
         >
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-cyan-500/10 text-cyan-500">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/8 text-primary">
             <FiWifi className="size-5" aria-hidden="true" />
           </span>
           <div className="flex flex-col gap-1">
@@ -1014,11 +1012,11 @@ conversationId: finalConversationId,
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:bg-accent/50 dark:hover:bg-accent/50 border-border/50"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:bg-muted/60 hover:border-border border-border/50 transition-colors"
           onClick={ () => setPromptInput('Help me book a workspace for tomorrow') }
           disabled={ aiSearchMutation.isPending }
         >
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-500/10 text-purple-500">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/8 text-primary">
             <FiCalendar className="size-5" aria-hidden="true" />
           </span>
           <div className="flex flex-col gap-1">
@@ -1081,7 +1079,7 @@ conversationId: finalConversationId,
               aiSearchMutation.isPending ? 'Stop AI response' : 'Send message to AI assistant'
             }
             disabled={ !aiSearchMutation.isPending && query.trim().length === 0 }
-            className="rounded-full size-10 dark:bg-cyan-400 text-background dark:hover:bg-cyan-300 bg-primary"
+            className="rounded-full size-10 bg-primary text-primary-foreground dark:bg-secondary dark:text-background dark:hover:bg-secondary/85"
           >
             { aiSearchMutation.isPending ? (
               <IoStop className="size-4 text-background" aria-hidden="true" />
@@ -1244,7 +1242,7 @@ conversationId: finalConversationId,
             </Card>
           </div>
 
-          <BottomGradientOverlay heightClassName="h-[28vh]" className="z-20" />
+          <BottomGradientOverlay heightClassName="h-[20vh]" className="z-20" />
 
           { renderPromptForm('fixed') }
         </>

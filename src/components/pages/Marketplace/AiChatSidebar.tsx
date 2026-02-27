@@ -178,7 +178,7 @@ function ConversationItem({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="size-6 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 hover:!bg-sidebar focus-visible:!bg-sidebar data-[state=open]:!bg-sidebar dark:hover:!bg-accent/50 dark:focus-visible:!bg-accent/50 dark:data-[state=open]:!bg-accent/50"
+                className="size-6 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-muted/50 data-[state=open]:bg-muted/50 dark:hover:bg-muted/40 dark:data-[state=open]:bg-muted/40"
                 onClick={ (event) => event.stopPropagation() }
                 aria-label="Conversation options"
               >
@@ -188,14 +188,14 @@ function ConversationItem({
             <DropdownMenuContent align="end" className="w-36 bg-popover p-1">
               <DropdownMenuItem
                 onClick={ handleStartRename }
-                className="data-[highlighted]:bg-[oklch(0.955_0.02_204.6929)] focus-visible:bg-[oklch(0.955_0.02_204.6929)] dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] data-[highlighted]:text-primary data-[highlighted]:[&_svg]:text-primary dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary hover:!text-primary hover:[&_svg]:!text-primary dark:hover:!text-secondary dark:hover:[&_svg]:!text-secondary"
+                className="data-[highlighted]:bg-primary/8 data-[highlighted]:text-primary dark:data-[highlighted]:bg-secondary/15 dark:data-[highlighted]:text-secondary"
               >
                 <FiEdit2 className="mr-2 size-3.5" aria-hidden="true" />
                 Rename
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={ onDelete }
-                className="text-destructive focus-visible:text-destructive data-[highlighted]:bg-[oklch(0.9647_0.0345_19.81)] focus-visible:bg-[oklch(0.9647_0.0345_19.81)] dark:data-[highlighted]:bg-[oklch(0.24_0.04_19.81)] dark:focus-visible:bg-[oklch(0.24_0.04_19.81)] data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive hover:bg-[oklch(0.9647_0.0345_19.81)] dark:hover:bg-[oklch(0.24_0.04_19.81)] hover:text-destructive hover:[&_svg]:text-destructive"
+                className="text-destructive data-[highlighted]:bg-destructive/8 data-[highlighted]:text-destructive dark:data-[highlighted]:bg-destructive/15"
               >
                 <FiTrash2 className="mr-2 size-3.5" aria-hidden="true" />
                 Delete
