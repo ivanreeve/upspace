@@ -959,7 +959,7 @@ conversationId: finalConversationId,
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:text-foreground hover:bg-muted/60 hover:border-border border-border/50 transition-colors"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl border-2 bg-card/50 px-4 py-3 text-left text-foreground shadow-none hover:text-foreground hover:bg-[oklch(0.955_0.02_204.6929)] dark:hover:bg-[oklch(0.24_0.02_204.6929)] hover:border-border border-border/50 transition-colors"
           onClick={ () => setPromptInput('Find coworking spaces near me with good Wi-Fi') }
           disabled={ aiSearchMutation.isPending }
         >
@@ -974,7 +974,7 @@ conversationId: finalConversationId,
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:text-foreground hover:bg-muted/60 hover:border-border border-border/50 transition-colors"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl border-2 bg-card/50 px-4 py-3 text-left text-foreground shadow-none hover:text-foreground hover:bg-[oklch(0.955_0.02_204.6929)] dark:hover:bg-[oklch(0.24_0.02_204.6929)] hover:border-border border-border/50 transition-colors"
           onClick={ () => setPromptInput('What are the most affordable workspaces available?') }
           disabled={ aiSearchMutation.isPending }
         >
@@ -989,7 +989,7 @@ conversationId: finalConversationId,
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:text-foreground hover:bg-muted/60 hover:border-border border-border/50 transition-colors"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl border-2 bg-card/50 px-4 py-3 text-left text-foreground shadow-none hover:text-foreground hover:bg-[oklch(0.955_0.02_204.6929)] dark:hover:bg-[oklch(0.24_0.02_204.6929)] hover:border-border border-border/50 transition-colors"
           onClick={ () => setPromptInput('Find spaces with high-speed Wi-Fi and quiet environment') }
           disabled={ aiSearchMutation.isPending }
         >
@@ -1004,7 +1004,7 @@ conversationId: finalConversationId,
         <Button
           type="button"
           variant="outline"
-          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl bg-card/50 px-4 py-3 text-left text-foreground hover:text-foreground hover:bg-muted/60 hover:border-border border-border/50 transition-colors"
+          className="h-auto grid grid-cols-[40px_1fr] items-center gap-3 rounded-2xl border-2 bg-card/50 px-4 py-3 text-left text-foreground shadow-none hover:text-foreground hover:bg-[oklch(0.955_0.02_204.6929)] dark:hover:bg-[oklch(0.24_0.02_204.6929)] hover:border-border border-border/50 transition-colors"
           onClick={ () => setPromptInput('Help me book a workspace for tomorrow') }
           disabled={ aiSearchMutation.isPending }
         >
@@ -1097,10 +1097,10 @@ conversationId: finalConversationId,
         }
         style={ placement === 'fixed' ? bottomBarOffsets : undefined }
       >
-        <div className="w-full max-w-3xl">
+        <div className="w-full max-w-4xl">
           { form }
           { shouldShowPrebuiltPrompts ? (
-            <div className="mx-auto mt-6 w-full max-w-2xl">
+            <div className="mx-auto mt-6 w-full max-w-3xl">
               { prebuiltPrompts }
             </div>
           ) : null }
@@ -1164,7 +1164,7 @@ conversationId: finalConversationId,
             <h1 className="greeting-appear text-4xl font-instrument-serif font-semibold leading-tight bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-transparent sm:text-5xl md:text-6xl lg:text-7xl">
               Hi, { greetingName }
             </h1>
-            <p className="text-base text-muted-foreground max-w-md mx-auto">
+            <p className="mx-auto max-w-2xl text-base text-muted-foreground">
               I can help you find spaces, compare options, estimate costs, and guide you through booking your ideal workspace.
             </p>
           </div>
