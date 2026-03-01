@@ -97,9 +97,6 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
 
   const hostLabel = activeRoom?.partnerName ?? 'Host';
   const headerDisplayName = activeRoom?.spaceName ?? activeRoom?.partnerName ?? 'Conversation';
-  const headerLocationLabel = activeRoom
-    ? `${activeRoom.spaceCity ?? ''}${activeRoom.spaceCity && activeRoom.spaceRegion ? ', ' : ''}${activeRoom.spaceRegion ?? ''}` || 'Location unavailable'
-    : 'Select a chat from your inbox.';
   const headerAvatarInitials = (
     (activeRoom?.spaceName ?? activeRoom?.partnerName ?? 'UpSpace')
       .split(' ')
@@ -329,10 +326,6 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
             const lastMessageTime = formatTimestamp(room.lastMessage?.createdAt);
             const isActive = room.id === activeRoom?.id;
             const hasNewMessage = room.lastMessage?.senderRole === 'partner';
-            const location =
-              room.spaceCity || room.spaceRegion
-                ? [room.spaceCity, room.spaceRegion].filter(Boolean).join(', ')
-                : null;
             const initials = room.partnerName
               ? room.partnerName
                   .split(' ')
@@ -358,7 +351,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                 className={ cn(
                   'relative flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition',
                   isActive
-                    ? 'bg-muted text-foreground'
+                    ? 'bg-card text-foreground dark:bg-muted'
                     : 'hover:bg-muted/70'
                 ) }
                 onClick={ handleConversationClick }
@@ -383,9 +376,6 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                   { hasNewMessage && !isActive ? (
                     <span className="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-destructive" aria-label="New message" />
                   ) : null }
-                  <p className="truncate text-xs text-muted-foreground">
-                    { location ?? 'Location unavailable' }
-                  </p>
                   <p
                     className={ cn(
                       'truncate text-xs text-muted-foreground',
@@ -482,7 +472,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
             <div key={ message.id } className={ `flex ${alignClass}` }>
               <div className="max-w-full sm:max-w-[520px] space-y-1">
                 <div
-                  className={ cn('inline-block rounded-[20px] px-4 py-2.5 text-[15px] shadow-sm', bubbleClass) }
+                  className={ cn('inline-block rounded-[20px] px-4 py-2.5 text-[15px]', bubbleClass) }
                 >
                   <p
                     className={ cn(
@@ -514,18 +504,18 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
   const showThreadPane = !isMobile || showThread;
 
   return (
-    <section className="flex h-full min-h-0 flex-1 w-full gap-4 overflow-hidden p-0 md:p-4">
+    <section className="flex h-full min-h-0 w-full flex-1 gap-0 overflow-hidden p-0">
       { /* Left sidebar: conversations */ }
       <aside
         className={ cn(
           'h-full min-h-0 flex-col gap-3 max-h-[100dvh] overflow-hidden',
-          showListPane ? 'flex w-full rounded-3xl bg-card p-4 shadow-sm md:border md:border-border/60' : 'hidden',
+          showListPane ? 'flex w-full bg-card p-4' : 'hidden',
           !isMobile && 'w-[400px]'
         ) }
       >
         { showListPane && (
           <>
-            <div className="space-y-1">
+            <div className="space-y-2">
               <span className="text-xl font-semibold tracking-tight text-foreground pb-1">
                 Chats
               </span>
@@ -534,7 +524,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                 onChange={ (event) => setSearchValue(event.target.value) }
                 placeholder="Search conversations"
                 aria-label="Search conversations"
-                className="h-10 rounded-lg border border-border/60 bg-background px-3 py-2 text-sm font-normal text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary"
+                className="mt-3 h-10 rounded-lg border-2 border-border/80 bg-background px-3 py-2 text-sm font-normal text-foreground shadow-none placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary focus-visible:ring-0"
               />
             </div>
             <div className="flex min-h-0 flex-1 flex-col">
@@ -549,7 +539,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
         className={ cn(
           'flex min-w-0 min-h-0 flex-1 flex-col h-full',
           showThreadPane
-            ? 'flex rounded-3xl md:border md:border-border/60 bg-card shadow-sm'
+            ? 'flex bg-card md:border-l md:border-border/60'
             : 'hidden'
         ) }
       >
@@ -579,9 +569,6 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                     <span className="text-2xl font-semibold tracking-tight text-foreground">
                       { headerDisplayName }
                     </span>
-                    <span className="text-sm text-muted-foreground/90">
-                      { headerLocationLabel }
-                    </span>
                   </div>
                 </div>
               </div>
@@ -599,7 +586,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                 onSubmit={ handleSend }
                 noValidate
               >
-                <div className="flex max-w-full items-end gap-3 rounded-2xl border bg-background p-2 focus-within:ring-1 focus-within:ring-primary focus-within:border-primary shadow-sm">
+                <div className="flex max-w-full items-end gap-3 rounded-2xl border bg-background p-2 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
                   <Textarea
                     ref={ draftRef }
                     value={ draft }

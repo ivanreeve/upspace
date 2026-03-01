@@ -355,7 +355,7 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
                 className={ cn(
                   'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition',
                   isActive
-                    ? 'bg-muted text-foreground'
+                    ? 'bg-card text-foreground dark:bg-muted'
                     : 'hover:bg-muted/70'
                 ) }
                 onClick={ handleConversationClick }
@@ -466,7 +466,7 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
               <div key={ message.id } className={ `flex ${alignClass}` }>
                 <div className="max-w-full sm:max-w-[520px] space-y-1">
                   <div
-                    className={ cn('inline-block rounded-[20px] px-4 py-2.5 text-[15px] shadow-sm', bubbleClass) }
+                    className={ cn('inline-block rounded-[20px] px-4 py-2.5 text-[15px]', bubbleClass) }
                   >
                     <p
                       className={ cn(
@@ -523,18 +523,18 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
       .join('') || 'CU';
 
   return (
-    <section className="flex h-full min-h-0 flex-1 w-full gap-4 overflow-hidden p-0 md:p-4">
+    <section className="flex h-full min-h-0 w-full flex-1 gap-0 overflow-hidden p-0">
       { /* Left sidebar: conversations */ }
       <aside
         className={ cn(
           'h-full min-h-0 flex-col gap-3 max-h-[100dvh] overflow-hidden',
-          showListPane ? 'flex w-full rounded-3xl bg-card p-4 shadow-sm md:border md:border-border/60' : 'hidden',
+          showListPane ? 'flex w-full bg-card p-4' : 'hidden',
           !isMobile && 'w-[400px]'
         ) }
       >
         { showListPane && (
           <>
-            <div className="space-y-1">
+            <div className="space-y-2">
               <span className="text-xl font-semibold tracking-tight text-foreground pb-1">
                 Chats
               </span>
@@ -543,7 +543,7 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
                 onChange={ (event) => setSearchValue(event.target.value) }
                 placeholder="Search conversations"
                 aria-label="Search conversations"
-                className="h-10 rounded-lg border border-border/60 bg-background px-3 py-2 text-sm font-normal text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary"
+                className="mt-3 h-10 rounded-lg border-2 border-border/80 bg-background px-3 py-2 text-sm font-normal text-foreground shadow-none placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary focus-visible:ring-0"
               />
             </div>
             <div className="flex min-h-0 flex-1 flex-col">
@@ -558,7 +558,7 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
         className={ cn(
           'flex min-w-0 min-h-0 flex-1 flex-col h-full',
           showThreadPane
-            ? 'flex rounded-3xl md:border md:border-border/60 bg-card shadow-sm'
+            ? 'flex bg-card md:border-l md:border-border/60'
             : 'hidden'
         ) }
       >
@@ -611,7 +611,7 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
                 onSubmit={ handleSend }
                 noValidate
               >
-                <div className="flex max-w-full items-end gap-3 rounded-2xl border bg-background p-2 focus-within:ring-1 focus-within:ring-primary focus-within:border-primary shadow-sm">
+                <div className="flex max-w-full items-end gap-3 rounded-2xl border bg-background p-2 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
                   <Textarea
                     ref={ draftRef }
                     value={ draft }

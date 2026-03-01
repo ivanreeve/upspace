@@ -74,16 +74,16 @@ export default async function CustomerMessagesPage() {
   return (
     <MarketplaceChrome
       initialSidebarOpen={ initialSidebarOpen }
-      insetClassName="p-2"
+      insetClassName="!px-0 !md:px-0 !py-0"
       insetStyle={ {
         height: '100svh',
         overflow: 'hidden',
         marginTop: 0,
         marginBottom: 0,
-        paddingBottom: 'calc(0.75rem + var(--safe-area-bottom))',
+        paddingBottom: 'var(--safe-area-bottom)',
       } }
     >
-      <div className="flex h-full w-full flex-col overflow-hidden p-0 sm:p-2">
+      <div className="flex h-full w-full flex-col overflow-hidden p-0">
         { rooms.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
             <FiMessageCircle className="size-10 text-muted-foreground" aria-hidden="true" />
