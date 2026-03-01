@@ -101,19 +101,12 @@ type: 'refund',
       where: {
         booking_id: booking.id,
         user_auth_id: authData.user.id,
-        type: {
-          in: [
-            'booking_confirmed',
-            'booking_checkedin',
-            'booking_checkedout',
-            'booking_completed',
-            'booking_noshow'
-          ],
-        },
+        type: { in: ['booking_confirmed', 'system'], },
       },
       orderBy: { created_at: 'asc', },
       select: {
  type: true,
+title: true,
 created_at: true, 
 },
     })

@@ -25,8 +25,9 @@ export async function GET(
     where: { auth_user_id: authData.user.id, },
     select: {
  role: true,
-display_name: true,
-handle: true, 
+first_name: true,
+last_name: true,
+handle: true,
 },
   });
 
@@ -99,7 +100,7 @@ handle: true,
       currency: booking.currency,
       status: booking.status,
       createdAt: booking.created_at.toISOString(),
-      customerName: user.display_name ?? user.handle ?? 'Guest',
+      customerName: [user.first_name, user.last_name].filter(Boolean).join(' ') || user.handle || 'Guest',
       pricingRuleName: booking.price_rule_name ?? null,
       payment: paymentTx
         ? {

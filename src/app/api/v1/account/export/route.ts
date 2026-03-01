@@ -30,9 +30,7 @@ export async function GET() {
         first_name: true,
         last_name: true,
         handle: true,
-        display_name: true,
-        avatar_url: true,
-        bio: true,
+        avatar: true,
         created_at: true,
         updated_at: true,
       },
@@ -71,36 +69,30 @@ export async function GET() {
           title: true,
           body: true,
           type: true,
-          read: true,
+          read_at: true,
           created_at: true,
         },
       }),
       prisma.review.findMany({
-        where: { reviewer_auth_id: authUserId, },
+        where: { user_id: user.user_id, },
         orderBy: { created_at: 'desc', },
         select: {
           id: true,
           space_id: true,
-          rating: true,
-          comment: true,
+          rating_star: true,
+          description: true,
           created_at: true,
         },
       }),
       prisma.chat_room.findMany({
-        where: {
-          OR: [
-            { customer_auth_id: authUserId, },
-            { partner_auth_id: authUserId, }
-          ],
-        },
+        where: { customer_id: user.user_id, },
         orderBy: { created_at: 'desc', },
         select: {
           id: true,
           space_id: true,
-          area_id: true,
           created_at: true,
-          messages: {
-            where: { sender_auth_id: authUserId, },
+          chat_message: {
+            where: { sender_id: user.user_id, },
             orderBy: { created_at: 'desc', },
             select: {
               id: true,
@@ -121,8 +113,7 @@ export async function GET() {
         firstName: user.first_name,
         lastName: user.last_name,
         handle: user.handle,
-        displayName: user.display_name,
-        bio: user.bio,
+        avatar: user.avatar,
         createdAt: user.created_at.toISOString(),
         updatedAt: user.updated_at.toISOString(),
       },
@@ -144,18 +135,18 @@ export async function GET() {
         title: n.title,
         body: n.body,
         type: n.type,
-        read: n.read,
+        readAt: n.read_at?.toISOString() ?? null,
         createdAt: n.created_at.toISOString(),
       })),
       reviews: reviews.map((r) => ({
         id: r.id,
         spaceId: r.space_id,
-        rating: r.rating,
-        comment: r.comment,
+        rating: Number(r.rating_star),
+        description: r.description,
         createdAt: r.created_at.toISOString(),
       })),
       chatMessages: chatRooms.flatMap((room) =>
-        room.messages.map((m) => ({
+        room.chat_message.map((m) => ({
           roomId: room.id,
           messageId: m.id,
           content: m.content,

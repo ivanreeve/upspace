@@ -26,7 +26,19 @@ type RefundTxForTimeline = {
 
 type StatusChangeEvent = {
   type: string;
+  title: string;
   created_at: Date;
+};
+
+const TITLE_TO_EVENT: Record<string, { kind: TimelineEvent['kind']; label: string }> = {
+  'Booking confirmed': {
+ kind: 'confirmed',
+label: 'Booking confirmed', 
+},
+  'Booking rescheduled': {
+ kind: 'confirmed',
+label: 'Booking rescheduled', 
+},
 };
 
 export function buildTimeline(
@@ -47,35 +59,18 @@ export function buildTimeline(
     timestamp: booking.created_at.toISOString(),
   });
 
-  const statusMap: Record<string, { kind: TimelineEvent['kind']; label: string }> = {
-    booking_confirmed: {
- kind: 'confirmed',
-label: 'Booking confirmed', 
-},
-    booking_checkedin: {
- kind: 'checkedin',
-label: 'Checked in', 
-},
-    booking_checkedout: {
- kind: 'checkedout',
-label: 'Checked out', 
-},
-    booking_completed: {
- kind: 'completed',
-label: 'Booking completed', 
-},
-    booking_noshow: {
- kind: 'noshow',
-label: 'Marked as no-show', 
-},
-  };
-
   if (statusNotifications) {
     for (const notification of statusNotifications) {
-      const mapping = statusMap[notification.type];
+      const mapping = notification.type === 'booking_confirmed'
+        ? {
+ kind: 'confirmed' as const,
+label: 'Booking confirmed', 
+}
+        : TITLE_TO_EVENT[notification.title] ?? null;
+
       if (mapping) {
         events.push({
-          id: `${mapping.kind}-${booking.id}`,
+          id: `${mapping.kind}-${notification.created_at.getTime()}`,
           kind: mapping.kind,
           label: mapping.label,
           status: 'succeeded',

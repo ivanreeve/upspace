@@ -74,7 +74,7 @@ export function Bookmarks({ bookmarkUserId, }: BookmarksProps) {
           Bookmarks
         </h1>
         <p className="text-sm text-muted-foreground sm:text-base">
-          All your saved spaces in one place—jump back in to compare, inquire, or book when you're ready.
+          All your saved spaces in one place&mdash;jump back in to compare, inquire, or book when you&apos;re ready.
         </p>
       </div>
       <div className="flex items-center gap-2">
