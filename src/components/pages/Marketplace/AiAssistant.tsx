@@ -1074,7 +1074,7 @@ conversationId: finalConversationId,
             className={ cn(
               'rounded-full size-10',
               aiSearchMutation.isPending
-                ? 'bg-[oklch(0.9647_0.0345_19.81)] dark:bg-[oklch(0.24_0.04_19.81)] hover:bg-[oklch(0.9647_0.0345_19.81)] dark:hover:bg-[oklch(0.24_0.04_19.81)]'
+                ? 'bg-destructive/15 hover:bg-destructive/20 dark:bg-[oklch(0.24_0.04_19.81)] dark:hover:bg-[oklch(0.24_0.04_19.81)]'
                 : 'bg-primary text-primary-foreground dark:bg-secondary dark:text-background dark:hover:bg-secondary/85'
             ) }
           >
