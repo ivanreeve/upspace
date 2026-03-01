@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 import { formatCurrencyMinor } from '@/lib/wallet';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -190,9 +192,12 @@ export function CustomerTransactionHistory(props: CustomerTransactionHistoryProp
                           <p className="text-sm font-semibold text-foreground">
                             { transaction.spaceName } · { transaction.areaName }
                           </p>
-                          <p className="text-xs text-muted-foreground">
+                          <Link
+                            href={ `/customer/bookings/${transaction.bookingId}` }
+                            className="text-xs text-muted-foreground hover:underline"
+                          >
                             Booking ID { transaction.bookingId }
-                          </p>
+                          </Link>
                         </div>
                         <div className="flex flex-col items-end gap-1 text-right">
                           <p className="text-lg font-semibold text-foreground">

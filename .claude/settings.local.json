@@ -32,7 +32,8 @@
       "Bash(python3:*)",
       "Bash(NEXT_PRIVATE_DEBUG_CACHE=1 pnpm build:*)",
       "Bash(git stash:*)",
-      "Bash(pnpm list:*)"
+      "Bash(pnpm list:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

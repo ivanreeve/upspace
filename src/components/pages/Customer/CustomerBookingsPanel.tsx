@@ -1,6 +1,7 @@
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
+import Link from 'next/link';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -182,9 +183,12 @@ export function CustomerBookingsPanel() {
                     >
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="space-y-1">
-                          <p className="text-sm font-semibold text-foreground">
+                          <Link
+                            href={ `/customer/bookings/${booking.id}` }
+                            className="text-sm font-semibold text-foreground hover:underline"
+                          >
                             { booking.spaceName } · { booking.areaName }
-                          </p>
+                          </Link>
                           <p className="text-xs text-muted-foreground">
                             Booked{ ' ' }
                             { formatDistanceToNow(new Date(booking.createdAt), { addSuffix: true, }) }
