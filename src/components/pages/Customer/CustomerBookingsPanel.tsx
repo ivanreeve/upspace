@@ -323,7 +323,7 @@ export function CustomerBookingsPanel() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-8 px-3 text-[13px] font-semibold leading-none border-border/60 bg-background transition hover:border-destructive hover:bg-destructive/10 hover:!text-destructive focus-visible:border-destructive focus-visible:!text-destructive focus-visible:ring-2 focus-visible:ring-destructive/50"
+                                className="h-8 px-3 text-[13px] font-semibold leading-none border-destructive/60 bg-background text-destructive transition hover:border-destructive hover:bg-destructive/10 hover:!text-destructive focus-visible:border-destructive focus-visible:!text-destructive focus-visible:ring-2 focus-visible:ring-destructive/50"
                                 disabled={ cancelMutation.isPending }
                                 onClick={ () => cancelMutation.mutate({ bookingId: booking.id, }) }
                               >

@@ -85,7 +85,7 @@ function TimelineItem({ event, }: { event: TimelineEvent }) {
   return (
     <li className="relative mb-6 ml-6 last:mb-0">
       <span
-        className={ `absolute -left-[25px] flex size-3 items-center justify-center rounded-full ring-4 ring-background ${indicatorClass}` }
+        className={ `absolute -left-[30px] flex size-3 items-center justify-center rounded-full ring-4 ring-background ${indicatorClass}` }
       />
       <div className="space-y-0.5">
         <p className="text-sm font-semibold text-foreground">{ event.label }</p>
@@ -260,7 +260,7 @@ export function BookingDetailView({ record, }: BookingDetailViewProps) {
           { isCancellable && (
             <Button
               variant="outline"
-              className="border-destructive/60 text-destructive hover:bg-destructive/10"
+              className="border-destructive/60 text-destructive hover:border-destructive hover:bg-destructive/10 hover:!text-destructive focus-visible:border-destructive focus-visible:!text-destructive"
               disabled={ cancelMutation.isPending }
               onClick={ handleCancel }
             >
