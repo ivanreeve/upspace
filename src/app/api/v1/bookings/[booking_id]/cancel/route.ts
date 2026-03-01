@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { CANCELLABLE_BOOKING_STATUSES } from '@/lib/bookings/constants';
-import { mapBookingsWithProfiles } from '@/lib/bookings/serializer';
+import { BOOKING_PRICE_MINOR_FACTOR, mapBookingsWithProfiles, normalizeNumeric } from '@/lib/bookings/serializer';
+import { sendBookingCancellationEmail } from '@/lib/email';
+import { notifyBookingEvent } from '@/lib/notifications/booking';
 import { createPaymongoRefund } from '@/lib/paymongo';
 import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -91,6 +93,60 @@ export async function POST(
 
   if (cancelResult.count === 0) {
     return invalidStatusResponse('This booking was already cancelled or is no longer cancellable.');
+  }
+
+  // Notify customer and partner about the cancellation
+  try {
+    await notifyBookingEvent(
+      {
+        bookingId: booking.id,
+        spaceId: booking.space_id,
+        areaId: booking.area_id,
+        spaceName: booking.space_name,
+        areaName: booking.area_name,
+        customerAuthId: booking.user_auth_id,
+        partnerAuthId: booking.partner_auth_id,
+      },
+      {
+ title: 'Booking cancelled',
+body: `Your booking at ${booking.area_name} · ${booking.space_name} has been cancelled.`, 
+},
+      {
+ title: 'Booking cancelled',
+body: `${booking.area_name} in ${booking.space_name} was cancelled by the customer.`, 
+}
+    );
+  } catch (notifError) {
+    console.error('Failed to create cancellation notifications', {
+ bookingId: booking.id,
+error: notifError, 
+});
+  }
+
+  // Send cancellation email to partner
+  if (booking.partner_auth_id) {
+    try {
+      const supabaseAdmin = await createSupabaseServerClient();
+      const { data: partnerData, } = await supabaseAdmin.auth.admin.getUserById(booking.partner_auth_id);
+      const partnerEmail = partnerData?.user?.email;
+      if (partnerEmail) {
+        await sendBookingCancellationEmail({
+          to: partnerEmail,
+          spaceName: booking.space_name,
+          areaName: booking.area_name,
+          bookingHours: normalizeNumeric(booking.booking_hours) ?? 0,
+          price: normalizeNumeric(booking.price_minor) !== null
+            ? Number(booking.price_minor) / BOOKING_PRICE_MINOR_FACTOR
+            : null,
+          link: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/marketplace/${booking.space_id}`,
+        });
+      }
+    } catch (emailError) {
+      console.error('Failed to send cancellation email', {
+ bookingId: booking.id,
+error: emailError, 
+});
+    }
   }
 
   // Find the original charge for this booking to issue a refund.

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { countActiveBookingsOverlap } from '@/lib/bookings/occupancy';
 import { mapBookingRowToRecord } from '@/lib/bookings/serializer';
+import { notifyBookingEvent } from '@/lib/notifications/booking';
 import { prisma } from '@/lib/prisma';
 
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -185,21 +186,52 @@ export async function GET(request: Request) {
   }
 
   // Expire stale unpaid or past-start pending bookings
+  const expireFilter = {
+    status: 'pending' as const,
+    OR: [
+      { start_at: { lt: new Date(), }, },
+      {
+        created_at: { lt: staleUnpaidCutoff, },
+        transaction: { none: {}, },
+      }
+    ],
+  };
+
+  const bookingsToExpire = await prisma.booking.findMany({ where: expireFilter, });
+
   const expireResult = await prisma.booking.updateMany({
-    where: {
-      status: 'pending',
-      OR: [
-        { start_at: { lt: new Date(), }, },
-        {
-          created_at: { lt: staleUnpaidCutoff, },
-          transaction: { none: {}, },
-        }
-      ],
-    },
+    where: expireFilter,
     data: { status: 'expired', },
   });
 
   expired += expireResult.count;
+
+  for (const row of bookingsToExpire) {
+    const booking = mapBookingRowToRecord(row);
+    try {
+      await notifyBookingEvent(
+        {
+          bookingId: booking.id,
+          spaceId: booking.spaceId,
+          areaId: booking.areaId,
+          spaceName: booking.spaceName,
+          areaName: booking.areaName,
+          customerAuthId: booking.customerAuthId,
+          partnerAuthId: booking.partnerAuthId,
+        },
+        {
+ title: 'Booking expired',
+body: `Your booking at ${booking.areaName} · ${booking.spaceName} has expired.`, 
+},
+        null
+      );
+    } catch (notifError) {
+      console.error('Failed to create expiration notification', {
+ bookingId: booking.id,
+error: notifError, 
+});
+    }
+  }
 
   return NextResponse.json({
     data: {

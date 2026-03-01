@@ -3,7 +3,8 @@ import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { sendBookingNotificationEmail } from '@/lib/email';
+import { sendBookingNotificationEmail, sendBookingRejectionEmail } from '@/lib/email';
+import { notifyBookingEvent } from '@/lib/notifications/booking';
 import {
   BOOKING_PRICE_MINOR_FACTOR,
   formatFullName,
@@ -202,7 +203,118 @@ export async function PATCH(req: NextRequest) {
   });
 
   const bookings = await mapBookingsWithProfiles(updatedRows);
+
+  // Send notifications for status changes (non-blocking)
+  const newStatus = parsed.data.status;
+  for (const row of updatedRows) {
+    const ctx = {
+      bookingId: row.id,
+      spaceId: row.space_id,
+      areaId: row.area_id,
+      spaceName: row.space_name,
+      areaName: row.area_name,
+      customerAuthId: row.user_auth_id,
+      partnerAuthId: row.partner_auth_id,
+    };
+
+    try {
+      switch (newStatus) {
+        case 'rejected':
+          await notifyBookingEvent(
+            ctx,
+            {
+ title: 'Booking rejected',
+body: `${row.area_name} at ${row.space_name} was rejected by the host.`, 
+},
+            null
+          );
+          try {
+            const customerEmail = await resolveUserEmail(row.user_auth_id);
+            if (customerEmail) {
+              await sendBookingRejectionEmail({
+                to: customerEmail,
+                spaceName: row.space_name,
+                areaName: row.area_name,
+                bookingHours: normalizeNumeric(row.booking_hours) ?? 0,
+                price: normalizeNumeric(row.price_minor) !== null
+                  ? Number(row.price_minor) / BOOKING_PRICE_MINOR_FACTOR
+                  : null,
+                link: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/marketplace/${row.space_id}`,
+              });
+            }
+          } catch (emailError) {
+            console.error('Failed to send rejection email', {
+ bookingId: row.id,
+error: emailError, 
+});
+          }
+          break;
+        case 'cancelled':
+          await notifyBookingEvent(
+            ctx,
+            null,
+            {
+ title: 'Booking cancelled',
+body: `${row.area_name} in ${row.space_name} was cancelled.`, 
+}
+          );
+          break;
+        case 'checkedin':
+          await notifyBookingEvent(
+            ctx,
+            {
+ title: 'Checked in',
+body: `You're checked in at ${row.area_name} · ${row.space_name}.`, 
+},
+            null
+          );
+          break;
+        case 'checkedout':
+          await notifyBookingEvent(
+            ctx,
+            {
+ title: 'Checked out',
+body: `You've checked out of ${row.area_name} · ${row.space_name}.`, 
+},
+            null
+          );
+          break;
+        case 'completed':
+          await notifyBookingEvent(
+            ctx,
+            {
+ title: 'Booking completed',
+body: `Your session at ${row.area_name} · ${row.space_name} is complete.`, 
+},
+            null
+          );
+          break;
+        case 'noshow':
+          await notifyBookingEvent(
+            ctx,
+            {
+ title: 'Marked as no-show',
+body: `You were marked as a no-show for ${row.area_name} · ${row.space_name}.`, 
+},
+            null
+          );
+          break;
+      }
+    } catch (notifError) {
+      console.error('Failed to create status change notification', {
+ bookingId: row.id,
+status: newStatus,
+error: notifError, 
+});
+    }
+  }
+
   return NextResponse.json({ data: bookings, });
+}
+
+async function resolveUserEmail(authId: string): Promise<string | null> {
+  const { data, } = await (await createSupabaseServerClient()).auth.admin.getUserById(authId);
+  return data?.user?.email ?? null;
 }
 
 export async function POST(req: NextRequest) {

@@ -4,9 +4,11 @@ import { z } from 'zod';
 
 import { countActiveBookingsOverlap } from '@/lib/bookings/occupancy';
 import { mapBookingRowToRecord } from '@/lib/bookings/serializer';
+import { sendBookingNotificationEmail, sendRefundNotificationEmail } from '@/lib/email';
+import { notifyBookingEvent } from '@/lib/notifications/booking';
 import { prisma } from '@/lib/prisma';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
-import { sendBookingNotificationEmail } from '@/lib/email';
+import { formatCurrencyMinor } from '@/lib/wallet';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? '';
 
@@ -42,12 +44,14 @@ export const checkoutEventSchema = z.object({
     attributes: z.object({
       type: z.string(),
       livemode: z.boolean(),
+      created_at: z.union([z.number(), z.string()]).optional(),
       data: z.object({
+        id: z.string().optional(),
         object: z.object({
           id: z.string(),
           amount: z.number(),
           currency: z.string(),
-          metadata: z.record(z.string(), z.string()).nullable(),
+          metadata: z.record(z.string(), z.unknown()).nullable(),
           status: z.string(),
         }),
       }),
@@ -102,24 +106,206 @@ function getInternalUserId(metadata: Record<string, unknown> | null) {
   return null;
 }
 
-async function recordCheckoutTransaction(opts: {
+type CheckoutPaymentEventRecord = {
+  id: string | null;
+  duplicate: boolean;
+};
+
+type CheckoutPaymentEventStatus = 'processed' | 'ignored' | 'failed';
+
+function resolveProviderEventId(event: CheckoutEvent) {
+  const explicitId = event.data.id?.trim();
+  if (explicitId) {
+    return explicitId;
+  }
+
+  const mode = event.livemode ? 'live' : 'test';
+  return `checkout:${event.type}:${event.data.object.id}:${mode}`;
+}
+
+function resolvePaymentTransactionStatus(event: CheckoutEvent) {
+  const normalizedType = event.type.toLowerCase();
+  const normalizedStatus = event.data.object.status.toLowerCase();
+
+  if (normalizedType.includes('refunded') || normalizedStatus === 'refunded') {
+    return 'refunded' as const;
+  }
+
+  if (normalizedType.includes('failed') || normalizedStatus === 'failed') {
+    return 'failed' as const;
+  }
+
+  if (normalizedType.includes('cancel') || normalizedType.includes('expire') || normalizedStatus === 'expired') {
+    return 'cancelled' as const;
+  }
+
+  if (normalizedType.includes('paid') || normalizedStatus === 'paid') {
+    return 'succeeded' as const;
+  }
+
+  return 'pending' as const;
+}
+
+function resolveEventOccurredAt(event: CheckoutEvent) {
+  if (event.created_at == null) {
+    return new Date();
+  }
+
+  return normalizeTimestamp(event.created_at);
+}
+
+async function recordCheckoutPaymentEvent(event: CheckoutEvent): Promise<CheckoutPaymentEventRecord> {
+  const providerEventId = resolveProviderEventId(event);
+  const checkoutObject = event.data.object;
+
+  try {
+    const created = await prisma.payment_event.create({
+      data: {
+        provider: 'paymongo',
+        provider_event_id: providerEventId,
+        event_type: event.type,
+        provider_object_id: checkoutObject.id,
+        livemode: event.livemode,
+        payload_json: event as unknown as Prisma.InputJsonValue,
+      },
+      select: { id: true, },
+    });
+
+    return {
+      id: created.id,
+      duplicate: false,
+    };
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      return {
+        id: null,
+        duplicate: true,
+      };
+    }
+
+    console.error('Failed to record PayMongo payment event', {
+      providerEventId,
+      error,
+    });
+    throw error;
+  }
+}
+
+async function finalizeCheckoutPaymentEvent(opts: {
+  paymentEventId: string | null;
+  status: CheckoutPaymentEventStatus;
+  errorMessage?: string;
+}) {
+  const {
+    paymentEventId,
+    status,
+    errorMessage,
+  } = opts;
+  if (!paymentEventId) {
+    return;
+  }
+
+  try {
+    await prisma.payment_event.update({
+      where: { id: paymentEventId, },
+      data: {
+        processing_status: status,
+        processed_at: new Date(),
+        error_message: errorMessage ?? null,
+      },
+    });
+  } catch (error) {
+    console.error('Failed to update payment event processing status', {
+      paymentEventId,
+      status,
+      error,
+    });
+  }
+}
+
+async function recordNormalizedCheckoutTransaction(opts: {
   bookingId: string;
-  checkoutObject: CheckoutEvent['data']['object'];
-  livemode: boolean;
+  event: CheckoutEvent;
+  paymentEventId: string | null;
 }) {
   const {
     bookingId,
-    checkoutObject,
-    livemode,
+    event,
+    paymentEventId,
   } = opts;
+  const checkoutObject = event.data.object;
   const amountMinor = Math.round(checkoutObject.amount ?? 0);
   const currency = checkoutObject.currency ?? 'PHP';
+
+  await prisma.payment_transaction.upsert({
+    where: {
+      provider_provider_object_id: {
+        provider: 'paymongo',
+        provider_object_id: checkoutObject.id,
+      },
+    },
+    create: {
+      booking_id: bookingId,
+      provider: 'paymongo',
+      provider_object_id: checkoutObject.id,
+      payment_event_id: paymentEventId,
+      status: resolvePaymentTransactionStatus(event),
+      amount_minor: BigInt(Number.isFinite(amountMinor) ? amountMinor : 0),
+      currency_iso3: currency,
+      is_live: event.livemode,
+      occurred_at: resolveEventOccurredAt(event),
+      raw_gateway_json: checkoutObject as unknown as Prisma.InputJsonValue,
+    },
+    update: {
+      booking_id: bookingId,
+      payment_event_id: paymentEventId,
+      status: resolvePaymentTransactionStatus(event),
+      amount_minor: BigInt(Number.isFinite(amountMinor) ? amountMinor : 0),
+      currency_iso3: currency,
+      is_live: event.livemode,
+      occurred_at: resolveEventOccurredAt(event),
+      raw_gateway_json: checkoutObject as unknown as Prisma.InputJsonValue,
+      updated_at: new Date(),
+    },
+  });
+}
+
+async function recordCheckoutTransaction(opts: {
+  bookingId: string;
+  event: CheckoutEvent;
+  paymentEventId: string | null;
+}) {
+  const {
+    bookingId,
+    event,
+    paymentEventId,
+  } = opts;
+  const checkoutObject = event.data.object;
+  const amountMinor = Math.round(checkoutObject.amount ?? 0);
+  const currency = checkoutObject.currency ?? 'PHP';
+
+  try {
+    await recordNormalizedCheckoutTransaction({
+      bookingId,
+      event,
+      paymentEventId,
+    });
+  } catch (error) {
+    console.error('Failed to record normalized checkout transaction', {
+      bookingId,
+      checkoutObjectId: checkoutObject.id,
+      error,
+    });
+  }
 
   try {
     await prisma.transaction.create({
       data: {
         booking_id: bookingId,
-        is_live: livemode,
+        is_live: event.livemode,
         gateway_data: checkoutObject as unknown as Prisma.InputJsonValue,
         payment_method: 'paymongo',
         currency_iso3: currency,
@@ -211,6 +397,77 @@ export async function handleWalletEvent(event: WalletEvent) {
     }
   });
 
+  // Notify customer about refund completion or failure
+  if (
+    transactionType === 'refund' &&
+    walletObject.booking_id &&
+    (status === 'succeeded' || status === 'failed')
+  ) {
+    try {
+      const bookingRow = await prisma.booking.findUnique({
+        where: { id: walletObject.booking_id, },
+        select: {
+          id: true,
+          space_id: true,
+          space_name: true,
+          area_id: true,
+          area_name: true,
+          user_auth_id: true,
+          partner_auth_id: true,
+        },
+      });
+
+      if (bookingRow) {
+        const refundLabel = status === 'succeeded' ? 'Refund completed' : 'Refund failed';
+        const refundBody = status === 'succeeded'
+          ? `Your refund of ${formatCurrencyMinor(amountMinor, walletObject.currency)} for ${bookingRow.area_name} · ${bookingRow.space_name} has been completed.`
+          : `Your refund for ${bookingRow.area_name} · ${bookingRow.space_name} could not be processed. Please contact support.`;
+
+        await notifyBookingEvent(
+          {
+            bookingId: bookingRow.id,
+            spaceId: bookingRow.space_id,
+            areaId: bookingRow.area_id,
+            spaceName: bookingRow.space_name,
+            areaName: bookingRow.area_name,
+            customerAuthId: bookingRow.user_auth_id,
+            partnerAuthId: bookingRow.partner_auth_id,
+          },
+          {
+ title: refundLabel,
+body: refundBody, 
+},
+          null
+        );
+
+        try {
+          const adminClient = getSupabaseAdminClient();
+          const { data: userData, } = await adminClient.auth.admin.getUserById(bookingRow.user_auth_id);
+          if (userData?.user?.email) {
+            await sendRefundNotificationEmail({
+              to: userData.user.email,
+              spaceName: bookingRow.space_name,
+              areaName: bookingRow.area_name,
+              amount: formatCurrencyMinor(amountMinor, walletObject.currency),
+              status,
+              link: `${APP_URL}/marketplace/${bookingRow.space_id}`,
+            });
+          }
+        } catch (emailError) {
+          console.error('Failed to send refund notification email', {
+ bookingId: bookingRow.id,
+error: emailError, 
+});
+        }
+      }
+    } catch (notifError) {
+      console.error('Failed to create refund notification', {
+ bookingId: walletObject.booking_id,
+error: notifError, 
+});
+    }
+  }
+
   return RECEIVED_RESPONSE;
 }
 
@@ -219,12 +476,25 @@ export async function handleCheckoutEvent(event: CheckoutEvent) {
     return RECEIVED_RESPONSE;
   }
 
+  const paymentEvent = await recordCheckoutPaymentEvent(event);
+  if (paymentEvent.duplicate) {
+    return RECEIVED_RESPONSE;
+  }
+
   const checkoutObject = event.data.object;
   const metadata = checkoutObject.metadata ?? {};
-  const bookingId = metadata.booking_id ?? metadata.bookingId ?? null;
+  const bookingId =
+    typeof metadata.booking_id === 'string'
+      ? metadata.booking_id
+      : (typeof metadata.bookingId === 'string' ? metadata.bookingId : null);
   const requiresHostApproval = metadata.requires_host_approval === 'true';
   if (!bookingId) {
     console.warn('PayMongo checkout webhook missing booking metadata');
+    await finalizeCheckoutPaymentEvent({
+      paymentEventId: paymentEvent.id,
+      status: 'ignored',
+      errorMessage: 'Missing booking metadata.',
+    });
     return RECEIVED_RESPONSE;
   }
 
@@ -232,10 +502,20 @@ export async function handleCheckoutEvent(event: CheckoutEvent) {
 
   if (!bookingRow) {
     console.warn('Checkout webhook could not find booking', bookingId);
+    await finalizeCheckoutPaymentEvent({
+      paymentEventId: paymentEvent.id,
+      status: 'ignored',
+      errorMessage: 'Booking not found.',
+    });
     return RECEIVED_RESPONSE;
   }
 
   if (bookingRow.status === 'confirmed') {
+    await finalizeCheckoutPaymentEvent({
+      paymentEventId: paymentEvent.id,
+      status: 'ignored',
+      errorMessage: 'Booking already confirmed.',
+    });
     return RECEIVED_RESPONSE;
   }
 
@@ -244,13 +524,18 @@ export async function handleCheckoutEvent(event: CheckoutEvent) {
       bookingId,
       status: bookingRow.status,
     });
+    await finalizeCheckoutPaymentEvent({
+      paymentEventId: paymentEvent.id,
+      status: 'ignored',
+      errorMessage: `Booking status is ${bookingRow.status}.`,
+    });
     return RECEIVED_RESPONSE;
   }
 
   await recordCheckoutTransaction({
     bookingId,
-    checkoutObject,
-    livemode: event.livemode,
+    event,
+    paymentEventId: paymentEvent.id,
   });
 
   const expectedAmountMinor =
@@ -274,6 +559,11 @@ export async function handleCheckoutEvent(event: CheckoutEvent) {
       paidAmountMinor,
       expectedCurrency: bookingRow.currency,
       paidCurrency: checkoutObject.currency,
+    });
+    await finalizeCheckoutPaymentEvent({
+      paymentEventId: paymentEvent.id,
+      status: 'ignored',
+      errorMessage: 'Amount or currency mismatch.',
     });
     return RECEIVED_RESPONSE;
   }
@@ -320,6 +610,10 @@ export async function handleCheckoutEvent(event: CheckoutEvent) {
       }
     }
 
+    await finalizeCheckoutPaymentEvent({
+      paymentEventId: paymentEvent.id,
+      status: 'processed',
+    });
     return RECEIVED_RESPONSE;
   }
 
@@ -375,6 +669,10 @@ export async function handleCheckoutEvent(event: CheckoutEvent) {
         }
       }
 
+      await finalizeCheckoutPaymentEvent({
+        paymentEventId: paymentEvent.id,
+        status: 'processed',
+      });
       return RECEIVED_RESPONSE;
     }
   }
@@ -452,5 +750,9 @@ export async function handleCheckoutEvent(event: CheckoutEvent) {
     console.error('Failed to send booking notification email', error);
   }
 
+  await finalizeCheckoutPaymentEvent({
+    paymentEventId: paymentEvent.id,
+    status: 'processed',
+  });
   return RECEIVED_RESPONSE;
 }

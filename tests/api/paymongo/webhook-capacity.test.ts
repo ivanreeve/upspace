@@ -37,6 +37,11 @@ describe('PayMongo webhook capacity safeguard', () => {
         findFirst: vi.fn().mockResolvedValue(null),
         create: vi.fn(),
       },
+      payment_event: {
+        create: vi.fn().mockResolvedValue({ id: 'pevt_1', }),
+        update: vi.fn(),
+      },
+      payment_transaction: { upsert: vi.fn(), },
       transaction: { create: vi.fn(), },
     } as any);
 
@@ -94,6 +99,11 @@ describe('PayMongo webhook capacity safeguard', () => {
         findFirst: vi.fn(),
         create: vi.fn(),
       },
+      payment_event: {
+        create: vi.fn().mockResolvedValue({ id: 'pevt_2', }),
+        update: vi.fn(),
+      },
+      payment_transaction: { upsert: vi.fn(), },
       transaction: { create: vi.fn(), },
     } as any);
 

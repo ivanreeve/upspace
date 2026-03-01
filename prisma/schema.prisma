@@ -119,10 +119,11 @@ model booking {
   price_rule_snapshot      Json?
   price_rule_branch        String?
   price_rule_expression    String?
-  app_notification         app_notification[]
-  area                     area               @relation(fields: [area_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "booking_area_fk")
-  space                    space              @relation(fields: [space_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "booking_space_fk")
-  transaction       transaction[]
+  app_notification    app_notification[]
+  area                area                 @relation(fields: [area_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "booking_area_fk")
+  space               space                @relation(fields: [space_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "booking_space_fk")
+  transaction         transaction[]
+  payment_transaction payment_transaction[]
 
   @@index([area_id, start_at, expires_at], map: "idx_booking_area_window")
   @@index([partner_auth_id, created_at(sort: Desc)], map: "idx_booking_partner_created")
@@ -318,6 +319,53 @@ model transaction {
   amount_minor    BigInt?
   fee_minor       BigInt?
   booking         booking   @relation(fields: [booking_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// Payment gateway webhook delivery log for idempotency and audit trails.
+model payment_event {
+  id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider            gateway
+  provider_event_id   String
+  event_type          String
+  provider_object_id  String?
+  livemode            Boolean              @default(false)
+  payload_json        Json                 @db.Json
+  received_at         DateTime             @default(now()) @db.Timestamptz(6)
+  processed_at        DateTime?            @db.Timestamptz(6)
+  processing_status   payment_event_status @default(received)
+  error_message       String?
+  payment_transaction payment_transaction[]
+
+  @@unique([provider, provider_event_id], map: "uq_payment_event_provider_event")
+  @@index([provider, event_type], map: "idx_payment_event_provider_type")
+  @@index([provider_object_id], map: "idx_payment_event_object")
+  @@index([received_at(sort: Desc)], map: "idx_payment_event_received")
+}
+
+/// Normalized payment record optimized for booking/payment workflows.
+model payment_transaction {
+  id                  String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  booking_id          String?                    @db.Uuid
+  provider            gateway
+  provider_object_id  String
+  payment_event_id    String?                    @db.Uuid
+  status              payment_transaction_status @default(pending)
+  amount_minor        BigInt
+  fee_minor           BigInt?
+  net_amount_minor    BigInt?
+  currency_iso3       String                     @default("PHP") @db.Char(3)
+  payment_method_type String?
+  is_live             Boolean                    @default(false)
+  occurred_at         DateTime?                  @db.Timestamptz(6)
+  raw_gateway_json    Json?                      @db.Json
+  created_at          DateTime                   @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime?                  @default(now()) @db.Timestamptz(6)
+  booking             booking?                   @relation(fields: [booking_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "payment_transaction_booking_fk")
+  payment_event       payment_event?             @relation(fields: [payment_event_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "payment_transaction_event_fk")
+
+  @@unique([provider, provider_object_id], map: "uq_payment_tx_provider_object")
+  @@index([booking_id, created_at(sort: Desc)], map: "idx_payment_tx_booking_created")
+  @@index([status, created_at(sort: Desc)], map: "idx_payment_tx_status_created")
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -541,6 +589,21 @@ enum deactivation_request_type {
 
 enum gateway {
   paymongo
+}
+
+enum payment_event_status {
+  received
+  processed
+  ignored
+  failed
+}
+
+enum payment_transaction_status {
+  pending
+  succeeded
+  failed
+  refunded
+  cancelled
 }
 
 enum notification_type {
