@@ -2082,6 +2082,14 @@ export function AreaDialog({
     name: 'price_rule_id',
     defaultValue: initialValues.price_rule_id,
   });
+  const activePricingRules = useMemo(
+    () => pricingRules.filter((rule) => rule.is_active),
+    [pricingRules]
+  );
+  const selectedPriceRule = useMemo(
+    () => pricingRules.find((rule) => rule.id === selectedPriceRuleId) ?? null,
+    [pricingRules, selectedPriceRuleId]
+  );
 
   useEffect(() => {
     form.reset(initialValues);
@@ -2110,7 +2118,11 @@ export function AreaDialog({
 
   const isPriceRuleRequired = mode === 'create';
   const isPriceRuleSelected = Boolean(selectedPriceRuleId);
-  const disableSaveButton = isSubmitting || (isPriceRuleRequired && !isPriceRuleSelected);
+  const isSelectedPriceRuleInactive = Boolean(selectedPriceRule && !selectedPriceRule.is_active);
+  const disableSaveButton =
+    isSubmitting ||
+    (isPriceRuleRequired && !isPriceRuleSelected) ||
+    isSelectedPriceRuleInactive;
 
   const close = () => onOpenChange(false);
 
@@ -2258,7 +2270,12 @@ export function AreaDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
-                    { pricingRules.map((rule) => (
+                    { isSelectedPriceRuleInactive && selectedPriceRule ? (
+                      <SelectItem value={ selectedPriceRule.id } disabled>
+                        { `${selectedPriceRule.name} (Inactive)` }
+                      </SelectItem>
+                    ) : null }
+                    { activePricingRules.map((rule) => (
                       <SelectItem key={ rule.id } value={ rule.id }>
                         { rule.name }
                       </SelectItem>
@@ -2269,6 +2286,7 @@ export function AreaDialog({
               <FormDescription>
                 Billing cadence and rate now live in the selected pricing rule. Choose a rule to apply its logic to this area.
                 { mode === 'create' ? ' Selecting a pricing rule is required to save a new area.' : '' }
+                { isSelectedPriceRuleInactive ? ' The selected pricing rule is inactive. Choose an active rule before saving.' : '' }
               </FormDescription>
               <FormMessage />
             </FormItem>

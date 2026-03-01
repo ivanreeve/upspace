@@ -62,12 +62,13 @@ export async function PUT(req: NextRequest, { params, }: RouteParams) {
         where: {
           id: parsed.data.price_rule_id,
           space_id: spaceIdParam,
+          is_active: true,
         },
         select: { id: true, },
       });
 
       if (!rule) {
-        return NextResponse.json({ error: 'Selected pricing rule is invalid.', }, { status: 400, });
+        return NextResponse.json({ error: 'Selected pricing rule is invalid or inactive.', }, { status: 400, });
       }
     }
 
