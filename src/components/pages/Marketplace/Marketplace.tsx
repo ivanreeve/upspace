@@ -1763,7 +1763,7 @@ function LocationFilterDialog({
             type="button"
             variant="outline"
             onClick={ () => onOpenChange(false) }
-            className="hover:text-white"
+            className="bg-muted/50 hover:bg-muted hover:text-foreground dark:bg-transparent dark:hover:bg-accent dark:hover:text-white"
           >
             Cancel
           </Button>

@@ -505,9 +505,13 @@ export async function GET(req: NextRequest) {
         and.push({
           amenity: {
             none: {
-              name: {
-                in: amenityNames,
-                mode: 'insensitive' as const,
+              amenity_choice: {
+                is: {
+                  name: {
+                    in: amenityNames,
+                    mode: 'insensitive' as const,
+                  },
+                },
               },
             },
           },
@@ -515,27 +519,35 @@ export async function GET(req: NextRequest) {
       } else if ((amenities_mode ?? 'any') === 'all') {
         for (const name of amenityNames) {
           and.push({
- amenity: {
- some: {
- name: {
- equals: name,
-mode: 'insensitive' as const, 
-}, 
-}, 
-}, 
-});
+            amenity: {
+              some: {
+                amenity_choice: {
+                  is: {
+                    name: {
+                      equals: name,
+                      mode: 'insensitive' as const,
+                    },
+                  },
+                },
+              },
+            },
+          });
         }
       } else {
         and.push({
           amenity: {
             some: {
- OR: amenityNames.map((name) => ({
- name: {
- equals: name,
-mode: 'insensitive' as const, 
-}, 
-})), 
-},
+              OR: amenityNames.map((name) => ({
+                amenity_choice: {
+                  is: {
+                    name: {
+                      equals: name,
+                      mode: 'insensitive' as const,
+                    },
+                  },
+                },
+              })),
+            },
           },
         });
       }
