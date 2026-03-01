@@ -8,6 +8,14 @@ import type { IconType } from 'react-icons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator
+} from '@/components/ui/breadcrumb';
+import {
   Card,
   CardContent,
   CardDescription,
@@ -141,7 +149,21 @@ export function CustomerBookingsPanel() {
 
   return (
     <div className="space-y-5 px-4 py-4 sm:px-6">
-      <Card className="rounded-2xl border border-border/70 bg-background">
+      <Breadcrumb className="px-6">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link href="/marketplace">Marketplace</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage className="text-sm font-medium">Bookings</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
+      <Card className="rounded-2xl border-0 bg-background">
         <CardHeader>
           <CardTitle>Recent bookings</CardTitle>
           <CardDescription>
