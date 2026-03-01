@@ -1017,7 +1017,7 @@ function MarketplaceSearchDialog({
               <CommandItem
                 value="clear search"
                 onSelect={ () => void onSearchSubmit('') }
-                className="group hover:text-white data-[selected=true]:text-white"
+                className="text-muted-foreground hover:!bg-[oklch(0.955_0.02_204.6929)] dark:hover:!bg-[oklch(0.24_0.02_204.6929)] hover:!text-primary hover:[&_svg]:!text-primary data-[selected=true]:!bg-[oklch(0.955_0.02_204.6929)] dark:data-[selected=true]:!bg-[oklch(0.24_0.02_204.6929)] data-[selected=true]:!text-foreground"
               >
                 <FiX className="size-4" aria-hidden="true" />
                 <span>Clear search</span>
@@ -1036,7 +1036,7 @@ function MarketplaceSearchDialog({
                     amenitiesNegate: false,
                   })
                 }
-                className="group hover:text-white data-[selected=true]:text-white"
+                className="text-muted-foreground hover:!bg-[oklch(0.955_0.02_204.6929)] dark:hover:!bg-[oklch(0.24_0.02_204.6929)] hover:!text-primary hover:[&_svg]:!text-primary data-[selected=true]:!bg-[oklch(0.955_0.02_204.6929)] dark:data-[selected=true]:!bg-[oklch(0.24_0.02_204.6929)] data-[selected=true]:!text-foreground"
               >
                 <FiX className="size-4" aria-hidden="true" />
                 <span>Clear filters</span>
