@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import AccountPage from '@/components/pages/Account/AccountPage';
 import { MarketplaceChrome } from '@/components/pages/Marketplace/MarketplaceChrome';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseReadOnlyServerClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
   title: 'Account | UpSpace',
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AccountRoutePage() {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseReadOnlyServerClient();
   const { data: authData, } = await supabase.auth.getUser();
 
   if (!authData?.user) {

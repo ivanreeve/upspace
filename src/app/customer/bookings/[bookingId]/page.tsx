@@ -8,7 +8,7 @@ import { normalizeNumeric } from '@/lib/bookings/serializer';
 import { buildTimeline } from '@/lib/bookings/timeline';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
 import { prisma } from '@/lib/prisma';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseReadOnlyServerClient } from '@/lib/supabase/server';
 import type { BookingDetailRecord } from '@/types/booking-detail';
 
 export const metadata: Metadata = {
@@ -20,7 +20,7 @@ type Props = { params: Promise<{ bookingId: string }> };
 
 export default async function CustomerBookingDetailPage({ params, }: Props) {
   const { bookingId, } = await params;
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseReadOnlyServerClient();
   const { data: authData, } = await supabase.auth.getUser();
 
   if (!authData?.user) {

@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 
 import { prisma } from '@/lib/prisma';
 import { getSpaceDetail } from '@/lib/queries/space';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseReadOnlyServerClient } from '@/lib/supabase/server';
 import SpaceDetail from '@/components/pages/Marketplace/SpaceDetail/SpaceDetail';
 import { SpaceDetailSkeleton } from '@/components/pages/Marketplace/SpaceDetail/SpaceDetail.Skeleton';
 import { SpaceDetailShell } from '@/components/pages/Marketplace/SpaceDetail/SpaceDetailShell';
@@ -42,7 +42,7 @@ export default async function SpaceDetailPage({ params, }: Props) {
   const { space_id, } = await params;
   if (!isUuid(space_id)) notFound();
 
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseReadOnlyServerClient();
   const { data: authData, } = await supabase.auth.getUser();
 
   // Fetch bookmark user and space in parallel

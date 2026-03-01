@@ -17,6 +17,23 @@ type MiddlewareProfile = {
   role?: string | null;
 };
 
+/**
+ * Create a redirect response that preserves any Set-Cookie headers from the
+ * original `response` (e.g. refreshed Supabase auth tokens).  Without this,
+ * token rotation during `getUser()` writes new cookies to `response`, but a
+ * bare `NextResponse.redirect()` creates a *new* response that drops them —
+ * leaving the browser with an invalidated refresh token and logging the user out.
+ */
+function redirectWithCookies(url: URL, response: NextResponse) {
+  const redirect = NextResponse.redirect(url);
+
+  response.cookies.getAll().forEach((cookie) => {
+    redirect.cookies.set(cookie.name, cookie.value);
+  });
+
+  return redirect;
+}
+
 export async function middleware(request: NextRequest) {
   if (request.headers.get('x-upspace-internal-call') === '1') {
     return NextResponse.next();
@@ -79,7 +96,7 @@ export async function middleware(request: NextRequest) {
     if (!user) {
       if (isOnboardingPath) {
         const homeUrl = new URL('/', request.url);
-        return NextResponse.redirect(homeUrl);
+        return redirectWithCookies(homeUrl, response);
       }
 
       if (isPathPublic(pathname)) {
@@ -87,7 +104,7 @@ export async function middleware(request: NextRequest) {
       }
 
       const homeUrl = new URL('/', request.url);
-      return NextResponse.redirect(homeUrl);
+      return redirectWithCookies(homeUrl, response);
     }
 
     const syncProfileUrl = new URL('/api/v1/auth/sync-profile', request.url);
@@ -130,7 +147,7 @@ export async function middleware(request: NextRequest) {
       }
 
       const fallbackUrl = new URL(ONBOARDING_PATH, request.url);
-      return NextResponse.redirect(fallbackUrl);
+      return redirectWithCookies(fallbackUrl, response);
     }
 
     const profilePayload = await profileResponse.json().catch(() => null);
@@ -145,7 +162,7 @@ export async function middleware(request: NextRequest) {
       }
 
       const fallbackUrl = new URL(ONBOARDING_PATH, request.url);
-      return NextResponse.redirect(fallbackUrl);
+      return redirectWithCookies(fallbackUrl, response);
     }
 
     const isOnboard = Boolean(profile?.isOnboard);
@@ -155,7 +172,7 @@ export async function middleware(request: NextRequest) {
       }
 
       const onboardingUrl = new URL(ONBOARDING_PATH, request.url);
-      return NextResponse.redirect(onboardingUrl);
+      return redirectWithCookies(onboardingUrl, response);
     }
 
     const redirectTarget =
@@ -172,7 +189,7 @@ export async function middleware(request: NextRequest) {
         console.log(`[Middleware] Redirecting ${pathname} → ${redirectTarget}`);
       }
       const targetUrl = new URL(redirectTarget, request.url);
-      return NextResponse.redirect(targetUrl);
+      return redirectWithCookies(targetUrl, response);
     }
 
     if (!PUBLIC_PATHS.has(pathname) && !isOnboardingPath) {
@@ -193,7 +210,7 @@ export async function middleware(request: NextRequest) {
         if (!canAccessPath) {
           const fallbackPath = redirectTarget ?? allowedPaths[0] ?? '/';
           const targetUrl = new URL(fallbackPath, request.url);
-          return NextResponse.redirect(targetUrl);
+          return redirectWithCookies(targetUrl, response);
         }
       }
     }

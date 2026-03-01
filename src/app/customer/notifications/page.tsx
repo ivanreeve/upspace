@@ -6,7 +6,7 @@ import { NotificationsPage } from '@/components/pages/Notifications/Notification
 import { MarketplaceChrome } from '@/components/pages/Marketplace/MarketplaceChrome';
 import { prisma } from '@/lib/prisma';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseReadOnlyServerClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
   title: 'Notifications | UpSpace',
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export default async function NotificationsRoute() {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseReadOnlyServerClient();
   const { data: authData, } = await supabase.auth.getUser();
 
   if (!authData?.user) {

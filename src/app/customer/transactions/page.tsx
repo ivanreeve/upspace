@@ -6,7 +6,7 @@ import { CustomerTransactionHistory } from '@/components/pages/Transactions/Cust
 import { MarketplaceChrome } from '@/components/pages/Marketplace/MarketplaceChrome';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
 import { prisma } from '@/lib/prisma';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseReadOnlyServerClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
   title: 'Transaction history | UpSpace',
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CustomerTransactionsPage() {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseReadOnlyServerClient();
   const { data: authData, } = await supabase.auth.getUser();
 
   if (!authData?.user) {
