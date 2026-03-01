@@ -280,6 +280,7 @@ export function AdminSpacesPage() {
                                 <DropdownMenuItem
                                   onSelect={ () => handleToggleVisibility(space.id, space.isPublished ? 'hide' : 'show') }
                                   disabled={ isProcessingSpace }
+                                  className="data-[highlighted]:bg-[oklch(0.955_0.02_204.6929)] focus-visible:bg-[oklch(0.955_0.02_204.6929)] dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
                                 >
                                   { isProcessingSpace ? processingLabel : actionLabel }
                                 </DropdownMenuItem>
