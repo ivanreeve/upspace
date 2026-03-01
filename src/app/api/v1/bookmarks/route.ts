@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
+import { enforceRateLimit, RateLimitExceededError } from '@/lib/rate-limit';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 const payloadSchema = z.object({ space_id: z.string().uuid(), });
@@ -18,6 +19,25 @@ export async function POST(req: NextRequest) {
       { error: 'Authentication required.', },
       { status: 401, }
     );
+  }
+
+  try {
+    await enforceRateLimit({
+ scope: 'bookmark-toggle',
+request: req,
+identity: authData.user.id, 
+});
+  } catch (error) {
+    if (error instanceof RateLimitExceededError) {
+      return NextResponse.json(
+        { error: error.message, },
+        {
+ status: 429,
+headers: { 'Retry-After': error.retryAfter.toString(), }, 
+}
+      );
+    }
+    console.error('Rate limit check failed for bookmark toggle', error);
   }
 
   const dbUser = await prisma.user.findFirst({
@@ -94,6 +114,25 @@ export async function DELETE(req: NextRequest) {
       { error: 'Authentication required.', },
       { status: 401, }
     );
+  }
+
+  try {
+    await enforceRateLimit({
+ scope: 'bookmark-toggle',
+request: req,
+identity: authData.user.id, 
+});
+  } catch (error) {
+    if (error instanceof RateLimitExceededError) {
+      return NextResponse.json(
+        { error: error.message, },
+        {
+ status: 429,
+headers: { 'Retry-After': error.retryAfter.toString(), }, 
+}
+      );
+    }
+    console.error('Rate limit check failed for bookmark toggle', error);
   }
 
   const dbUser = await prisma.user.findFirst({

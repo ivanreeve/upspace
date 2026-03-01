@@ -1,17 +1,25 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   FiBell,
   FiCheck,
   FiClock,
   FiInbox,
-  FiLoader
+  FiLoader,
+  FiTrash2
 } from 'react-icons/fi';
 import { toast } from 'sonner';
 
-import { useMarkAllNotificationsRead, useMarkNotificationRead, useNotificationsQuery } from '@/hooks/api/useNotifications';
+import { useSession } from '@/components/auth/SessionProvider';
+import {
+  useDeleteNotification,
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+  useNotificationsQuery
+} from '@/hooks/api/useNotifications';
+import { useNotificationSubscription } from '@/hooks/use-notification-subscription';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,21 +33,52 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
+const FILTER_OPTIONS = [
+  {
+ label: 'All',
+value: undefined, 
+},
+  {
+ label: 'Bookings',
+value: 'booking_confirmed', 
+},
+  {
+ label: 'System',
+value: 'system', 
+}
+] as const;
+
+type FilterValue = (typeof FILTER_OPTIONS)[number]['value'];
+
 const notificationDateFormatter = new Intl.DateTimeFormat('en-PH', {
   dateStyle: 'medium',
   timeStyle: 'short',
 });
 
 export function NotificationsPage() {
+  const { session, } = useSession();
+  const [activeFilter, setActiveFilter] = useState<FilterValue>(undefined);
+
+  useNotificationSubscription(session?.user?.id ?? null);
+
   const {
-    data: notifications = [],
+    data,
     isLoading,
     isError,
     error,
     refetch,
-  } = useNotificationsQuery();
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useNotificationsQuery({ type: activeFilter, });
   const markNotificationRead = useMarkNotificationRead();
   const markAllNotificationsRead = useMarkAllNotificationsRead();
+  const deleteNotification = useDeleteNotification();
+
+  const notifications = useMemo(
+    () => data?.pages.flatMap((page) => page.data) ?? [],
+    [data]
+  );
 
   const sortedNotifications = useMemo(
     () =>
@@ -61,6 +100,22 @@ export function NotificationsPage() {
           const message = mutationError instanceof Error
             ? mutationError.message
             : 'Unable to update notification.';
+          toast.error(message);
+        },
+      }
+    );
+  };
+
+  const handleDelete = (event: React.MouseEvent, notificationId: string) => {
+    event.preventDefault();
+    event.stopPropagation();
+    deleteNotification.mutate(
+      { notificationId, },
+      {
+        onError: (mutationError) => {
+          const message = mutationError instanceof Error
+            ? mutationError.message
+            : 'Unable to delete notification.';
           toast.error(message);
         },
       }
@@ -123,7 +178,23 @@ export function NotificationsPage() {
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="flex gap-2" role="tablist" aria-label="Filter notifications">
+        { FILTER_OPTIONS.map((option) => (
+          <Button
+            key={ option.label }
+            type="button"
+            size="sm"
+            variant={ activeFilter === option.value ? 'default' : 'outline' }
+            role="tab"
+            aria-selected={ activeFilter === option.value }
+            onClick={ () => setActiveFilter(option.value) }
+          >
+            { option.label }
+          </Button>
+        )) }
+      </div>
+
+      <div className="space-y-3" aria-live="polite">
         { isLoading ? (
           <div className="space-y-2">
             { Array.from({ length: 4, }).map((_, index) => (
@@ -148,37 +219,69 @@ export function NotificationsPage() {
         ) : sortedNotifications.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
             <FiInbox className="size-5" aria-hidden="true" />
-            <p>No notifications yet. Confirmed bookings will appear here.</p>
+            <p>
+              { activeFilter
+                ? 'No notifications match this filter.'
+                : 'No notifications yet. Confirmed bookings will appear here.' }
+            </p>
           </div>
         ) : (
-          <ul className="space-y-2">
-            { sortedNotifications.map((notification) => (
-              <li key={ notification.id }>
-                <Link
-                  href={ notification.href }
-                  onClick={ () => handleClick(notification.id, true) }
-                  className={ cn(
-                    'flex items-start justify-between gap-3 rounded-md border px-4 py-3 transition-colors hover:border-primary',
-                    notification.read ? 'bg-muted/40 text-muted-foreground' : 'bg-background text-foreground'
-                  ) }
-                >
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold leading-tight">{ notification.title }</p>
-                    <p className="text-sm text-muted-foreground">{ notification.body }</p>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <FiClock className="size-3.5" aria-hidden="true" />
-                      <span>{ notificationDateFormatter.format(new Date(notification.createdAt)) }</span>
+          <>
+            <ul className="space-y-2">
+              { sortedNotifications.map((notification) => (
+                <li key={ notification.id }>
+                  <Link
+                    href={ notification.href }
+                    onClick={ () => handleClick(notification.id, true) }
+                    className={ cn(
+                      'flex items-start justify-between gap-3 rounded-md border px-4 py-3 transition-colors hover:border-primary',
+                      notification.read ? 'bg-muted/40 text-muted-foreground' : 'bg-background text-foreground'
+                    ) }
+                  >
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold leading-tight">{ notification.title }</p>
+                      <p className="text-sm text-muted-foreground">{ notification.body }</p>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <FiClock className="size-3.5" aria-hidden="true" />
+                        <span>{ notificationDateFormatter.format(new Date(notification.createdAt)) }</span>
+                      </div>
                     </div>
-                  </div>
-                  { notification.read ? null : (
-                    <Badge variant="default" className="mt-1 text-[10px] uppercase tracking-wide">
-                      New
-                    </Badge>
-                  ) }
-                </Link>
-              </li>
-            )) }
-          </ul>
+                    <div className="flex items-center gap-2">
+                      { notification.read ? null : (
+                        <Badge variant="default" className="mt-1 text-[10px] uppercase tracking-wide">
+                          New
+                        </Badge>
+                      ) }
+                      <button
+                        type="button"
+                        onClick={ (event) => handleDelete(event, notification.id) }
+                        className="mt-1 rounded-md p-1 text-muted-foreground/60 hover:bg-destructive/10 hover:text-destructive"
+                        aria-label="Delete notification"
+                      >
+                        <FiTrash2 className="size-3.5" aria-hidden="true" />
+                      </button>
+                    </div>
+                  </Link>
+                </li>
+              )) }
+            </ul>
+            { hasNextPage && (
+              <div className="flex justify-center pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={ () => { void fetchNextPage(); } }
+                  disabled={ isFetchingNextPage }
+                >
+                  { isFetchingNextPage ? (
+                    <FiLoader className="mr-2 size-4 animate-spin" aria-hidden="true" />
+                  ) : null }
+                  Load more
+                </Button>
+              </div>
+            ) }
+          </>
         ) }
       </div>
     </div>

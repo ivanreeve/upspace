@@ -1,9 +1,14 @@
 'use client';
 
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useMemo } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { FiAlertTriangle, FiBookmark, FiRefreshCw } from 'react-icons/fi';
+import {
+FiAlertTriangle,
+FiBookmark,
+FiLoader,
+FiRefreshCw
+} from 'react-icons/fi';
 
 import { SkeletonGrid, SpaceCard } from '@/components/pages/Marketplace/Marketplace.Cards';
 import { Button } from '@/components/ui/button';
@@ -16,6 +21,8 @@ type BookmarksProps = {
   bookmarkUserId: string;
 };
 
+const PAGE_SIZE = 24;
+
 export function Bookmarks({ bookmarkUserId, }: BookmarksProps) {
   const isMobile = useIsMobile();
   const {
@@ -24,26 +31,34 @@ export function Bookmarks({ bookmarkUserId, }: BookmarksProps) {
     isFetching,
     isError,
     refetch,
-  } = useQuery({
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ['bookmarks', bookmarkUserId],
-    queryFn: () => listSpaces({
-      limit: 60,
+    queryFn: ({ pageParam, }) => listSpaces({
+      limit: PAGE_SIZE,
+      cursor: pageParam ?? null,
       bookmark_user_id: bookmarkUserId,
       include_pending: false,
     }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     enabled: Boolean(bookmarkUserId),
     staleTime: 1000 * 60 * 5,
   });
 
-  const [visibleSpaces, setVisibleSpaces] = React.useState<Space[]>([]);
+  const allSpaces = useMemo(() => data?.pages.flatMap((page) => page.data) ?? [], [data]);
+  const [hiddenIds, setHiddenIds] = React.useState<Set<string>>(new Set());
 
-  React.useEffect(() => {
-    setVisibleSpaces(data?.data ?? []);
-  }, [data]);
+  const visibleSpaces = useMemo(
+    () => allSpaces.filter((space) => !hiddenIds.has(space.space_id)),
+    [allSpaces, hiddenIds]
+  );
 
   const handleBookmarkChange = React.useCallback((spaceId: string, nextIsBookmarked: boolean) => {
     if (!nextIsBookmarked) {
-      setVisibleSpaces((prev) => prev.filter((space) => space.space_id !== spaceId));
+      setHiddenIds((prev) => new Set(prev).add(spaceId));
       return;
     }
 
@@ -59,7 +74,7 @@ export function Bookmarks({ bookmarkUserId, }: BookmarksProps) {
           Bookmarks
         </h1>
         <p className="text-sm text-muted-foreground sm:text-base">
-          All your saved spaces in one place—jump back in to compare, inquire, or book when you’re ready.
+          All your saved spaces in one place—jump back in to compare, inquire, or book when you're ready.
         </p>
       </div>
       <div className="flex items-center gap-2">
@@ -150,7 +165,7 @@ export function Bookmarks({ bookmarkUserId, }: BookmarksProps) {
       { heading }
       <div className="mt-6 flex items-center justify-between gap-2 text-sm text-muted-foreground">
         <span>{ visibleSpaces.length } saved { visibleSpaces.length === 1 ? 'space' : 'spaces' }</span>
-        { isFetching && <span className="text-xs">Updating…</span> }
+        { isFetching && !isFetchingNextPage && <span className="text-xs">Updating…</span> }
       </div>
       <div className="mt-6">
         <div className="grid w-full justify-items-stretch grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
@@ -163,6 +178,22 @@ export function Bookmarks({ bookmarkUserId, }: BookmarksProps) {
           )) }
         </div>
       </div>
+      { hasNextPage && (
+        <div className="mt-8 flex justify-center">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={ () => { void fetchNextPage(); } }
+            disabled={ isFetchingNextPage }
+          >
+            { isFetchingNextPage ? (
+              <FiLoader className="mr-2 size-4 animate-spin" aria-hidden="true" />
+            ) : null }
+            Load more
+          </Button>
+        </div>
+      ) }
     </section>
   );
 }

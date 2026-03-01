@@ -1,9 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import { useMemo } from 'react';
+import { FiLoader } from 'react-icons/fi';
 
+import { useCustomerTransactionsQuery } from '@/hooks/api/useCustomerTransactions';
 import { formatCurrencyMinor } from '@/lib/wallet';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -11,8 +15,8 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import type { CustomerTransactionBookingStatus, CustomerTransactionRecord } from '@/types/transactions';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { CustomerTransactionBookingStatus } from '@/types/transactions';
 
 const BOOKING_STATUS_VARIANTS: Record<CustomerTransactionBookingStatus, 'secondary' | 'success' | 'destructive'> = {
   pending: 'secondary',
@@ -47,15 +51,26 @@ const LOCALE_OPTIONS = {
   minute: '2-digit',
 } as const;
 
-type CustomerTransactionHistoryProps = {
-  transactions: CustomerTransactionRecord[];
-};
-
 const formatDateTime = (value: string) =>
   new Date(value).toLocaleString('en-PH', LOCALE_OPTIONS);
 
-export function CustomerTransactionHistory(props: CustomerTransactionHistoryProps) {
-  const { transactions, } = props;
+export function CustomerTransactionHistory() {
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useCustomerTransactionsQuery();
+
+  const transactions = useMemo(
+    () => data?.pages.flatMap((page) => page.data) ?? [],
+    [data]
+  );
+
   const hasTransactions = transactions.length > 0;
   const totalAmountMinor = transactions.reduce((sum, transaction) => {
     const minor = Number(transaction.amountMinor ?? '0');
@@ -66,6 +81,47 @@ export function CustomerTransactionHistory(props: CustomerTransactionHistoryProp
     0
   );
   const lastTransaction = transactions[0];
+
+  if (isLoading) {
+    return (
+      <section className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+        <div className="space-y-1">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-8 w-56" />
+          <Skeleton className="h-4 w-80" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          { Array.from({ length: 3, }).map((_, i) => (
+            <Card key={ i } className="border border-border bg-card/70">
+              <CardHeader className="space-y-1 p-4"><Skeleton className="h-5 w-24" /></CardHeader>
+              <CardContent className="p-4"><Skeleton className="h-8 w-32" /></CardContent>
+            </Card>
+          )) }
+        </div>
+        <Card className="border border-border bg-card/70">
+          <CardHeader className="px-6 py-4"><Skeleton className="h-6 w-40" /></CardHeader>
+          <CardContent className="space-y-4 p-6">
+            { Array.from({ length: 3, }).map((_, i) => (
+              <Skeleton key={ i } className="h-28 w-full rounded-2xl" />
+            )) }
+          </CardContent>
+        </Card>
+      </section>
+    );
+  }
+
+  if (isError) {
+    return (
+      <section className="mx-auto flex w-full max-w-[1200px] flex-col items-center gap-4 px-4 py-20 sm:px-6 lg:px-8">
+        <p className="text-sm text-muted-foreground">
+          { error instanceof Error ? error.message : 'Unable to load transactions.' }
+        </p>
+        <Button variant="outline" size="sm" onClick={ () => { void refetch(); } }>
+          Retry
+        </Button>
+      </section>
+    );
+  }
 
   return (
     <section className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
@@ -164,7 +220,7 @@ export function CustomerTransactionHistory(props: CustomerTransactionHistoryProp
               Every settled booking payment will appear here for easy reference.
             </div>
           ) : (
-            <ScrollArea className="max-h-[640px] rounded-b-md border-t border-border/60 bg-card/80">
+            <div className="rounded-b-md border-t border-border/60 bg-card/80">
               <div className="space-y-4 p-6">
                 { transactions.map((transaction) => {
                   const amountLabel = formatCurrencyMinor(
@@ -232,7 +288,23 @@ export function CustomerTransactionHistory(props: CustomerTransactionHistoryProp
                   );
                 }) }
               </div>
-            </ScrollArea>
+              { hasNextPage && (
+                <div className="flex justify-center border-t border-border/60 px-6 py-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={ () => { void fetchNextPage(); } }
+                    disabled={ isFetchingNextPage }
+                  >
+                    { isFetchingNextPage ? (
+                      <FiLoader className="mr-2 size-4 animate-spin" aria-hidden="true" />
+                    ) : null }
+                    Load more
+                  </Button>
+                </div>
+              ) }
+            </div>
           ) }
         </CardContent>
       </Card>

@@ -27,6 +27,7 @@ TabsList,
 TabsTrigger
 } from '@/components/ui/tabs';
 import { AdminDashboardPayload, useAdminDashboardQuery } from '@/hooks/api/useAdminDashboard';
+import { formatCurrencyMinor } from '@/lib/wallet';
 
 type AdminDashboardProps = {
   mockPayload?: AdminDashboardPayload;
@@ -130,6 +131,19 @@ export function AdminDashboard({ mockPayload, }: AdminDashboardProps) {
       description: 'Partner business verification throughput.',
       value: metrics?.verifications.total,
       statuses: metrics?.verifications.statusCounts ?? [],
+    },
+    {
+      title: 'Revenue',
+      description: 'Total transaction volume.',
+      value: metrics?.revenue.totalMinor
+        ? formatCurrencyMinor(metrics.revenue.totalMinor, 'PHP')
+        : '₱0',
+      statuses: [
+        {
+          status: 'transactions',
+          count: metrics?.revenue.transactionCount,
+        }
+      ],
     }
   ];
 

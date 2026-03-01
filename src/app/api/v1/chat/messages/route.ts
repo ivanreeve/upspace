@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { prisma } from '@/lib/prisma';
+import { enforceRateLimit, RateLimitExceededError } from '@/lib/rate-limit';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { chatMessagePayloadSchema, chatMessageRoomQuerySchema } from '@/lib/validations/chat';
 import { formatDisplayName, mapChatMessage } from '@/lib/chat/utils';
@@ -32,6 +33,10 @@ export async function GET(req: NextRequest) {
   if (!parsed.success) {
     return invalidPayloadResponse;
   }
+
+  const cursorParam = url.searchParams.get('cursor') ?? undefined;
+  const limitParam = url.searchParams.get('limit');
+  const limit = limitParam ? Math.min(Math.max(Number(limitParam) || 50, 1), 100) : 50;
 
   const supabase = await createSupabaseServerClient();
   const {
@@ -84,7 +89,6 @@ export async function GET(req: NextRequest) {
           },
         },
       },
-      chat_message: { orderBy: { created_at: 'asc', }, },
     },
   });
 
@@ -104,14 +108,37 @@ export async function GET(req: NextRequest) {
     return forbiddenResponse;
   }
 
+  const chatMessages = await prisma.chat_message.findMany({
+    where: { room_id: parsed.data.room_id, },
+    orderBy: { created_at: 'desc', },
+    take: limit + 1,
+    ...(cursorParam ? {
+ cursor: { id: cursorParam, },
+skip: 1, 
+} : {}),
+  });
+
+  const hasMore = chatMessages.length > limit;
+  if (hasMore) chatMessages.pop();
+
+  // Reverse to chronological order for display
+  chatMessages.reverse();
+
+  const nextCursor = hasMore ? chatMessages[0]?.id : undefined;
   const customerName = formatDisplayName(room.user);
   const partnerName = formatDisplayName(room.space?.user ?? null);
 
-  const messages = room.chat_message.map((chat_message) =>
+  const messages = chatMessages.map((chat_message) =>
     mapChatMessage(chat_message, customerName, partnerName)
   );
 
-  return NextResponse.json({ messages, });
+  return NextResponse.json({
+    messages,
+    pagination: {
+ hasMore,
+nextCursor, 
+},
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -130,6 +157,25 @@ export async function POST(req: NextRequest) {
 
   if (authError || !authData?.user) {
     return unauthorizedResponse;
+  }
+
+  try {
+    await enforceRateLimit({
+ scope: 'chat-messages',
+request: req,
+identity: authData.user.id, 
+});
+  } catch (error) {
+    if (error instanceof RateLimitExceededError) {
+      return NextResponse.json(
+        { error: error.message, },
+        {
+ status: 429,
+headers: { 'Retry-After': error.retryAfter.toString(), }, 
+}
+      );
+    }
+    console.error('Rate limit check failed for chat messages', error);
   }
 
   const dbUser = await prisma.user.findFirst({

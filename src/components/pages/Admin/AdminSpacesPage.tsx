@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiMapPin } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -59,6 +59,7 @@ export function AdminSpacesPage() {
     isError,
     error,
     isFetching,
+    refetch,
   } = useAdminSpacesQuery({
     limit: pageSize,
     cursor,
@@ -238,6 +239,11 @@ export function AdminSpacesPage() {
                 <p className="mt-4 text-center text-sm text-muted-foreground">
                   { error instanceof Error ? error.message : 'Unable to load spaces right now.' }
                 </p>
+                <div className="mt-4 flex justify-center">
+                  <Button variant="outline" size="sm" onClick={ () => refetch() }>
+                    Retry
+                  </Button>
+                </div>
               </div>
             ) : (
               <Table>
@@ -293,8 +299,13 @@ export function AdminSpacesPage() {
                   }) }
                   { spaces.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={ 6 } className="py-8 text-center text-sm text-muted-foreground">
-                        No spaces matched your search.
+                      <TableCell colSpan={ 6 } className="py-12 text-center">
+                        <div className="flex flex-col items-center gap-2">
+                          <FiMapPin className="size-5 text-muted-foreground" aria-hidden="true" />
+                          <p className="text-sm text-muted-foreground">
+                            { searchParam ? 'No spaces matched your search.' : 'No spaces found.' }
+                          </p>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ) }

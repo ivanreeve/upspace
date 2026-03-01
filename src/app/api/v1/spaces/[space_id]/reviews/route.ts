@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
+import { enforceRateLimit, RateLimitExceededError } from '@/lib/rate-limit';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 const isUuid = (value: string | undefined): value is string =>
@@ -43,6 +44,9 @@ export async function GET(req: NextRequest, { params, }: Params) {
   const limitParam = searchParams.get('limit') ?? undefined;
   const limit = limitParam ? Number.parseInt(limitParam, 10) : 50;
   const safeLimit = Number.isFinite(limit) && limit > 0 && limit <= 100 ? limit : 50;
+  const cursorParam = searchParams.get('cursor') ?? undefined;
+  const ratingFilter = searchParams.get('rating') ? Number(searchParams.get('rating')) : undefined;
+  const sortParam = searchParams.get('sort') ?? 'newest';
 
   const supabase = await createSupabaseServerClient();
   const { data: authData, } = await supabase.auth.getUser();
@@ -54,6 +58,19 @@ export async function GET(req: NextRequest, { params, }: Params) {
       })
     : null;
   const viewerUserId = viewerUserRecord?.user_id ?? null;
+
+  const reviewWhere: Record<string, unknown> = { space_id, };
+  if (ratingFilter && ratingFilter >= 1 && ratingFilter <= 5) {
+    reviewWhere.rating_star = ratingFilter;
+  }
+
+  const orderBy = sortParam === 'oldest'
+    ? { created_at: 'asc' as const, }
+    : sortParam === 'highest'
+      ? { rating_star: 'desc' as const, }
+      : sortParam === 'lowest'
+        ? { rating_star: 'asc' as const, }
+        : { created_at: 'desc' as const, };
 
   const [reviewSummary, ratingBreakdown, reviews] = await prisma.$transaction([
     prisma.review.aggregate({
@@ -68,9 +85,13 @@ export async function GET(req: NextRequest, { params, }: Params) {
       _count: { _all: true, },
     }),
     prisma.review.findMany({
-      where: { space_id, },
-      orderBy: { created_at: 'desc', },
-      take: safeLimit,
+      where: reviewWhere,
+      orderBy,
+      take: safeLimit + 1,
+      ...(cursorParam ? {
+ cursor: { id: cursorParam, },
+skip: 1, 
+} : {}),
       select: {
         id: true,
         user_id: true,
@@ -89,6 +110,9 @@ export async function GET(req: NextRequest, { params, }: Params) {
       },
     })
   ]);
+
+  const hasMore = reviews.length > safeLimit;
+  if (hasMore) reviews.pop();
 
   const totalReviews = reviewSummary._count ?? 0;
 
@@ -122,6 +146,11 @@ export async function GET(req: NextRequest, { params, }: Params) {
           ],
         },
         reviews: [],
+        viewer_reviewed: false,
+        pagination: {
+ hasMore: false,
+nextCursor: undefined, 
+},
       },
     });
   }
@@ -197,6 +226,10 @@ export async function GET(req: NextRequest, { params, }: Params) {
       },
     })),
     viewer_reviewed: viewerHasReviewed,
+    pagination: {
+      hasMore,
+      nextCursor: hasMore ? reviews[reviews.length - 1]?.id : undefined,
+    },
   };
 
   return NextResponse.json({ data: payload, });
@@ -220,6 +253,25 @@ export async function POST(req: NextRequest, { params, }: Params) {
       { error: 'Authentication required.', },
       { status: 401, }
     );
+  }
+
+  try {
+    await enforceRateLimit({
+ scope: 'review-create',
+request: req,
+identity: authData.user.id, 
+});
+  } catch (error) {
+    if (error instanceof RateLimitExceededError) {
+      return NextResponse.json(
+        { error: error.message, },
+        {
+ status: 429,
+headers: { 'Retry-After': error.retryAfter.toString(), }, 
+}
+      );
+    }
+    console.error('Rate limit check failed for review creation', error);
   }
 
   const dbUser = await prisma.user.findFirst({

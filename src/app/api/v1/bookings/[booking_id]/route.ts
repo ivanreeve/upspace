@@ -58,6 +58,7 @@ export async function GET(
       status: true,
       created_at: true,
       user_auth_id: true,
+      expires_at: true,
     },
   });
 
@@ -68,7 +69,7 @@ export async function GET(
     );
   }
 
-  const [paymentTx, refundTxs] = await Promise.all([
+  const [paymentTx, refundTxs, statusNotifications] = await Promise.all([
     prisma.transaction.findFirst({
       where: { booking_id: booking.id, },
       orderBy: { created_at: 'asc', },
@@ -85,7 +86,7 @@ export async function GET(
     prisma.wallet_transaction.findMany({
       where: {
  booking_id: booking.id,
-type: 'refund', 
+type: 'refund',
 },
       orderBy: { created_at: 'asc', },
       select: {
@@ -95,10 +96,30 @@ type: 'refund',
         currency: true,
         created_at: true,
       },
+    }),
+    prisma.app_notification.findMany({
+      where: {
+        booking_id: booking.id,
+        user_auth_id: authData.user.id,
+        type: {
+          in: [
+            'booking_confirmed',
+            'booking_checkedin',
+            'booking_checkedout',
+            'booking_completed',
+            'booking_noshow'
+          ],
+        },
+      },
+      orderBy: { created_at: 'asc', },
+      select: {
+ type: true,
+created_at: true, 
+},
     })
   ]);
 
-  const timeline = buildTimeline(booking, paymentTx, refundTxs);
+  const timeline = buildTimeline(booking, paymentTx, refundTxs, statusNotifications);
 
   const record: BookingDetailRecord = {
     id: booking.id,

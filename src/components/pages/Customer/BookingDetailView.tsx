@@ -2,12 +2,16 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import {
-FiArrowLeft,
-FiClock,
-FiCreditCard,
-FiUsers
+  FiArrowLeft,
+  FiClock,
+  FiCreditCard,
+  FiDownload,
+  FiLoader,
+  FiUsers
 } from 'react-icons/fi';
+import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,6 +26,7 @@ import { CANCELLABLE_BOOKING_STATUSES } from '@/lib/bookings/constants';
 import type { BookingStatus } from '@/lib/bookings/types';
 import { formatCurrencyMinor } from '@/lib/wallet';
 import { useCustomerCancelBookingMutation } from '@/hooks/api/useCustomerCancelBooking';
+import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
 import type { BookingDetailRecord, TimelineEvent } from '@/types/booking-detail';
 
 const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
@@ -71,9 +76,11 @@ type BookingDetailViewProps = {
   record: BookingDetailRecord;
 };
 
+const FINANCIAL_EVENT_KINDS = new Set(['payment', 'refund']);
+
 function TimelineItem({ event, }: { event: TimelineEvent }) {
   const indicatorClass = STATUS_INDICATOR_CLASSES[event.status] ?? 'bg-muted-foreground';
-  const showAmount = event.kind !== 'cancellation';
+  const showAmount = FINANCIAL_EVENT_KINDS.has(event.kind);
 
   return (
     <li className="relative mb-6 ml-6 last:mb-0">
@@ -98,7 +105,10 @@ function TimelineItem({ event, }: { event: TimelineEvent }) {
 export function BookingDetailView({ record, }: BookingDetailViewProps) {
   const router = useRouter();
   const cancelMutation = useCustomerCancelBookingMutation();
+  const authFetch = useAuthenticatedFetch();
+  const [isDownloadingReceipt, setIsDownloadingReceipt] = useState(false);
   const isCancellable = CANCELLABLE_BOOKING_STATUSES.includes(record.status);
+  const hasReceipt = ['confirmed', 'checkedin', 'checkedout', 'completed'].includes(record.status);
   const priceLabel = record.priceMinor
     ? formatCurrencyMinor(record.priceMinor, record.currency)
     : null;
@@ -111,6 +121,31 @@ export function BookingDetailView({ record, }: BookingDetailViewProps) {
       { bookingId: record.id, },
       { onSuccess: () => router.refresh(), }
     );
+  };
+
+  const handleDownloadReceipt = async () => {
+    setIsDownloadingReceipt(true);
+    try {
+      const response = await authFetch(`/api/v1/bookings/${record.id}/receipt`);
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(typeof body?.error === 'string' ? body.error : 'Unable to download receipt.');
+      }
+      const payload = await response.json();
+      const blob = new Blob([JSON.stringify(payload.data, null, 2)], { type: 'application/json', });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `receipt-${record.id}.json`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (downloadError) {
+      toast.error(
+        downloadError instanceof Error ? downloadError.message : 'Unable to download receipt.'
+      );
+    } finally {
+      setIsDownloadingReceipt(false);
+    }
   };
 
   return (
@@ -185,10 +220,10 @@ export function BookingDetailView({ record, }: BookingDetailViewProps) {
       <Card className="border border-border bg-card/70">
         <CardHeader className="space-y-1 p-5">
           <CardTitle className="text-base font-semibold text-foreground">
-            Payment timeline
+            Booking timeline
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground">
-            Track the lifecycle of your payment and any refunds
+            Track the lifecycle of your booking, payments, and refunds
           </CardDescription>
         </CardHeader>
         <CardContent className="p-5 pt-0">
@@ -206,16 +241,32 @@ export function BookingDetailView({ record, }: BookingDetailViewProps) {
         </CardContent>
       </Card>
 
-      { isCancellable && (
-        <div className="flex justify-end">
-          <Button
-            variant="outline"
-            className="border-destructive/60 text-destructive hover:bg-destructive/10"
-            disabled={ cancelMutation.isPending }
-            onClick={ handleCancel }
-          >
-            { cancelMutation.isPending ? 'Cancelling…' : 'Cancel booking' }
-          </Button>
+      { (isCancellable || hasReceipt) && (
+        <div className="flex justify-end gap-2">
+          { hasReceipt && (
+            <Button
+              variant="outline"
+              onClick={ handleDownloadReceipt }
+              disabled={ isDownloadingReceipt }
+            >
+              { isDownloadingReceipt ? (
+                <FiLoader className="mr-2 size-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <FiDownload className="mr-2 size-4" aria-hidden="true" />
+              ) }
+              Download receipt
+            </Button>
+          ) }
+          { isCancellable && (
+            <Button
+              variant="outline"
+              className="border-destructive/60 text-destructive hover:bg-destructive/10"
+              disabled={ cancelMutation.isPending }
+              onClick={ handleCancel }
+            >
+              { cancelMutation.isPending ? 'Cancelling…' : 'Cancel booking' }
+            </Button>
+          ) }
         </div>
       ) }
     </section>

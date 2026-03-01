@@ -74,6 +74,10 @@ export type AdminDashboardAuditEvent = {
 };
 
 export type AdminDashboardMetrics = {
+  revenue: {
+    totalMinor: string;
+    transactionCount: number;
+  };
   bookings: {
     total: number;
     statusCounts: { status: string; count: number }[];

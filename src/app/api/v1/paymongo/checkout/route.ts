@@ -9,6 +9,7 @@ import { countActiveBookingsOverlap, resolveBookingDecision } from '@/lib/bookin
 import { sendBookingNotificationEmail } from '@/lib/email';
 import { createPaymongoCheckoutSession } from '@/lib/paymongo';
 import { prisma } from '@/lib/prisma';
+import { enforceRateLimit, RateLimitExceededError } from '@/lib/rate-limit';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { isTestingModeEnabled } from '@/lib/testing-mode';
 import { recordTestModeBookingWalletCharge, resolveAuthenticatedUserForWallet } from '@/lib/wallet-server';
@@ -64,6 +65,25 @@ export async function POST(req: NextRequest) {
 
     if (auth.dbUser?.role !== 'customer') {
       return unauthorizedResponse;
+    }
+
+    try {
+      await enforceRateLimit({
+ scope: 'booking-checkout',
+request: req,
+identity: auth.dbUser.auth_user_id, 
+});
+    } catch (error) {
+      if (error instanceof RateLimitExceededError) {
+        return NextResponse.json(
+          { error: error.message, },
+          {
+ status: 429,
+headers: { 'Retry-After': error.retryAfter.toString(), }, 
+}
+        );
+      }
+      console.error('Rate limit check failed for booking checkout', error);
     }
 
     const startAt = parsed.data.startAt ? new Date(parsed.data.startAt) : null;

@@ -28,6 +28,7 @@ export async function GET(_req: NextRequest) {
       recentSpaces,
       recentClients,
       recentVerifications,
+      totalRevenue,
       auditEvents
     ] = await Promise.all([
       prisma.booking.count(),
@@ -137,6 +138,10 @@ status: 'deleted',
           updated_at: true,
         },
       }),
+      prisma.transaction.aggregate({
+        _sum: { amount_minor: true, },
+        _count: true,
+      }),
       prisma.audit_event.findMany({
         where: { object_table: { in: AUDIT_TABLES, }, },
         orderBy: { occured_at: 'desc', },
@@ -168,6 +173,10 @@ status: 'deleted',
 
     const payload = {
       metrics: {
+        revenue: {
+          totalMinor: (totalRevenue._sum.amount_minor ?? BigInt(0)).toString(),
+          transactionCount: totalRevenue._count,
+        },
         bookings: {
           total: totalBookings,
           statusCounts: bookingStatusCounts.map((entry) => ({

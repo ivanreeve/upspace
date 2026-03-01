@@ -6,6 +6,7 @@ import { sendBookingCancellationEmail } from '@/lib/email';
 import { notifyBookingEvent } from '@/lib/notifications/booking';
 import { createPaymongoRefund } from '@/lib/paymongo';
 import { prisma } from '@/lib/prisma';
+import { enforceRateLimit, RateLimitExceededError } from '@/lib/rate-limit';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 const unauthorizedResponse = NextResponse.json(
@@ -47,6 +48,25 @@ export async function POST(
 
   if (!user || user.role !== 'customer') {
     return forbiddenResponse;
+  }
+
+  try {
+    await enforceRateLimit({
+ scope: 'booking-cancel',
+request: _req,
+identity: authData.user.id, 
+});
+  } catch (error) {
+    if (error instanceof RateLimitExceededError) {
+      return NextResponse.json(
+        { error: error.message, },
+        {
+ status: 429,
+headers: { 'Retry-After': error.retryAfter.toString(), }, 
+}
+      );
+    }
+    console.error('Rate limit check failed for booking cancellation', error);
   }
 
   const { booking_id, } = params;

@@ -1,6 +1,6 @@
 import type { BookingStatus } from '@/lib/bookings/types';
 
-export type TimelineEventKind = 'payment' | 'cancellation' | 'refund';
+export type TimelineEventKind = 'created' | 'confirmed' | 'checkedin' | 'checkedout' | 'completed' | 'noshow' | 'payment' | 'cancellation' | 'refund';
 
 export type TimelineEventStatus = 'succeeded' | 'pending' | 'failed';
 

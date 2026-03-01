@@ -4,6 +4,7 @@ type BookingForTimeline = {
   id: string;
   status: string;
   created_at: Date;
+  start_at?: Date;
   price_minor: bigint | null;
   currency: string;
 };
@@ -23,12 +24,68 @@ type RefundTxForTimeline = {
   created_at: Date;
 };
 
+type StatusChangeEvent = {
+  type: string;
+  created_at: Date;
+};
+
 export function buildTimeline(
   booking: BookingForTimeline,
   paymentTx: PaymentTxForTimeline,
-  refundTxs: RefundTxForTimeline[]
+  refundTxs: RefundTxForTimeline[],
+  statusNotifications?: StatusChangeEvent[]
 ): TimelineEvent[] {
   const events: TimelineEvent[] = [];
+
+  events.push({
+    id: `created-${booking.id}`,
+    kind: 'created',
+    label: 'Booking created',
+    status: 'succeeded',
+    amountMinor: '0',
+    currency: booking.currency,
+    timestamp: booking.created_at.toISOString(),
+  });
+
+  const statusMap: Record<string, { kind: TimelineEvent['kind']; label: string }> = {
+    booking_confirmed: {
+ kind: 'confirmed',
+label: 'Booking confirmed', 
+},
+    booking_checkedin: {
+ kind: 'checkedin',
+label: 'Checked in', 
+},
+    booking_checkedout: {
+ kind: 'checkedout',
+label: 'Checked out', 
+},
+    booking_completed: {
+ kind: 'completed',
+label: 'Booking completed', 
+},
+    booking_noshow: {
+ kind: 'noshow',
+label: 'Marked as no-show', 
+},
+  };
+
+  if (statusNotifications) {
+    for (const notification of statusNotifications) {
+      const mapping = statusMap[notification.type];
+      if (mapping) {
+        events.push({
+          id: `${mapping.kind}-${booking.id}`,
+          kind: mapping.kind,
+          label: mapping.label,
+          status: 'succeeded',
+          amountMinor: '0',
+          currency: booking.currency,
+          timestamp: notification.created_at.toISOString(),
+        });
+      }
+    }
+  }
 
   if (paymentTx) {
     const amount = paymentTx.amount_minor ?? booking.price_minor ?? BigInt(0);

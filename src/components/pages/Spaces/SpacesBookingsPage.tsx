@@ -11,7 +11,10 @@ import {
 import {
   FiAlertCircle,
   FiArrowUpRight,
+  FiCheck,
   FiLoader,
+  FiLogIn,
+  FiLogOut,
   FiSearch
 } from 'react-icons/fi';
 
@@ -32,6 +35,13 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -115,6 +125,8 @@ export function SpacesBookingsPage() {
   const descriptionId = useId();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<BookingStatus | 'all'>('all');
+  const [areaFilter, setAreaFilter] = useState<string>('all');
 
   const activeBookings = useMemo(
     () =>
@@ -131,30 +143,49 @@ export function SpacesBookingsPage() {
     [activeBookings]
   );
 
+  const uniqueAreas = useMemo(() => {
+    const map = new Map<string, string>();
+    sortedBookings.forEach((b) => map.set(b.areaId, b.areaName));
+    return Array.from(map.entries()).map(([id, name]) => ({
+ id,
+name, 
+}));
+  }, [sortedBookings]);
+
   const filteredBookings = useMemo(() => {
-    const normalizedQuery = searchTerm.trim().toLowerCase();
-    if (!normalizedQuery) {
-      return sortedBookings;
+    let result = sortedBookings;
+
+    if (statusFilter !== 'all') {
+      result = result.filter((booking) => booking.status === statusFilter);
     }
 
-    return sortedBookings.filter((booking) => {
-      const handle = booking.customerHandle ? `@${booking.customerHandle}` : '';
-      const fullName = booking.customerName ?? '';
-      const searchable = [
-        booking.areaName,
-        booking.spaceName,
-        booking.customerAuthId,
-        handle,
-        fullName,
-        booking.status
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
+    if (areaFilter !== 'all') {
+      result = result.filter((booking) => booking.areaId === areaFilter);
+    }
 
-      return searchable.includes(normalizedQuery);
-    });
-  }, [searchTerm, sortedBookings]);
+    const normalizedQuery = searchTerm.trim().toLowerCase();
+    if (normalizedQuery) {
+      result = result.filter((booking) => {
+        const handle = booking.customerHandle ? `@${booking.customerHandle}` : '';
+        const fullName = booking.customerName ?? '';
+        const searchable = [
+          booking.areaName,
+          booking.spaceName,
+          booking.customerAuthId,
+          handle,
+          fullName,
+          booking.status
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        return searchable.includes(normalizedQuery);
+      });
+    }
+
+    return result;
+  }, [areaFilter, searchTerm, sortedBookings, statusFilter]);
 
   useEffect(() => {
     setSelectedIds((current) => {
@@ -411,16 +442,70 @@ export function SpacesBookingsPage() {
                 </div>
               </TableCell>
               <TableCell>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <Badge variant={ statusVariantMap[booking.status] }>
                     { booking.status }
                   </Badge>
-                  { !['cancelled', 'rejected', 'expired', 'noshow'].includes(
+                  { booking.status === 'confirmed' ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 gap-1 px-2 text-xs"
+                      onClick={ () =>
+                        bulkUpdate.mutate({
+                          ids: [booking.id],
+                          status: 'checkedin',
+                        })
+                      }
+                      disabled={ bulkUpdate.isPending }
+                      aria-label={ `Check in ${userDisplayName}` }
+                    >
+                      <FiLogIn className="size-3.5" aria-hidden="true" />
+                      Check in
+                    </Button>
+                  ) : booking.status === 'checkedin' ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 gap-1 px-2 text-xs"
+                      onClick={ () =>
+                        bulkUpdate.mutate({
+                          ids: [booking.id],
+                          status: 'checkedout',
+                        })
+                      }
+                      disabled={ bulkUpdate.isPending }
+                      aria-label={ `Check out ${userDisplayName}` }
+                    >
+                      <FiLogOut className="size-3.5" aria-hidden="true" />
+                      Check out
+                    </Button>
+                  ) : null }
+                  { booking.status === 'pending' ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 gap-1 px-2 text-xs"
+                      onClick={ () =>
+                        bulkUpdate.mutate({
+                          ids: [booking.id],
+                          status: 'confirmed',
+                        })
+                      }
+                      disabled={ bulkUpdate.isPending }
+                      aria-label={ `Confirm booking for ${userDisplayName}` }
+                    >
+                      <FiCheck className="size-3.5" aria-hidden="true" />
+                      Confirm
+                    </Button>
+                  ) : null }
+                  { !['cancelled', 'rejected', 'expired', 'noshow', 'checkedout', 'completed'].includes(
                     booking.status
                   ) ? (
                     <Button
                       size="sm"
                       variant="ghost"
+                      className="h-7 px-2 text-xs text-muted-foreground"
                       onClick={ () =>
                         bulkUpdate.mutate({
                           ids: [booking.id],
@@ -560,6 +645,38 @@ export function SpacesBookingsPage() {
                 Filter the table and quickly locate people currently booked into
                 your areas.
               </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                value={ statusFilter }
+                onValueChange={ (value) => setStatusFilter(value as BookingStatus | 'all') }
+              >
+                <SelectTrigger className="w-[140px]" aria-label="Filter by status">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="confirmed">Confirmed</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="checkedin">Checked in</SelectItem>
+                </SelectContent>
+              </Select>
+              { uniqueAreas.length > 1 ? (
+                <Select
+                  value={ areaFilter }
+                  onValueChange={ setAreaFilter }
+                >
+                  <SelectTrigger className="w-[160px]" aria-label="Filter by area">
+                    <SelectValue placeholder="Area" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All areas</SelectItem>
+                    { uniqueAreas.map((area) => (
+                      <SelectItem key={ area.id } value={ area.id }>{ area.name }</SelectItem>
+                    )) }
+                  </SelectContent>
+                </Select>
+              ) : null }
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary" className="text-xs">

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
+import { FiMessageCircle } from 'react-icons/fi';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -83,7 +84,22 @@ export default async function CustomerMessagesPage() {
       } }
     >
       <div className="flex h-full w-full flex-col overflow-hidden p-0 sm:p-2">
-        <CustomerChatRoomView />
+        { rooms.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
+            <FiMessageCircle className="size-10 text-muted-foreground" aria-hidden="true" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium">No conversations yet</p>
+              <p className="text-sm text-muted-foreground">
+                Start a conversation by visiting a space and messaging the host.
+              </p>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/marketplace">Browse spaces</Link>
+            </Button>
+          </div>
+        ) : (
+          <CustomerChatRoomView />
+        ) }
       </div>
     </MarketplaceChrome>
   );
