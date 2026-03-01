@@ -19,7 +19,6 @@ const checkoutPayloadSchema = z.object({
   spaceId: z.string().uuid(),
   areaId: z.string().uuid(),
   bookingHours: z.number().int().min(MIN_BOOKING_HOURS).max(MAX_BOOKING_HOURS),
-  price: z.number().positive(),
   startAt: z.string().datetime().optional(),
   guestCount: z.number().int().min(1).max(999).optional(),
   successUrl: z.string().url().optional(),
@@ -209,6 +208,12 @@ export async function POST(req: NextRequest) {
     const formulaAlreadyHandlesGuests = priceEvaluation.usedVariables.includes('guest_count');
     const guestMultiplier = formulaAlreadyHandlesGuests ? 1 : guestCount;
     const priceMinor = Math.round(priceEvaluation.price * guestMultiplier * BOOKING_PRICE_MINOR_FACTOR);
+    if (!Number.isFinite(priceMinor) || priceMinor <= 0) {
+      return NextResponse.json(
+        { error: 'Unable to compute a valid price for this booking.', },
+        { status: 400, }
+      );
+    }
 
     const bookingResult = await prisma
       .$transaction(

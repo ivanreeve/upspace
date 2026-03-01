@@ -59,6 +59,9 @@ export type CheckoutEvent = z.infer<typeof checkoutEventSchema>['data']['attribu
 
 const RECEIVED_RESPONSE = NextResponse.json({ received: true, }, { status: 200, });
 
+const normalizeCurrencyCode = (value: string | null | undefined) =>
+  (value ?? '').trim().toUpperCase();
+
 function resolveTransactionType(eventType: string) {
   const match = eventType.match(/^wallet\.transaction\.(cash_in|charge|refund|payout)/);
   return match ? (match[1] as 'cash_in' | 'charge' | 'refund' | 'payout') : null;
@@ -236,11 +239,44 @@ export async function handleCheckoutEvent(event: CheckoutEvent) {
     return RECEIVED_RESPONSE;
   }
 
+  if (bookingRow.status !== 'pending') {
+    console.warn('Checkout webhook received non-pending booking', {
+      bookingId,
+      status: bookingRow.status,
+    });
+    return RECEIVED_RESPONSE;
+  }
+
   await recordCheckoutTransaction({
     bookingId,
     checkoutObject,
     livemode: event.livemode,
   });
+
+  const expectedAmountMinor =
+    bookingRow.price_minor === null
+      ? null
+      : Number(bookingRow.price_minor);
+  const paidAmountMinor = Math.round(checkoutObject.amount ?? 0);
+
+  const amountMatches =
+    expectedAmountMinor !== null &&
+    Number.isFinite(expectedAmountMinor) &&
+    expectedAmountMinor === paidAmountMinor;
+  const currencyMatches =
+    normalizeCurrencyCode(bookingRow.currency) === normalizeCurrencyCode(checkoutObject.currency);
+
+  if (!amountMatches || !currencyMatches) {
+    console.error('Checkout webhook amount/currency mismatch', {
+      bookingId,
+      bookingStatus: bookingRow.status,
+      expectedAmountMinor,
+      paidAmountMinor,
+      expectedCurrency: bookingRow.currency,
+      paidCurrency: checkoutObject.currency,
+    });
+    return RECEIVED_RESPONSE;
+  }
 
   if (requiresHostApproval) {
     const booking = mapBookingRowToRecord(bookingRow);

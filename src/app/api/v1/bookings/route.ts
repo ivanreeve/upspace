@@ -18,12 +18,12 @@ import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { evaluatePriceRule } from '@/lib/pricing-rules-evaluator';
 import type { PriceRuleRecord } from '@/lib/pricing-rules';
+import { isTestingModeEnabled } from '@/lib/testing-mode';
 
 const createBookingSchema = z.object({
   spaceId: z.string().uuid(),
   areaId: z.string().uuid(),
   bookingHours: z.number().int().min(MIN_BOOKING_HOURS).max(MAX_BOOKING_HOURS),
-  price: z.number().nonnegative().nullable().optional(),
   startAt: z.string().datetime().optional(),
   guestCount: z.number().int().min(1).max(999).optional(),
 });
@@ -244,6 +244,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  if (!isTestingModeEnabled()) {
+    return NextResponse.json(
+      { error: 'Direct booking creation is disabled. Use checkout instead.', },
+      { status: 403, }
+    );
+  }
+
   const area = await prisma.area.findUnique({
     where: { id: parsed.data.areaId, },
     select: {
@@ -381,9 +388,9 @@ export async function POST(req: NextRequest) {
     typeof priceEvaluation.price === 'number'
       ? Math.round(priceEvaluation.price * guestMultiplier * BOOKING_PRICE_MINOR_FACTOR)
       : null;
-  if (priceMinor === null) {
+  if (priceMinor === null || !Number.isFinite(priceMinor) || priceMinor <= 0) {
     return NextResponse.json(
-      { error: 'Unable to compute a price for this booking.', },
+      { error: 'Unable to compute a valid price for this booking.', },
       { status: 400, }
     );
   }

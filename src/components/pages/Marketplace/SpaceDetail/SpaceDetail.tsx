@@ -1100,7 +1100,6 @@ function useSpaceBooking({
         spaceId: space.id,
         areaId: selectedArea.id,
         bookingHours,
-        price: totalPrice ?? 0,
         startAt: bookingStartAtIso,
         guestCount,
       });
@@ -1122,8 +1121,7 @@ function useSpaceBooking({
     selectedArea,
     session,
     setIsBookingOpen,
-    space.id,
-    totalPrice
+    space.id
   ]);
 
   return {

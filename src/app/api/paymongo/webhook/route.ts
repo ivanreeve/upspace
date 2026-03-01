@@ -44,11 +44,11 @@ export async function POST(req: NextRequest) {
   const isLive = attributes?.livemode === true;
 
   if (
-    !verifyPaymongoSignature({
+    !(await verifyPaymongoSignature({
       payload: payloadText,
       signature,
       useLiveSignature: isLive,
-    })
+    }))
   ) {
     return NextResponse.json(
       { message: 'Invalid PayMongo signature.', },

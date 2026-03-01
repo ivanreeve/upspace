@@ -303,7 +303,6 @@ function BookingConfirmationCard({ bookingAction, }: {
         spaceId: bookingAction.spaceId,
         areaId: bookingAction.areaId,
         bookingHours: bookingAction.bookingHours,
-        price: bookingAction.price,
         startAt: bookingAction.startAt,
         guestCount: bookingAction.guestCount,
       },

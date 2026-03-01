@@ -83,7 +83,6 @@ type CreateBookingInput = {
   spaceId: string;
   areaId: string;
   bookingHours: number;
-  price?: number | null;
 };
 
 type BulkUpdateBookingStatusInput = {
@@ -104,7 +103,6 @@ export function useCreateBookingMutation() {
           spaceId: payload.spaceId,
           areaId: payload.areaId,
           bookingHours: payload.bookingHours,
-          price: payload.price ?? null,
         }),
       });
 
@@ -135,7 +133,6 @@ type CreateCheckoutSessionInput = {
   spaceId: string;
   areaId: string;
   bookingHours: number;
-  price: number;
   startAt: string;
   guestCount: number;
 };
@@ -157,7 +154,6 @@ export function useCreateCheckoutSessionMutation() {
           spaceId: payload.spaceId,
           areaId: payload.areaId,
           bookingHours: payload.bookingHours,
-          price: payload.price,
           startAt: payload.startAt,
           guestCount: payload.guestCount,
         }),
