@@ -430,6 +430,10 @@ export default function Marketplace() {
         return prev;
       }
 
+      setFilters((current) =>
+        areFiltersEqual(current, next) ? current : next
+      );
+
       return next;
     });
   }, []);
@@ -529,6 +533,7 @@ export default function Marketplace() {
   );
   const hasAmenityFilters = filters.amenities.length > 0;
   const hasAnyFilters = hasLocationFilters || hasAmenityFilters;
+  const shouldShowCuratedCarousels = !hasActiveSearch && !hasAnyFilters;
   const pendingHasLocationFilters = Boolean(
     pendingFilters.region || pendingFilters.city || pendingFilters.barangay
   );
@@ -584,11 +589,15 @@ export default function Marketplace() {
   const nearYouSpaces = nearYouSortedSpaces.slice(0, CURATED_HIGHLIGHT_LIMIT);
 
   const curatedSpaceIds = React.useMemo(() => {
+    if (!shouldShowCuratedCarousels) {
+      return new Set<string>();
+    }
+
     const ids = new Set<string>();
     topRatedSpaces.forEach((space) => ids.add(space.space_id));
     nearYouSpaces.forEach((space) => ids.add(space.space_id));
     return ids;
-  }, [topRatedSpaces, nearYouSpaces]);
+  }, [topRatedSpaces, nearYouSpaces, shouldShowCuratedCarousels]);
 
   const restSpaces = React.useMemo(() => {
     return spaces.filter((space) => !curatedSpaceIds.has(space.space_id));
@@ -632,9 +641,64 @@ export default function Marketplace() {
   }, [currentPage, totalRestPages]);
 
   const shouldShowPagination = restSpaces.length > PAGINATED_PAGE_SIZE;
+  const appliedFilters = React.useMemo(() => {
+    const items: {
+      key: string;
+      label: string;
+      variant: 'secondary' | 'destructive';
+    }[] = [];
+
+    if (filters.region) {
+      items.push({
+        key: `region-${filters.region}`,
+        label: `Region: ${filters.region}`,
+        variant: 'secondary',
+      });
+    }
+    if (filters.city) {
+      items.push({
+        key: `city-${filters.city}`,
+        label: `City: ${filters.city}`,
+        variant: 'secondary',
+      });
+    }
+    if (filters.barangay) {
+      items.push({
+        key: `barangay-${filters.barangay}`,
+        label: `Barangay: ${filters.barangay}`,
+        variant: 'secondary',
+      });
+    }
+
+    if (filters.amenities.length > 0) {
+      items.push({
+        key: `amenities-mode-${filters.amenitiesMode}`,
+        label: filters.amenitiesMode === 'all' ? 'Amenities: Match all' : 'Amenities: Match any',
+        variant: 'secondary',
+      });
+
+      filters.amenities.forEach((amenity) => {
+        items.push({
+          key: `${filters.amenitiesNegate ? 'exclude' : 'amenity'}-${amenity}`,
+          label: filters.amenitiesNegate ? `Exclude: ${amenity}` : `Amenity: ${amenity}`,
+          variant: filters.amenitiesNegate ? 'destructive' : 'secondary',
+        });
+      });
+    }
+
+    return items;
+  }, [
+    filters.region,
+    filters.city,
+    filters.barangay,
+    filters.amenities,
+    filters.amenitiesMode,
+    filters.amenitiesNegate
+  ]);
 
   const curatedCarousels =
-    nearYouSpaces.length === 0 && topRatedSpaces.length === 0 ? null : (
+    !shouldShowCuratedCarousels ||
+      (nearYouSpaces.length === 0 && topRatedSpaces.length === 0) ? null : (
       <div className="space-y-8">
         { nearYouSpaces.length > 0 && (
           <MarketplaceHighlightsSection
@@ -675,6 +739,21 @@ export default function Marketplace() {
             <p className="text-sm text-muted-foreground">
               Showing results for &quot;{ filters.q }&quot;
             </p>
+          ) }
+          { hasAnyFilters && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground">
+                Applied filters:
+              </span>
+              { appliedFilters.map((filter) => (
+                <Badge
+                  key={ filter.key }
+                  variant={ filter.variant }
+                >
+                  { filter.label }
+                </Badge>
+              )) }
+            </div>
           ) }
           <CardsGrid items={ paginatedRestSpaces } isLoading={ isLoading } />
           { shouldShowPagination && (
