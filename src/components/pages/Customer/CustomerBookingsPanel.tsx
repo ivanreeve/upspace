@@ -24,6 +24,14 @@ import {
 } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
 import { CANCELLABLE_BOOKING_STATUSES } from '@/lib/bookings/constants';
 import type { BookingStatus } from '@/lib/bookings/types';
 import { useCustomerBookingsQuery } from '@/hooks/api/useCustomerBookings';
@@ -112,15 +120,15 @@ const formatBookingDate = (value: string) =>
     minute: '2-digit',
   });
 
-const LoadingList = () => (
-  <div className="space-y-3">
-    <Skeleton className="h-4 w-32" />
-    <div className="space-y-3">
-      <Skeleton className="h-16 w-full rounded-xl" />
-      <Skeleton className="h-16 w-full rounded-xl" />
-    </div>
-  </div>
-);
+const BOOKING_PRICE_FORMATTER = new Intl.NumberFormat('en-PH', {
+  style: 'currency',
+  currency: 'PHP',
+});
+
+const formatBookingPrice = (price: number | null) =>
+  typeof price === 'number' && Number.isFinite(price)
+    ? BOOKING_PRICE_FORMATTER.format(price)
+    : '—';
 
 export function CustomerBookingsPanel() {
   const {
@@ -165,7 +173,7 @@ export function CustomerBookingsPanel() {
 
       <Card className="rounded-2xl border-0 bg-background">
         <CardHeader>
-          <CardTitle>Recent bookings</CardTitle>
+          <CardTitle className="text-2xl font-semibold">Recent bookings</CardTitle>
           <CardDescription>
             Latest reservations sorted by when you made the booking request.
           </CardDescription>
@@ -226,62 +234,109 @@ export function CustomerBookingsPanel() {
           </section>
 
           { isLoading ? (
-            <LoadingList />
+            <div className="space-y-3 rounded-md border border-border/70 bg-background p-4">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-11 w-full rounded-md" />
+              <Skeleton className="h-11 w-full rounded-md" />
+              <Skeleton className="h-11 w-full rounded-md" />
+            </div>
           ) : bookingRecords.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border/70 bg-muted/50 px-4 py-6 text-sm text-muted-foreground">
               You don’t have any bookings yet. Every reservation you place will appear here.
             </div>
           ) : (
-            <ScrollArea className="max-h-[480px] rounded-2xl border border-border/70 bg-muted/10">
-              <div className="space-y-4 p-4">
-                { sortedBookings.map((booking) => {
-                  const isCancelable = CANCELLABLE_BOOKING_STATUSES.includes(booking.status);
+            <ScrollArea className="max-h-[560px] rounded-md border border-border/70 bg-muted/10">
+              <Table aria-label="Recent bookings details">
+                <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead>Booking</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Start</TableHead>
+                    <TableHead>Duration</TableHead>
+                    <TableHead>Guests</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead>Requested</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  { sortedBookings.map((booking) => {
+                    const isCancelable = CANCELLABLE_BOOKING_STATUSES.includes(booking.status);
+                    const guestCount = booking.guestCount ?? 1;
 
-                  return (
-                    <article
-                      key={ booking.id }
-                      className="rounded-2xl border border-border/60 bg-background/80 p-4 shadow-sm"
-                    >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="space-y-1">
-                          <Link
-                            href={ `/customer/bookings/${booking.id}` }
-                            className="text-sm font-semibold text-foreground hover:underline"
-                          >
-                            { booking.spaceName } · { booking.areaName }
-                          </Link>
-                          <p className="text-xs text-muted-foreground">
-                            Booked{ ' ' }
-                            { formatDistanceToNow(new Date(booking.createdAt), { addSuffix: true, }) }
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
+                    return (
+                      <TableRow key={ booking.id }>
+                        <TableCell className="min-w-[240px]">
+                          <div className="space-y-1">
+                            <Link
+                              href={ `/customer/bookings/${booking.id}` }
+                              className="block text-sm font-semibold text-foreground hover:underline"
+                            >
+                              { booking.spaceName } · { booking.areaName }
+                            </Link>
+                            <p className="font-mono text-xs text-muted-foreground">
+                              { booking.id.slice(0, 8) }
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
                           <Badge variant={ BOOKING_STATUS_VARIANTS[booking.status] }>
                             { BOOKING_STATUS_LABELS[booking.status] }
                           </Badge>
-                          { isCancelable && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 px-3 text-[13px] font-semibold leading-none border-border/60 bg-background transition hover:border-destructive hover:bg-destructive/10 hover:text-destructive focus-visible:border-destructive focus-visible:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/50"
-                              disabled={ cancelMutation.isPending }
-                              onClick={ () => cancelMutation.mutate({ bookingId: booking.id, }) }
-                            >
-                              Cancel
-                            </Button>
-                          ) }
-                        </div>
-                      </div>
-                      <div className="mt-3 flex flex-wrap items-center gap-3 text-[13px] text-muted-foreground">
-                        <span>{ formatBookingDate(booking.createdAt) }</span>
-                        <span>
+                        </TableCell>
+                        <TableCell className="min-w-[180px]">
+                          <div className="space-y-1">
+                            <p className="text-sm text-foreground">{ formatBookingDate(booking.startAt) }</p>
+                            <p className="text-xs text-muted-foreground">
+                              { formatDistanceToNow(new Date(booking.startAt), { addSuffix: true, }) }
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
                           { booking.bookingHours } hour{ booking.bookingHours === 1 ? '' : 's' }
-                        </span>
-                      </div>
-                    </article>
-                  );
-                }) }
-              </div>
+                        </TableCell>
+                        <TableCell>
+                          { guestCount } guest{ guestCount === 1 ? '' : 's' }
+                        </TableCell>
+                        <TableCell className="font-semibold text-foreground">
+                          { formatBookingPrice(booking.price) }
+                        </TableCell>
+                        <TableCell className="min-w-[180px]">
+                          <div className="space-y-1">
+                            <p className="text-sm text-foreground">{ formatBookingDate(booking.createdAt) }</p>
+                            <p className="text-xs text-muted-foreground">
+                              { formatDistanceToNow(new Date(booking.createdAt), { addSuffix: true, }) }
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              asChild
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 px-3 text-[13px] hover:bg-primary/90 hover:text-primary-foreground dark:hover:bg-accent/50 dark:hover:text-accent-foreground"
+                            >
+                              <Link href={ `/customer/bookings/${booking.id}` }>View</Link>
+                            </Button>
+                            { isCancelable && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 px-3 text-[13px] font-semibold leading-none border-border/60 bg-background transition hover:border-destructive hover:bg-destructive/10 hover:!text-destructive focus-visible:border-destructive focus-visible:!text-destructive focus-visible:ring-2 focus-visible:ring-destructive/50"
+                                disabled={ cancelMutation.isPending }
+                                onClick={ () => cancelMutation.mutate({ bookingId: booking.id, }) }
+                              >
+                                Cancel
+                              </Button>
+                            ) }
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  }) }
+                </TableBody>
+              </Table>
             </ScrollArea>
           ) }
         </CardContent>
