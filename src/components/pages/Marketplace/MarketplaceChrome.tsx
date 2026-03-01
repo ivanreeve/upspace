@@ -28,6 +28,7 @@ import {
   UserX
 } from 'lucide-react';
 import { LuMessageSquareText } from 'react-icons/lu';
+import { FiFlag } from 'react-icons/fi';
 import {
   MdManageSearch,
   MdOutlineAccountBalanceWallet,
@@ -1210,6 +1211,11 @@ export function MarketplaceChrome({
           icon: EyeOff,
         },
         {
+          label: 'Chat reports',
+          href: '/admin/chat-reports',
+          icon: FiFlag,
+        },
+        {
           label: 'Users',
           href: '/admin/users',
           icon: Users,
@@ -1549,6 +1555,19 @@ export function MarketplaceChrome({
                       isActive={ isSidebarPathActive(
                         pathname,
                         '/admin/unpublish-requests'
+                      ) }
+                    />
+                  ) }
+                  { isAdminRole && (
+                    <SidebarLinkItem
+                      href="/admin/chat-reports"
+                      label="Chat reports"
+                      icon={ FiFlag }
+                      tooltip="Chat reports"
+                      iconProps={ { strokeWidth: 2, } }
+                      isActive={ isSidebarPathActive(
+                        pathname,
+                        '/admin/chat-reports'
                       ) }
                     />
                   ) }

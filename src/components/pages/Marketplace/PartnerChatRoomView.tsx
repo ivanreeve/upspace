@@ -25,6 +25,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import type { ChatMessage } from '@/types/chat';
+import { ChatReportDialog } from '@/components/pages/Marketplace/ChatReportDialog';
 
 type PartnerChatRoomViewProps = {
   roomId?: string;
@@ -307,6 +308,20 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
     });
   }, [normalizedQuery, sortedRooms]);
 
+  const handleBackToList = useCallback(() => {
+    if (isMobile) {
+      setShowThread(false);
+      setStayOnList(true);
+    }
+  }, [isMobile]);
+
+  const handleConversationClick = useCallback(() => {
+    if (isMobile) {
+      setShowThread(true);
+      setStayOnList(false);
+    }
+  }, [isMobile]);
+
   let listContent: ReactNode;
   if (roomsLoading) {
     listContent = (
@@ -335,10 +350,6 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
             const lastMessageTime = formatTimestamp(room.lastMessage?.createdAt);
             const isActive = room.id === activeRoom?.id;
             const hasNewMessage = room.lastMessage?.senderRole === 'customer';
-            const location =
-              room.spaceCity || room.spaceRegion
-                ? [room.spaceCity, room.spaceRegion].filter(Boolean).join(', ')
-                : null;
             const initials =
               (room.customerName ?? room.customerHandle ?? 'Customer')
                 .split(' ')
@@ -377,9 +388,6 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
                       </span>
                     ) : null }
                   </div>
-                  <p className="truncate text-xs text-muted-foreground">
-                    { location ?? room.spaceName }
-                  </p>
                   <p
                     className={ cn(
                       'truncate text-xs text-muted-foreground',
@@ -495,20 +503,6 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
     );
   }
 
-  const handleBackToList = useCallback(() => {
-    if (isMobile) {
-      setShowThread(false);
-      setStayOnList(true);
-    }
-  }, [isMobile]);
-
-  const handleConversationClick = useCallback(() => {
-    if (isMobile) {
-      setShowThread(true);
-      setStayOnList(false);
-    }
-  }, [isMobile]);
-
   const showListPane = !isMobile || !showThread;
   const showThreadPane = !isMobile || showThread;
   const headerName = activeRoom
@@ -599,6 +593,10 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
                   </div>
                 </div>
               </div>
+              <ChatReportDialog
+                roomId={ activeRoom?.id ?? null }
+                targetLabel="customer"
+              />
             </header>
           ) : null }
 
@@ -607,11 +605,11 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
             { activeRoom ? (
               <form
                 ref={ formRef }
-                className="sticky bottom-[calc(var(--safe-area-bottom)+3.25rem)] z-10 border-t px-4 py-4 md:bottom-0 bg-card"
+                className="sticky bottom-[calc(var(--safe-area-bottom)+3.25rem)] z-10 border-t px-4 py-4 md:bottom-0 bg-sidebar dark:bg-card"
                 onSubmit={ handleSend }
                 noValidate
               >
-                <div className="flex max-w-full items-end gap-3 rounded-2xl border bg-background p-2 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+                <div className="flex max-w-full items-end gap-3 rounded-sm border bg-background p-2 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
                   <Textarea
                     ref={ draftRef }
                     value={ draft }
@@ -626,7 +624,7 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
                   <Button
                     type="submit"
                     disabled={ sendMessage.isPending || !draft.trim() }
-                    className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl px-4"
+                    className="inline-flex h-10 shrink-0 items-center justify-center rounded-sm px-4"
                   >
                     <FiSend className="size-4" aria-hidden="true" />
                     <span className="sr-only sm:not-sr-only sm:ml-2">Send</span>

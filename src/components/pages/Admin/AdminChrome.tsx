@@ -8,6 +8,7 @@ Layers,
 Users,
 X
 } from 'lucide-react';
+import { FiFlag } from 'react-icons/fi';
 
 import { MarketplaceChrome } from '../Marketplace/MarketplaceChrome';
 
@@ -104,6 +105,10 @@ export function AdminChrome({
             <CommandItem value="spaces" onSelect={ () => handleNavigate('/admin/spaces') }>
               <Layers className="size-4" aria-hidden="true" />
               <span>Spaces</span>
+            </CommandItem>
+            <CommandItem value="chat reports" onSelect={ () => handleNavigate('/admin/chat-reports') }>
+              <FiFlag className="size-4" aria-hidden="true" />
+              <span>Chat reports</span>
             </CommandItem>
             { searchValue.trim() && (
               <CommandItem

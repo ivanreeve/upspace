@@ -24,6 +24,7 @@ import { useChatRoomsSubscription, useChatSubscription } from '@/hooks/use-chat-
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/types/chat';
+import { ChatReportDialog } from '@/components/pages/Marketplace/ChatReportDialog';
 
 type CustomerChatRoomViewProps = {
   roomId?: string;
@@ -539,7 +540,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
         className={ cn(
           'flex min-w-0 min-h-0 flex-1 flex-col h-full',
           showThreadPane
-            ? 'flex bg-card md:border-l md:border-border/60'
+            ? 'flex bg-card md:border-l-2 md:border-border/60'
             : 'hidden'
         ) }
       >
@@ -572,6 +573,10 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                   </div>
                 </div>
               </div>
+              <ChatReportDialog
+                roomId={ activeRoom?.id ?? null }
+                targetLabel="host"
+              />
             </header>
           ) : null }
 
@@ -582,11 +587,11 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
             { activeRoom ? (
               <form
                 ref={ formRef }
-                className="sticky bottom-[calc(var(--safe-area-bottom)+3.25rem)] z-10 border-t px-4 py-4 md:bottom-0 bg-card"
+                className="sticky bottom-[calc(var(--safe-area-bottom)+3.25rem)] z-10 border-t px-4 py-4 md:bottom-0 bg-sidebar dark:bg-card"
                 onSubmit={ handleSend }
                 noValidate
               >
-                <div className="flex max-w-full items-end gap-3 rounded-2xl border bg-background p-2 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+                <div className="flex max-w-full items-end gap-3 rounded-sm border bg-background p-2 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
                   <Textarea
                     ref={ draftRef }
                     value={ draft }
@@ -601,7 +606,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                   <Button
                     type="submit"
                     disabled={ sendMessage.isPending || !draft.trim() }
-                    className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl px-4"
+                    className="inline-flex h-10 shrink-0 items-center justify-center rounded-sm px-4"
                   >
                     <FiSend className="size-4" aria-hidden="true" />
                     <span className="sr-only sm:not-sr-only sm:ml-2">Send</span>
