@@ -140,14 +140,6 @@ export function Bookmarks({ bookmarkUserId, }: BookmarksProps) {
               Tap the heart on any space to save it here. We&apos;ll keep everything synced across your devices.
             </p>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Button asChild variant="default">
-              <Link href="/marketplace">Find a space</Link>
-            </Button>
-            <Button type="button" variant="ghost" className="hover:text-white" onClick={ () => { void refetch(); } }>
-              Refresh list
-            </Button>
-          </div>
         </div>
       </section>
     );
