@@ -2,6 +2,8 @@
 
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
+import { FiAlertCircle, FiCheckCircle, FiClock } from 'react-icons/fi';
+import type { IconType } from 'react-icons';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,10 +39,37 @@ const CATEGORY_LABELS: Record<'successful' | 'pending' | 'cancelled', string> = 
   cancelled: 'Cancelled',
 };
 
-const CATEGORY_VARIANTS: Record<'successful' | 'pending' | 'cancelled', 'success' | 'secondary' | 'destructive'> = {
-  successful: 'success',
-  pending: 'secondary',
-  cancelled: 'destructive',
+const CATEGORY_META: Record<
+  'successful' | 'pending' | 'cancelled',
+  {
+    icon: IconType;
+    containerClassName: string;
+    iconClassName: string;
+    labelClassName: string;
+    countClassName: string;
+  }
+> = {
+  successful: {
+    icon: FiCheckCircle,
+    containerClassName: 'border-emerald-200/80 bg-emerald-50/70',
+    iconClassName: 'text-emerald-700',
+    labelClassName: 'text-emerald-800',
+    countClassName: 'text-emerald-900',
+  },
+  pending: {
+    icon: FiClock,
+    containerClassName: 'border-amber-200/80 bg-amber-50/70',
+    iconClassName: 'text-amber-700',
+    labelClassName: 'text-amber-800',
+    countClassName: 'text-amber-900',
+  },
+  cancelled: {
+    icon: FiAlertCircle,
+    containerClassName: 'border-rose-200/80 bg-rose-50/70',
+    iconClassName: 'text-rose-700',
+    labelClassName: 'text-rose-800',
+    countClassName: 'text-rose-900',
+  },
 };
 
 const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
@@ -112,58 +141,68 @@ export function CustomerBookingsPanel() {
 
   return (
     <div className="space-y-5 px-4 py-4 sm:px-6">
-      <Card className="rounded-2xl border border-border/70 bg-background shadow-sm">
-        <CardHeader>
-          <CardTitle>Bookings overview</CardTitle>
-          <CardDescription>
-            Track the status of every reservation you’ve made and see when the next one
-            becomes active.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          { isError && (
-            <div className="rounded-2xl border border-destructive/70 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-              Unable to load your bookings right now.
-            </div>
-          ) }
-          { isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-6 w-[180px]" />
-              <div className="flex flex-wrap gap-2">
-                <Skeleton className="h-10 w-24" />
-                <Skeleton className="h-10 w-24" />
-                <Skeleton className="h-10 w-24" />
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-3">
-              { Object.entries(CATEGORY_LABELS).map(([category, label]) => (
-                <Badge
-                  key={ category }
-                  variant={ CATEGORY_VARIANTS[category as keyof typeof CATEGORY_VARIANTS] }
-                  className="flex items-center gap-3"
-                >
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                    { label }
-                  </span>
-                  <span className="text-sm font-semibold text-foreground">
-                    { summaryCounts[category as keyof typeof summaryCounts].toLocaleString() }
-                  </span>
-                </Badge>
-              )) }
-            </div>
-          ) }
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-2xl border border-border/70 bg-background shadow-sm">
+      <Card className="rounded-2xl border border-border/70 bg-background">
         <CardHeader>
           <CardTitle>Recent bookings</CardTitle>
           <CardDescription>
             Latest reservations sorted by when you made the booking request.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-5">
+          <section className="space-y-4 rounded-md border border-border/70 bg-muted/10 p-4">
+            <div>
+              <h3 className="text-base font-semibold text-foreground">Bookings overview</h3>
+              <p className="text-sm text-muted-foreground">
+                Track the status of every reservation you’ve made and see when the next one
+                becomes active.
+              </p>
+            </div>
+            { isError && (
+              <div className="rounded-md border border-destructive/70 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                Unable to load your bookings right now.
+              </div>
+            ) }
+            { isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-6 w-[180px]" />
+                <div className="flex flex-wrap gap-2">
+                  <Skeleton className="h-10 w-24" />
+                  <Skeleton className="h-10 w-24" />
+                  <Skeleton className="h-10 w-24" />
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-3">
+                { Object.entries(CATEGORY_LABELS).map(([category, label]) => {
+                  const summaryCategory = category as keyof typeof CATEGORY_META;
+                  const meta = CATEGORY_META[summaryCategory];
+                  const Icon = meta.icon;
+
+                  return (
+                    <div
+                      key={ category }
+                      className={ `rounded-md border px-4 py-3 ${meta.containerClassName}` }
+                    >
+                      <div className="flex items-center gap-2">
+                        <Icon className={ `size-4 ${meta.iconClassName}` } aria-hidden="true" />
+                        <span
+                          className={ `text-[11px] font-semibold uppercase tracking-[0.16em] ${meta.labelClassName}` }
+                        >
+                          { label }
+                        </span>
+                      </div>
+                      <span
+                        className={ `mt-2 block text-2xl font-bold leading-none tabular-nums ${meta.countClassName}` }
+                      >
+                        { summaryCounts[summaryCategory].toLocaleString() }
+                      </span>
+                    </div>
+                  );
+                }) }
+              </div>
+            ) }
+          </section>
+
           { isLoading ? (
             <LoadingList />
           ) : bookingRecords.length === 0 ? (
@@ -202,7 +241,7 @@ export function CustomerBookingsPanel() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-8 px-3 text-[13px] font-semibold leading-none border-border/60 bg-background transition hover:border-destructive hover:bg-destructive/10 focus-visible:border-destructive focus-visible:ring-2 focus-visible:ring-destructive/50"
+                              className="h-8 px-3 text-[13px] font-semibold leading-none border-border/60 bg-background transition hover:border-destructive hover:bg-destructive/10 hover:text-destructive focus-visible:border-destructive focus-visible:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/50"
                               disabled={ cancelMutation.isPending }
                               onClick={ () => cancelMutation.mutate({ bookingId: booking.id, }) }
                             >
