@@ -65,7 +65,7 @@ const safeBigInt = (value: string | null | undefined) => {
   }
 };
 
-const TableSkeletonRows = ({ rows }: { rows: number }) => (
+const TableSkeletonRows = ({ rows, }: { rows: number }) => (
   <>
     { Array.from({ length: rows, }).map((_, index) => (
       <TableRow key={ `skeleton-${index}` }>
@@ -90,7 +90,7 @@ export function PartnerTransactionHistory() {
     hasNextPage,
     isFetchingNextPage,
     isFetching,
-  } = useWalletTransactions({ limit: 25 });
+  } = useWalletTransactions({ limit: 25, });
 
   const transactions = useMemo(
     () => data?.pages.flatMap((page) => page.transactions) ?? [],

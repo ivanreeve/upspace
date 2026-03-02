@@ -4,10 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { FiArrowDownRight, FiArrowUpRight, FiTrendingUp } from 'react-icons/fi';
 import { toast } from 'sonner';
 
-import {
-  type AdminReportPayload,
-  useAdminReportsQuery
-} from '@/hooks/api/useAdminReports';
+import { type AdminReportPayload, useAdminReportsQuery } from '@/hooks/api/useAdminReports';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,9 +37,18 @@ import { formatCurrencyMinor } from '@/lib/wallet';
 import { cn } from '@/lib/utils';
 
 const RANGE_OPTIONS = [
-  { label: 'Last 7 days', value: 7 },
-  { label: 'Last 30 days', value: 30 },
-  { label: 'Last 90 days', value: 90 },
+  {
+ label: 'Last 7 days',
+value: 7, 
+},
+  {
+ label: 'Last 30 days',
+value: 30, 
+},
+  {
+ label: 'Last 90 days',
+value: 90, 
+}
 ] as const;
 
 const numberFormatter = new Intl.NumberFormat('en-US');
@@ -151,7 +157,9 @@ const MetricCard = ({
   );
 };
 
-const TableSkeletonRows = ({ rows, columns }: { rows: number; columns: number }) => (
+const TableSkeletonRows = ({
+ rows, columns, 
+}: { rows: number; columns: number }) => (
   <>
     { Array.from({ length: rows, }).map((_, index) => (
       <TableRow key={ `skeleton-${index}` }>
@@ -177,7 +185,7 @@ export function AdminReportsPage() {
     error,
     refetch,
     isFetching,
-  } = useAdminReportsQuery({ days: rangeDays });
+  } = useAdminReportsQuery({ days: rangeDays, });
 
   const errorMessage = error instanceof Error
     ? error.message

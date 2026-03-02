@@ -56,9 +56,7 @@ export async function GET(req: NextRequest) {
   try {
     await requireAdminSession(req);
 
-    const parsed = adminReportQuerySchema.safeParse({
-      days: req.nextUrl.searchParams.get('days') ?? undefined,
-    });
+    const parsed = adminReportQuerySchema.safeParse({ days: req.nextUrl.searchParams.get('days') ?? undefined, });
 
     if (!parsed.success) {
       return NextResponse.json(
@@ -72,8 +70,14 @@ export async function GET(req: NextRequest) {
     const rangeStart = subDays(rangeEnd, days);
     const previousStart = subDays(rangeStart, days);
 
-    const currentRange = { gte: rangeStart, lt: rangeEnd, };
-    const previousRange = { gte: previousStart, lt: rangeStart, };
+    const currentRange = {
+ gte: rangeStart,
+lt: rangeEnd, 
+};
+    const previousRange = {
+ gte: previousStart,
+lt: rangeStart, 
+};
 
     const bookingStatusCurrentPromise = prisma.booking.groupBy({
       by: ['status'],
@@ -102,12 +106,20 @@ export async function GET(req: NextRequest) {
       _count: { _all: true, },
     });
     const refundsCurrentPromise = prisma.wallet_transaction.aggregate({
-      where: { type: 'refund', status: 'succeeded', created_at: currentRange, },
+      where: {
+ type: 'refund',
+status: 'succeeded',
+created_at: currentRange, 
+},
       _sum: { amount_minor: true, },
       _count: { _all: true, },
     });
     const refundsPreviousPromise = prisma.wallet_transaction.aggregate({
-      where: { type: 'refund', status: 'succeeded', created_at: previousRange, },
+      where: {
+ type: 'refund',
+status: 'succeeded',
+created_at: previousRange, 
+},
       _sum: { amount_minor: true, },
       _count: { _all: true, },
     });
@@ -121,9 +133,7 @@ export async function GET(req: NextRequest) {
       _avg: { rating_star: true, },
     });
 
-    const verificationPendingCountPromise = prisma.verification.count({
-      where: { status: 'in_review', },
-    });
+    const verificationPendingCountPromise = prisma.verification.count({ where: { status: 'in_review', }, });
     const verificationOldestPromise = prisma.verification.findFirst({
       where: { status: 'in_review', },
       orderBy: { submitted_at: 'asc', },
@@ -134,7 +144,7 @@ export async function GET(req: NextRequest) {
         status: { in: ['approved', 'rejected'], },
         OR: [
           { approved_at: currentRange, },
-          { rejected_at: currentRange, },
+          { rejected_at: currentRange, }
         ],
       },
       select: {
@@ -144,9 +154,7 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    const unpublishPendingCountPromise = prisma.unpublish_request.count({
-      where: { status: 'pending', },
-    });
+    const unpublishPendingCountPromise = prisma.unpublish_request.count({ where: { status: 'pending', }, });
     const unpublishOldestPromise = prisma.unpublish_request.findFirst({
       where: { status: 'pending', },
       orderBy: { created_at: 'asc', },
@@ -163,9 +171,7 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    const deactivationPendingCountPromise = prisma.deactivation_request.count({
-      where: { status: 'pending', },
-    });
+    const deactivationPendingCountPromise = prisma.deactivation_request.count({ where: { status: 'pending', }, });
     const deactivationOldestPromise = prisma.deactivation_request.findFirst({
       where: { status: 'pending', },
       orderBy: { created_at: 'asc', },
@@ -182,9 +188,7 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    const chatPendingCountPromise = prisma.chat_report.count({
-      where: { status: 'pending', },
-    });
+    const chatPendingCountPromise = prisma.chat_report.count({ where: { status: 'pending', }, });
     const chatOldestPromise = prisma.chat_report.findFirst({
       where: { status: 'pending', },
       orderBy: { created_at: 'asc', },
@@ -222,7 +226,7 @@ export async function GET(req: NextRequest) {
       deactivationResolved,
       chatPendingCount,
       chatOldest,
-      chatResolved,
+      chatResolved
     ] = await Promise.all([
       bookingStatusCurrentPromise,
       bookingStatusPreviousPromise,
@@ -244,7 +248,7 @@ export async function GET(req: NextRequest) {
       deactivationResolvedPromise,
       chatPendingCountPromise,
       chatOldestPromise,
-      chatResolvedPromise,
+      chatResolvedPromise
     ]);
 
     const bookingTotalCurrent = bookingStatusCurrent.reduce(
@@ -384,7 +388,10 @@ export async function GET(req: NextRequest) {
 
     const spaceStats = new Map<string, { total: number; cancelled: number; }>();
     bookingStatusBySpace.forEach((entry) => {
-      const current = spaceStats.get(entry.space_id) ?? { total: 0, cancelled: 0, };
+      const current = spaceStats.get(entry.space_id) ?? {
+ total: 0,
+cancelled: 0, 
+};
       current.total += entry._count._all;
       if (CANCELLATION_STATUSES.has(entry.status)) {
         current.cancelled += entry._count._all;
@@ -410,7 +417,12 @@ export async function GET(req: NextRequest) {
     const topSpaces = topSpaceIds.length
       ? await prisma.space.findMany({
         where: { id: { in: topSpaceIds, }, },
-        select: { id: true, name: true, city: true, region: true, },
+        select: {
+ id: true,
+name: true,
+city: true,
+region: true, 
+},
       })
       : [];
 

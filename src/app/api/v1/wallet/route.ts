@@ -117,14 +117,21 @@ status: 'succeeded',
     const bookingRows = bookingIds.length
       ? await prisma.booking.findMany({
         where: { id: { in: bookingIds, }, },
-        select: { id: true, space_name: true, area_name: true, },
+        select: {
+ id: true,
+space_name: true,
+area_name: true, 
+},
       })
       : [];
 
     const bookingLookup = new Map(
       bookingRows.map((row) => [
         row.id,
-        { space_name: row.space_name, area_name: row.area_name, },
+        {
+ space_name: row.space_name,
+area_name: row.area_name, 
+}
       ])
     );
 
