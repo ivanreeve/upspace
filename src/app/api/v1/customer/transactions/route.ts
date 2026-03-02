@@ -21,13 +21,14 @@ const querySchema = z.object({
 });
 
 function mapTransaction(row: {
-  transaction_id: bigint;
-  booking_id: string;
+  id: string;
+  booking_id: string | null;
   currency_iso3: string;
-  amount_minor: bigint | null;
+  amount_minor: bigint;
   fee_minor: bigint | null;
-  payment_method: string;
+  provider: string;
   is_live: boolean;
+  occurred_at: Date | null;
   created_at: Date;
   booking: {
     id: string;
@@ -40,21 +41,22 @@ function mapTransaction(row: {
 }): CustomerTransactionRecord {
   const rawHours = row.booking.booking_hours;
   const bookingHours = typeof rawHours === 'bigint' ? Number(rawHours) : Number(rawHours);
+  const transactionTimestamp = row.occurred_at ?? row.created_at;
 
   return {
-    id: row.transaction_id.toString(),
-    bookingId: row.booking_id,
+    id: row.id,
+    bookingId: row.booking_id ?? row.booking.id,
     bookingStatus: row.booking.status as CustomerTransactionBookingStatus,
     bookingCreatedAt: row.booking.created_at.toISOString(),
     bookingHours: Number.isFinite(bookingHours) ? bookingHours : 0,
     spaceName: row.booking.space_name,
     areaName: row.booking.area_name,
     currency: row.currency_iso3,
-    amountMinor: row.amount_minor?.toString() ?? '0',
+    amountMinor: row.amount_minor.toString(),
     feeMinor: row.fee_minor?.toString() ?? null,
-    paymentMethod: row.payment_method,
+    paymentMethod: row.provider,
     isLive: row.is_live,
-    transactionCreatedAt: row.created_at.toISOString(),
+    transactionCreatedAt: transactionTimestamp.toISOString(),
   };
 }
 
@@ -90,8 +92,11 @@ role: true,
  cursor, limit, 
 } = parsed.data;
 
-  const transactions = await prisma.transaction.findMany({
-    where: { booking: { user_auth_id: authData.user.id, }, },
+  const transactions = await prisma.payment_transaction.findMany({
+    where: {
+      status: 'succeeded',
+      booking: { user_auth_id: authData.user.id, },
+    },
     include: {
       booking: {
         select: {
@@ -108,7 +113,7 @@ role: true,
     take: limit + 1,
     ...(cursor
       ? {
- cursor: { transaction_id: BigInt(cursor), },
+ cursor: { id: cursor, },
 skip: 1, 
 }
       : {}),
@@ -118,7 +123,7 @@ skip: 1,
   if (hasMore) transactions.pop();
 
   const nextCursor = hasMore
-    ? transactions[transactions.length - 1]?.transaction_id.toString()
+    ? transactions[transactions.length - 1]?.id
     : undefined;
 
   return NextResponse.json({

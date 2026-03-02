@@ -8,7 +8,7 @@ Layers,
 Users,
 X
 } from 'lucide-react';
-import { FiFlag } from 'react-icons/fi';
+import { FiFlag, FiTrendingUp } from 'react-icons/fi';
 
 import { MarketplaceChrome } from '../Marketplace/MarketplaceChrome';
 
@@ -97,6 +97,13 @@ export function AdminChrome({
               <Kbd className="ml-auto flex items-center gap-1 text-[10px]">
                 Enter
               </Kbd>
+            </CommandItem>
+            <CommandItem
+              value="reports"
+              onSelect={ () => handleNavigate('/admin/reports') }
+            >
+              <FiTrendingUp className="size-4" aria-hidden="true" />
+              <span>Reports</span>
             </CommandItem>
             <CommandItem value="users" onSelect={ () => handleNavigate('/admin/users') }>
               <Users className="size-4" aria-hidden="true" />

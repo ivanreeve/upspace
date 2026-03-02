@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { FiLoader } from 'react-icons/fi';
+import { toast } from 'sonner';
 
 import { useCustomerTransactionsQuery } from '@/hooks/api/useCustomerTransactions';
 import { formatCurrencyMinor } from '@/lib/wallet';
@@ -16,6 +17,14 @@ import {
   CardTitle
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
 import type { CustomerTransactionBookingStatus } from '@/types/transactions';
 
 const BOOKING_STATUS_VARIANTS: Record<CustomerTransactionBookingStatus, 'secondary' | 'success' | 'destructive'> = {
@@ -42,8 +51,6 @@ const BOOKING_STATUS_LABELS: Record<CustomerTransactionBookingStatus, string> = 
   noshow: 'No show',
 };
 
-const PAYMENT_METHOD_LABELS: Record<string, string> = { paymongo: 'PayMongo', };
-
 const LOCALE_OPTIONS = {
   month: 'short',
   day: 'numeric',
@@ -60,17 +67,25 @@ export function CustomerTransactionHistory() {
     isLoading,
     isError,
     error,
-    refetch,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
   } = useCustomerTransactionsQuery();
 
+  const errorMessage = error instanceof Error
+    ? error.message
+    : 'Unable to load transactions.';
+
+  useEffect(() => {
+    if (isError) {
+      toast.error(errorMessage);
+    }
+  }, [isError, errorMessage]);
+
   const transactions = useMemo(
     () => data?.pages.flatMap((page) => page.data) ?? [],
     [data]
   );
-
   const hasTransactions = transactions.length > 0;
   const totalAmountMinor = transactions.reduce((sum, transaction) => {
     const minor = Number(transaction.amountMinor ?? '0');
@@ -106,19 +121,6 @@ export function CustomerTransactionHistory() {
             )) }
           </CardContent>
         </Card>
-      </section>
-    );
-  }
-
-  if (isError) {
-    return (
-      <section className="mx-auto flex w-full max-w-[1200px] flex-col items-center gap-4 px-4 py-20 sm:px-6 lg:px-8">
-        <p className="text-sm text-muted-foreground">
-          { error instanceof Error ? error.message : 'Unable to load transactions.' }
-        </p>
-        <Button variant="outline" size="sm" onClick={ () => { void refetch(); } }>
-          Retry
-        </Button>
       </section>
     );
   }
@@ -200,11 +202,11 @@ export function CustomerTransactionHistory() {
 
       <Card className="border border-border bg-card/70">
         <CardHeader className="flex flex-col gap-1 px-6 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-baseline gap-3">
             <CardTitle className="text-lg font-semibold text-foreground">
               Recent payments
             </CardTitle>
-            <span className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+            <span className="text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground">
               { hasTransactions ? `${ transactions.length } entries` : 'Empty' }
             </span>
           </div>
@@ -221,72 +223,61 @@ export function CustomerTransactionHistory() {
             </div>
           ) : (
             <div className="rounded-b-md border-t border-border/60 bg-card/80">
-              <div className="space-y-4 p-6">
-                { transactions.map((transaction) => {
-                  const amountLabel = formatCurrencyMinor(
-                    transaction.amountMinor,
-                    transaction.currency
-                  );
-                  const feeLabel =
-                    transaction.feeMinor !== null
-                      ? formatCurrencyMinor(
-                        transaction.feeMinor,
-                        transaction.currency
-                      )
-                      : null;
-                  const paymentLabel =
-                    PAYMENT_METHOD_LABELS[transaction.paymentMethod] ??
-                    transaction.paymentMethod;
+              <div className="overflow-hidden rounded-md border border-border/70 bg-background/80 shadow-sm">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Workspace</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="text-right">Hours</TableHead>
+                      <TableHead>Booking</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                  { transactions.map((transaction) => {
+                    const amountLabel = formatCurrencyMinor(
+                      transaction.amountMinor,
+                      transaction.currency
+                    );
 
-                  return (
-                    <article
-                      key={ transaction.id }
-                      className="group rounded-2xl border border-border/60 bg-background/70 p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-border/80"
-                    >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="min-w-0 space-y-1">
-                          <p className="text-sm font-semibold text-foreground">
-                            { transaction.spaceName } · { transaction.areaName }
-                          </p>
-                          <Link
-                            href={ `/customer/bookings/${transaction.bookingId}` }
-                            className="text-xs text-muted-foreground hover:underline"
-                          >
-                            Booking ID { transaction.bookingId }
-                          </Link>
-                        </div>
-                        <div className="flex flex-col items-end gap-1 text-right">
-                          <p className="text-lg font-semibold text-foreground">
-                            { amountLabel }
-                          </p>
-                          <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                      return (
+                        <TableRow key={ transaction.id }>
+                          <TableCell className="whitespace-nowrap">
                             { formatDateTime(transaction.transactionCreatedAt) }
-                          </span>
-                          <Badge
-                            variant={
-                              BOOKING_STATUS_VARIANTS[transaction.bookingStatus]
-                            }
-                          >
-                            { BOOKING_STATUS_LABELS[transaction.bookingStatus] }
-                          </Badge>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                        <span>
-                          Booking placed { formatDateTime(transaction.bookingCreatedAt) }
-                        </span>
-                        <span>
-                          { transaction.bookingHours } hour
-                          { transaction.bookingHours === 1 ? '' : 's' }
-                        </span>
-                        <span>{ transaction.isLive ? 'Live' : 'Test' } payment</span>
-                        <span>Method { paymentLabel }</span>
-                        { feeLabel && <span>Paymongo fee { feeLabel }</span> }
-                      </div>
-                    </article>
-                  );
-                }) }
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            { transaction.spaceName } - { transaction.areaName }
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                BOOKING_STATUS_VARIANTS[transaction.bookingStatus]
+                              }
+                            >
+                              { BOOKING_STATUS_LABELS[transaction.bookingStatus] }
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            { amountLabel }
+                          </TableCell>
+                          <TableCell className="text-right">
+                            { transaction.bookingHours }
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            <Link
+                              href={ `/customer/bookings/${transaction.bookingId}` }
+                              className="text-xs hover:underline"
+                            >
+                              { transaction.bookingId }
+                            </Link>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    }) }
+                  </TableBody>
+                </Table>
               </div>
               { hasNextPage && (
                 <div className="flex justify-center border-t border-border/60 px-6 py-4">

@@ -22,7 +22,12 @@ function mapWallet(walletRow: wallet) {
   };
 }
 
-function mapWalletTransaction(transaction: wallet_transaction) {
+function mapWalletTransaction(
+  transaction: wallet_transaction,
+  bookingLookup: Map<string, { space_name: string; area_name: string }>
+) {
+  const bookingId = transaction.booking_id ?? null;
+  const bookingInfo = bookingId ? bookingLookup.get(bookingId) ?? null : null;
   return {
     id: transaction.id,
     walletId: transaction.wallet_id,
@@ -32,7 +37,14 @@ function mapWalletTransaction(transaction: wallet_transaction) {
     netAmountMinor: transaction.net_amount_minor?.toString() ?? null,
     currency: transaction.currency,
     description: transaction.description,
-    bookingId: transaction.booking_id,
+    bookingId,
+    booking: bookingInfo
+      ? {
+        id: bookingId ?? '',
+        spaceName: bookingInfo.space_name,
+        areaName: bookingInfo.area_name,
+      }
+      : null,
     externalReference: transaction.external_reference,
     metadata: transaction.metadata ?? null,
     createdAt: transaction.created_at.toISOString(),
@@ -95,6 +107,27 @@ status: 'succeeded',
       prisma.wallet_transaction.count({ where: transactionWhere, })
     ]);
 
+    const bookingIds = Array.from(
+      new Set(
+        transactions
+          .map((transaction) => transaction.booking_id)
+          .filter((id): id is string => Boolean(id))
+      )
+    );
+    const bookingRows = bookingIds.length
+      ? await prisma.booking.findMany({
+        where: { id: { in: bookingIds, }, },
+        select: { id: true, space_name: true, area_name: true, },
+      })
+      : [];
+
+    const bookingLookup = new Map(
+      bookingRows.map((row) => [
+        row.id,
+        { space_name: row.space_name, area_name: row.area_name, },
+      ])
+    );
+
     const hasMore = transactions.length > limit;
     if (hasMore) transactions.pop();
 
@@ -102,7 +135,9 @@ status: 'succeeded',
 
     return NextResponse.json({
       wallet: mapWallet(walletRow),
-      transactions: transactions.map(mapWalletTransaction),
+      transactions: transactions.map((transaction) =>
+        mapWalletTransaction(transaction, bookingLookup)
+      ),
       pagination: {
  hasMore,
 nextCursor, 

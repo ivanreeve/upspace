@@ -31,8 +31,10 @@ export const ROLE_ACCESS_MAP: Record<string, string[]> = {
     '/partner',
     '/partner/spaces',
     '/partner/messages',
+    '/partner/transactions',
     '/customer/account',
-    '/customer/notifications'
+    '/customer/notifications',
+    '/customer/settings'
   ],
   admin: ['/marketplace', '/admin'],
 };

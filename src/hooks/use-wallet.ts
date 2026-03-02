@@ -15,6 +15,11 @@ export type WalletTransactionRecord = {
   currency: string;
   description: string | null;
   bookingId: string | null;
+  booking: {
+    id: string;
+    spaceName: string;
+    areaName: string;
+  } | null;
   externalReference: string | null;
   metadata: Record<string, unknown> | null;
   createdAt: string;

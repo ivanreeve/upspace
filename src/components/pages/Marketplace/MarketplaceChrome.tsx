@@ -28,7 +28,7 @@ import {
   UserX
 } from 'lucide-react';
 import { LuMessageSquareText } from 'react-icons/lu';
-import { FiFlag } from 'react-icons/fi';
+import { FiFlag, FiTrendingUp } from 'react-icons/fi';
 import {
   MdManageSearch,
   MdOutlineAccountBalanceWallet,
@@ -105,6 +105,7 @@ type SidebarFooterContentProps = {
   showWallet?: boolean;
   showTransactionHistory?: boolean;
   showSettings?: boolean;
+  transactionHistoryHref?: string;
 };
 
 function GradientSparklesIcon({
@@ -254,6 +255,7 @@ function SidebarFooterContent({
   showWallet = false,
   showTransactionHistory = true,
   showSettings = true,
+  transactionHistoryHref = '/customer/transactions',
 }: SidebarFooterContentProps) {
   const {
  state, isMobile, 
@@ -438,7 +440,7 @@ function SidebarFooterContent({
                     ) }
                     { showTransactionHistory && (
                       <DropdownMenuItem
-                        onSelect={ () => onNavigate('/customer/transactions') }
+                        onSelect={ () => onNavigate(transactionHistoryHref) }
                         className={ sidebarAccountMenuItemClassName }
                       >
                         <CreditCard className="size-4" aria-hidden="true" />
@@ -606,6 +608,7 @@ function MobileTopNav({
   showNotifications = true,
   showTransactionHistory = true,
   showAccountLinks = true,
+  transactionHistoryHref = '/customer/transactions',
 }: {
   avatarUrl: string | null;
   avatarFallback: string;
@@ -621,6 +624,7 @@ function MobileTopNav({
   showNotifications?: boolean;
   showTransactionHistory?: boolean;
   showAccountLinks?: boolean;
+  transactionHistoryHref?: string;
 }) {
   const { toggleSidebar, } = useSidebar();
   const hasAdditionalLinks =
@@ -763,7 +767,7 @@ function MobileTopNav({
                     ) }
                     { showTransactionHistory && (
                       <DropdownMenuItem
-                        onSelect={ () => onNavigate('/customer/transactions') }
+                        onSelect={ () => onNavigate(transactionHistoryHref) }
                         className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
                       >
                         <CreditCard className="size-4" aria-hidden="true" />
@@ -1156,6 +1160,9 @@ export function MarketplaceChrome({
   const shouldShowAiSearch = isCustomerRole || isPartnerRole || isAdminRole;
   const shouldShowNotifications = isCustomerRole || isPartnerRole;
   const resolvedMessageHref = messageHref ?? '/customer/messages';
+  const transactionHistoryHref = isPartnerRole
+    ? '/partner/transactions'
+    : '/customer/transactions';
   const pathname = usePathname();
   const isAccountRoute = (pathname ?? '').startsWith('/customer/account');
   const isMobile = useIsMobile();
@@ -1194,6 +1201,11 @@ export function MarketplaceChrome({
           label: 'Dashboard',
           href: '/marketplace/dashboard',
           icon: BarChart3,
+        },
+        {
+          label: 'Reports',
+          href: '/admin/reports',
+          icon: FiTrendingUp,
         },
         {
           label: 'Queue',
@@ -1324,21 +1336,22 @@ export function MarketplaceChrome({
     >
       { dialogSlot }
       { isMobile && (
-        <MobileTopNav
-          avatarUrl={ cachedAvatarUrl }
-          avatarFallback={ navData.avatarFallback }
-          onSearchOpen={ handleSearch }
-          displayName={ navData.avatarDisplayName }
-          emailLabel={ navData.userEmail ?? 'Email unavailable' }
-          onNavigate={ navData.onNavigate }
-          onLogout={ navData.onLogout }
-          isGuest={ navData.isGuest }
-          showSidebarToggle={ isPartnerRole }
-          showThemeSwitcher={ isCustomerRole || isAdminRole }
-          showNotifications={ shouldShowNotifications }
-          showTransactionHistory={ showTransactionHistory }
-          showAccountLinks={ !isAdminRole }
-        />
+          <MobileTopNav
+            avatarUrl={ cachedAvatarUrl }
+            avatarFallback={ navData.avatarFallback }
+            onSearchOpen={ handleSearch }
+            displayName={ navData.avatarDisplayName }
+            emailLabel={ navData.userEmail ?? 'Email unavailable' }
+            onNavigate={ navData.onNavigate }
+            onLogout={ navData.onLogout }
+            isGuest={ navData.isGuest }
+            showSidebarToggle={ isPartnerRole }
+            showThemeSwitcher={ isCustomerRole || isAdminRole }
+            showNotifications={ shouldShowNotifications }
+            showTransactionHistory={ showTransactionHistory }
+            showAccountLinks={ !isAdminRole }
+            transactionHistoryHref={ transactionHistoryHref }
+          />
       ) }
       <div className="flex min-h-screen w-full gap-5">
         <Sidebar
@@ -1524,6 +1537,18 @@ export function MarketplaceChrome({
                   ) }
                   { isAdminRole && (
                     <SidebarLinkItem
+                      href="/admin/reports"
+                      label="Reports"
+                      icon={ FiTrendingUp }
+                      tooltip="Reports"
+                      isActive={ isSidebarPathActive(
+                        pathname,
+                        '/admin/reports'
+                      ) }
+                    />
+                  ) }
+                  { isAdminRole && (
+                    <SidebarLinkItem
                       href="/admin"
                       label="Verification Queue"
                       icon={ FileText }
@@ -1612,6 +1637,7 @@ export function MarketplaceChrome({
               showWallet={ isPartnerRole }
               showTransactionHistory={ showTransactionHistory }
               showSettings={ !isAdminRole }
+              transactionHistoryHref={ transactionHistoryHref }
             />
           </SidebarFooter>
           <SidebarRail />

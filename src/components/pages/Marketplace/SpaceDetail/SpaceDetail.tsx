@@ -740,7 +740,11 @@ function BookingReservationOverlay({
         open={ isDesktopViewport && isBookingOpen }
         onOpenChange={ setIsBookingOpen }
       >
-        <DialogContent showCloseButton={ false }>
+        <DialogContent
+          showCloseButton={ false }
+          fullWidth
+          className="max-h-[90vh] overflow-y-auto lg:max-w-[1024px]"
+        >
           <DialogHeader>
             <DialogTitle>Book a reservation</DialogTitle>
             <DialogDescription>
@@ -776,7 +780,10 @@ function BookingReservationOverlay({
         open={ !isDesktopViewport && isBookingOpen }
         onOpenChange={ setIsBookingOpen }
       >
-        <SheetContent side="bottom" className="gap-4">
+        <SheetContent
+          side="bottom"
+          className="max-h-[90vh] gap-4 overflow-y-auto rounded-t-2xl"
+        >
           <SheetHeader>
             <SheetTitle>Book a reservation</SheetTitle>
           </SheetHeader>
