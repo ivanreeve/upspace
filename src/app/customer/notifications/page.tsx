@@ -30,6 +30,10 @@ export default async function NotificationsRoute() {
     redirect('/');
   }
 
+  if (dbUser.role === 'partner') {
+    redirect('/partner/notifications');
+  }
+
   const cookieStore = await cookies();
   const sidebarCookie = cookieStore.get(SIDEBAR_STATE_COOKIE)?.value;
   const initialSidebarOpen = parseSidebarState(sidebarCookie);

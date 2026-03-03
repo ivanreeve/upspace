@@ -3,17 +3,17 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import AccountPage from '@/components/pages/Account/AccountPage';
-import { MarketplaceChrome } from '@/components/pages/Marketplace/MarketplaceChrome';
+import { SpacesChrome } from '@/components/pages/Spaces/SpacesChrome';
 import { prisma } from '@/lib/prisma';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
 import { createSupabaseReadOnlyServerClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
-  title: 'Account | UpSpace',
-  description: 'Edit your Upspace profile details and primary role.',
+  title: 'Partner Settings | UpSpace',
+  description: 'Manage your partner settings and notification preferences.',
 };
 
-export default async function AccountRoutePage() {
+export default async function PartnerSettingsPage() {
   const supabase = await createSupabaseReadOnlyServerClient();
   const { data: authData, } = await supabase.auth.getUser();
 
@@ -26,12 +26,8 @@ export default async function AccountRoutePage() {
     select: { role: true, },
   });
 
-  if (!dbUser) {
+  if (!dbUser || dbUser.role !== 'partner') {
     redirect('/');
-  }
-
-  if (dbUser.role === 'partner') {
-    redirect('/partner/account');
   }
 
   const cookieStore = await cookies();
@@ -39,8 +35,8 @@ export default async function AccountRoutePage() {
   const initialSidebarOpen = parseSidebarState(sidebarCookie);
 
   return (
-    <MarketplaceChrome initialSidebarOpen={ initialSidebarOpen }>
+    <SpacesChrome initialSidebarOpen={ initialSidebarOpen }>
       <AccountPage />
-    </MarketplaceChrome>
+    </SpacesChrome>
   );
 }

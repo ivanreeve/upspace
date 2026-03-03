@@ -248,7 +248,7 @@ export function NotificationsPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       { notification.read ? null : (
-                        <Badge variant="default" className="mt-1 text-[10px] uppercase tracking-wide">
+                        <Badge variant="default" className="mt-1 text-[10px] uppercase tracking-wide dark:text-white">
                           New
                         </Badge>
                       ) }

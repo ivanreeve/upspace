@@ -106,6 +106,9 @@ type SidebarFooterContentProps = {
   showTransactionHistory?: boolean;
   showSettings?: boolean;
   transactionHistoryHref?: string;
+  notificationsHref?: string;
+  accountHref?: string;
+  settingsHref?: string;
 };
 
 function GradientSparklesIcon({
@@ -256,6 +259,9 @@ function SidebarFooterContent({
   showTransactionHistory = true,
   showSettings = true,
   transactionHistoryHref = '/customer/transactions',
+  notificationsHref = '/customer/notifications',
+  accountHref = '/customer/account',
+  settingsHref = '/customer/settings',
 }: SidebarFooterContentProps) {
   const {
  state, isMobile, 
@@ -404,7 +410,7 @@ function SidebarFooterContent({
                   <div className="space-y-0.5 py-2">
                     { showAccount && (
                       <DropdownMenuItem
-                        onSelect={ () => onNavigate('/customer/account') }
+                        onSelect={ () => onNavigate(accountHref) }
                         className={ sidebarAccountMenuItemClassName }
                       >
                         <User className="size-4" aria-hidden="true" />
@@ -422,7 +428,7 @@ function SidebarFooterContent({
                     ) }
                     { showSettings && (
                       <DropdownMenuItem
-                        onSelect={ () => onNavigate('/customer/settings') }
+                        onSelect={ () => onNavigate(settingsHref) }
                         className={ sidebarAccountMenuItemClassName }
                       >
                         <Settings className="size-4" aria-hidden="true" />
@@ -431,7 +437,7 @@ function SidebarFooterContent({
                     ) }
                     { showNotifications && (
                       <DropdownMenuItem
-                        onSelect={ () => onNavigate('/customer/notifications') }
+                        onSelect={ () => onNavigate(notificationsHref) }
                         className={ sidebarAccountMenuItemClassName }
                       >
                         <NotificationIcon className="size-4" aria-hidden="true" />
@@ -609,6 +615,9 @@ function MobileTopNav({
   showTransactionHistory = true,
   showAccountLinks = true,
   transactionHistoryHref = '/customer/transactions',
+  notificationsHref = '/customer/notifications',
+  accountHref = '/customer/account',
+  settingsHref = '/customer/settings',
 }: {
   avatarUrl: string | null;
   avatarFallback: string;
@@ -625,6 +634,9 @@ function MobileTopNav({
   showTransactionHistory?: boolean;
   showAccountLinks?: boolean;
   transactionHistoryHref?: string;
+  notificationsHref?: string;
+  accountHref?: string;
+  settingsHref?: string;
 }) {
   const { toggleSidebar, } = useSidebar();
   const hasAdditionalLinks =
@@ -652,7 +664,7 @@ function MobileTopNav({
         <div className="flex items-center gap-2">
           { showNotifications && !isGuest && (
             <Link
-              href="/customer/notifications"
+              href={ notificationsHref }
               aria-label="Notifications"
               className="rounded-full p-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
@@ -741,14 +753,14 @@ function MobileTopNav({
                     { showAccountLinks && (
                       <>
                         <DropdownMenuItem
-                          onSelect={ () => onNavigate('/customer/account') }
+                          onSelect={ () => onNavigate(accountHref) }
                           className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
                         >
                           <User className="size-4" aria-hidden="true" />
                           <span>Account</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onSelect={ () => onNavigate('/customer/settings') }
+                          onSelect={ () => onNavigate(settingsHref) }
                           className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
                         >
                           <Settings className="size-4" aria-hidden="true" />
@@ -758,7 +770,7 @@ function MobileTopNav({
                     ) }
                     { showNotifications && (
                       <DropdownMenuItem
-                        onSelect={ () => onNavigate('/customer/notifications') }
+                        onSelect={ () => onNavigate(notificationsHref) }
                         className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
                       >
                         <NotificationIcon className="size-4" aria-hidden="true" />
@@ -1163,8 +1175,23 @@ export function MarketplaceChrome({
   const transactionHistoryHref = isPartnerRole
     ? '/partner/transactions'
     : '/customer/transactions';
+  const notificationsHref = isPartnerRole
+    ? '/partner/notifications'
+    : '/customer/notifications';
+  const accountHref = isPartnerRole
+    ? '/partner/account'
+    : '/customer/account';
+  const settingsHref = isPartnerRole
+    ? '/partner/settings'
+    : '/customer/settings';
   const pathname = usePathname();
-  const isAccountRoute = (pathname ?? '').startsWith('/customer/account');
+  const isAccountRoute = Boolean(
+    pathname &&
+      (pathname.startsWith('/customer/account') ||
+        pathname.startsWith('/customer/settings') ||
+        pathname.startsWith('/partner/account') ||
+        pathname.startsWith('/partner/settings'))
+  );
   const isMobile = useIsMobile();
   const shouldRenderMobileBottomNav =
     isMobile && !isAccountRoute && !isPartnerRole;
@@ -1280,7 +1307,7 @@ export function MarketplaceChrome({
     if (shouldShowNotifications && !isCustomerRole) {
       actions.push({
         label: 'Notifications',
-        href: '/customer/notifications',
+        href: notificationsHref,
         icon: NotificationIcon,
       });
     }
@@ -1308,6 +1335,7 @@ export function MarketplaceChrome({
     isAdminRole,
     isCustomerRole,
     isPartnerRole,
+    notificationsHref,
     resolvedMessageHref,
     shouldShowNotifications
   ]);
@@ -1351,6 +1379,9 @@ export function MarketplaceChrome({
             showTransactionHistory={ showTransactionHistory }
             showAccountLinks={ !isAdminRole }
             transactionHistoryHref={ transactionHistoryHref }
+            notificationsHref={ notificationsHref }
+            accountHref={ accountHref }
+            settingsHref={ settingsHref }
           />
       ) }
       <div className="flex min-h-screen w-full gap-5">
@@ -1421,15 +1452,12 @@ export function MarketplaceChrome({
                   ) }
                   { shouldShowNotifications && (
                     <SidebarLinkItem
-                      href="/customer/notifications"
+                      href={ notificationsHref }
                       label="Notifications"
                       icon={ NotificationIcon }
                       tooltip="Notifications"
                       iconProps={ { className: 'size-[19px] -translate-y-px', } }
-                      isActive={ isSidebarPathActive(
-                        pathname,
-                        '/customer/notifications'
-                      ) }
+                      isActive={ isSidebarPathActive(pathname, notificationsHref) }
                     />
                   ) }
                   { isCustomerRole && (
@@ -1638,6 +1666,9 @@ export function MarketplaceChrome({
               showTransactionHistory={ showTransactionHistory }
               showSettings={ !isAdminRole }
               transactionHistoryHref={ transactionHistoryHref }
+              notificationsHref={ notificationsHref }
+              accountHref={ accountHref }
+              settingsHref={ settingsHref }
             />
           </SidebarFooter>
           <SidebarRail />
