@@ -287,7 +287,7 @@ export function PartnerTransactionHistory() {
             </Card>
           )) }
         </div>
-        <Card className="border border-border bg-card/70 shadow-sm">
+        <Card className="border border-border bg-card/70 py-0">
           <CardHeader className="px-6 py-5">
             <Skeleton className="h-6 w-40 mb-2" />
             <Skeleton className="h-4 w-64" />
@@ -333,7 +333,7 @@ export function PartnerTransactionHistory() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="border border-border/60 bg-card/40 shadow-sm transition-all hover:bg-card/60 hover:shadow-md">
+        <Card className="border border-border/60 bg-card/40 transition-all hover:bg-card/60">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Total earned
@@ -354,7 +354,7 @@ export function PartnerTransactionHistory() {
           </CardContent>
         </Card>
 
-        <Card className="border border-border/60 bg-card/40 shadow-sm transition-all hover:bg-card/60 hover:shadow-md">
+        <Card className="border border-border/60 bg-card/40 transition-all hover:bg-card/60">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Net earnings
@@ -371,7 +371,7 @@ export function PartnerTransactionHistory() {
           </CardContent>
         </Card>
 
-        <Card className="border border-border/60 bg-card/40 shadow-sm transition-all hover:bg-card/60 hover:shadow-md">
+        <Card className="border border-border/60 bg-card/40 transition-all hover:bg-card/60">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Latest activity
@@ -393,8 +393,8 @@ export function PartnerTransactionHistory() {
         </Card>
       </div>
 
-      <Card className="overflow-hidden border border-border/60 bg-card shadow-sm">
-        <CardHeader className="border-b border-border/40 bg-muted/10 px-6 py-5">
+      <Card className="overflow-hidden border border-border/60 bg-card py-0">
+        <CardHeader className="border-b border-border/40 bg-muted/10 px-6 pb-5 pt-0">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="space-y-1">
               <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">

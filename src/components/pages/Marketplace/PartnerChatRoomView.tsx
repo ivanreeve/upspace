@@ -290,6 +290,27 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
     });
   }, [rooms]);
 
+  useEffect(() => {
+    if (roomsLoading || roomsError || sortedRooms.length === 0) {
+      return;
+    }
+
+    if (!roomId) {
+      const latestRoomId = sortedRooms[0]?.id;
+      if (latestRoomId) {
+        router.replace(`/partner/messages/${latestRoomId}`);
+      }
+      return;
+    }
+
+    if (!activeRoom) {
+      const fallbackRoomId = sortedRooms[0]?.id;
+      if (fallbackRoomId && fallbackRoomId !== roomId) {
+        router.replace(`/partner/messages/${fallbackRoomId}`);
+      }
+    }
+  }, [activeRoom, roomId, roomsError, roomsLoading, router, sortedRooms]);
+
   const filteredRooms = useMemo(() => {
     if (!sortedRooms.length) {
       return [];

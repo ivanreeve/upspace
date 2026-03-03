@@ -24,7 +24,8 @@ export const ROLE_ACCESS_MAP: Record<string, string[]> = {
     '/customer/account',
     '/customer/bookmarks',
     '/customer/messages',
-    '/customer/notifications'
+    '/customer/notifications',
+    '/customer/transactions'
   ],
   partner: [
     '/marketplace',
