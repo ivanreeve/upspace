@@ -33,10 +33,22 @@ type CustomerChatRoomViewProps = {
 
 function CustomerChatsListSkeleton() {
   return (
-    <div className="space-y-3 py-4 px-2">
-      <Skeleton className="h-10 w-full rounded-2xl" />
-      <Skeleton className="h-10 w-full rounded-2xl" />
-      <Skeleton className="h-10 w-3/4 rounded-2xl" />
+    <div className="space-y-1 py-1">
+      { Array.from({ length: 6, }).map((_, index) => (
+        <div
+          key={ `chat-skeleton-${index}` }
+          className="flex w-full items-center gap-3 rounded-md px-3 py-2"
+        >
+          <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <Skeleton className="h-4 w-24 rounded-full" />
+              <Skeleton className="h-3 w-12 rounded-full" />
+            </div>
+            <Skeleton className="h-3 w-full rounded-full" />
+          </div>
+        </div>
+      )) }
     </div>
   );
 }
@@ -308,9 +320,9 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
   let listContent: ReactNode;
   if (roomsLoading) {
     listContent = (
-      <div className="flex flex-1 items-center justify-center">
+      <ScrollArea className="flex-1 h-full min-h-0">
         <CustomerChatsListSkeleton />
-      </div>
+      </ScrollArea>
     );
   } else if (roomsError) {
     listContent = <p className="text-sm text-destructive">Unable to load conversations.</p>;

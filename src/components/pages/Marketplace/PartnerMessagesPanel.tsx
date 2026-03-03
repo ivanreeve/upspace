@@ -33,10 +33,25 @@ import type { ChatMessage } from '@/types/chat';
 
 function PartnerChatsListSkeleton() {
   return (
-    <div className="space-y-3 py-4 px-2">
-      <Skeleton className="h-12 w-full rounded-2xl" />
-      <Skeleton className="h-12 w-full rounded-2xl" />
-      <Skeleton className="h-12 w-3/4 rounded-2xl" />
+    <div className="space-y-1">
+      { Array.from({ length: 4, }).map((_, index) => (
+        <div
+          key={ `chat-skeleton-${index}` }
+          className="w-full rounded-2xl border p-3 text-left"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-24 rounded-full" />
+                <Skeleton className="h-3 w-32 rounded-full" />
+              </div>
+            </div>
+            <Skeleton className="h-3 w-12 rounded-full" />
+          </div>
+          <Skeleton className="mt-3 h-3 w-full rounded-full" />
+        </div>
+      )) }
     </div>
   );
 }
@@ -219,9 +234,11 @@ export function PartnerMessagesPanel() {
   let conversationsContent: ReactNode;
   if (roomsLoading) {
     conversationsContent = (
-      <div className="flex flex-1 items-center justify-center">
-        <PartnerChatsListSkeleton />
-      </div>
+      <ScrollArea className="h-[40vh] min-h-[32vh] sm:h-full sm:min-h-0 rounded-2xl border border-border/60 bg-background/60">
+        <div className="space-y-2 p-3">
+          <PartnerChatsListSkeleton />
+        </div>
+      </ScrollArea>
     );
   } else if (roomsError) {
     conversationsContent = <p className="text-sm text-destructive">Unable to load conversations.</p>;

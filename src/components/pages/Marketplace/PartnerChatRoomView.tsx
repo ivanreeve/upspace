@@ -33,23 +33,20 @@ type PartnerChatRoomViewProps = {
 };
 
 function PartnerChatsListSkeleton() {
-  const skeletonIds = ['room-skeleton-1', 'room-skeleton-2', 'room-skeleton-3'] as const;
-
   return (
-    <div className="space-y-3 py-4 px-2">
-      { skeletonIds.map((skeletonId) => (
+    <div className="space-y-1 py-1">
+      { Array.from({ length: 6, }).map((_, index) => (
         <div
-          key={ skeletonId }
-          className="flex items-start gap-3 rounded-2xl border border-border/40 bg-background/60 px-3 py-2"
+          key={ `chat-skeleton-${index}` }
+          className="flex w-full items-center gap-3 rounded-md px-3 py-2"
         >
-          <Skeleton className="h-10 w-10 rounded-full" />
-          <div className="flex-1 space-y-2">
+          <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
             <div className="flex items-center justify-between gap-2">
-              <Skeleton className="h-3 w-32 rounded-full" />
-              <Skeleton className="h-2 w-12 rounded-full" />
+              <Skeleton className="h-4 w-24 rounded-full" />
+              <Skeleton className="h-3 w-12 rounded-full" />
             </div>
-            <Skeleton className="h-2 w-36 rounded-full" />
-            <Skeleton className="h-2 w-full rounded-full" />
+            <Skeleton className="h-3 w-full rounded-full" />
           </div>
         </div>
       )) }
@@ -331,9 +328,9 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
   let listContent: ReactNode;
   if (roomsLoading) {
     listContent = (
-      <div className="flex flex-1 items-center justify-center">
+      <ScrollArea className="flex-1 h-full min-h-0">
         <PartnerChatsListSkeleton />
-      </div>
+      </ScrollArea>
     );
   } else if (roomsError) {
     listContent = <p className="text-sm text-destructive">Unable to load conversations.</p>;
