@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo } from 'react';
-import { FiLoader } from 'react-icons/fi';
+import { FiLoader, FiCreditCard, FiActivity, FiClock, FiFileText } from 'react-icons/fi';
 import { toast } from 'sonner';
 
 import { useCustomerTransactionsQuery } from '@/hooks/api/useCustomerTransactions';
@@ -80,6 +80,7 @@ const formatLedgerAmount = (amountMinor: bigint | null, currency: string) =>
 
 type CustomerLedgerRow = {
   id: string;
+  transactionId: string;
   postedAt: string;
   reference: string;
   bookingStatus: CustomerTransactionBookingStatus;
@@ -118,6 +119,7 @@ function buildCustomerLedgerRows(
 
     const debitRow: CustomerLedgerRow = {
       id: `${transaction.id}-expense`,
+      transactionId: transaction.id,
       postedAt: transaction.transactionCreatedAt,
       reference,
       bookingStatus: transaction.bookingStatus,
@@ -133,6 +135,7 @@ function buildCustomerLedgerRows(
 
     const creditRow: CustomerLedgerRow = {
       id: `${transaction.id}-cash`,
+      transactionId: transaction.id,
       postedAt: transaction.transactionCreatedAt,
       reference,
       bookingStatus: transaction.bookingStatus,
@@ -208,8 +211,8 @@ export function CustomerTransactionHistory() {
 
   if (isLoading) {
     return (
-      <section className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-        <div className="space-y-1">
+      <section className="mx-auto flex w-full max-w-[1200px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+        <div className="space-y-2">
           <Skeleton className="h-4 w-16" />
           <Skeleton className="h-8 w-56" />
           <Skeleton className="h-4 w-80" />
@@ -217,16 +220,25 @@ export function CustomerTransactionHistory() {
         <div className="grid gap-4 md:grid-cols-3">
           { Array.from({ length: 3, }).map((_, i) => (
             <Card key={ i } className="border border-border bg-card/70">
-              <CardHeader className="space-y-1 p-4"><Skeleton className="h-5 w-24" /></CardHeader>
-              <CardContent className="p-4"><Skeleton className="h-8 w-32" /></CardContent>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="size-4" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-32 mb-2" />
+                <Skeleton className="h-3 w-40" />
+              </CardContent>
             </Card>
           )) }
         </div>
-        <Card className="border border-border bg-card/70">
-          <CardHeader className="px-6 py-4"><Skeleton className="h-6 w-40" /></CardHeader>
-          <CardContent className="p-6">
+        <Card className="border border-border bg-card/70 shadow-sm">
+          <CardHeader className="px-6 py-5">
+            <Skeleton className="h-6 w-40 mb-2" />
+            <Skeleton className="h-4 w-64" />
+          </CardHeader>
+          <CardContent className="p-0">
             <Table>
-              <TableHeader>
+              <TableHeader className="bg-muted/30">
                 <TableRow>
                   <TableHead>Date</TableHead>
                   <TableHead>Ref</TableHead>
@@ -249,180 +261,191 @@ export function CustomerTransactionHistory() {
   }
 
   return (
-    <section className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-      <div className="space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-          Customer
-        </p>
-        <h1 className="text-3xl font-semibold text-foreground">
-          Transaction history
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Posted as double-entry journal lines so each booking payment is traceable from expense to cash settlement.
-        </p>
+    <section className="mx-auto flex w-full max-w-[1200px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+            <FiFileText className="size-3" aria-hidden="true" /> Customer
+          </p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            Transaction history
+          </h1>
+          <p className="text-sm text-muted-foreground max-w-2xl">
+            Posted as double-entry journal lines so each booking payment is traceable from expense to cash settlement.
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="border border-border bg-card/70">
-          <CardHeader className="space-y-1 p-4">
-            <CardTitle className="text-base font-semibold text-foreground">
+        <Card className="border border-border/60 bg-card/40 shadow-sm transition-all hover:bg-card/60 hover:shadow-md">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
               Total spend
             </CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
-              Across all bookings shown here
-            </CardDescription>
+            <FiCreditCard className="size-4 text-muted-foreground" aria-hidden="true" />
           </CardHeader>
-          <CardContent className="p-4">
-            <p className="text-2xl font-semibold text-foreground">
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">
               { formatCurrencyMinor(totalAmountMinor, lastTransaction?.currency ?? 'PHP') }
-            </p>
-            <p className="text-sm text-muted-foreground">
-              { transactions.length } payment
-              { transactions.length === 1 ? '' : 's' }
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Across { transactions.length } payment{ transactions.length === 1 ? '' : 's' } shown
             </p>
           </CardContent>
         </Card>
-        <Card className="border border-border bg-card/70">
-          <CardHeader className="space-y-1 p-4">
-            <CardTitle className="text-base font-semibold text-foreground">
+        
+        <Card className="border border-border/60 bg-card/40 shadow-sm transition-all hover:bg-card/60 hover:shadow-md">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
               Latest payment
             </CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
-              Most recent settlement captured
-            </CardDescription>
+            <FiActivity className="size-4 text-muted-foreground" aria-hidden="true" />
           </CardHeader>
-          <CardContent className="p-4">
-            <p className="text-base font-semibold text-foreground">
-              { lastTransaction
-                ? formatDateTime(lastTransaction.transactionCreatedAt)
-                : 'No payments yet' }
-            </p>
-            <p className="text-sm text-muted-foreground">
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground truncate">
+              { lastTransaction ? formatDateTime(lastTransaction.transactionCreatedAt).split(',')[0] : 'None' }
+            </div>
+            <p className="text-xs text-muted-foreground mt-1 truncate">
               { lastTransaction ? lastTransaction.spaceName : 'Awaiting first booking' }
             </p>
           </CardContent>
         </Card>
-        <Card className="border border-border bg-card/70">
-          <CardHeader className="space-y-1 p-4">
-            <CardTitle className="text-base font-semibold text-foreground">
+
+        <Card className="border border-border/60 bg-card/40 shadow-sm transition-all hover:bg-card/60 hover:shadow-md">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
               Booking hours
             </CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
-              Total time covered by these entries
-            </CardDescription>
+            <FiClock className="size-4 text-muted-foreground" aria-hidden="true" />
           </CardHeader>
-          <CardContent className="p-4">
-            <p className="text-2xl font-semibold text-foreground">
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">
               { totalHours }
-            </p>
-            <p className="text-sm text-muted-foreground">
-              { totalHours === 1 ? 'hour booked' : 'hours booked' }
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Total time covered by these entries
             </p>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="border border-border bg-card/70">
-        <CardHeader className="flex flex-col gap-1 px-6 py-4">
-          <div className="flex flex-wrap items-baseline gap-3">
-            <CardTitle className="text-lg font-semibold text-foreground">
-              Double-entry ledger
-            </CardTitle>
-            <span className="text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground">
+      <Card className="overflow-hidden border border-border/60 bg-card shadow-sm">
+        <CardHeader className="border-b border-border/40 bg-muted/10 px-6 py-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="space-y-1">
+              <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
+                Double-entry ledger
+              </CardTitle>
+              <CardDescription className="text-sm text-muted-foreground">
+                Every payment posts an expense debit and a matching cash credit.
+              </CardDescription>
+            </div>
+            <Badge variant="outline" className="text-xs font-medium uppercase tracking-wider bg-background/50">
               { hasTransactions ? `${ transactions.length } transactions` : 'Empty' }
-            </span>
+            </Badge>
           </div>
-          <CardDescription className="text-sm text-muted-foreground">
-            Every payment posts an expense debit and a matching cash credit.
-          </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           { !hasTransactions ? (
-            <div className="px-6 py-10 text-sm text-muted-foreground">
-              You have not completed any paid bookings yet.
-              Every settled booking payment will appear here as ledger entries.
+            <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+              <div className="rounded-full bg-muted/50 p-4 mb-4">
+                <FiFileText className="size-8 text-muted-foreground/50" aria-hidden="true" />
+              </div>
+              <p className="text-sm font-medium text-foreground">No transactions found</p>
+              <p className="text-sm text-muted-foreground max-w-sm mt-1">
+                You have not completed any paid bookings yet. Every settled booking payment will appear here as ledger entries.
+              </p>
             </div>
           ) : (
-            <div className="rounded-b-md border-t border-border/60 bg-card/80">
-              <div className="overflow-hidden rounded-md border border-border/70 bg-background/80 shadow-sm">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Ref</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Account</TableHead>
-                      <TableHead>Details</TableHead>
-                      <TableHead className="text-right">Debit</TableHead>
-                      <TableHead className="text-right">Credit</TableHead>
-                      <TableHead className="text-right">Cumulative spend</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    { ledgerRows.map((row) => (
-                      <TableRow key={ row.id } className={ row.isContra ? 'bg-muted/25' : undefined }>
-                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                          { row.isContra ? '' : formatDateTime(row.postedAt) }
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">
-                          { row.reference }
-                        </TableCell>
-                        <TableCell>
-                          { row.isContra ? (
-                            <span className="text-xs text-muted-foreground">Contra</span>
-                          ) : (
-                            <Badge
-                              variant={
-                                BOOKING_STATUS_VARIANTS[row.bookingStatus]
-                              }
+            <div className="w-full overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-muted/30">
+                  <TableRow className="hover:bg-transparent border-b-border/60">
+                    <TableHead className="font-medium text-muted-foreground">Date</TableHead>
+                    <TableHead className="font-medium text-muted-foreground">Ref</TableHead>
+                    <TableHead className="font-medium text-muted-foreground">Status</TableHead>
+                    <TableHead className="font-medium text-muted-foreground">Account</TableHead>
+                    <TableHead className="font-medium text-muted-foreground">Details</TableHead>
+                    <TableHead className="text-right font-medium text-muted-foreground">Debit</TableHead>
+                    <TableHead className="text-right font-medium text-muted-foreground">Credit</TableHead>
+                    <TableHead className="text-right font-medium text-muted-foreground">Cumulative spend</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  { ledgerRows.map((row) => (
+                    <TableRow 
+                      key={ row.id } 
+                      className={ `
+                        group transition-colors
+                        ${row.isContra ? 'bg-muted/10 border-b border-border/60' : 'border-none'} 
+                        hover:bg-muted/30
+                      ` }
+                    >
+                      <TableCell className="whitespace-nowrap py-3 text-xs text-muted-foreground">
+                        { row.isContra ? (
+                          <div className="pl-4 border-l-2 border-muted-foreground/20 h-full py-1"></div>
+                        ) : (
+                          formatDateTime(row.postedAt)
+                        ) }
+                      </TableCell>
+                      <TableCell className="py-3 font-mono text-[11px] text-muted-foreground">
+                        { row.isContra ? '' : row.reference }
+                      </TableCell>
+                      <TableCell className="py-3">
+                        { row.isContra ? (
+                          <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60 pl-2">Contra entry</span>
+                        ) : (
+                          <Badge
+                            variant={ BOOKING_STATUS_VARIANTS[row.bookingStatus] }
+                            className="text-[10px] uppercase font-semibold"
+                          >
+                            { BOOKING_STATUS_LABELS[row.bookingStatus] }
+                          </Badge>
+                        ) }
+                      </TableCell>
+                      <TableCell className={ `py-3 ${row.isContra ? 'text-muted-foreground text-sm' : 'font-medium text-sm text-foreground'}` }>
+                        { row.account }
+                      </TableCell>
+                      <TableCell className="py-3 text-xs text-muted-foreground">
+                        <div className="flex flex-col gap-1">
+                          <span>{ row.details }</span>
+                          { !row.isContra && row.bookingId ? (
+                            <Link
+                              href={ `/customer/bookings/${row.bookingId}` }
+                              className="text-[11px] font-medium text-primary/80 hover:text-primary hover:underline w-fit"
                             >
-                              { BOOKING_STATUS_LABELS[row.bookingStatus] }
-                            </Badge>
-                          ) }
-                        </TableCell>
-                        <TableCell className={ row.isContra ? 'text-muted-foreground' : 'font-medium' }>
-                          { row.account }
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          <div className="space-y-1">
-                            <p>{ row.details }</p>
-                            { !row.isContra && row.bookingId ? (
-                              <Link
-                                href={ `/customer/bookings/${row.bookingId}` }
-                                className="text-[11px] font-medium hover:underline"
-                              >
-                                Booking { row.bookingId.slice(0, 8) }
-                              </Link>
-                            ) : null }
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          { formatLedgerAmount(row.debitMinor, row.currency) }
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          { formatLedgerAmount(row.creditMinor, row.currency) }
-                        </TableCell>
-                        <TableCell className="text-right font-semibold text-foreground">
-                          { formatLedgerAmount(row.cumulativeSpendMinor, row.currency) }
-                        </TableCell>
-                      </TableRow>
-                    )) }
-                  </TableBody>
-                </Table>
-              </div>
+                              View booking { row.bookingId.slice(0, 8) } →
+                            </Link>
+                          ) : null }
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-3 text-right font-medium text-sm text-foreground/80">
+                        { formatLedgerAmount(row.debitMinor, row.currency) }
+                      </TableCell>
+                      <TableCell className="py-3 text-right font-medium text-sm text-foreground/80">
+                        { formatLedgerAmount(row.creditMinor, row.currency) }
+                      </TableCell>
+                      <TableCell className="py-3 text-right font-semibold text-sm text-foreground">
+                        { formatLedgerAmount(row.cumulativeSpendMinor, row.currency) }
+                      </TableCell>
+                    </TableRow>
+                  )) }
+                </TableBody>
+              </Table>
               { hasNextPage && (
-                <div className="flex justify-center border-t border-border/60 px-6 py-4">
+                <div className="flex justify-center border-t border-border/60 bg-muted/5 px-6 py-4">
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
+                    className="w-full sm:w-auto min-w-[140px]"
                     onClick={ () => { void fetchNextPage(); } }
                     disabled={ isFetchingNextPage }
                   >
                     { isFetchingNextPage ? (
                       <FiLoader className="mr-2 size-4 animate-spin" aria-hidden="true" />
                     ) : null }
-                    Load more
+                    { isFetchingNextPage ? 'Loading...' : 'Load older transactions' }
                   </Button>
                 </div>
               ) }
