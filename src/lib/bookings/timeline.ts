@@ -10,7 +10,7 @@ type BookingForTimeline = {
 };
 
 type PaymentTxForTimeline = {
-  transaction_id: bigint;
+  id: string;
   amount_minor: bigint | null;
   currency_iso3: string;
   created_at: Date;
@@ -85,7 +85,7 @@ label: 'Booking confirmed',
   if (paymentTx) {
     const amount = paymentTx.amount_minor ?? booking.price_minor ?? BigInt(0);
     events.push({
-      id: `payment-${paymentTx.transaction_id}`,
+      id: `payment-${paymentTx.id}`,
       kind: 'payment',
       label: 'Payment captured',
       status: 'succeeded',

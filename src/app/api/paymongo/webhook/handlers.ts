@@ -283,9 +283,6 @@ async function recordCheckoutTransaction(opts: {
     event,
     paymentEventId,
   } = opts;
-  const checkoutObject = event.data.object;
-  const amountMinor = Math.round(checkoutObject.amount ?? 0);
-  const currency = checkoutObject.currency ?? 'PHP';
 
   try {
     await recordNormalizedCheckoutTransaction({
@@ -294,35 +291,9 @@ async function recordCheckoutTransaction(opts: {
       paymentEventId,
     });
   } catch (error) {
-    console.error('Failed to record normalized checkout transaction', {
-      bookingId,
-      checkoutObjectId: checkoutObject.id,
-      error,
-    });
-  }
-
-  try {
-    await prisma.transaction.create({
-      data: {
-        booking_id: bookingId,
-        is_live: event.livemode,
-        gateway_data: checkoutObject as unknown as Prisma.InputJsonValue,
-        payment_method: 'paymongo',
-        currency_iso3: currency,
-        amount_minor: BigInt(Number.isFinite(amountMinor) ? amountMinor : 0),
-      },
-    });
-  } catch (error) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === 'P2002'
-    ) {
-      // Duplicate gateway_data; treat as idempotent.
-      return;
-    }
-
     console.error('Failed to record checkout transaction', {
       bookingId,
+      checkoutObjectId: event.data.object.id,
       error,
     });
   }

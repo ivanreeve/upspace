@@ -73,14 +73,14 @@ handle: true,
     );
   }
 
-  const paymentTx = await prisma.transaction.findFirst({
+  const paymentTx = await prisma.payment_transaction.findFirst({
     where: { booking_id: booking.id, },
     orderBy: { created_at: 'asc', },
     select: {
-      transaction_id: true,
+      id: true,
       amount_minor: true,
       currency_iso3: true,
-      payment_method: true,
+      provider: true,
       created_at: true,
     },
   });
@@ -104,10 +104,10 @@ handle: true,
       pricingRuleName: booking.price_rule_name ?? null,
       payment: paymentTx
         ? {
-            transactionId: paymentTx.transaction_id.toString(),
+            transactionId: paymentTx.id,
             amountMinor: (paymentTx.amount_minor ?? BigInt(0)).toString(),
             currency: paymentTx.currency_iso3,
-            method: paymentTx.payment_method ?? null,
+            method: paymentTx.provider ?? null,
             paidAt: paymentTx.created_at.toISOString(),
           }
         : null,

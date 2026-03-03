@@ -16,7 +16,7 @@ export async function GET() {
         partner_auth_id: authUserId,
         status: 'pending',
         created_at: { lt: cutoff, },
-        transaction: { some: {}, },
+        payment_transaction: { some: {}, },
       },
       orderBy: { created_at: 'desc', },
       take: 25,

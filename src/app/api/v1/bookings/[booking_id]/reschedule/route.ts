@@ -87,22 +87,6 @@ export async function PATCH(
 
     const newExpiresAt = new Date(newStartAt.getTime() + parsed.data.bookingHours * 60 * 60 * 1000);
 
-    const activeCount = await countActiveBookingsOverlap(
-      prisma,
-      booking.area_id,
-      newStartAt,
-      newExpiresAt,
-      booking.id
-    );
-
-    const maxCapacity = normalizeNumeric(booking.area_max_capacity);
-    if (maxCapacity !== null && activeCount + booking.guest_count > maxCapacity) {
-      return NextResponse.json(
-        { error: 'The area is at capacity for the requested time window.', },
-        { status: 409, }
-      );
-    }
-
     let newPriceMinor = booking.price_minor;
 
     if (booking.price_rule_snapshot) {
@@ -127,15 +111,51 @@ export async function PATCH(
       }
     }
 
-    const updated = await prisma.booking.update({
-      where: { id: booking.id, },
-      data: {
-        start_at: newStartAt,
-        expires_at: newExpiresAt,
-        booking_hours: parsed.data.bookingHours,
-        price_minor: newPriceMinor,
-      },
-    });
+    class CapacityReachedError extends Error {}
+
+    // Use Serializable isolation to prevent concurrent reschedules from
+    // exceeding capacity — matching the pattern used in booking creation.
+    const updated = await prisma
+      .$transaction(
+        async (tx) => {
+          const activeCount = await countActiveBookingsOverlap(
+            tx,
+            booking.area_id,
+            newStartAt,
+            newExpiresAt,
+            booking.id
+          );
+
+          const maxCapacity = normalizeNumeric(booking.area_max_capacity);
+          if (maxCapacity !== null && activeCount + booking.guest_count > maxCapacity) {
+            throw new CapacityReachedError();
+          }
+
+          return tx.booking.update({
+            where: { id: booking.id, },
+            data: {
+              start_at: newStartAt,
+              expires_at: newExpiresAt,
+              booking_hours: parsed.data.bookingHours,
+              price_minor: newPriceMinor,
+            },
+          });
+        },
+        { isolationLevel: 'Serializable', }
+      )
+      .catch((error) => {
+        if (error instanceof CapacityReachedError) {
+          return null;
+        }
+        throw error;
+      });
+
+    if (!updated) {
+      return NextResponse.json(
+        { error: 'The area is at capacity for the requested time window.', },
+        { status: 409, }
+      );
+    }
 
     const formatDt = (d: Date) =>
       d.toLocaleString('en-PH', {

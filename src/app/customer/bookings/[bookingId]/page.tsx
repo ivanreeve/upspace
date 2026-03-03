@@ -60,15 +60,15 @@ export default async function CustomerBookingDetailPage({ params, }: Props) {
   }
 
   const [paymentTx, refundTxs] = await Promise.all([
-    prisma.transaction.findFirst({
+    prisma.payment_transaction.findFirst({
       where: { booking_id: booking.id, },
       orderBy: { created_at: 'asc', },
       select: {
-        transaction_id: true,
+        id: true,
         amount_minor: true,
         fee_minor: true,
         currency_iso3: true,
-        payment_method: true,
+        provider: true,
         is_live: true,
         created_at: true,
       },
@@ -104,7 +104,7 @@ type: 'refund',
     currency: booking.currency,
     status: booking.status,
     createdAt: booking.created_at.toISOString(),
-    paymentMethod: paymentTx?.payment_method ?? null,
+    paymentMethod: paymentTx?.provider ?? null,
     isLive: paymentTx?.is_live ?? null,
     timeline,
   };

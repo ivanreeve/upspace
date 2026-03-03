@@ -78,16 +78,32 @@ export async function GET(request: Request) {
   let expired = 0;
   let capacityWarnings = 0;
 
-  // Auto-confirm paid bookings that are still pending
+  // Auto-confirm paid bookings that are still pending.
+  // Skip bookings that were flagged for host approval — those have a
+  // "Booking needs approval" notification and should remain pending.
   const paidPending = await prisma.booking.findMany({
     where: {
       status: 'pending',
       created_at: { lt: stalePaidCutoff, },
-      transaction: { some: {}, },
+      payment_transaction: { some: {}, },
     },
   });
 
   for (const row of paidPending) {
+    // Respect requiresHostApproval: if the webhook flagged this booking
+    // for manual review, a "Booking needs approval" notification exists.
+    const hostApprovalNotice = await prisma.app_notification.findFirst({
+      where: {
+        booking_id: row.id,
+        title: 'Booking needs approval',
+      },
+      select: { id: true, },
+    });
+
+    if (hostApprovalNotice) {
+      continue; // requires manual partner approval, don't auto-confirm
+    }
+
     const areaMaxCap = row.area_max_capacity === null ? null : Number(row.area_max_capacity);
     if (areaMaxCap !== null && !Number.isFinite(areaMaxCap)) {
       continue;
@@ -122,7 +138,7 @@ export async function GET(request: Request) {
         lte: nearStart,
         gte: new Date(now),
       },
-      transaction: { some: {}, },
+      payment_transaction: { some: {}, },
     },
   });
 
@@ -192,7 +208,7 @@ export async function GET(request: Request) {
       { start_at: { lt: new Date(), }, },
       {
         created_at: { lt: staleUnpaidCutoff, },
-        transaction: { none: {}, },
+        payment_transaction: { none: {}, },
       }
     ],
   };

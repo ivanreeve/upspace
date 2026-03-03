@@ -13,7 +13,7 @@ import {
   normalizeNumeric
 } from '@/lib/bookings/serializer';
 import type { BookingRecord, BookingStatus } from '@/lib/bookings/types';
-import { MAX_BOOKING_HOURS, MIN_BOOKING_HOURS } from '@/lib/bookings/constants';
+import { MAX_BOOKING_HOURS, MIN_BOOKING_HOURS, isValidStatusTransition } from '@/lib/bookings/constants';
 import { countActiveBookingsOverlap, resolveBookingDecision } from '@/lib/bookings/occupancy';
 import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -211,6 +211,23 @@ export async function PATCH(req: NextRequest) {
     );
   }
 
+  const newStatus = parsed.data.status;
+
+  // Validate that all bookings can transition to the requested status.
+  const invalidRows = rows.filter(
+    (row) => !isValidStatusTransition(row.status as BookingStatus, newStatus)
+  );
+  if (invalidRows.length > 0) {
+    const sample = invalidRows[0];
+    return NextResponse.json(
+      {
+        error: `Cannot change booking from '${sample.status}' to '${newStatus}'.`,
+        invalidBookingIds: invalidRows.map((row) => row.id),
+      },
+      { status: 400, }
+    );
+  }
+
   const targetIds = rows.map((row) => row.id);
 
   await prisma.booking.updateMany({
@@ -218,7 +235,7 @@ export async function PATCH(req: NextRequest) {
       id: { in: targetIds, },
       ...partnerFilter,
     },
-    data: { status: parsed.data.status, },
+    data: { status: newStatus, },
   });
 
   const updatedRows = await prisma.booking.findMany({
@@ -232,7 +249,6 @@ export async function PATCH(req: NextRequest) {
   const bookings = await mapBookingsWithProfiles(updatedRows);
 
   // Send notifications for status changes (non-blocking)
-  const newStatus = parsed.data.status;
   for (const row of updatedRows) {
     const ctx = {
       bookingId: row.id,
