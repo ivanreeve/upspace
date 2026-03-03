@@ -77,6 +77,8 @@ import { useSession } from '@/components/auth/SessionProvider';
 import { useCachedAvatar } from '@/hooks/use-cached-avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUserProfile, type UserProfile } from '@/hooks/use-user-profile';
+import { useNotificationsQuery } from '@/hooks/api/useNotifications';
+import { useNotificationSubscription } from '@/hooks/use-notification-subscription';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 
@@ -557,6 +559,7 @@ type SidebarLinkItemProps = {
   className?: string;
   labelBadge?: React.ReactNode;
   isActive?: boolean;
+  hasUnreadDot?: boolean;
 };
 
 function SidebarLinkItem({
@@ -568,6 +571,7 @@ function SidebarLinkItem({
   className,
   labelBadge,
   isActive = false,
+  hasUnreadDot = false,
 }: SidebarLinkItemProps) {
   const {
  className: iconClassName, ...restIconProps 
@@ -582,16 +586,20 @@ function SidebarLinkItem({
         isActive={ isActive }
       >
         <Link href={ href } aria-current={ isActive ? 'page' : undefined }>
-          <span className="sidebar-link-icon" aria-hidden="true">
+          <span className="sidebar-link-icon relative" aria-hidden="true">
             <Icon
               className={ cn('size-4', iconClassName) }
               aria-hidden="true"
               { ...restIconProps }
             />
+            { hasUnreadDot ? (
+              <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-destructive ring-2 ring-sidebar" />
+            ) : null }
           </span>
           <span data-sidebar-label className="inline-flex items-center gap-1.5">
             <span>{ label }</span>
             { labelBadge }
+            { hasUnreadDot ? <span className="sr-only">Unread</span> : null }
           </span>
         </Link>
       </SidebarMenuButton>
@@ -906,6 +914,7 @@ function useMarketplaceNavData() {
     ? 'Guest'
     : (registeredFirstName ?? resolvedHandleLabel ?? 'UpSpace User');
   const userEmail = session?.user?.email ?? null;
+  const authUserId = session?.user?.id ?? null;
   const handleNavigation = React.useCallback(
     (href: string) => {
       router.push(href);
@@ -942,6 +951,7 @@ function useMarketplaceNavData() {
       avatarFallback,
       avatarDisplayName,
       resolvedHandleLabel,
+      authUserId,
       userEmail,
       onNavigate: handleNavigation,
       onLogout: handleLogout,
@@ -955,6 +965,7 @@ function useMarketplaceNavData() {
       avatarDisplayName,
       avatarFallback,
       avatarUrl,
+      authUserId,
       handleLogout,
       handleNavigation,
       isGuest,
@@ -1172,6 +1183,17 @@ export function MarketplaceChrome({
   const shouldShowAiSearch = isCustomerRole || isPartnerRole || isAdminRole;
   const shouldShowNotifications = isCustomerRole || isPartnerRole;
   const resolvedMessageHref = messageHref ?? '/customer/messages';
+  useNotificationSubscription(navData.authUserId);
+  const { data: unreadMessageNotifications, } = useNotificationsQuery({
+    enabled:
+      shouldShowNotifications &&
+      !navData.isGuest &&
+      Boolean(navData.authUserId),
+    type: 'message',
+    unread: true,
+    limit: 1,
+  });
+  const hasUnreadMessages = (unreadMessageNotifications?.pages[0]?.data.length ?? 0) > 0;
   const transactionHistoryHref = isPartnerRole
     ? '/partner/transactions'
     : '/customer/transactions';
@@ -1477,6 +1499,7 @@ export function MarketplaceChrome({
                       icon={ SidebarMessageIcon }
                       tooltip="Messages"
                       iconProps={ { strokeWidth: 2, } }
+                      hasUnreadDot={ hasUnreadMessages }
                       isActive={ isSidebarPathActive(
                         pathname,
                         resolvedMessageHref,

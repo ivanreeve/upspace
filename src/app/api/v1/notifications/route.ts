@@ -19,6 +19,7 @@ const querySchema = z.object({
   cursor: z.string().uuid().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
   type: z.enum(['booking_confirmed', 'booking_received', 'message', 'system']).optional(),
+  unread: z.enum(['true', 'false']).transform((value) => value === 'true').optional(),
 });
 
 const patchSchema = z.object({
@@ -73,11 +74,12 @@ export async function GET(req: NextRequest) {
   }
 
   const {
- cursor, limit, type, 
+ cursor, limit, type, unread,
 } = parsed.data;
 
   const where: Record<string, unknown> = { user_auth_id: authData.user.id, };
   if (type) where.type = type;
+  if (unread) where.read_at = null;
 
   const notifications = await prisma.app_notification.findMany({
     where,

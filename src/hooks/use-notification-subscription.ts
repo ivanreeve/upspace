@@ -33,6 +33,18 @@ export function useNotificationSubscription(userAuthId: string | null) {
           void queryClient.invalidateQueries({ queryKey: notificationKeys.all, });
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'app_notification',
+          filter: `user_auth_id=eq.${userAuthId}`,
+        },
+        () => {
+          void queryClient.invalidateQueries({ queryKey: notificationKeys.all, });
+        }
+      )
       .subscribe();
 
     return () => {

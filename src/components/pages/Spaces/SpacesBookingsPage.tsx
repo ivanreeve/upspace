@@ -17,6 +17,7 @@ import {
   FiLogOut,
   FiSearch
 } from 'react-icons/fi';
+import { toast } from 'sonner';
 
 import { SpacesBreadcrumbs } from './SpacesBreadcrumbs';
 
@@ -34,6 +35,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -52,6 +61,7 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
 const bookingDateFormatter = new Intl.DateTimeFormat('en-PH', {
@@ -70,6 +80,8 @@ const ACTIVE_BOOKING_STATUSES = new Set<BookingStatus>([
   'checkedin',
   'pending'
 ]);
+
+const CANCELLATION_REASON_MIN_LENGTH = 5;
 
 const BULK_STATUS_OPTIONS: { label: string; status: BookingStatus }[] = [
   {
@@ -127,6 +139,13 @@ export function SpacesBookingsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<BookingStatus | 'all'>('all');
   const [areaFilter, setAreaFilter] = useState<string>('all');
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelTargetIds, setCancelTargetIds] = useState<string[]>([]);
+  const cancellationReasonFieldId = useId();
+  const trimmedCancelReason = cancelReason.trim();
+  const isCancellationReasonValid =
+    trimmedCancelReason.length >= CANCELLATION_REASON_MIN_LENGTH;
 
   const activeBookings = useMemo(
     () =>
@@ -245,9 +264,64 @@ name,
 
   const clearSelection = () => setSelectedIds(new Set());
 
+  const openCancelDialog = (ids: string[]) => {
+    if (!ids.length) {
+      return;
+    }
+    setCancelTargetIds(ids);
+    setCancelReason('');
+    setIsCancelDialogOpen(true);
+  };
+
+  const closeCancelDialog = () => {
+    if (bulkUpdate.isPending) {
+      return;
+    }
+    setIsCancelDialogOpen(false);
+    setCancelReason('');
+    setCancelTargetIds([]);
+  };
+
+  const submitCancellation = () => {
+    if (!cancelTargetIds.length) {
+      toast.error('Select at least one booking to cancel.');
+      return;
+    }
+
+    if (!isCancellationReasonValid) {
+      toast.error(
+        `Cancellation reason must be at least ${CANCELLATION_REASON_MIN_LENGTH} characters.`
+      );
+      return;
+    }
+
+    bulkUpdate.mutate(
+      {
+        ids: cancelTargetIds,
+        status: 'cancelled',
+        cancellationReason: trimmedCancelReason,
+      },
+      {
+        onSuccess: () => {
+          setSelectedIds((current) => {
+            const next = new Set(current);
+            cancelTargetIds.forEach((id) => next.delete(id));
+            return next;
+          });
+          closeCancelDialog();
+        },
+      }
+    );
+  };
+
   const handleBulkStatusChange = (status: BookingStatus) => {
     const ids = Array.from(selectedIds);
     if (!ids.length) {
+      return;
+    }
+
+    if (status === 'cancelled') {
+      openCancelDialog(ids);
       return;
     }
 
@@ -484,7 +558,7 @@ name,
                   { booking.status === 'pending' ? (
                     <Button
                       size="sm"
-                      variant="ghost"
+                      variant="default"
                       className="h-7 gap-1 px-2 text-xs"
                       onClick={ () =>
                         bulkUpdate.mutate({
@@ -504,15 +578,11 @@ name,
                   ) ? (
                     <Button
                       size="sm"
-                      variant="ghost"
-                      className="h-7 px-2 text-xs text-muted-foreground"
-                      onClick={ () =>
-                        bulkUpdate.mutate({
-                          ids: [booking.id],
-                          status: 'cancelled',
-                        })
-                      }
+                      variant="destructive"
+                      className="h-7 px-2 text-xs"
+                      onClick={ () => openCancelDialog([booking.id]) }
                       disabled={ bulkUpdate.isPending }
+                      aria-label={ `Cancel booking for ${userDisplayName}` }
                     >
                       Cancel
                     </Button>
@@ -780,6 +850,64 @@ name,
           </Table>
         </div>
       </section>
+
+      <Dialog
+        open={ isCancelDialogOpen }
+        onOpenChange={ (open) => {
+          if (!open) {
+            closeCancelDialog();
+          } else {
+            setIsCancelDialogOpen(true);
+          }
+        } }
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel booking</DialogTitle>
+            <DialogDescription>
+              Enter a reason that will be sent to the customer in the in-app
+              conversation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label
+              htmlFor={ cancellationReasonFieldId }
+              className="text-sm font-medium text-foreground"
+            >
+              Cancellation reason
+            </label>
+            <Textarea
+              id={ cancellationReasonFieldId }
+              value={ cancelReason }
+              onChange={ (event) => setCancelReason(event.target.value) }
+              placeholder="Explain why the booking is being cancelled."
+              aria-label="Cancellation reason"
+              rows={ 4 }
+            />
+            <p className="text-xs text-muted-foreground">
+              { trimmedCancelReason.length }/{ CANCELLATION_REASON_MIN_LENGTH } minimum characters
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={ closeCancelDialog }
+              disabled={ bulkUpdate.isPending }
+            >
+              Keep booking
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={ submitCancellation }
+              disabled={ bulkUpdate.isPending || !isCancellationReasonValid }
+            >
+              { bulkUpdate.isPending ? 'Cancelling...' : 'Cancel booking' }
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

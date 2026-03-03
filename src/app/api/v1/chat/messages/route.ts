@@ -21,6 +21,39 @@ const notFoundResponse = NextResponse.json(
   { status: 404, }
 );
 
+const MESSAGE_NOTIFICATION_PREVIEW_MAX_LENGTH = 180;
+
+const toMessagePreview = (content: string) =>
+  content.length > MESSAGE_NOTIFICATION_PREVIEW_MAX_LENGTH
+    ? `${content.slice(0, MESSAGE_NOTIFICATION_PREVIEW_MAX_LENGTH - 3)}...`
+    : content;
+
+async function createMessageNotification({
+  recipientAuthId,
+  href,
+  senderLabel,
+  content,
+}: {
+  recipientAuthId: string | null | undefined;
+  href: string;
+  senderLabel: string;
+  content: string;
+}) {
+  if (!recipientAuthId) {
+    return;
+  }
+
+  await prisma.app_notification.create({
+    data: {
+      user_auth_id: recipientAuthId,
+      title: `New message from ${senderLabel}`,
+      body: toMessagePreview(content),
+      href,
+      type: 'message',
+    },
+  });
+}
+
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
@@ -131,6 +164,28 @@ skip: 1,
     mapChatMessage(chat_message, customerName, partnerName)
   );
 
+  const messageHref =
+    dbUser.role === 'partner'
+      ? `/partner/messages/${room.id}`
+      : `/customer/messages/${room.id}`;
+
+  try {
+    await prisma.app_notification.updateMany({
+      where: {
+        user_auth_id: authData.user.id,
+        type: 'message',
+        href: messageHref,
+        read_at: null,
+      },
+      data: { read_at: new Date(), },
+    });
+  } catch (readSyncError) {
+    console.error('Failed to mark message notifications as read', {
+      roomId: room.id,
+      error: readSyncError,
+    });
+  }
+
   return NextResponse.json({
     messages,
     pagination: {
@@ -217,6 +272,7 @@ headers: { 'Retry-After': error.retryAfter.toString(), },
               user_id: true,
               user: {
                 select: {
+                  auth_user_id: true,
                   first_name: true,
                   last_name: true,
                   handle: true,
@@ -247,6 +303,20 @@ headers: { 'Retry-After': error.retryAfter.toString(), },
         },
       });
 
+      try {
+        await createMessageNotification({
+          recipientAuthId: room.space.user?.auth_user_id,
+          href: `/partner/messages/${room.id}`,
+          senderLabel: customerName ?? 'Customer',
+          content: parsed.data.content,
+        });
+      } catch (notificationError) {
+        console.error('Failed to create chat notification for partner', {
+          roomId: room.id,
+          error: notificationError,
+        });
+      }
+
       return NextResponse.json({
         roomId: room.id,
         message: mapChatMessage(message, customerName, partnerName),
@@ -264,6 +334,7 @@ headers: { 'Retry-After': error.retryAfter.toString(), },
         user_id: true,
         user: {
           select: {
+            auth_user_id: true,
             first_name: true,
             last_name: true,
             handle: true,
@@ -304,6 +375,20 @@ headers: { 'Retry-After': error.retryAfter.toString(), },
       },
     });
 
+    try {
+      await createMessageNotification({
+        recipientAuthId: space.user?.auth_user_id,
+        href: `/partner/messages/${room.id}`,
+        senderLabel: customerName ?? 'Customer',
+        content: parsed.data.content,
+      });
+    } catch (notificationError) {
+      console.error('Failed to create chat notification for partner', {
+        roomId: room.id,
+        error: notificationError,
+      });
+    }
+
     return NextResponse.json({
       roomId: room.id,
       message: mapChatMessage(message, customerName, partnerName),
@@ -323,6 +408,7 @@ headers: { 'Retry-After': error.retryAfter.toString(), },
         user: {
           select: {
             user_id: true,
+            auth_user_id: true,
             first_name: true,
             last_name: true,
             handle: true,
@@ -365,6 +451,20 @@ headers: { 'Retry-After': error.retryAfter.toString(), },
       },
     });
 
+    try {
+      await createMessageNotification({
+        recipientAuthId: room.user.auth_user_id,
+        href: `/customer/messages/${room.id}`,
+        senderLabel: partnerName ?? 'Host',
+        content: parsed.data.content,
+      });
+    } catch (notificationError) {
+      console.error('Failed to create chat notification for customer', {
+        roomId: room.id,
+        error: notificationError,
+      });
+    }
+
     return NextResponse.json({
       roomId: room.id,
       message: mapChatMessage(message, customerName, partnerName),
@@ -373,4 +473,3 @@ headers: { 'Retry-After': error.retryAfter.toString(), },
 
   return forbiddenResponse;
 }
-

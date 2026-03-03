@@ -7,7 +7,7 @@ import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
 
 export const notificationKeys = {
   all: ['notifications'] as const,
-  list: (filters?: { type?: string }) => ['notifications', 'list', filters] as const,
+  list: (filters?: { type?: string; unread?: boolean }) => ['notifications', 'list', filters] as const,
 };
 
 type NotificationsPage = {
@@ -33,20 +33,28 @@ const parseErrorMessage = async (response: Response) => {
 export function useNotificationsQuery(options?: {
   enabled?: boolean;
   type?: string;
+  unread?: boolean;
   limit?: number;
 }) {
   const authFetch = useAuthenticatedFetch();
   const enabled = options?.enabled ?? true;
   const limit = options?.limit ?? 25;
   const type = options?.type;
+  const unread = options?.unread;
 
   return useInfiniteQuery<NotificationsPage>({
-    queryKey: notificationKeys.list({ type, }),
+    queryKey: notificationKeys.list({
+      type,
+      unread,
+    }),
     queryFn: async ({ pageParam, }) => {
       const params = new URLSearchParams();
       params.set('limit', String(limit));
       if (pageParam) params.set('cursor', pageParam as string);
       if (type) params.set('type', type);
+      if (typeof unread === 'boolean') {
+        params.set('unread', String(unread));
+      }
 
       const response = await authFetch(`/api/v1/notifications?${params.toString()}`);
       if (!response.ok) {

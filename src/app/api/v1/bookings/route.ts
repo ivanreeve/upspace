@@ -29,6 +29,10 @@ const createBookingSchema = z.object({
   guestCount: z.number().int().min(1).max(999).optional(),
 });
 
+const BOOKING_CANCELLATION_REASON_MIN_LENGTH = 5;
+const BOOKING_CANCELLATION_REASON_MAX_LENGTH = 500;
+const MESSAGE_NOTIFICATION_PREVIEW_MAX_LENGTH = 180;
+
 const bulkUpdateSchema = z.object({
   ids: z.array(z.string().uuid()).min(1),
   status: z.enum([
@@ -42,6 +46,18 @@ const bulkUpdateSchema = z.object({
     'completed',
     'noshow'
   ] satisfies readonly BookingStatus[]),
+  cancellationReason: z
+    .string()
+    .trim()
+    .min(
+      BOOKING_CANCELLATION_REASON_MIN_LENGTH,
+      `Cancellation reason must be at least ${BOOKING_CANCELLATION_REASON_MIN_LENGTH} characters.`
+    )
+    .max(
+      BOOKING_CANCELLATION_REASON_MAX_LENGTH,
+      `Cancellation reason cannot exceed ${BOOKING_CANCELLATION_REASON_MAX_LENGTH} characters.`
+    )
+    .optional(),
 });
 
 const unauthorizedResponse = NextResponse.json(
@@ -143,7 +159,18 @@ export async function PATCH(req: NextRequest) {
   const parsed = bulkUpdateSchema.safeParse(body ?? {});
 
   if (!parsed.success) {
-    return invalidPayloadResponse;
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? 'Invalid request payload.', },
+      { status: 400, }
+    );
+  }
+
+  const cancellationReason = parsed.data.cancellationReason?.trim();
+  if (parsed.data.status === 'cancelled' && !cancellationReason) {
+    return NextResponse.json(
+      { error: `Cancellation reason must be at least ${BOOKING_CANCELLATION_REASON_MIN_LENGTH} characters.`, },
+      { status: 400, }
+    );
   }
 
   const supabase = await createSupabaseServerClient();
@@ -306,6 +333,91 @@ body: `You were marked as a no-show for ${row.area_name} · ${row.space_name}.`,
 status: newStatus,
 error: notifError, 
 });
+    }
+  }
+
+  if (newStatus === 'cancelled' && cancellationReason) {
+    const authIds = Array.from(
+      new Set(
+        updatedRows.flatMap((row) =>
+          [row.user_auth_id, row.partner_auth_id].filter(
+            (authId): authId is string => Boolean(authId)
+          )
+        )
+      )
+    );
+
+    const users = await prisma.user.findMany({
+      where: { auth_user_id: { in: authIds, }, },
+      select: {
+        auth_user_id: true,
+        user_id: true,
+      },
+    });
+    const userIdByAuthId = new Map(users.map((user) => [user.auth_user_id, user.user_id]));
+
+    const cancellationMessage = (spaceName: string, areaName: string) =>
+      `Your booking for ${areaName} at ${spaceName} was cancelled by the host.\nReason: ${cancellationReason}`;
+
+    for (const row of updatedRows) {
+      const partnerAuthId = row.partner_auth_id;
+      const partnerUserId = partnerAuthId
+        ? userIdByAuthId.get(partnerAuthId)
+        : undefined;
+      const customerUserId = userIdByAuthId.get(row.user_auth_id);
+
+      if (!partnerAuthId || !partnerUserId || !customerUserId) {
+        continue;
+      }
+
+      try {
+        const room = await prisma.chat_room.upsert({
+          where: {
+            space_id_customer_id: {
+              space_id: row.space_id,
+              customer_id: customerUserId,
+            },
+          },
+          update: {},
+          create: {
+            space_id: row.space_id,
+            customer_id: customerUserId,
+          },
+          select: { id: true, },
+        });
+
+        const content = cancellationMessage(row.space_name, row.area_name);
+
+        await prisma.chat_message.create({
+          data: {
+            room_id: room.id,
+            sender_id: partnerUserId,
+            sender_role: 'partner',
+            content,
+          },
+        });
+
+        await prisma.app_notification.create({
+          data: {
+            user_auth_id: row.user_auth_id,
+            title: 'New message from host',
+            body:
+              content.length > MESSAGE_NOTIFICATION_PREVIEW_MAX_LENGTH
+                ? `${content.slice(0, MESSAGE_NOTIFICATION_PREVIEW_MAX_LENGTH - 3)}...`
+                : content,
+            href: `/customer/messages/${room.id}`,
+            type: 'message',
+            booking_id: row.id,
+            space_id: row.space_id,
+            area_id: row.area_id,
+          },
+        });
+      } catch (chatError) {
+        console.error('Failed to send booking cancellation reason via chat', {
+          bookingId: row.id,
+          error: chatError,
+        });
+      }
     }
   }
 

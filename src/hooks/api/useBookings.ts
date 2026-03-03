@@ -88,6 +88,7 @@ type CreateBookingInput = {
 type BulkUpdateBookingStatusInput = {
   ids: string[];
   status: BookingStatus;
+  cancellationReason?: string;
 };
 
 export function useCreateBookingMutation() {
