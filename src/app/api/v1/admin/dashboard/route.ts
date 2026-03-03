@@ -138,7 +138,8 @@ status: 'deleted',
           updated_at: true,
         },
       }),
-      prisma.transaction.aggregate({
+      prisma.payment_transaction.aggregate({
+        where: { status: 'succeeded', },
         _sum: { amount_minor: true, },
         _count: true,
       }),

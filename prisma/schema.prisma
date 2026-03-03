@@ -512,7 +512,7 @@ model wallet_transaction {
   net_amount_minor   BigInt?
   currency           String                    @default("PHP") @db.Char(3)
   description        String?
-  external_reference String?
+  external_reference String?                   @unique
   metadata           Json?                     @db.Json
   booking_id         String?                   @db.Uuid
   created_at         DateTime                  @default(now()) @db.Timestamptz(6)
@@ -520,6 +520,7 @@ model wallet_transaction {
   wallet             wallet                    @relation(fields: [wallet_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "wallet_transaction_wallet_fk")
 
   @@index([wallet_id, created_at(sort: Desc)], map: "idx_wallet_transaction_wallet_created")
+  @@index([wallet_id, type, status], map: "idx_wallet_transaction_wallet_type_status")
 }
 
 enum amenity_category {

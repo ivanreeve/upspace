@@ -50,6 +50,45 @@ const DEFAULT_APP_URL = 'http://localhost:3000';
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_URL.trim().length > 0
   ? process.env.NEXT_PUBLIC_APP_URL
   : DEFAULT_APP_URL).replace(/\/+$/, '');
+const PAYMONGO_ALLOWED_REDIRECT_ORIGINS = process.env.PAYMONGO_ALLOWED_REDIRECT_ORIGINS ?? '';
+
+function resolveAllowedRedirectOrigins() {
+  const origins = new Set<string>();
+
+  try {
+    origins.add(new URL(APP_URL).origin);
+  } catch {
+    // Fallback APP_URL values should never break checkout creation.
+  }
+
+  for (const entry of PAYMONGO_ALLOWED_REDIRECT_ORIGINS.split(',')) {
+    const candidate = entry.trim();
+    if (!candidate) continue;
+
+    try {
+      origins.add(new URL(candidate).origin);
+    } catch {
+      // Invalid env entries are ignored.
+    }
+  }
+
+  return origins;
+}
+
+const ALLOWED_REDIRECT_ORIGINS = resolveAllowedRedirectOrigins();
+
+function resolveTrustedRedirectUrl(candidate: string | undefined) {
+  if (!candidate) {
+    return null;
+  }
+
+  try {
+    const url = new URL(candidate);
+    return ALLOWED_REDIRECT_ORIGINS.has(url.origin) ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -309,10 +348,10 @@ headers: { 'Retry-After': error.retryAfter.toString(), },
       requiresHostApproval,
     } = bookingResult;
 
-    const successUrl = parsed.data.successUrl ??
-      `${APP_URL}/marketplace/${area.space.id}?booking_id=${bookingRow.id}&payment=success`;
-    const cancelUrl = parsed.data.cancelUrl ??
-      `${APP_URL}/marketplace/${area.space.id}?booking_id=${bookingRow.id}&payment=cancel`;
+    const defaultSuccessUrl = `${APP_URL}/marketplace/${area.space.id}?booking_id=${bookingRow.id}&payment=success`;
+    const defaultCancelUrl = `${APP_URL}/marketplace/${area.space.id}?booking_id=${bookingRow.id}&payment=cancel`;
+    const successUrl = resolveTrustedRedirectUrl(parsed.data.successUrl) ?? defaultSuccessUrl;
+    const cancelUrl = resolveTrustedRedirectUrl(parsed.data.cancelUrl) ?? defaultCancelUrl;
 
     const partnerWalletOwner = partnerAuthId
       ? await prisma.user.findUnique({

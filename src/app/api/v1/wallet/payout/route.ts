@@ -10,6 +10,15 @@ const payoutSchema = z.object({ amountMinor: z.number().int().min(10000, 'Minimu
 
 const MIN_BALANCE_FOR_PAYOUT = 10000; // 100 PHP in minor units
 
+class PayoutValidationError extends Error {
+  status: number;
+
+  constructor(message: string, status = 400) {
+    super(message);
+    this.status = status;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const auth = await resolveAuthenticatedUserForWallet({ requirePartner: true, });
@@ -29,58 +38,69 @@ export async function POST(req: NextRequest) {
     const { amountMinor, } = parsed.data;
     const walletRow = await ensureWalletRow(auth.dbUser!.user_id);
 
-    if (walletRow.balance_minor < BigInt(MIN_BALANCE_FOR_PAYOUT)) {
-      return NextResponse.json(
-        { error: 'Insufficient wallet balance for a payout.', },
-        { status: 400, }
-      );
-    }
+    const transaction = await prisma.$transaction(async (tx) => {
+      const wallet = await tx.wallet.findUnique({
+        where: { id: walletRow.id, },
+        select: {
+          id: true,
+          balance_minor: true,
+          currency: true,
+        },
+      });
 
-    if (walletRow.balance_minor < BigInt(amountMinor)) {
-      return NextResponse.json(
-        { error: 'Payout amount exceeds available balance.', },
-        { status: 400, }
-      );
-    }
+      if (!wallet) {
+        throw new PayoutValidationError('Wallet not found.', 404);
+      }
 
-    const pendingPayout = await prisma.wallet_transaction.findFirst({
-      where: {
-        wallet_id: walletRow.id,
-        type: 'payout',
-        status: 'pending',
-      },
-      select: { id: true, },
-    });
+      if (wallet.balance_minor < BigInt(MIN_BALANCE_FOR_PAYOUT)) {
+        throw new PayoutValidationError('Insufficient wallet balance for a payout.');
+      }
 
-    if (pendingPayout) {
-      return NextResponse.json(
-        { error: 'A payout is already pending. Please wait for it to complete.', },
-        { status: 409, }
-      );
-    }
+      const pendingPayout = await tx.wallet_transaction.findFirst({
+        where: {
+          wallet_id: wallet.id,
+          type: 'payout',
+          status: 'pending',
+        },
+        select: { id: true, },
+      });
 
-    const [transaction] = await prisma.$transaction([
-      prisma.wallet_transaction.create({
+      if (pendingPayout) {
+        throw new PayoutValidationError('A payout is already pending. Please wait for it to complete.', 409);
+      }
+
+      const decremented = await tx.wallet.updateMany({
+        where: {
+          id: wallet.id,
+          balance_minor: { gte: BigInt(amountMinor), },
+        },
+        data: {
+          balance_minor: { decrement: BigInt(amountMinor), },
+          updated_at: new Date(),
+        },
+      });
+
+      if (decremented.count === 0) {
+        throw new PayoutValidationError('Payout amount exceeds available balance.');
+      }
+
+      return tx.wallet_transaction.create({
         data: {
           id: randomUUID(),
-          wallet_id: walletRow.id,
+          wallet_id: wallet.id,
           type: 'payout',
           status: 'pending',
           amount_minor: BigInt(amountMinor),
           net_amount_minor: BigInt(amountMinor),
-          currency: walletRow.currency,
+          currency: wallet.currency,
           description: 'Payout request',
           metadata: {
             requested_by: auth.dbUser!.auth_user_id,
             requested_at: new Date().toISOString(),
           },
         },
-      }),
-      prisma.wallet.update({
-        where: { id: walletRow.id, },
-        data: { balance_minor: { decrement: BigInt(amountMinor), }, },
-      })
-    ]);
+      });
+    }, { isolationLevel: 'Serializable', });
 
     return NextResponse.json({
       data: {
@@ -91,6 +111,13 @@ export async function POST(req: NextRequest) {
       },
     }, { status: 201, });
   } catch (error) {
+    if (error instanceof PayoutValidationError) {
+      return NextResponse.json(
+        { error: error.message, },
+        { status: error.status, }
+      );
+    }
+
     console.error('Failed to process payout request', error);
     return NextResponse.json(
       { error: 'Unable to process payout request.', },
@@ -98,3 +125,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

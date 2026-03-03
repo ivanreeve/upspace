@@ -44,6 +44,14 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="your_google_maps_api_key"
 
 # Payment Gateway (PayMongo)
 PAYMONGO_SECRET_KEY="your_paymongo_secret_key"
+PAYMONGO_WEBHOOK_SECRET="your_paymongo_webhook_secret"
+PAYMONGO_ALLOWED_REDIRECT_ORIGINS="https://your-app.example.com,http://localhost:3000"
+```
+
+Configure your PayMongo webhook endpoint to:
+
+```text
+https://<your-domain>/api/paymongo/webhook
 ```
 
 

@@ -10,6 +10,7 @@ import {
 import * as pricingRules from '@/lib/pricing-rules-evaluator';
 import * as paymongo from '@/lib/paymongo';
 import * as prismaModule from '@/lib/prisma';
+import * as rateLimit from '@/lib/rate-limit';
 import * as walletServer from '@/lib/wallet-server';
 import { POST as createCheckoutHandler } from '@/app/api/v1/paymongo/checkout/route';
 
@@ -67,6 +68,7 @@ describe('checkout pricing guards', () => {
     vi.spyOn(pricingRules, 'evaluatePriceRule').mockImplementation(() => {
       throw new Error('bad rule');
     });
+    vi.spyOn(rateLimit, 'enforceRateLimit').mockResolvedValue();
     const checkoutSpy = vi.spyOn(paymongo, 'createPaymongoCheckoutSession');
 
     const response = await createCheckoutHandler(
@@ -104,6 +106,7 @@ describe('checkout pricing guards', () => {
       conditionsSatisfied: true,
       usedVariables: [],
     });
+    vi.spyOn(rateLimit, 'enforceRateLimit').mockResolvedValue();
     const checkoutSpy = vi.spyOn(paymongo, 'createPaymongoCheckoutSession');
 
     const response = await createCheckoutHandler(

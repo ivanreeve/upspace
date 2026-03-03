@@ -128,7 +128,7 @@ describe('PayMongo webhook capacity safeguard', () => {
     expect(response.status).toBe(200);
 
     const prisma = prismaModule.prisma as any;
-    expect(prisma.payment_transaction.upsert).toHaveBeenCalledTimes(1);
+    expect(prisma.payment_transaction.upsert).not.toHaveBeenCalled();
     expect(prisma.booking.update).not.toHaveBeenCalled();
     expect(prisma.app_notification.create).not.toHaveBeenCalled();
   });

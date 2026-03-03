@@ -2,7 +2,13 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo } from 'react';
-import { FiLoader, FiCreditCard, FiActivity, FiClock, FiFileText } from 'react-icons/fi';
+import {
+FiLoader,
+FiCreditCard,
+FiActivity,
+FiClock,
+FiFileText
+} from 'react-icons/fi';
 import { toast } from 'sonner';
 
 import { useCustomerTransactionsQuery } from '@/hooks/api/useCustomerTransactions';

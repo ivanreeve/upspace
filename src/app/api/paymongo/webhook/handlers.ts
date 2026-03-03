@@ -6,6 +6,7 @@ import { countActiveBookingsOverlap } from '@/lib/bookings/occupancy';
 import { mapBookingRowToRecord } from '@/lib/bookings/serializer';
 import { sendBookingNotificationEmail, sendRefundNotificationEmail } from '@/lib/email';
 import { notifyBookingEvent } from '@/lib/notifications/booking';
+import { resolveBookingIdFromPaymongoMetadata } from '@/lib/paymongo-payment-events';
 import { prisma } from '@/lib/prisma';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { formatCurrencyMinor } from '@/lib/wallet';
@@ -61,6 +62,28 @@ export const checkoutEventSchema = z.object({
 
 export type CheckoutEvent = z.infer<typeof checkoutEventSchema>['data']['attributes'];
 
+export const paymentEventSchema = z.object({
+  data: z.object({
+    attributes: z.object({
+      type: z.string(),
+      livemode: z.boolean(),
+      created_at: z.union([z.number(), z.string()]).optional(),
+      data: z.object({
+        id: z.string().optional(),
+        object: z.object({
+          id: z.string(),
+          amount: z.number().optional(),
+          currency: z.string().optional(),
+          metadata: z.record(z.string(), z.unknown()).nullable(),
+          status: z.string(),
+        }),
+      }),
+    }),
+  }),
+});
+
+export type PaymentEvent = z.infer<typeof paymentEventSchema>['data']['attributes'];
+
 const RECEIVED_RESPONSE = NextResponse.json({ received: true, }, { status: 200, });
 
 const normalizeCurrencyCode = (value: string | null | undefined) =>
@@ -112,18 +135,32 @@ type CheckoutPaymentEventRecord = {
 };
 
 type CheckoutPaymentEventStatus = 'processed' | 'ignored' | 'failed';
+type BookingWebhookRow = Exclude<Awaited<ReturnType<typeof prisma.booking.findUnique>>, null>;
 
-function resolveProviderEventId(event: CheckoutEvent) {
+type PaymongoPaymentLikeEvent = {
+  type: string;
+  livemode: boolean;
+  created_at?: number | string;
+  data: {
+    id?: string;
+    object: {
+      id: string;
+      status: string;
+    };
+  };
+};
+
+function resolveProviderEventId(event: PaymongoPaymentLikeEvent) {
   const explicitId = event.data.id?.trim();
   if (explicitId) {
     return explicitId;
   }
 
   const mode = event.livemode ? 'live' : 'test';
-  return `checkout:${event.type}:${event.data.object.id}:${mode}`;
+  return `${event.type}:${event.data.object.id}:${mode}`;
 }
 
-function resolvePaymentTransactionStatus(event: CheckoutEvent) {
+function resolvePaymentTransactionStatus(event: PaymongoPaymentLikeEvent) {
   const normalizedType = event.type.toLowerCase();
   const normalizedStatus = event.data.object.status.toLowerCase();
 
@@ -146,7 +183,7 @@ function resolvePaymentTransactionStatus(event: CheckoutEvent) {
   return 'pending' as const;
 }
 
-function resolveEventOccurredAt(event: CheckoutEvent) {
+function resolveEventOccurredAt(event: PaymongoPaymentLikeEvent) {
   if (event.created_at == null) {
     return new Date();
   }
@@ -154,7 +191,7 @@ function resolveEventOccurredAt(event: CheckoutEvent) {
   return normalizeTimestamp(event.created_at);
 }
 
-async function recordCheckoutPaymentEvent(event: CheckoutEvent): Promise<CheckoutPaymentEventRecord> {
+async function recordCheckoutPaymentEvent(event: PaymongoPaymentLikeEvent): Promise<CheckoutPaymentEventRecord> {
   const providerEventId = resolveProviderEventId(event);
   const checkoutObject = event.data.object;
 
@@ -299,6 +336,86 @@ async function recordCheckoutTransaction(opts: {
   }
 }
 
+async function recordPaymentTransactionFromPaymentEvent(opts: {
+  bookingId: string;
+  event: PaymentEvent;
+  paymentEventId: string | null;
+  fallbackAmountMinor: number;
+  fallbackCurrency: string;
+}) {
+  const {
+    bookingId,
+    event,
+    paymentEventId,
+    fallbackAmountMinor,
+    fallbackCurrency,
+  } = opts;
+
+  const paymentObject = event.data.object;
+  const amountMinor = Math.round(paymentObject.amount ?? fallbackAmountMinor);
+  const currency = paymentObject.currency ?? fallbackCurrency;
+  const resolvedStatus = resolvePaymentTransactionStatus(event);
+  const occurredAt = resolveEventOccurredAt(event);
+
+  const existingByBooking = await prisma.payment_transaction.findFirst({
+    where: {
+      booking_id: bookingId,
+      provider: 'paymongo',
+    },
+    orderBy: { created_at: 'desc', },
+    select: { id: true, },
+  });
+
+  if (existingByBooking) {
+    await prisma.payment_transaction.update({
+      where: { id: existingByBooking.id, },
+      data: {
+        payment_event_id: paymentEventId,
+        status: resolvedStatus,
+        amount_minor: BigInt(Number.isFinite(amountMinor) ? amountMinor : 0),
+        currency_iso3: currency,
+        is_live: event.livemode,
+        occurred_at: occurredAt,
+        raw_gateway_json: paymentObject as unknown as Prisma.InputJsonValue,
+        updated_at: new Date(),
+      },
+    });
+    return;
+  }
+
+  await prisma.payment_transaction.upsert({
+    where: {
+      provider_provider_object_id: {
+        provider: 'paymongo',
+        provider_object_id: paymentObject.id,
+      },
+    },
+    create: {
+      booking_id: bookingId,
+      provider: 'paymongo',
+      provider_object_id: paymentObject.id,
+      payment_event_id: paymentEventId,
+      status: resolvedStatus,
+      amount_minor: BigInt(Number.isFinite(amountMinor) ? amountMinor : 0),
+      currency_iso3: currency,
+      is_live: event.livemode,
+      occurred_at: occurredAt,
+      raw_gateway_json: paymentObject as unknown as Prisma.InputJsonValue,
+    },
+    update: {
+      booking_id: bookingId,
+      payment_event_id: paymentEventId,
+      status: resolvedStatus,
+      amount_minor: BigInt(Number.isFinite(amountMinor) ? amountMinor : 0),
+      currency_iso3: currency,
+      is_live: event.livemode,
+      occurred_at: occurredAt,
+      raw_gateway_json: paymentObject as unknown as Prisma.InputJsonValue,
+      updated_at: new Date(),
+    },
+  });
+}
+
 export async function handleWalletEvent(event: WalletEvent) {
   const walletObject = event.data.object;
   const transactionType = resolveTransactionType(event.type);
@@ -319,11 +436,14 @@ export async function handleWalletEvent(event: WalletEvent) {
     return RECEIVED_RESPONSE;
   }
 
-  const alreadyProcessed = await prisma.wallet_transaction.findFirst({ where: { external_reference: walletObject.id, }, });
-
-  if (alreadyProcessed) {
-    return RECEIVED_RESPONSE;
-  }
+  const alreadyProcessed = await prisma.wallet_transaction.findFirst({
+    where: { external_reference: walletObject.id, },
+    select: {
+      id: true,
+      status: true,
+      wallet_id: true,
+    },
+  });
 
   const amountMinor = BigInt(Math.round(walletObject.amount_minor));
   const netAmount = walletObject.net_amount_minor
@@ -334,39 +454,88 @@ export async function handleWalletEvent(event: WalletEvent) {
 
   const balanceDelta =
     status === 'succeeded'
-      ? (transactionType === 'cash_in' || transactionType === 'refund'
+      ? (transactionType === 'cash_in' || transactionType === 'charge'
         ? amountMinor
         : amountMinor * -1n)
       : 0n;
 
-  await prisma.$transaction(async (tx) => {
-    await tx.wallet_transaction.create({
-      data: {
-        wallet_id: walletRow.id,
-        type: transactionType,
-        status,
-        amount_minor: amountMinor,
-        net_amount_minor: netAmount,
-        currency: walletObject.currency || walletRow.currency,
-        description: walletObject.description ?? null,
-        external_reference: walletObject.id,
-        metadata: (walletObject.metadata as any) ?? null,
-        booking_id: walletObject.booking_id ?? null,
-        created_at: recordedAt,
-        updated_at: recordedAt,
-      },
-    });
+  let shouldSkipMutation = false;
+  if (alreadyProcessed) {
+    if (alreadyProcessed.status === 'succeeded' && status !== 'succeeded') {
+      return RECEIVED_RESPONSE;
+    }
 
-    if (balanceDelta !== 0n) {
-      await tx.wallet.update({
-        where: { id: walletRow.id, },
-        data: {
-          balance_minor: { increment: balanceDelta as bigint, },
-          updated_at: new Date(),
-        },
+    if (alreadyProcessed.status === status) {
+      shouldSkipMutation = true;
+    } else {
+      await prisma.$transaction(async (tx) => {
+        await tx.wallet_transaction.update({
+          where: { id: alreadyProcessed.id, },
+          data: {
+            status,
+            amount_minor: amountMinor,
+            net_amount_minor: netAmount,
+            currency: walletObject.currency || walletRow.currency,
+            description: walletObject.description ?? null,
+            metadata: (walletObject.metadata as Prisma.InputJsonValue) ?? null,
+            booking_id: walletObject.booking_id ?? null,
+            updated_at: recordedAt,
+          },
+        });
+
+        if (status === 'succeeded' && balanceDelta !== 0n) {
+          await tx.wallet.update({
+            where: { id: alreadyProcessed.wallet_id, },
+            data: {
+              balance_minor: { increment: balanceDelta as bigint, },
+              updated_at: new Date(),
+            },
+          });
+        }
       });
     }
-  });
+  }
+
+  if (!alreadyProcessed && !shouldSkipMutation) {
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.wallet_transaction.create({
+          data: {
+            wallet_id: walletRow.id,
+            type: transactionType,
+            status,
+            amount_minor: amountMinor,
+            net_amount_minor: netAmount,
+            currency: walletObject.currency || walletRow.currency,
+            description: walletObject.description ?? null,
+            external_reference: walletObject.id,
+            metadata: (walletObject.metadata as Prisma.InputJsonValue) ?? null,
+            booking_id: walletObject.booking_id ?? null,
+            created_at: recordedAt,
+            updated_at: recordedAt,
+          },
+        });
+
+        if (balanceDelta !== 0n) {
+          await tx.wallet.update({
+            where: { id: walletRow.id, },
+            data: {
+              balance_minor: { increment: balanceDelta as bigint, },
+              updated_at: new Date(),
+            },
+          });
+        }
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        return RECEIVED_RESPONSE;
+      }
+      throw error;
+    }
+  }
 
   // Notify customer about refund completion or failure
   if (
@@ -442,102 +611,18 @@ error: notifError,
   return RECEIVED_RESPONSE;
 }
 
-export async function handleCheckoutEvent(event: CheckoutEvent) {
-  if (!event.type.includes('paid')) {
-    return RECEIVED_RESPONSE;
-  }
+async function finalizePaidBooking(opts: {
+  bookingRow: BookingWebhookRow;
+  paymentEventId: string | null;
+  requiresHostApproval: boolean;
+}) {
+  const {
+    bookingRow,
+    paymentEventId,
+    requiresHostApproval,
+  } = opts;
 
-  const paymentEvent = await recordCheckoutPaymentEvent(event);
-  if (paymentEvent.duplicate) {
-    return RECEIVED_RESPONSE;
-  }
-
-  const checkoutObject = event.data.object;
-  const metadata = checkoutObject.metadata ?? {};
-  const bookingId =
-    typeof metadata.booking_id === 'string'
-      ? metadata.booking_id
-      : (typeof metadata.bookingId === 'string' ? metadata.bookingId : null);
-  const requiresHostApproval = metadata.requires_host_approval === 'true';
-  if (!bookingId) {
-    console.warn('PayMongo checkout webhook missing booking metadata');
-    await finalizeCheckoutPaymentEvent({
-      paymentEventId: paymentEvent.id,
-      status: 'ignored',
-      errorMessage: 'Missing booking metadata.',
-    });
-    return RECEIVED_RESPONSE;
-  }
-
-  const bookingRow = await prisma.booking.findUnique({ where: { id: bookingId, }, });
-
-  if (!bookingRow) {
-    console.warn('Checkout webhook could not find booking', bookingId);
-    await finalizeCheckoutPaymentEvent({
-      paymentEventId: paymentEvent.id,
-      status: 'ignored',
-      errorMessage: 'Booking not found.',
-    });
-    return RECEIVED_RESPONSE;
-  }
-
-  if (bookingRow.status === 'confirmed') {
-    await finalizeCheckoutPaymentEvent({
-      paymentEventId: paymentEvent.id,
-      status: 'ignored',
-      errorMessage: 'Booking already confirmed.',
-    });
-    return RECEIVED_RESPONSE;
-  }
-
-  if (bookingRow.status !== 'pending') {
-    console.warn('Checkout webhook received non-pending booking', {
-      bookingId,
-      status: bookingRow.status,
-    });
-    await finalizeCheckoutPaymentEvent({
-      paymentEventId: paymentEvent.id,
-      status: 'ignored',
-      errorMessage: `Booking status is ${bookingRow.status}.`,
-    });
-    return RECEIVED_RESPONSE;
-  }
-
-  await recordCheckoutTransaction({
-    bookingId,
-    event,
-    paymentEventId: paymentEvent.id,
-  });
-
-  const expectedAmountMinor =
-    bookingRow.price_minor === null
-      ? null
-      : Number(bookingRow.price_minor);
-  const paidAmountMinor = Math.round(checkoutObject.amount ?? 0);
-
-  const amountMatches =
-    expectedAmountMinor !== null &&
-    Number.isFinite(expectedAmountMinor) &&
-    expectedAmountMinor === paidAmountMinor;
-  const currencyMatches =
-    normalizeCurrencyCode(bookingRow.currency) === normalizeCurrencyCode(checkoutObject.currency);
-
-  if (!amountMatches || !currencyMatches) {
-    console.error('Checkout webhook amount/currency mismatch', {
-      bookingId,
-      bookingStatus: bookingRow.status,
-      expectedAmountMinor,
-      paidAmountMinor,
-      expectedCurrency: bookingRow.currency,
-      paidCurrency: checkoutObject.currency,
-    });
-    await finalizeCheckoutPaymentEvent({
-      paymentEventId: paymentEvent.id,
-      status: 'ignored',
-      errorMessage: 'Amount or currency mismatch.',
-    });
-    return RECEIVED_RESPONSE;
-  }
+  const bookingId = bookingRow.id;
 
   if (requiresHostApproval) {
     const booking = mapBookingRowToRecord(bookingRow);
@@ -582,7 +667,7 @@ export async function handleCheckoutEvent(event: CheckoutEvent) {
     }
 
     await finalizeCheckoutPaymentEvent({
-      paymentEventId: paymentEvent.id,
+      paymentEventId,
       status: 'processed',
     });
     return RECEIVED_RESPONSE;
@@ -641,7 +726,7 @@ export async function handleCheckoutEvent(event: CheckoutEvent) {
       }
 
       await finalizeCheckoutPaymentEvent({
-        paymentEventId: paymentEvent.id,
+        paymentEventId,
         status: 'processed',
       });
       return RECEIVED_RESPONSE;
@@ -722,8 +807,239 @@ export async function handleCheckoutEvent(event: CheckoutEvent) {
   }
 
   await finalizeCheckoutPaymentEvent({
-    paymentEventId: paymentEvent.id,
+    paymentEventId,
     status: 'processed',
   });
   return RECEIVED_RESPONSE;
+}
+
+export async function handleCheckoutEvent(event: CheckoutEvent) {
+  if (!event.type.includes('paid')) {
+    return RECEIVED_RESPONSE;
+  }
+
+  const paymentEvent = await recordCheckoutPaymentEvent(event);
+  if (paymentEvent.duplicate) {
+    return RECEIVED_RESPONSE;
+  }
+
+  const checkoutObject = event.data.object;
+  const metadata = checkoutObject.metadata ?? null;
+  const bookingId = resolveBookingIdFromPaymongoMetadata(metadata);
+  const requiresHostApproval = metadata?.requires_host_approval === 'true';
+  if (!bookingId) {
+    console.warn('PayMongo checkout webhook missing booking metadata');
+    await finalizeCheckoutPaymentEvent({
+      paymentEventId: paymentEvent.id,
+      status: 'ignored',
+      errorMessage: 'Missing booking metadata.',
+    });
+    return RECEIVED_RESPONSE;
+  }
+
+  const bookingRow = await prisma.booking.findUnique({ where: { id: bookingId, }, });
+
+  if (!bookingRow) {
+    console.warn('Checkout webhook could not find booking', bookingId);
+    await finalizeCheckoutPaymentEvent({
+      paymentEventId: paymentEvent.id,
+      status: 'ignored',
+      errorMessage: 'Booking not found.',
+    });
+    return RECEIVED_RESPONSE;
+  }
+
+  if (bookingRow.status === 'confirmed') {
+    await finalizeCheckoutPaymentEvent({
+      paymentEventId: paymentEvent.id,
+      status: 'ignored',
+      errorMessage: 'Booking already confirmed.',
+    });
+    return RECEIVED_RESPONSE;
+  }
+
+  if (bookingRow.status !== 'pending') {
+    console.warn('Checkout webhook received non-pending booking', {
+      bookingId,
+      status: bookingRow.status,
+    });
+    await finalizeCheckoutPaymentEvent({
+      paymentEventId: paymentEvent.id,
+      status: 'ignored',
+      errorMessage: `Booking status is ${bookingRow.status}.`,
+    });
+    return RECEIVED_RESPONSE;
+  }
+
+  const expectedAmountMinor =
+    bookingRow.price_minor === null
+      ? null
+      : Number(bookingRow.price_minor);
+  const paidAmountMinor = Math.round(checkoutObject.amount ?? 0);
+
+  const amountMatches =
+    expectedAmountMinor !== null &&
+    Number.isFinite(expectedAmountMinor) &&
+    expectedAmountMinor === paidAmountMinor;
+  const currencyMatches =
+    normalizeCurrencyCode(bookingRow.currency) === normalizeCurrencyCode(checkoutObject.currency);
+
+  if (!amountMatches || !currencyMatches) {
+    console.error('Checkout webhook amount/currency mismatch', {
+      bookingId,
+      bookingStatus: bookingRow.status,
+      expectedAmountMinor,
+      paidAmountMinor,
+      expectedCurrency: bookingRow.currency,
+      paidCurrency: checkoutObject.currency,
+    });
+    await finalizeCheckoutPaymentEvent({
+      paymentEventId: paymentEvent.id,
+      status: 'ignored',
+      errorMessage: 'Amount or currency mismatch.',
+    });
+    return RECEIVED_RESPONSE;
+  }
+
+  await recordCheckoutTransaction({
+    bookingId,
+    event,
+    paymentEventId: paymentEvent.id,
+  });
+
+  return finalizePaidBooking({
+    bookingRow,
+    paymentEventId: paymentEvent.id,
+    requiresHostApproval,
+  });
+}
+
+export async function handlePaymentEvent(event: PaymentEvent) {
+  const paymentEvent = await recordCheckoutPaymentEvent(event);
+  if (paymentEvent.duplicate) {
+    return RECEIVED_RESPONSE;
+  }
+
+  const paymentObject = event.data.object;
+  const metadata = paymentObject.metadata ?? null;
+  const bookingId = resolveBookingIdFromPaymongoMetadata(metadata);
+
+  if (!bookingId) {
+    console.warn('PayMongo payment webhook missing booking metadata');
+    await finalizeCheckoutPaymentEvent({
+      paymentEventId: paymentEvent.id,
+      status: 'ignored',
+      errorMessage: 'Missing booking metadata.',
+    });
+    return RECEIVED_RESPONSE;
+  }
+
+  const bookingRow = await prisma.booking.findUnique({ where: { id: bookingId, }, });
+  if (!bookingRow) {
+    console.warn('Payment webhook could not find booking', bookingId);
+    await finalizeCheckoutPaymentEvent({
+      paymentEventId: paymentEvent.id,
+      status: 'ignored',
+      errorMessage: 'Booking not found.',
+    });
+    return RECEIVED_RESPONSE;
+  }
+
+  await recordPaymentTransactionFromPaymentEvent({
+    bookingId,
+    event,
+    paymentEventId: paymentEvent.id,
+    fallbackAmountMinor: bookingRow.price_minor === null ? 0 : Number(bookingRow.price_minor),
+    fallbackCurrency: bookingRow.currency,
+  });
+
+  const resolvedStatus = resolvePaymentTransactionStatus(event);
+  if (resolvedStatus === 'failed' || resolvedStatus === 'cancelled') {
+    if (bookingRow.status === 'pending') {
+      await prisma.booking.update({
+        where: { id: bookingRow.id, },
+        data: { status: 'cancelled', },
+      });
+    }
+
+    await finalizeCheckoutPaymentEvent({
+      paymentEventId: paymentEvent.id,
+      status: 'processed',
+    });
+    return RECEIVED_RESPONSE;
+  }
+
+  if (resolvedStatus !== 'succeeded') {
+    await finalizeCheckoutPaymentEvent({
+      paymentEventId: paymentEvent.id,
+      status: 'processed',
+    });
+    return RECEIVED_RESPONSE;
+  }
+
+  const amountProvided =
+    typeof paymentObject.amount === 'number' &&
+    Number.isFinite(paymentObject.amount);
+  const expectedAmountMinor =
+    bookingRow.price_minor === null ? null : Number(bookingRow.price_minor);
+  const paidAmountMinor = amountProvided
+    ? Math.round(paymentObject.amount ?? 0)
+    : expectedAmountMinor;
+
+  const amountMatches =
+    expectedAmountMinor !== null &&
+    Number.isFinite(expectedAmountMinor) &&
+    paidAmountMinor !== null &&
+    expectedAmountMinor === paidAmountMinor;
+
+  const currencyMatches = paymentObject.currency
+    ? normalizeCurrencyCode(bookingRow.currency) === normalizeCurrencyCode(paymentObject.currency)
+    : true;
+
+  if (!amountMatches || !currencyMatches) {
+    console.error('Payment webhook amount/currency mismatch', {
+      bookingId,
+      bookingStatus: bookingRow.status,
+      expectedAmountMinor,
+      paidAmountMinor,
+      expectedCurrency: bookingRow.currency,
+      paidCurrency: paymentObject.currency,
+    });
+    await finalizeCheckoutPaymentEvent({
+      paymentEventId: paymentEvent.id,
+      status: 'ignored',
+      errorMessage: 'Amount or currency mismatch.',
+    });
+    return RECEIVED_RESPONSE;
+  }
+
+  if (bookingRow.status === 'confirmed') {
+    await finalizeCheckoutPaymentEvent({
+      paymentEventId: paymentEvent.id,
+      status: 'ignored',
+      errorMessage: 'Booking already confirmed.',
+    });
+    return RECEIVED_RESPONSE;
+  }
+
+  if (bookingRow.status !== 'pending') {
+    console.warn('Payment webhook received non-pending booking', {
+      bookingId,
+      status: bookingRow.status,
+    });
+    await finalizeCheckoutPaymentEvent({
+      paymentEventId: paymentEvent.id,
+      status: 'ignored',
+      errorMessage: `Booking status is ${bookingRow.status}.`,
+    });
+    return RECEIVED_RESPONSE;
+  }
+
+  const requiresHostApproval = metadata?.requires_host_approval === 'true';
+
+  return finalizePaidBooking({
+    bookingRow,
+    paymentEventId: paymentEvent.id,
+    requiresHostApproval,
+  });
 }

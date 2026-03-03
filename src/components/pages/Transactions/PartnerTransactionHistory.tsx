@@ -1,7 +1,14 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
-import { FiLoader, FiDollarSign, FiTrendingUp, FiActivity, FiBriefcase, FiFileText } from 'react-icons/fi';
+import {
+FiLoader,
+FiDollarSign,
+FiTrendingUp,
+FiActivity,
+FiBriefcase,
+FiFileText
+} from 'react-icons/fi';
 import { toast } from 'sonner';
 
 import { useWalletTransactions, type WalletTransactionRecord } from '@/hooks/use-wallet';

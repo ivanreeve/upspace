@@ -5,9 +5,11 @@ import { BOOKING_PRICE_MINOR_FACTOR, mapBookingsWithProfiles, normalizeNumeric }
 import { sendBookingCancellationEmail } from '@/lib/email';
 import { notifyBookingEvent } from '@/lib/notifications/booking';
 import { createPaymongoRefund } from '@/lib/paymongo';
+import { resolveLatestPaidPaymongoPaymentIdForBooking } from '@/lib/paymongo-payment-events';
 import { prisma } from '@/lib/prisma';
 import { enforceRateLimit, RateLimitExceededError } from '@/lib/rate-limit';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { ensureWalletRow } from '@/lib/wallet-server';
 
 const unauthorizedResponse = NextResponse.json(
   { error: 'Authentication required.', },
@@ -169,108 +171,132 @@ error: emailError,
     }
   }
 
-  // Find the original charge for this booking to issue a refund.
-  const charge = await prisma.wallet_transaction.findFirst({
-    where: {
-      booking_id: booking.id,
-      type: 'charge',
-      status: 'succeeded',
-    },
-    orderBy: { created_at: 'desc', },
-    select: {
-      wallet_id: true,
-      external_reference: true,
-      currency: true,
-      amount_minor: true,
-    },
-  });
+  if (booking.partner_auth_id) {
+    const paymentId = await resolveLatestPaidPaymongoPaymentIdForBooking(booking.id);
+    if (!paymentId) {
+      console.warn('Unable to resolve payment id for cancelled booking refund', { bookingId: booking.id, });
+    } else {
+      const partnerUser = await prisma.user.findFirst({
+        where: { auth_user_id: booking.partner_auth_id, },
+        select: { user_id: true, },
+      });
 
-  if (charge?.external_reference) {
-    // Idempotency guard: skip if a refund was already recorded for this booking.
-    const existingRefund = await prisma.wallet_transaction.findFirst({
-      where: {
-        booking_id: booking.id,
-        type: 'refund',
-      },
-      select: { id: true, },
-    });
-
-    if (!existingRefund) {
-      const refundAmountMinor = Number(booking.price_minor ?? charge.amount_minor ?? 0);
-
-      // Outbox pattern: record the refund intent with 'pending' status BEFORE
-      // calling the external API. This ensures the intent is persisted even if
-      // the PayMongo call fails or the process crashes.
-      let refundRecord: { id: string } | null = null;
-      try {
-        refundRecord = await prisma.wallet_transaction.create({
-          data: {
-            wallet_id: charge.wallet_id,
-            type: 'refund',
-            status: 'pending',
-            amount_minor: BigInt(refundAmountMinor),
-            net_amount_minor: BigInt(refundAmountMinor),
-            currency: charge.currency,
-            description: `Cancellation refund · ${booking.area_name} · ${booking.space_name}`,
+      if (partnerUser?.user_id) {
+        const walletRow = await ensureWalletRow(partnerUser.user_id);
+        const existingRefund = await prisma.wallet_transaction.findFirst({
+          where: {
+            wallet_id: walletRow.id,
             booking_id: booking.id,
+            type: 'refund',
+            status: { in: ['pending', 'succeeded'], },
             metadata: {
-              payment_id: charge.external_reference,
-              booking_id: booking.id,
-              user_auth_id: booking.user_auth_id,
+              path: ['payment_id'],
+              equals: paymentId,
             },
           },
           select: { id: true, },
         });
-      } catch (recordError) {
-        console.error('Failed to record refund intent', {
-          bookingId: booking.id,
-          error: recordError,
-        });
-      }
 
-      // Issue the PayMongo refund and update the local record with the result.
-      if (refundRecord) {
-        try {
-          const refundPayload = await createPaymongoRefund({
-            paymentId: charge.external_reference,
-            amountMinor: refundAmountMinor,
-            reason: 'requested_by_customer',
-            metadata: {
+        if (!existingRefund) {
+          const settledPayment = await prisma.payment_transaction.findFirst({
+            where: {
               booking_id: booking.id,
-              user_auth_id: booking.user_auth_id,
+              provider: 'paymongo',
+              status: 'succeeded',
+            },
+            orderBy: { created_at: 'desc', },
+            select: {
+              amount_minor: true,
+              currency_iso3: true,
             },
           });
+          const refundAmountMinor = Number(
+            settledPayment?.amount_minor ?? booking.price_minor ?? 0
+          );
 
-          await prisma.wallet_transaction.update({
-            where: { id: refundRecord.id, },
-            data: {
-              status: refundPayload.data.attributes.status,
-              external_reference: refundPayload.data.id,
-              metadata: {
-                paymongo_refund_id: refundPayload.data.id,
-                payment_id: charge.external_reference,
+          let refundRecord: { id: string } | null = null;
+          try {
+            refundRecord = await prisma.wallet_transaction.create({
+              data: {
+                wallet_id: walletRow.id,
+                type: 'refund',
+                status: 'pending',
+                amount_minor: BigInt(refundAmountMinor),
+                net_amount_minor: BigInt(refundAmountMinor),
+                currency: settledPayment?.currency_iso3 ?? booking.currency,
+                description: `Cancellation refund · ${booking.area_name} · ${booking.space_name}`,
                 booking_id: booking.id,
-                user_auth_id: booking.user_auth_id,
+                metadata: {
+                  payment_id: paymentId,
+                  booking_id: booking.id,
+                  user_auth_id: booking.user_auth_id,
+                },
               },
-            },
-          });
-        } catch (refundError) {
-          // Mark the local record as failed so it can be retried or reconciled.
-          console.error('Failed to create PayMongo refund for cancelled booking', {
-            bookingId: booking.id,
-            refundRecordId: refundRecord.id,
-            error: refundError,
-          });
-
-          await prisma.wallet_transaction.update({
-            where: { id: refundRecord.id, },
-            data: { status: 'failed', },
-          }).catch((updateError) => {
-            console.error('Failed to mark refund record as failed', {
-              refundRecordId: refundRecord.id,
-              error: updateError,
+              select: { id: true, },
             });
-          });
+          } catch (recordError) {
+            console.error('Failed to record refund intent', {
+              bookingId: booking.id,
+              error: recordError,
+            });
+          }
+
+          if (refundRecord) {
+            const refundRecordId = refundRecord.id;
+            try {
+              const refundPayload = await createPaymongoRefund({
+                paymentId,
+                amountMinor: refundAmountMinor,
+                reason: 'requested_by_customer',
+                metadata: {
+                  booking_id: booking.id,
+                  user_auth_id: booking.user_auth_id,
+                },
+              });
+
+              await prisma.$transaction(async (tx) => {
+                await tx.wallet_transaction.update({
+                  where: { id: refundRecordId, },
+                  data: {
+                    status: refundPayload.data.attributes.status,
+                    external_reference: refundPayload.data.id,
+                    metadata: {
+                      paymongo_refund_id: refundPayload.data.id,
+                      payment_id: paymentId,
+                      booking_id: booking.id,
+                      user_auth_id: booking.user_auth_id,
+                    },
+                  },
+                });
+
+                if (refundPayload.data.attributes.status === 'succeeded') {
+                  await tx.wallet.update({
+                    where: { id: walletRow.id, },
+                    data: {
+                      balance_minor: { decrement: BigInt(refundPayload.data.attributes.amount), },
+                      updated_at: new Date(),
+                    },
+                  });
+                }
+              });
+            } catch (refundError) {
+              console.error('Failed to create PayMongo refund for cancelled booking', {
+                bookingId: booking.id,
+                refundRecordId,
+                error: refundError,
+              });
+
+              await prisma.wallet_transaction.update({
+                where: { id: refundRecordId, },
+                data: { status: 'failed', },
+              }).catch((updateError) => {
+                console.error('Failed to mark refund record as failed', {
+                  refundRecordId,
+                  error: updateError,
+                });
+              });
+            }
+          }
         }
       }
     }

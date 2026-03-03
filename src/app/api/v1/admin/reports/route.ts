@@ -95,13 +95,19 @@ lt: rangeStart,
       _count: { _all: true, },
     });
 
-    const grossCurrentPromise = prisma.transaction.aggregate({
-      where: { created_at: currentRange, },
+    const grossCurrentPromise = prisma.payment_transaction.aggregate({
+      where: {
+        status: 'succeeded',
+        created_at: currentRange,
+      },
       _sum: { amount_minor: true, },
       _count: { _all: true, },
     });
-    const grossPreviousPromise = prisma.transaction.aggregate({
-      where: { created_at: previousRange, },
+    const grossPreviousPromise = prisma.payment_transaction.aggregate({
+      where: {
+        status: 'succeeded',
+        created_at: previousRange,
+      },
       _sum: { amount_minor: true, },
       _count: { _all: true, },
     });

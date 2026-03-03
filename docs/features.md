@@ -23,12 +23,12 @@ This document details the core features of the UpSpace platform.
 
 ## 3. Wallet & Payments
 
-*   **Wallet**: Each user has an internal wallet (`PHP` currency).
+*   **Partner Wallet**: Partners have an internal settlement wallet (`PHP` currency).
+*   **Customer Checkout**: Customers pay booking fees directly through PayMongo checkout.
 *   **Transactions**:
-    *   **Cash In**: Users load money into their wallet via PayMongo.
-    *   **Payment**: Booking fees are deducted from the wallet.
-    *   **Refunds**: Returned to the wallet upon cancellation.
-    *   **Payouts**: Partners can withdraw earnings.
+    *   **Charge**: Successful booking payments credit the partner wallet.
+    *   **Refunds**: Approved booking refunds debit the partner wallet.
+    *   **Payouts**: Partners can request withdrawals from wallet balance.
 
 ## 4. Search & Discovery
 
