@@ -25,7 +25,7 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
-import type { CustomerTransactionBookingStatus } from '@/types/transactions';
+import type { CustomerTransactionBookingStatus, CustomerTransactionRecord } from '@/types/transactions';
 
 const BOOKING_STATUS_VARIANTS: Record<CustomerTransactionBookingStatus, 'secondary' | 'success' | 'destructive'> = {
   pending: 'secondary',
@@ -61,6 +61,109 @@ const LOCALE_OPTIONS = {
 const formatDateTime = (value: string) =>
   new Date(value).toLocaleString('en-PH', LOCALE_OPTIONS);
 
+const safeBigInt = (value: string | null | undefined) => {
+  if (!value) {
+    return 0n;
+  }
+
+  try {
+    return BigInt(value);
+  } catch {
+    return 0n;
+  }
+};
+
+const formatLedgerAmount = (amountMinor: bigint | null, currency: string) =>
+  amountMinor === null
+    ? '-'
+    : formatCurrencyMinor(amountMinor.toString(), currency);
+
+type CustomerLedgerRow = {
+  id: string;
+  postedAt: string;
+  reference: string;
+  bookingStatus: CustomerTransactionBookingStatus;
+  account: string;
+  details: string;
+  debitMinor: bigint | null;
+  creditMinor: bigint | null;
+  cumulativeSpendMinor: bigint | null;
+  bookingId: string | null;
+  currency: string;
+  isContra: boolean;
+};
+
+function buildCustomerLedgerRows(
+  transactions: CustomerTransactionRecord[]
+): CustomerLedgerRow[] {
+  const chronologicalTransactions = [...transactions].sort(
+    (left, right) =>
+      new Date(left.transactionCreatedAt).getTime() -
+      new Date(right.transactionCreatedAt).getTime()
+  );
+
+  let cumulativeSpendMinor = 0n;
+  const cumulativeByTransactionId = new Map<string, bigint>();
+
+  for (const transaction of chronologicalTransactions) {
+    cumulativeSpendMinor += safeBigInt(transaction.amountMinor);
+    cumulativeByTransactionId.set(transaction.id, cumulativeSpendMinor);
+  }
+
+  return transactions.flatMap((transaction) => {
+    const amountMinor = safeBigInt(transaction.amountMinor);
+    const reference = transaction.id.slice(0, 8).toUpperCase();
+    const workspaceLabel = `${transaction.spaceName} - ${transaction.areaName}`;
+    const cumulativeMinor = cumulativeByTransactionId.get(transaction.id) ?? null;
+
+    const debitRow: CustomerLedgerRow = {
+      id: `${transaction.id}-expense`,
+      postedAt: transaction.transactionCreatedAt,
+      reference,
+      bookingStatus: transaction.bookingStatus,
+      account: 'Booking Expense',
+      details: `${workspaceLabel} | ${transaction.paymentMethod}`,
+      debitMinor: amountMinor,
+      creditMinor: null,
+      cumulativeSpendMinor: cumulativeMinor,
+      bookingId: transaction.bookingId,
+      currency: transaction.currency,
+      isContra: false,
+    };
+
+    const creditRow: CustomerLedgerRow = {
+      id: `${transaction.id}-cash`,
+      postedAt: transaction.transactionCreatedAt,
+      reference,
+      bookingStatus: transaction.bookingStatus,
+      account: 'Cash and Cash Equivalents',
+      details: `Counter-entry | ${workspaceLabel}`,
+      debitMinor: null,
+      creditMinor: amountMinor,
+      cumulativeSpendMinor: null,
+      bookingId: null,
+      currency: transaction.currency,
+      isContra: true,
+    };
+
+    return [debitRow, creditRow];
+  });
+}
+
+const TableSkeletonRows = ({ rows, }: { rows: number }) => (
+  <>
+    { Array.from({ length: rows, }).map((_, index) => (
+      <TableRow key={ `skeleton-${index}` }>
+        { Array.from({ length: 8, }).map((__, cellIndex) => (
+          <TableCell key={ `skeleton-${index}-${cellIndex}` }>
+            <Skeleton className="h-4 w-full" />
+          </TableCell>
+        )) }
+      </TableRow>
+    )) }
+  </>
+);
+
 export function CustomerTransactionHistory() {
   const {
     data,
@@ -86,6 +189,12 @@ export function CustomerTransactionHistory() {
     () => data?.pages.flatMap((page) => page.data) ?? [],
     [data]
   );
+
+  const ledgerRows = useMemo(
+    () => buildCustomerLedgerRows(transactions),
+    [transactions]
+  );
+
   const hasTransactions = transactions.length > 0;
   const totalAmountMinor = transactions.reduce((sum, transaction) => {
     const minor = Number(transaction.amountMinor ?? '0');
@@ -115,10 +224,24 @@ export function CustomerTransactionHistory() {
         </div>
         <Card className="border border-border bg-card/70">
           <CardHeader className="px-6 py-4"><Skeleton className="h-6 w-40" /></CardHeader>
-          <CardContent className="space-y-4 p-6">
-            { Array.from({ length: 3, }).map((_, i) => (
-              <Skeleton key={ i } className="h-28 w-full rounded-2xl" />
-            )) }
+          <CardContent className="p-6">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Ref</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Account</TableHead>
+                  <TableHead>Details</TableHead>
+                  <TableHead className="text-right">Debit</TableHead>
+                  <TableHead className="text-right">Credit</TableHead>
+                  <TableHead className="text-right">Cumulative spend</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableSkeletonRows rows={ 8 } />
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       </section>
@@ -135,8 +258,7 @@ export function CustomerTransactionHistory() {
           Transaction history
         </h1>
         <p className="text-sm text-muted-foreground">
-          A clear, chronological record of every booking payment and payout we
-          routed through UpSpace.
+          Posted as double-entry journal lines so each booking payment is traceable from expense to cash settlement.
         </p>
       </div>
 
@@ -204,22 +326,21 @@ export function CustomerTransactionHistory() {
         <CardHeader className="flex flex-col gap-1 px-6 py-4">
           <div className="flex flex-wrap items-baseline gap-3">
             <CardTitle className="text-lg font-semibold text-foreground">
-              Recent payments
+              Double-entry ledger
             </CardTitle>
             <span className="text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground">
-              { hasTransactions ? `${ transactions.length } entries` : 'Empty' }
+              { hasTransactions ? `${ transactions.length } transactions` : 'Empty' }
             </span>
           </div>
           <CardDescription className="text-sm text-muted-foreground">
-            Everything is synced with PayMongo. Tap a booking to revisit the confirmation
-            email or follow up with support.
+            Every payment posts an expense debit and a matching cash credit.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           { !hasTransactions ? (
             <div className="px-6 py-10 text-sm text-muted-foreground">
               You have not completed any paid bookings yet.
-              Every settled booking payment will appear here for easy reference.
+              Every settled booking payment will appear here as ledger entries.
             </div>
           ) : (
             <div className="rounded-b-md border-t border-border/60 bg-card/80">
@@ -228,54 +349,64 @@ export function CustomerTransactionHistory() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>
-                      <TableHead>Workspace</TableHead>
+                      <TableHead>Ref</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="text-right">Hours</TableHead>
-                      <TableHead>Booking</TableHead>
+                      <TableHead>Account</TableHead>
+                      <TableHead>Details</TableHead>
+                      <TableHead className="text-right">Debit</TableHead>
+                      <TableHead className="text-right">Credit</TableHead>
+                      <TableHead className="text-right">Cumulative spend</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                  { transactions.map((transaction) => {
-                    const amountLabel = formatCurrencyMinor(
-                      transaction.amountMinor,
-                      transaction.currency
-                    );
-
-                      return (
-                        <TableRow key={ transaction.id }>
-                          <TableCell className="whitespace-nowrap">
-                            { formatDateTime(transaction.transactionCreatedAt) }
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            { transaction.spaceName } - { transaction.areaName }
-                          </TableCell>
-                          <TableCell>
+                    { ledgerRows.map((row) => (
+                      <TableRow key={ row.id } className={ row.isContra ? 'bg-muted/25' : undefined }>
+                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                          { row.isContra ? '' : formatDateTime(row.postedAt) }
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
+                          { row.reference }
+                        </TableCell>
+                        <TableCell>
+                          { row.isContra ? (
+                            <span className="text-xs text-muted-foreground">Contra</span>
+                          ) : (
                             <Badge
                               variant={
-                                BOOKING_STATUS_VARIANTS[transaction.bookingStatus]
+                                BOOKING_STATUS_VARIANTS[row.bookingStatus]
                               }
                             >
-                              { BOOKING_STATUS_LABELS[transaction.bookingStatus] }
+                              { BOOKING_STATUS_LABELS[row.bookingStatus] }
                             </Badge>
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            { amountLabel }
-                          </TableCell>
-                          <TableCell className="text-right">
-                            { transaction.bookingHours }
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            <Link
-                              href={ `/customer/bookings/${transaction.bookingId}` }
-                              className="text-xs hover:underline"
-                            >
-                              { transaction.bookingId }
-                            </Link>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    }) }
+                          ) }
+                        </TableCell>
+                        <TableCell className={ row.isContra ? 'text-muted-foreground' : 'font-medium' }>
+                          { row.account }
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          <div className="space-y-1">
+                            <p>{ row.details }</p>
+                            { !row.isContra && row.bookingId ? (
+                              <Link
+                                href={ `/customer/bookings/${row.bookingId}` }
+                                className="text-[11px] font-medium hover:underline"
+                              >
+                                Booking { row.bookingId.slice(0, 8) }
+                              </Link>
+                            ) : null }
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          { formatLedgerAmount(row.debitMinor, row.currency) }
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          { formatLedgerAmount(row.creditMinor, row.currency) }
+                        </TableCell>
+                        <TableCell className="text-right font-semibold text-foreground">
+                          { formatLedgerAmount(row.cumulativeSpendMinor, row.currency) }
+                        </TableCell>
+                      </TableRow>
+                    )) }
                   </TableBody>
                 </Table>
               </div>

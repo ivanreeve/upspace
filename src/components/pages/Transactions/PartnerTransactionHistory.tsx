@@ -38,12 +38,38 @@ const STATUS_VARIANTS: Record<WalletTransactionRecord['status'], 'secondary' | '
   failed: 'destructive',
 };
 
-const TYPE_LABELS: Record<WalletTransactionRecord['type'], string> = {
-  cash_in: 'Cash in',
-  charge: 'Charge',
-  refund: 'Refund',
-  payout: 'Payout',
+type LedgerDirection = 'debit' | 'credit';
+
+type LedgerTypeConfig = {
+  typeLabel: string;
+  counterpartyAccount: string;
+  walletDirection: LedgerDirection;
 };
+
+const LEDGER_TYPE_CONFIG: Record<WalletTransactionRecord['type'], LedgerTypeConfig> = {
+  cash_in: {
+    typeLabel: 'Cash in',
+    counterpartyAccount: 'External funding',
+    walletDirection: 'debit',
+  },
+  charge: {
+    typeLabel: 'Charge',
+    counterpartyAccount: 'Booking revenue',
+    walletDirection: 'debit',
+  },
+  refund: {
+    typeLabel: 'Refund',
+    counterpartyAccount: 'Refund expense',
+    walletDirection: 'credit',
+  },
+  payout: {
+    typeLabel: 'Payout',
+    counterpartyAccount: 'Partner payout payable',
+    walletDirection: 'credit',
+  },
+};
+
+const WALLET_ACCOUNT_NAME = 'Wallet Cash';
 
 const dateFormatter = new Intl.DateTimeFormat('en-PH', {
   month: 'short',
@@ -57,7 +83,10 @@ const formatDateTime = (value: string) =>
   dateFormatter.format(new Date(value));
 
 const safeBigInt = (value: string | null | undefined) => {
-  if (!value) return 0n;
+  if (!value) {
+    return 0n;
+  }
+
   try {
     return BigInt(value);
   } catch {
@@ -65,11 +94,117 @@ const safeBigInt = (value: string | null | undefined) => {
   }
 };
 
+const formatLedgerAmount = (amountMinor: bigint | null, currency: string) =>
+  amountMinor === null
+    ? '-'
+    : formatCurrencyMinor(amountMinor.toString(), currency);
+
+const getWalletEffectMinor = (transaction: WalletTransactionRecord) => {
+  if (transaction.status !== 'succeeded') {
+    return 0n;
+  }
+
+  const config = LEDGER_TYPE_CONFIG[transaction.type];
+  const amountMinor = safeBigInt(transaction.amountMinor);
+
+  return config.walletDirection === 'debit'
+    ? amountMinor
+    : -amountMinor;
+};
+
+type PartnerLedgerRow = {
+  id: string;
+  postedAt: string;
+  reference: string;
+  status: WalletTransactionRecord['status'];
+  account: string;
+  details: string;
+  debitMinor: bigint | null;
+  creditMinor: bigint | null;
+  balanceAfterMinor: bigint | null;
+  currency: string;
+  isContra: boolean;
+};
+
+function buildPartnerLedgerRows(
+  transactions: WalletTransactionRecord[],
+  currentWalletBalanceMinor: bigint
+): PartnerLedgerRow[] {
+  let effectFromNewerPostedEntries = 0n;
+
+  return transactions.flatMap((transaction) => {
+    const config = LEDGER_TYPE_CONFIG[transaction.type];
+    const amountMinor = safeBigInt(transaction.amountMinor);
+    const isPosted = transaction.status === 'succeeded';
+    const walletBalanceAfterEntry = isPosted
+      ? currentWalletBalanceMinor - effectFromNewerPostedEntries
+      : null;
+
+    const bookingLabel = transaction.booking
+      ? `${transaction.booking.spaceName} - ${transaction.booking.areaName}`
+      : (transaction.bookingId ?? 'No booking reference');
+    const narrative = transaction.description?.trim() || bookingLabel;
+    const reference = transaction.id.slice(0, 8).toUpperCase();
+
+    const walletDebit =
+      isPosted && config.walletDirection === 'debit'
+        ? amountMinor
+        : null;
+    const walletCredit =
+      isPosted && config.walletDirection === 'credit'
+        ? amountMinor
+        : null;
+
+    const contraDebit =
+      isPosted && config.walletDirection === 'credit'
+        ? amountMinor
+        : null;
+    const contraCredit =
+      isPosted && config.walletDirection === 'debit'
+        ? amountMinor
+        : null;
+
+    if (isPosted) {
+      effectFromNewerPostedEntries += getWalletEffectMinor(transaction);
+    }
+
+    const walletRow: PartnerLedgerRow = {
+      id: `${transaction.id}-wallet`,
+      postedAt: transaction.createdAt,
+      reference,
+      status: transaction.status,
+      account: WALLET_ACCOUNT_NAME,
+      details: `${config.typeLabel} | ${narrative}`,
+      debitMinor: walletDebit,
+      creditMinor: walletCredit,
+      balanceAfterMinor: walletBalanceAfterEntry,
+      currency: transaction.currency,
+      isContra: false,
+    };
+
+    const contraRow: PartnerLedgerRow = {
+      id: `${transaction.id}-contra`,
+      postedAt: transaction.createdAt,
+      reference,
+      status: transaction.status,
+      account: config.counterpartyAccount,
+      details: `Counter-entry | ${narrative}`,
+      debitMinor: contraDebit,
+      creditMinor: contraCredit,
+      balanceAfterMinor: null,
+      currency: transaction.currency,
+      isContra: true,
+    };
+
+    return [walletRow, contraRow];
+  });
+}
+
 const TableSkeletonRows = ({ rows, }: { rows: number }) => (
   <>
     { Array.from({ length: rows, }).map((_, index) => (
       <TableRow key={ `skeleton-${index}` }>
-        { Array.from({ length: 6, }).map((__, cellIndex) => (
+        { Array.from({ length: 8, }).map((__, cellIndex) => (
           <TableCell key={ `skeleton-${index}-${cellIndex}` }>
             <Skeleton className="h-4 w-full" />
           </TableCell>
@@ -96,6 +231,14 @@ export function PartnerTransactionHistory() {
     () => data?.pages.flatMap((page) => page.transactions) ?? [],
     [data]
   );
+
+  const currentWalletBalanceMinor = safeBigInt(data?.pages[0]?.wallet.balanceMinor);
+
+  const ledgerRows = useMemo(
+    () => buildPartnerLedgerRows(transactions, currentWalletBalanceMinor),
+    [transactions, currentWalletBalanceMinor]
+  );
+
   const stats = data?.pages[0]?.stats;
   const totalEarnedMinor = stats?.totalEarnedMinor ?? null;
   const totalRefundedMinor = stats?.totalRefundedMinor ?? null;
@@ -125,7 +268,7 @@ export function PartnerTransactionHistory() {
           Transaction history
         </h1>
         <p className="text-sm text-muted-foreground">
-          Track payouts, charges, and refunds tied to your listings.
+          Posted as double-entry journal lines for wallet cash, payouts, charges, and refunds.
         </p>
       </div>
 
@@ -189,7 +332,7 @@ export function PartnerTransactionHistory() {
             </p>
             <p className="text-sm text-muted-foreground">
               { latestTransaction
-                ? TYPE_LABELS[latestTransaction.type]
+                ? LEDGER_TYPE_CONFIG[latestTransaction.type].typeLabel
                 : 'Awaiting first transaction' }
             </p>
           </CardContent>
@@ -200,14 +343,14 @@ export function PartnerTransactionHistory() {
         <CardHeader className="flex flex-col gap-1 px-6 py-4">
           <div className="flex flex-wrap items-baseline gap-3">
             <CardTitle className="text-lg font-semibold text-foreground">
-              Recent transactions
+              Double-entry ledger
             </CardTitle>
             <span className="text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground">
-              { transactions.length } entries
+              { transactions.length } transactions
             </span>
           </div>
           <CardDescription className="text-sm text-muted-foreground">
-            Synced from PayMongo wallet events and payouts.
+            Each transaction is shown as debit and credit journal lines. Running balance is tracked on the wallet account line.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -217,15 +360,17 @@ export function PartnerTransactionHistory() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
-                    <TableHead>Type</TableHead>
+                    <TableHead>Ref</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead className="text-right">Net</TableHead>
-                    <TableHead>Booking</TableHead>
+                    <TableHead>Account</TableHead>
+                    <TableHead>Details</TableHead>
+                    <TableHead className="text-right">Debit</TableHead>
+                    <TableHead className="text-right">Credit</TableHead>
+                    <TableHead className="text-right">Wallet balance</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  <TableSkeletonRows rows={ 6 } />
+                  <TableSkeletonRows rows={ 8 } />
                 </TableBody>
               </Table>
             </div>
@@ -252,38 +397,48 @@ export function PartnerTransactionHistory() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>
-                      <TableHead>Type</TableHead>
+                      <TableHead>Ref</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="text-right">Net</TableHead>
-                      <TableHead>Booking</TableHead>
+                      <TableHead>Account</TableHead>
+                      <TableHead>Details</TableHead>
+                      <TableHead className="text-right">Debit</TableHead>
+                      <TableHead className="text-right">Credit</TableHead>
+                      <TableHead className="text-right">Wallet balance</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    { transactions.map((transaction) => (
-                      <TableRow key={ transaction.id }>
-                        <TableCell className="whitespace-nowrap">
-                          { formatDateTime(transaction.createdAt) }
+                    { ledgerRows.map((row) => (
+                      <TableRow key={ row.id } className={ row.isContra ? 'bg-muted/25' : undefined }>
+                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                          { row.isContra ? '' : formatDateTime(row.postedAt) }
                         </TableCell>
-                        <TableCell>{ TYPE_LABELS[transaction.type] }</TableCell>
+                        <TableCell className="font-mono text-xs">
+                          { row.reference }
+                        </TableCell>
                         <TableCell>
-                          <Badge variant={ STATUS_VARIANTS[transaction.status] }>
-                            { STATUS_LABELS[transaction.status] }
-                          </Badge>
+                          { row.isContra ? (
+                            <span className="text-xs text-muted-foreground">Contra</span>
+                          ) : (
+                            <Badge variant={ STATUS_VARIANTS[row.status] }>
+                              { STATUS_LABELS[row.status] }
+                            </Badge>
+                          ) }
+                        </TableCell>
+                        <TableCell className={ row.isContra ? 'text-muted-foreground' : 'font-medium' }>
+                          { row.account }
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          { row.details }
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          { formatCurrencyMinor(transaction.amountMinor, transaction.currency) }
+                          { formatLedgerAmount(row.debitMinor, row.currency) }
                         </TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          { transaction.netAmountMinor
-                            ? formatCurrencyMinor(transaction.netAmountMinor, transaction.currency)
-                            : '-' }
+                        <TableCell className="text-right font-medium">
+                          { formatLedgerAmount(row.creditMinor, row.currency) }
                         </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        { transaction.booking
-                          ? `${transaction.booking.spaceName} - ${transaction.booking.areaName}`
-                          : transaction.bookingId ?? '-' }
-                      </TableCell>
+                        <TableCell className="text-right font-semibold text-foreground">
+                          { formatLedgerAmount(row.balanceAfterMinor, row.currency) }
+                        </TableCell>
                       </TableRow>
                     )) }
                   </TableBody>
