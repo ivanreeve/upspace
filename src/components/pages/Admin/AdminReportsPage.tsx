@@ -257,10 +257,12 @@ export function AdminReportsPage() {
   const handleRangeChange = (value: string) => {
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) return;
-    const option = RANGE_OPTIONS.find((entry) => entry.value === parsed);
+    const option = RANGE_OPTIONS.find(
+      (entry): entry is typeof RANGE_OPTIONS[number] => entry.value === parsed
+    );
     if (!option) return;
     if (parsed === rangeDays) return;
-    setRangeDays(parsed);
+    setRangeDays(option.value);
   };
 
   const queueHealth = data?.queueHealth ?? [];

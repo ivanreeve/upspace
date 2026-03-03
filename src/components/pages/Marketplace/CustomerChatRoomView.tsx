@@ -23,6 +23,7 @@ import { useCustomerChatRooms, useChatMessages, useSendChatMessage } from '@/hoo
 import { useChatRoomsSubscription, useChatSubscription } from '@/hooks/use-chat-subscription';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import { CHAT_MESSAGE_MAX_LENGTH } from '@/lib/validations/chat';
 import type { ChatMessage } from '@/types/chat';
 import { ChatReportDialog } from '@/components/pages/Marketplace/ChatReportDialog';
 
@@ -62,6 +63,7 @@ function CustomerConversationPlaceholder({ children, }: { children: ReactNode })
 }
 
 export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
+  const maxMessageLength = CHAT_MESSAGE_MAX_LENGTH;
   const {
     data: rooms,
     isLoading: roomsLoading,
@@ -200,6 +202,10 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
     }
     const trimmed = draft.trim();
     if (!trimmed) {
+      return;
+    }
+    if (trimmed.length > maxMessageLength) {
+      toast.error(`Message must be ${maxMessageLength} characters or fewer.`);
       return;
     }
 
@@ -460,39 +466,43 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
     );
   } else {
     messagesContent = (
-      <div className="space-y-3 px-5 py-4 text-sm text-muted-foreground">
+      <div className="flex w-full flex-col gap-3 px-5 py-4 text-sm text-muted-foreground">
         { messages.map((message) => {
           const isCustomerMessage = message.senderRole === 'customer';
-          const alignClass = isCustomerMessage ? 'items-end justify-end' : 'items-start justify-start';
+          const messageStackClass = isCustomerMessage ? 'self-end items-end' : 'self-start items-start';
           const bubbleClass = isCustomerMessage
             ? 'bg-primary text-primary-foreground'
             : 'bg-muted text-foreground';
           const timestamp = formatTimestamp(message.createdAt);
 
           return (
-            <div key={ message.id } className={ `flex ${alignClass}` }>
-              <div className="max-w-full sm:max-w-[520px] space-y-1">
-                <div
-                  className={ cn('inline-block rounded-[20px] px-4 py-2.5 text-[15px]', bubbleClass) }
-                >
-                  <p
-                    className={ cn(
-                      'whitespace-pre-line break-words text-foreground',
-                      isCustomerMessage && 'text-white font-medium'
-                    ) }
-                  >
-                    { message.content }
-                  </p>
-                </div>
+            <div
+              key={ message.id }
+              className={ cn(
+                'flex w-fit max-w-full min-w-0 flex-col space-y-1 sm:max-w-[520px]',
+                messageStackClass
+              ) }
+            >
+              <div
+                className={ cn('inline-block max-w-full min-w-0 rounded-[20px] px-4 py-2.5 text-[15px]', bubbleClass) }
+              >
                 <p
                   className={ cn(
-                    'text-xs text-muted-foreground leading-tight',
-                    isCustomerMessage ? 'text-right' : 'text-left'
+                    'block whitespace-pre-wrap break-all text-foreground',
+                    isCustomerMessage && 'text-white font-medium'
                   ) }
                 >
-                  { timestamp }
+                    { message.content }
                 </p>
               </div>
+              <p
+                className={ cn(
+                  'text-xs text-muted-foreground leading-tight',
+                  isCustomerMessage ? 'text-right' : 'text-left'
+                ) }
+              >
+                { timestamp }
+              </p>
             </div>
           );
         }) }
@@ -599,6 +609,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                     placeholder="Type your message…"
                     aria-label="Message the host"
                     rows={ 1 }
+                    maxLength={ maxMessageLength }
                     className="min-h-[40px] max-h-24 flex-1 min-w-0 resize-none overflow-y-auto text-[15px] border-0 focus-visible:ring-0 shadow-none bg-transparent"
                     disabled={ sendMessage.isPending }
                     onKeyDown={ handleDraftKeyDown }

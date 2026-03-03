@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import {
   FormEvent,
@@ -28,6 +28,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useChatMessages, usePartnerChatRooms, useSendChatMessage } from '@/hooks/api/useChat';
 import { useChatRoomsSubscription, useChatSubscription } from '@/hooks/use-chat-subscription';
 import { cn } from '@/lib/utils';
+import { CHAT_MESSAGE_MAX_LENGTH } from '@/lib/validations/chat';
 import type { ChatMessage } from '@/types/chat';
 
 function PartnerChatsListSkeleton() {
@@ -54,6 +55,7 @@ function PartnerConversationLoadingSkeleton() {
 }
 
 export function PartnerMessagesPanel() {
+  const maxMessageLength = CHAT_MESSAGE_MAX_LENGTH;
   const {
     data: rooms,
     isLoading: roomsLoading,
@@ -141,6 +143,10 @@ export function PartnerMessagesPanel() {
       return;
     }
     const trimmed = draft.trim();
+    if (trimmed.length > maxMessageLength) {
+      toast.error(`Message must be ${maxMessageLength} characters or fewer.`);
+      return;
+    }
     if (!trimmed) {
       return;
     }
@@ -192,12 +198,12 @@ export function PartnerMessagesPanel() {
 
             return (
               <div key={ message.id } className={ `flex ${alignClass}` }>
-                <div className="max-w-full sm:max-w-[520px] space-y-1 rounded-2xl px-4 py-3 text-sm shadow">
+                <div className="w-full min-w-0 sm:max-w-[520px] space-y-1 rounded-2xl px-4 py-3 text-sm shadow">
                   <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                     <span>{ message.senderName ?? (isCustomerMessage ? 'Customer' : 'You') }</span>
                     <span>{ timestamp }</span>
                   </div>
-                  <p className={ `whitespace-pre-line break-all ${bubbleClass} px-0 py-0 font-medium` }>
+                  <p className={ `block whitespace-pre-wrap break-all max-w-full ${bubbleClass} px-0 py-0 font-medium` }>
                     { message.content }
                   </p>
                 </div>
@@ -269,7 +275,7 @@ export function PartnerMessagesPanel() {
                       <p className="text-xs text-muted-foreground">
                         { room.spaceName }
                         { room.spaceCity || room.spaceRegion
-                          ? ` · ${room.spaceCity ?? ''}${room.spaceCity && room.spaceRegion ? ', ' : ''}${room.spaceRegion ?? ''}`
+                          ? ` Â· ${room.spaceCity ?? ''}${room.spaceCity && room.spaceRegion ? ', ' : ''}${room.spaceRegion ?? ''}`
                           : '' }
                       </p>
                     </div>
@@ -331,9 +337,10 @@ export function PartnerMessagesPanel() {
               <Textarea
                 value={ draft }
                   onChange={ (event) => setDraft(event.target.value) }
-                  placeholder="Reply to the customer…"
+                  placeholder="Reply to the customerï¿½"
                   aria-label="Reply to conversation"
                   rows={ 3 }
+                  maxLength={ maxMessageLength }
                   disabled={ sendMessage.isPending }
                 />
                 <div className="flex justify-end">
@@ -343,7 +350,7 @@ export function PartnerMessagesPanel() {
                     className="inline-flex items-center gap-2"
                   >
                     <FiSend className="size-4" aria-hidden="true" />
-                    <span>{ sendMessage.isPending ? 'Sending…' : 'Send reply' }</span>
+                    <span>{ sendMessage.isPending ? 'Sendingâ€¦' : 'Send reply' }</span>
                   </Button>
                 </div>
             </form>
@@ -358,3 +365,15 @@ export function PartnerMessagesPanel() {
     </section>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+

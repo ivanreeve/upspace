@@ -21,17 +21,16 @@ const notFoundResponse = NextResponse.json(
   { status: 404, }
 );
 
-const invalidPayloadResponse = NextResponse.json(
-  { error: 'Invalid request payload.', },
-  { status: 400, }
-);
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const parsed = chatMessageRoomQuerySchema.safeParse({ room_id: url.searchParams.get('room_id') ?? undefined, });
 
   if (!parsed.success) {
-    return invalidPayloadResponse;
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? 'Invalid request payload.', },
+      { status: 400, }
+    );
   }
 
   const cursorParam = url.searchParams.get('cursor') ?? undefined;
@@ -146,7 +145,10 @@ export async function POST(req: NextRequest) {
   const parsed = chatMessagePayloadSchema.safeParse(body ?? {});
 
   if (!parsed.success) {
-    return invalidPayloadResponse;
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? 'Invalid request payload.', },
+      { status: 400, }
+    );
   }
 
   const supabase = await createSupabaseServerClient();
@@ -252,7 +254,7 @@ headers: { 'Retry-After': error.retryAfter.toString(), },
     }
 
     if (!spaceId) {
-      return invalidPayloadResponse;
+      return NextResponse.json({ error: 'Invalid request payload.', }, { status: 400, });
     }
 
     const space = await prisma.space.findUnique({
@@ -312,7 +314,7 @@ headers: { 'Retry-After': error.retryAfter.toString(), },
     const roomId = parsed.data.room_id;
 
     if (!roomId) {
-      return invalidPayloadResponse;
+      return NextResponse.json({ error: 'Invalid request payload.', }, { status: 400, });
     }
 
     const room = await prisma.chat_room.findUnique({
@@ -371,3 +373,4 @@ headers: { 'Retry-After': error.retryAfter.toString(), },
 
   return forbiddenResponse;
 }
+

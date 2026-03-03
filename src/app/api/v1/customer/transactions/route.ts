@@ -126,8 +126,16 @@ skip: 1,
     ? transactions[transactions.length - 1]?.id
     : undefined;
 
+  const transactionsWithBooking = transactions.filter(
+    (
+      transaction
+    ): transaction is typeof transaction & {
+      booking: NonNullable<typeof transaction.booking>;
+    } => transaction.booking !== null
+  );
+
   return NextResponse.json({
-    data: transactions.map(mapTransaction),
+    data: transactionsWithBooking.map(mapTransaction),
     pagination: {
  hasMore,
 nextCursor, 

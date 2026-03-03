@@ -24,6 +24,7 @@ import { useChatRoomsSubscription, useChatSubscription } from '@/hooks/use-chat-
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
+import { CHAT_MESSAGE_MAX_LENGTH } from '@/lib/validations/chat';
 import type { ChatMessage } from '@/types/chat';
 import { ChatReportDialog } from '@/components/pages/Marketplace/ChatReportDialog';
 
@@ -96,6 +97,7 @@ function PartnerConversationLoadingSkeleton() {
 }
 
 export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
+  const maxMessageLength = CHAT_MESSAGE_MAX_LENGTH;
   const router = useRouter();
   const {
     data: rooms,
@@ -241,6 +243,10 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
     }
     const trimmed = draft.trim();
     if (!trimmed) {
+      return;
+    }
+    if (trimmed.length > maxMessageLength) {
+      toast.error(`Message must be ${maxMessageLength} characters or fewer.`);
       return;
     }
 
@@ -461,39 +467,43 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
   } else {
     messagesContent = (
       <ScrollArea className="flex-1 h-full min-h-0 overflow-y-auto">
-        <div className="space-y-3 px-5 py-4 text-sm text-muted-foreground">
+        <div className="flex w-full flex-col gap-3 px-5 py-4 text-sm text-muted-foreground">
           { messages.map((message) => {
             const isPartnerMessage = message.senderRole === 'partner';
-            const alignClass = isPartnerMessage ? 'items-end justify-end' : 'items-start justify-start';
+            const messageStackClass = isPartnerMessage ? 'self-end items-end' : 'self-start items-start';
             const bubbleClass = isPartnerMessage
               ? 'bg-primary text-primary-foreground'
               : 'bg-muted text-foreground';
             const timestamp = formatTimestamp(message.createdAt);
 
             return (
-              <div key={ message.id } className={ `flex ${alignClass}` }>
-                <div className="max-w-full sm:max-w-[520px] space-y-1">
-                  <div
-                    className={ cn('inline-block rounded-[20px] px-4 py-2.5 text-[15px]', bubbleClass) }
-                  >
-                    <p
-                      className={ cn(
-                        'whitespace-pre-line break-words text-foreground',
-                        isPartnerMessage && 'text-white font-medium'
-                      ) }
-                    >
-                      { message.content }
-                    </p>
-                  </div>
+              <div
+                key={ message.id }
+                className={ cn(
+                  'flex w-fit max-w-full min-w-0 flex-col space-y-1 sm:max-w-[520px]',
+                  messageStackClass
+                ) }
+              >
+                <div
+                  className={ cn('inline-block max-w-full min-w-0 rounded-[20px] px-4 py-2.5 text-[15px]', bubbleClass) }
+                >
                   <p
                     className={ cn(
-                      'text-xs text-muted-foreground leading-tight',
-                      isPartnerMessage ? 'text-right' : 'text-left'
+                      'block whitespace-pre-wrap break-all text-foreground',
+                      isPartnerMessage && 'text-white font-medium'
                     ) }
                   >
-                    { timestamp }
+                    { message.content }
                   </p>
                 </div>
+                <p
+                  className={ cn(
+                    'text-xs text-muted-foreground leading-tight',
+                    isPartnerMessage ? 'text-right' : 'text-left'
+                  ) }
+                >
+                  { timestamp }
+                </p>
               </div>
             );
           }) }
@@ -617,6 +627,7 @@ export function PartnerChatRoomView({ roomId, }: PartnerChatRoomViewProps) {
                     placeholder="Reply to the customer…"
                     aria-label="Reply to conversation"
                     rows={ 1 }
+                    maxLength={ maxMessageLength }
                     className="min-h-[40px] max-h-24 flex-1 min-w-0 resize-none overflow-y-auto text-[15px] border-0 focus-visible:ring-0 shadow-none bg-transparent"
                     disabled={ sendMessage.isPending }
                     onKeyDown={ handleDraftKeyDown }
