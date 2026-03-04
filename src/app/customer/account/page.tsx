@@ -1,11 +1,7 @@
 import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-import AccountPage from '@/components/pages/Account/AccountPage';
-import { MarketplaceChrome } from '@/components/pages/Marketplace/MarketplaceChrome';
 import { prisma } from '@/lib/prisma';
-import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
 import { createSupabaseReadOnlyServerClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
@@ -31,16 +27,8 @@ export default async function AccountRoutePage() {
   }
 
   if (dbUser.role === 'partner') {
-    redirect('/partner/account');
+    redirect('/partner/settings');
   }
 
-  const cookieStore = await cookies();
-  const sidebarCookie = cookieStore.get(SIDEBAR_STATE_COOKIE)?.value;
-  const initialSidebarOpen = parseSidebarState(sidebarCookie);
-
-  return (
-    <MarketplaceChrome initialSidebarOpen={ initialSidebarOpen }>
-      <AccountPage />
-    </MarketplaceChrome>
-  );
+  redirect('/customer/settings');
 }

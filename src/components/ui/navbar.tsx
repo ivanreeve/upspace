@@ -14,8 +14,7 @@ import {
   FiLayers,
   FiLogOut,
   FiSettings,
-  FiSidebar,
-  FiUser
+  FiSidebar
 } from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
 
@@ -132,13 +131,6 @@ function AccountMenu({
         { hasAdditionalLinks && <DropdownMenuSeparator className="my-1" /> }
         { showAccountLinks && (
           <>
-            <DropdownMenuItem
-              onSelect={ () => onNavigate('/customer/account') }
-              className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
-            >
-              <FiUser className="size-4" aria-hidden="true" />
-              <span>Account</span>
-            </DropdownMenuItem>
             <DropdownMenuItem
               onSelect={ () => onNavigate('/customer/settings') }
               className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"

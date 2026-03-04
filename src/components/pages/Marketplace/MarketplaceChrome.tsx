@@ -23,7 +23,6 @@ import {
   Search,
   Settings,
   Ticket,
-  User,
   Users,
   UserX
 } from 'lucide-react';
@@ -103,13 +102,11 @@ type SidebarFooterContentProps = {
   isGuest: boolean;
   isSidebarLoading: boolean;
   showNotifications?: boolean;
-  showAccount?: boolean;
   showWallet?: boolean;
   showTransactionHistory?: boolean;
   showSettings?: boolean;
   transactionHistoryHref?: string;
   notificationsHref?: string;
-  accountHref?: string;
   settingsHref?: string;
 };
 
@@ -256,13 +253,11 @@ function SidebarFooterContent({
   isGuest,
   isSidebarLoading,
   showNotifications = true,
-  showAccount = true,
   showWallet = false,
   showTransactionHistory = true,
   showSettings = true,
   transactionHistoryHref = '/customer/transactions',
   notificationsHref = '/customer/notifications',
-  accountHref = '/customer/account',
   settingsHref = '/customer/settings',
 }: SidebarFooterContentProps) {
   const {
@@ -397,28 +392,17 @@ function SidebarFooterContent({
                     </span>
                   </div>
                 </div>
-                { (showAccount ||
-                  showWallet ||
+                { (showWallet ||
                   showSettings ||
                   showNotifications ||
                   showTransactionHistory) && (
                   <DropdownMenuSeparator className="my-1" />
                 ) }
-                { (showAccount ||
-                  showWallet ||
+                { (showWallet ||
                   showSettings ||
                   showNotifications ||
                   showTransactionHistory) && (
                   <div className="space-y-0.5 py-2">
-                    { showAccount && (
-                      <DropdownMenuItem
-                        onSelect={ () => onNavigate(accountHref) }
-                        className={ sidebarAccountMenuItemClassName }
-                      >
-                        <User className="size-4" aria-hidden="true" />
-                        <span>Account</span>
-                      </DropdownMenuItem>
-                    ) }
                     { showWallet && (
                       <DropdownMenuItem
                         onSelect={ () => onNavigate('/partner/wallet') }
@@ -624,7 +608,6 @@ function MobileTopNav({
   showAccountLinks = true,
   transactionHistoryHref = '/customer/transactions',
   notificationsHref = '/customer/notifications',
-  accountHref = '/customer/account',
   settingsHref = '/customer/settings',
 }: {
   avatarUrl: string | null;
@@ -643,7 +626,6 @@ function MobileTopNav({
   showAccountLinks?: boolean;
   transactionHistoryHref?: string;
   notificationsHref?: string;
-  accountHref?: string;
   settingsHref?: string;
 }) {
   const { toggleSidebar, } = useSidebar();
@@ -760,13 +742,6 @@ function MobileTopNav({
                   <div className="space-y-0.5 py-2">
                     { showAccountLinks && (
                       <>
-                        <DropdownMenuItem
-                          onSelect={ () => onNavigate(accountHref) }
-                          className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
-                        >
-                          <User className="size-4" aria-hidden="true" />
-                          <span>Account</span>
-                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onSelect={ () => onNavigate(settingsHref) }
                           className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
@@ -1200,18 +1175,13 @@ export function MarketplaceChrome({
   const notificationsHref = isPartnerRole
     ? '/partner/notifications'
     : '/customer/notifications';
-  const accountHref = isPartnerRole
-    ? '/partner/account'
-    : '/customer/account';
   const settingsHref = isPartnerRole
     ? '/partner/settings'
     : '/customer/settings';
   const pathname = usePathname();
   const isAccountRoute = Boolean(
     pathname &&
-      (pathname.startsWith('/customer/account') ||
-        pathname.startsWith('/customer/settings') ||
-        pathname.startsWith('/partner/account') ||
+      (pathname.startsWith('/customer/settings') ||
         pathname.startsWith('/partner/settings'))
   );
   const isMobile = useIsMobile();
@@ -1402,7 +1372,6 @@ export function MarketplaceChrome({
             showAccountLinks={ !isAdminRole }
             transactionHistoryHref={ transactionHistoryHref }
             notificationsHref={ notificationsHref }
-            accountHref={ accountHref }
             settingsHref={ settingsHref }
           />
       ) }
@@ -1684,13 +1653,11 @@ export function MarketplaceChrome({
               isGuest={ navData.isGuest }
               isSidebarLoading={ navData.isSidebarLoading }
               showNotifications={ shouldShowNotifications }
-              showAccount={ !isAdminRole }
               showWallet={ isPartnerRole }
               showTransactionHistory={ showTransactionHistory }
               showSettings={ !isAdminRole }
               transactionHistoryHref={ transactionHistoryHref }
               notificationsHref={ notificationsHref }
-              accountHref={ accountHref }
               settingsHref={ settingsHref }
             />
           </SidebarFooter>

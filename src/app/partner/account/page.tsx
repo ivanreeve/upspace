@@ -1,11 +1,7 @@
 import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-import AccountPage from '@/components/pages/Account/AccountPage';
-import { SpacesChrome } from '@/components/pages/Spaces/SpacesChrome';
 import { prisma } from '@/lib/prisma';
-import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
 import { createSupabaseReadOnlyServerClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
@@ -30,13 +26,5 @@ export default async function PartnerAccountRoutePage() {
     redirect('/');
   }
 
-  const cookieStore = await cookies();
-  const sidebarCookie = cookieStore.get(SIDEBAR_STATE_COOKIE)?.value;
-  const initialSidebarOpen = parseSidebarState(sidebarCookie);
-
-  return (
-    <SpacesChrome initialSidebarOpen={ initialSidebarOpen }>
-      <AccountPage />
-    </SpacesChrome>
-  );
+  redirect('/partner/settings');
 }
