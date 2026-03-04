@@ -413,11 +413,13 @@ function MessageBubble({
   isThinking = false,
   iconRef,
   canUseBookmarks,
+  canBook,
 }: {
   message: ChatMessage;
   isThinking?: boolean;
   iconRef?: (node: HTMLDivElement | null) => void;
   canUseBookmarks: boolean;
+  canBook: boolean;
 }) {
   const [searchingMessageIndex, setSearchingMessageIndex] = React.useState(0);
   const isUser = message.role === 'user';
@@ -492,6 +494,7 @@ function MessageBubble({
                       <SpaceCard
                         space={ space }
                         canUseBookmarks={ canUseBookmarks }
+                        showBookButton={ canBook }
                       />
                     </div>
                   )) }
@@ -502,6 +505,7 @@ function MessageBubble({
                 <SpaceCard
                   space={ message.spaceResults![0] }
                   canUseBookmarks={ canUseBookmarks }
+                  showBookButton={ canBook }
                 />
               </div>
             ) }
@@ -548,6 +552,7 @@ export function AiAssistant() {
   const { data: userProfile, } = useUserProfile();
   const canUseBookmarks =
     userProfile?.role === 'customer' || userProfile?.role === 'partner';
+  const canBook = userProfile?.role === 'customer';
   const {
     location: userLocation, error: locationError,
   } = useGeolocation();
@@ -1215,6 +1220,7 @@ conversationId: finalConversationId,
                           key={ message.id }
                           message={ message }
                           canUseBookmarks={ canUseBookmarks }
+                          canBook={ canBook }
                           iconRef={
                             message.role === 'assistant'
                               ? registerIconRef(message.id)
@@ -1231,6 +1237,7 @@ conversationId: finalConversationId,
                             content: 'Thinking…',
                           } }
                           canUseBookmarks={ canUseBookmarks }
+                          canBook={ canBook }
                           isThinking
                           iconRef={ registerIconRef('assistant-thinking') }
                         />

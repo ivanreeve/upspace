@@ -13,6 +13,7 @@ import { FiStar } from 'react-icons/fi';
 import { FaHeart, FaRegHeart, FaStar } from 'react-icons/fa';
 import { toast } from 'sonner';
 
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Space } from '@/lib/api/spaces';
@@ -77,10 +78,12 @@ function SpaceCardComponent({
   space,
   onBookmarkChange,
   canUseBookmarks,
+  showBookButton = false,
 }: {
   space: Space;
   onBookmarkChange?: (spaceId: string, isBookmarked: boolean) => void;
   canUseBookmarks: boolean;
+  showBookButton?: boolean;
 }) {
   const [isSaved, setIsSaved] = useState(Boolean(space.isBookmarked));
   const [isSaving, setIsSaving] = useState(false);
@@ -207,6 +210,13 @@ function SpaceCardComponent({
         { distanceLabel && (
           <span className="text-xs text-muted-foreground">{ distanceLabel }</span>
         ) }
+        { showBookButton && (
+          <Button asChild size="sm" className="mt-1 w-full">
+            <Link href={ `/marketplace/${space.space_id}?book=true` }>
+              Book Now
+            </Link>
+          </Button>
+        ) }
       </CardContent>
     </Card>
   );
@@ -224,6 +234,7 @@ export const SpaceCard = memo(SpaceCardComponent, (prevProps, nextProps) => {
     prevProps.space.image_url === nextProps.space.image_url &&
     prevProps.space.distance_meters === nextProps.space.distance_meters &&
     prevProps.onBookmarkChange === nextProps.onBookmarkChange &&
-    prevProps.canUseBookmarks === nextProps.canUseBookmarks
+    prevProps.canUseBookmarks === nextProps.canUseBookmarks &&
+    prevProps.showBookButton === nextProps.showBookButton
   );
 });

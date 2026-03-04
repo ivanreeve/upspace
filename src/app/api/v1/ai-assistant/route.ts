@@ -23,7 +23,7 @@ import {
   fetchBarangays,
   type SearchReferenceData
 } from '@/lib/ai/search-reference-data';
-import { assistantAgentSystemPromptTemplate } from '@/lib/assistant-agent';
+import { buildAssistantSystemPrompt } from '@/lib/assistant-agent';
 import {
   getBookingAvailability,
   getBookingPricing,
@@ -904,7 +904,7 @@ export async function POST(request: NextRequest) {
     const historyMessages: Message[] = [
       {
         role: 'system',
-        content: sanitizeContent(assistantAgentSystemPromptTemplate),
+        content: sanitizeContent(buildAssistantSystemPrompt()),
       },
       ...contextMessages,
       ...referenceMessages,

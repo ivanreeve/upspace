@@ -22,7 +22,7 @@ import {
 } from 'react-icons/fi';
 import { CgSpinner } from 'react-icons/cg';
 import { toast } from 'sonner';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 import SpaceHeader from './SpaceHeader';
 import SpacePhotos from './SpacePhotos';
@@ -1202,6 +1202,21 @@ function SpaceDetailContent({ space, }: SpaceDetailProps) {
     setIsBookingOpen,
     space,
   });
+
+  const searchParams = useSearchParams();
+  const hasAutoOpened = useRef(false);
+  const { handleOpenBooking, } = booking;
+  useEffect(() => {
+    if (
+      searchParams.get('book') === 'true' &&
+      canBook &&
+      hasAreas &&
+      !hasAutoOpened.current
+    ) {
+      hasAutoOpened.current = true;
+      handleOpenBooking();
+    }
+  }, [searchParams, canBook, hasAreas, handleOpenBooking]);
 
   const messageHostButtonRef = useRef<HTMLButtonElement | null>(null);
 
