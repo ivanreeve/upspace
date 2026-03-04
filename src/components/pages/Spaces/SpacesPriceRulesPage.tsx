@@ -8,7 +8,13 @@ import {
   useMemo,
   useState
 } from 'react';
-import { FiEdit, FiPlus, FiTrash2 } from 'react-icons/fi';
+import {
+FiEdit,
+FiLoader,
+FiPlay,
+FiPlus,
+FiTrash2
+} from 'react-icons/fi';
 import { GoArrowUpRight } from 'react-icons/go';
 import { toast } from 'sonner';
 
@@ -27,6 +33,8 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -50,6 +58,7 @@ import {
   usePartnerSpacesQuery,
   useUpdatePriceRuleMutation
 } from '@/hooks/api/usePartnerSpaces';
+import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
 import type { PriceRuleFormValues, PriceRuleRecord } from '@/lib/pricing-rules';
 
 const priceRuleDateFormatter = new Intl.DateTimeFormat('en-US', {
@@ -76,6 +85,22 @@ export function SpacesPriceRulesPage() {
   const [selectedRuleIds, setSelectedRuleIds] = useState<Set<string>>(new Set());
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+  const [testingRule, setTestingRule] = useState<PriceRuleRecord | null>(null);
+  const [testBookingHours, setTestBookingHours] = useState('1');
+  const [testGuestCount, setTestGuestCount] = useState('1');
+  const [testStartAt, setTestStartAt] = useState('');
+  const [testResult, setTestResult] = useState<{
+    price: number | null;
+    unitPrice: number | null;
+    branch: string | null;
+    appliedExpression: string | null;
+    conditionsSatisfied: boolean;
+    guestMultiplierApplied: boolean;
+  } | null>(null);
+  const [isTestingLoading, setIsTestingLoading] = useState(false);
+  const [testError, setTestError] = useState<string | null>(null);
+  const authFetch = useAuthenticatedFetch();
 
   useEffect(() => {
     if (!selectedSpaceId && spaces?.length) {
@@ -175,6 +200,55 @@ export function SpacesPriceRulesPage() {
       updatePriceRuleMutation
     ]
   );
+
+  const handleTestRule = useCallback(async () => {
+    if (!testingRule || !selectedSpaceId) return;
+
+    setIsTestingLoading(true);
+    setTestError(null);
+    setTestResult(null);
+
+    try {
+      const body: Record<string, unknown> = {
+        definition: testingRule.definition,
+        bookingHours: Number(testBookingHours) || 1,
+      };
+      const guestCountNum = Number(testGuestCount);
+      if (guestCountNum > 0) body.guestCount = guestCountNum;
+      if (testStartAt) body.startAt = new Date(testStartAt).toISOString();
+
+      const response = await authFetch(
+        `/api/v1/partner/spaces/${selectedSpaceId}/pricing-rules/evaluate`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', },
+          body: JSON.stringify(body),
+        }
+      );
+
+      const payload = await response.json();
+
+      if (!response.ok) {
+        setTestError(typeof payload?.error === 'string' ? payload.error : 'Evaluation failed.');
+        return;
+      }
+
+      setTestResult(payload.data);
+    } catch {
+      setTestError('Unable to evaluate pricing rule.');
+    } finally {
+      setIsTestingLoading(false);
+    }
+  }, [authFetch, selectedSpaceId, testBookingHours, testGuestCount, testStartAt, testingRule]);
+
+  const handleOpenTestDialog = useCallback((rule: PriceRuleRecord) => {
+    setTestingRule(rule);
+    setTestBookingHours('1');
+    setTestGuestCount('1');
+    setTestStartAt('');
+    setTestResult(null);
+    setTestError(null);
+  }, []);
 
   const selectedCount = rules.filter(
     (rule) => rule.linked_area_count === 0 && selectedRuleIds.has(rule.id)
@@ -540,6 +614,16 @@ export function SpacesPriceRulesPage() {
                                 type="button"
                                 variant="outline"
                                 size="sm"
+                                onClick={ () => handleOpenTestDialog(rule) }
+                                disabled={ isAnyDeletePending }
+                              >
+                                <FiPlay className="size-4" aria-hidden="true" />
+                                Test
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
                                 className="hover:text-white"
                                 onClick={ () => handlePriceRuleDialogOpen(rule) }
                                 disabled={ isAnyDeletePending }
@@ -578,6 +662,120 @@ export function SpacesPriceRulesPage() {
           createPriceRuleMutation.isPending || updatePriceRuleMutation.isPending
         }
       />
+
+      <Dialog
+        open={ testingRule !== null }
+        onOpenChange={ (open) => {
+          if (!open) setTestingRule(null);
+        } }
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Test pricing rule</DialogTitle>
+            <DialogDescription>
+              { testingRule?.name ? `Evaluate "${testingRule.name}" with sample inputs.` : 'Evaluate a pricing rule with sample inputs.' }
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="test-booking-hours">Booking hours</Label>
+              <Input
+                id="test-booking-hours"
+                type="number"
+                min={ 1 }
+                max={ 24 }
+                value={ testBookingHours }
+                onChange={ (e) => setTestBookingHours(e.target.value) }
+                aria-label="Booking hours"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="test-guest-count">Guest count</Label>
+              <Input
+                id="test-guest-count"
+                type="number"
+                min={ 1 }
+                max={ 999 }
+                value={ testGuestCount }
+                onChange={ (e) => setTestGuestCount(e.target.value) }
+                aria-label="Guest count"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="test-start-at">Start time (optional)</Label>
+              <Input
+                id="test-start-at"
+                type="datetime-local"
+                value={ testStartAt }
+                onChange={ (e) => setTestStartAt(e.target.value) }
+                aria-label="Booking start time"
+              />
+            </div>
+
+            { testError ? (
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                { testError }
+              </div>
+            ) : null }
+
+            { testResult ? (
+              <div className="space-y-2 rounded-md border border-border/60 bg-muted/30 px-3 py-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Total price</span>
+                  <span className="text-lg font-semibold text-foreground">
+                    { testResult.price !== null ? `₱${testResult.price.toLocaleString()}` : '—' }
+                  </span>
+                </div>
+                { testResult.unitPrice !== null && testResult.guestMultiplierApplied ? (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Unit price (per guest)</span>
+                    <span className="text-sm text-foreground">₱{ testResult.unitPrice.toLocaleString() }</span>
+                  </div>
+                ) : null }
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Branch</span>
+                  <Badge variant="outline" className="text-xs">{ testResult.branch ?? 'unconditional' }</Badge>
+                </div>
+                { testResult.appliedExpression ? (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Expression</span>
+                    <code className="text-xs text-foreground">{ testResult.appliedExpression }</code>
+                  </div>
+                ) : null }
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Conditions met</span>
+                  <Badge variant={ testResult.conditionsSatisfied ? 'success' : 'secondary' } className="text-xs">
+                    { testResult.conditionsSatisfied ? 'Yes' : 'No' }
+                  </Badge>
+                </div>
+              </div>
+            ) : null }
+          </div>
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={ () => setTestingRule(null) }
+            >
+              Close
+            </Button>
+            <Button
+              type="button"
+              variant="default"
+              className="hover:text-white"
+              onClick={ handleTestRule }
+              disabled={ isTestingLoading }
+            >
+              { isTestingLoading ? (
+                <FiLoader className="mr-2 size-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <FiPlay className="mr-2 size-4" aria-hidden="true" />
+              ) }
+              Evaluate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={ bulkDeleteDialogOpen }

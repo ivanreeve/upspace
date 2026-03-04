@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { countActiveBookingsOverlap } from '@/lib/bookings/occupancy';
 import { mapBookingRowToRecord } from '@/lib/bookings/serializer';
+import { notifyBookingEvent } from '@/lib/notifications/booking';
 import { prisma } from '@/lib/prisma';
 
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -77,16 +78,32 @@ export async function GET(request: Request) {
   let expired = 0;
   let capacityWarnings = 0;
 
-  // Auto-confirm paid bookings that are still pending
+  // Auto-confirm paid bookings that are still pending.
+  // Skip bookings that were flagged for host approval — those have a
+  // "Booking needs approval" notification and should remain pending.
   const paidPending = await prisma.booking.findMany({
     where: {
       status: 'pending',
       created_at: { lt: stalePaidCutoff, },
-      transaction: { some: {}, },
+      payment_transaction: { some: {}, },
     },
   });
 
   for (const row of paidPending) {
+    // Respect requiresHostApproval: if the webhook flagged this booking
+    // for manual review, a "Booking needs approval" notification exists.
+    const hostApprovalNotice = await prisma.app_notification.findFirst({
+      where: {
+        booking_id: row.id,
+        title: 'Booking needs approval',
+      },
+      select: { id: true, },
+    });
+
+    if (hostApprovalNotice) {
+      continue; // requires manual partner approval, don't auto-confirm
+    }
+
     const areaMaxCap = row.area_max_capacity === null ? null : Number(row.area_max_capacity);
     if (areaMaxCap !== null && !Number.isFinite(areaMaxCap)) {
       continue;
@@ -121,7 +138,7 @@ export async function GET(request: Request) {
         lte: nearStart,
         gte: new Date(now),
       },
-      transaction: { some: {}, },
+      payment_transaction: { some: {}, },
     },
   });
 
@@ -185,21 +202,52 @@ export async function GET(request: Request) {
   }
 
   // Expire stale unpaid or past-start pending bookings
+  const expireFilter = {
+    status: 'pending' as const,
+    OR: [
+      { start_at: { lt: new Date(), }, },
+      {
+        created_at: { lt: staleUnpaidCutoff, },
+        payment_transaction: { none: {}, },
+      }
+    ],
+  };
+
+  const bookingsToExpire = await prisma.booking.findMany({ where: expireFilter, });
+
   const expireResult = await prisma.booking.updateMany({
-    where: {
-      status: 'pending',
-      OR: [
-        { start_at: { lt: new Date(), }, },
-        {
-          created_at: { lt: staleUnpaidCutoff, },
-          transaction: { none: {}, },
-        }
-      ],
-    },
+    where: expireFilter,
     data: { status: 'expired', },
   });
 
   expired += expireResult.count;
+
+  for (const row of bookingsToExpire) {
+    const booking = mapBookingRowToRecord(row);
+    try {
+      await notifyBookingEvent(
+        {
+          bookingId: booking.id,
+          spaceId: booking.spaceId,
+          areaId: booking.areaId,
+          spaceName: booking.spaceName,
+          areaName: booking.areaName,
+          customerAuthId: booking.customerAuthId,
+          partnerAuthId: booking.partnerAuthId,
+        },
+        {
+ title: 'Booking expired',
+body: `Your booking at ${booking.areaName} · ${booking.spaceName} has expired.`, 
+},
+        null
+      );
+    } catch (notifError) {
+      console.error('Failed to create expiration notification', {
+ bookingId: booking.id,
+error: notifError, 
+});
+    }
+  }
 
   return NextResponse.json({
     data: {

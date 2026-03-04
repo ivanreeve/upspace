@@ -191,6 +191,7 @@ export default function ReviewsSection({
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isReviewsModalOpen, setIsReviewsModalOpen] = React.useState(false);
   const [selectedRatingFilter, setSelectedRatingFilter] = React.useState<number | null>(null);
+  const [reviewSortBy, setReviewSortBy] = React.useState<'newest' | 'oldest' | 'highest' | 'lowest'>('newest');
 
   const viewerHasReviewed = data?.viewer_reviewed ?? false;
   const canSubmitReview = canReview && !viewerHasReviewed;
@@ -274,11 +275,20 @@ export default function ReviewsSection({
   );
   const reviewCount = reviews.length;
   const sortedReviews = React.useMemo(
-    () =>
-      [...reviews].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      ),
-    [reviews]
+    () => {
+      const sorted = [...reviews];
+      switch (reviewSortBy) {
+        case 'oldest':
+          return sorted.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        case 'highest':
+          return sorted.sort((a, b) => b.rating_star - a.rating_star);
+        case 'lowest':
+          return sorted.sort((a, b) => a.rating_star - b.rating_star);
+        default:
+          return sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      }
+    },
+    [reviews, reviewSortBy]
   );
   const filteredModalReviews =
     selectedRatingFilter === null
@@ -533,6 +543,43 @@ export default function ReviewsSection({
                         >
                           All reviews
                         </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-foreground">Sort by</p>
+                      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Sort reviews">
+                        { ([
+                          {
+ value: 'newest' as const,
+label: 'Newest', 
+},
+                          {
+ value: 'oldest' as const,
+label: 'Oldest', 
+},
+                          {
+ value: 'highest' as const,
+label: 'Highest', 
+},
+                          {
+ value: 'lowest' as const,
+label: 'Lowest', 
+}
+                        ]).map((option) => (
+                          <button
+                            key={ option.value }
+                            type="button"
+                            onClick={ () => setReviewSortBy(option.value) }
+                            className={ cn(
+                              badgeVariants({ variant: reviewSortBy === option.value ? 'default' : 'outline', }),
+                              'cursor-pointer select-none'
+                            ) }
+                            aria-pressed={ reviewSortBy === option.value }
+                          >
+                            { option.label }
+                          </button>
+                        )) }
                       </div>
                     </div>
 

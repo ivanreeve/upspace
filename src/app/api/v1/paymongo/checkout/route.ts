@@ -9,6 +9,7 @@ import { countActiveBookingsOverlap, resolveBookingDecision } from '@/lib/bookin
 import { sendBookingNotificationEmail } from '@/lib/email';
 import { createPaymongoCheckoutSession } from '@/lib/paymongo';
 import { prisma } from '@/lib/prisma';
+import { enforceRateLimit, RateLimitExceededError } from '@/lib/rate-limit';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { isTestingModeEnabled } from '@/lib/testing-mode';
 import { recordTestModeBookingWalletCharge, resolveAuthenticatedUserForWallet } from '@/lib/wallet-server';
@@ -19,7 +20,6 @@ const checkoutPayloadSchema = z.object({
   spaceId: z.string().uuid(),
   areaId: z.string().uuid(),
   bookingHours: z.number().int().min(MIN_BOOKING_HOURS).max(MAX_BOOKING_HOURS),
-  price: z.number().positive(),
   startAt: z.string().datetime().optional(),
   guestCount: z.number().int().min(1).max(999).optional(),
   successUrl: z.string().url().optional(),
@@ -50,6 +50,45 @@ const DEFAULT_APP_URL = 'http://localhost:3000';
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_URL.trim().length > 0
   ? process.env.NEXT_PUBLIC_APP_URL
   : DEFAULT_APP_URL).replace(/\/+$/, '');
+const PAYMONGO_ALLOWED_REDIRECT_ORIGINS = process.env.PAYMONGO_ALLOWED_REDIRECT_ORIGINS ?? '';
+
+function resolveAllowedRedirectOrigins() {
+  const origins = new Set<string>();
+
+  try {
+    origins.add(new URL(APP_URL).origin);
+  } catch {
+    // Fallback APP_URL values should never break checkout creation.
+  }
+
+  for (const entry of PAYMONGO_ALLOWED_REDIRECT_ORIGINS.split(',')) {
+    const candidate = entry.trim();
+    if (!candidate) continue;
+
+    try {
+      origins.add(new URL(candidate).origin);
+    } catch {
+      // Invalid env entries are ignored.
+    }
+  }
+
+  return origins;
+}
+
+const ALLOWED_REDIRECT_ORIGINS = resolveAllowedRedirectOrigins();
+
+function resolveTrustedRedirectUrl(candidate: string | undefined) {
+  if (!candidate) {
+    return null;
+  }
+
+  try {
+    const url = new URL(candidate);
+    return ALLOWED_REDIRECT_ORIGINS.has(url.origin) ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -65,6 +104,25 @@ export async function POST(req: NextRequest) {
 
     if (auth.dbUser?.role !== 'customer') {
       return unauthorizedResponse;
+    }
+
+    try {
+      await enforceRateLimit({
+ scope: 'booking-checkout',
+request: req,
+identity: auth.dbUser.auth_user_id, 
+});
+    } catch (error) {
+      if (error instanceof RateLimitExceededError) {
+        return NextResponse.json(
+          { error: error.message, },
+          {
+ status: 429,
+headers: { 'Retry-After': error.retryAfter.toString(), }, 
+}
+        );
+      }
+      console.error('Rate limit check failed for booking checkout', error);
     }
 
     const startAt = parsed.data.startAt ? new Date(parsed.data.startAt) : null;
@@ -209,6 +267,12 @@ export async function POST(req: NextRequest) {
     const formulaAlreadyHandlesGuests = priceEvaluation.usedVariables.includes('guest_count');
     const guestMultiplier = formulaAlreadyHandlesGuests ? 1 : guestCount;
     const priceMinor = Math.round(priceEvaluation.price * guestMultiplier * BOOKING_PRICE_MINOR_FACTOR);
+    if (!Number.isFinite(priceMinor) || priceMinor <= 0) {
+      return NextResponse.json(
+        { error: 'Unable to compute a valid price for this booking.', },
+        { status: 400, }
+      );
+    }
 
     const bookingResult = await prisma
       .$transaction(
@@ -284,10 +348,10 @@ export async function POST(req: NextRequest) {
       requiresHostApproval,
     } = bookingResult;
 
-    const successUrl = parsed.data.successUrl ??
-      `${APP_URL}/marketplace/${area.space.id}?booking_id=${bookingRow.id}&payment=success`;
-    const cancelUrl = parsed.data.cancelUrl ??
-      `${APP_URL}/marketplace/${area.space.id}?booking_id=${bookingRow.id}&payment=cancel`;
+    const defaultSuccessUrl = `${APP_URL}/marketplace/${area.space.id}?booking_id=${bookingRow.id}&payment=success`;
+    const defaultCancelUrl = `${APP_URL}/marketplace/${area.space.id}?booking_id=${bookingRow.id}&payment=cancel`;
+    const successUrl = resolveTrustedRedirectUrl(parsed.data.successUrl) ?? defaultSuccessUrl;
+    const cancelUrl = resolveTrustedRedirectUrl(parsed.data.cancelUrl) ?? defaultCancelUrl;
 
     const partnerWalletOwner = partnerAuthId
       ? await prisma.user.findUnique({

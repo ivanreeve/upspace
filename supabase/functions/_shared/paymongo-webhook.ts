@@ -32,7 +32,9 @@ export const checkoutEventSchema = z.object({
     attributes: z.object({
       type: z.string(),
       livemode: z.boolean(),
+      created_at: z.union([z.number(), z.string()]).optional(),
       data: z.object({
+        id: z.string().optional(),
         object: z.object({
           id: z.string(),
           amount: z.number(),

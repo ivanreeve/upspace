@@ -36,10 +36,7 @@ export function useUserProfile() {
   return useQuery<UserProfile>({
     queryKey: ['user-profile'],
     queryFn: async () => {
-      const response = await fetch('/api/v1/auth/profile', {
-        cache: 'no-store',
-        credentials: 'same-origin',
-      });
+      const response = await fetch('/api/v1/auth/profile', { credentials: 'same-origin', });
 
       if (!response.ok) {
         throw new Error('Unable to load user profile.');

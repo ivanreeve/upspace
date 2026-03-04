@@ -1,9 +1,20 @@
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
+import Link from 'next/link';
+import { FiAlertCircle, FiCheckCircle, FiClock } from 'react-icons/fi';
+import type { IconType } from 'react-icons';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator
+} from '@/components/ui/breadcrumb';
 import {
   Card,
   CardContent,
@@ -13,6 +24,14 @@ import {
 } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
 import { CANCELLABLE_BOOKING_STATUSES } from '@/lib/bookings/constants';
 import type { BookingStatus } from '@/lib/bookings/types';
 import { useCustomerBookingsQuery } from '@/hooks/api/useCustomerBookings';
@@ -36,10 +55,37 @@ const CATEGORY_LABELS: Record<'successful' | 'pending' | 'cancelled', string> = 
   cancelled: 'Cancelled',
 };
 
-const CATEGORY_VARIANTS: Record<'successful' | 'pending' | 'cancelled', 'success' | 'secondary' | 'destructive'> = {
-  successful: 'success',
-  pending: 'secondary',
-  cancelled: 'destructive',
+const CATEGORY_META: Record<
+  'successful' | 'pending' | 'cancelled',
+  {
+    icon: IconType;
+    containerClassName: string;
+    iconClassName: string;
+    labelClassName: string;
+    countClassName: string;
+  }
+> = {
+  successful: {
+    icon: FiCheckCircle,
+    containerClassName: 'border-emerald-200/80 bg-emerald-50/70',
+    iconClassName: 'text-emerald-700',
+    labelClassName: 'text-emerald-800',
+    countClassName: 'text-emerald-900',
+  },
+  pending: {
+    icon: FiClock,
+    containerClassName: 'border-amber-200/80 bg-amber-50/70',
+    iconClassName: 'text-amber-700',
+    labelClassName: 'text-amber-800',
+    countClassName: 'text-amber-900',
+  },
+  cancelled: {
+    icon: FiAlertCircle,
+    containerClassName: 'border-rose-200/80 bg-rose-50/70',
+    iconClassName: 'text-rose-700',
+    labelClassName: 'text-rose-800',
+    countClassName: 'text-rose-900',
+  },
 };
 
 const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
@@ -74,15 +120,15 @@ const formatBookingDate = (value: string) =>
     minute: '2-digit',
   });
 
-const LoadingList = () => (
-  <div className="space-y-3">
-    <Skeleton className="h-4 w-32" />
-    <div className="space-y-3">
-      <Skeleton className="h-16 w-full rounded-xl" />
-      <Skeleton className="h-16 w-full rounded-xl" />
-    </div>
-  </div>
-);
+const BOOKING_PRICE_FORMATTER = new Intl.NumberFormat('en-PH', {
+  style: 'currency',
+  currency: 'PHP',
+});
+
+const formatBookingPrice = (price: number | null) =>
+  typeof price === 'number' && Number.isFinite(price)
+    ? BOOKING_PRICE_FORMATTER.format(price)
+    : '—';
 
 export function CustomerBookingsPanel() {
   const {
@@ -111,112 +157,186 @@ export function CustomerBookingsPanel() {
 
   return (
     <div className="space-y-5 px-4 py-4 sm:px-6">
-      <Card className="rounded-2xl border border-border/70 bg-background shadow-sm">
-        <CardHeader>
-          <CardTitle>Bookings overview</CardTitle>
-          <CardDescription>
-            Track the status of every reservation you’ve made and see when the next one
-            becomes active.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          { isError && (
-            <div className="rounded-2xl border border-destructive/70 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-              Unable to load your bookings right now.
-            </div>
-          ) }
-          { isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-6 w-[180px]" />
-              <div className="flex flex-wrap gap-2">
-                <Skeleton className="h-10 w-24" />
-                <Skeleton className="h-10 w-24" />
-                <Skeleton className="h-10 w-24" />
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-3">
-              { Object.entries(CATEGORY_LABELS).map(([category, label]) => (
-                <Badge
-                  key={ category }
-                  variant={ CATEGORY_VARIANTS[category as keyof typeof CATEGORY_VARIANTS] }
-                  className="flex items-center gap-3"
-                >
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                    { label }
-                  </span>
-                  <span className="text-sm font-semibold text-foreground">
-                    { summaryCounts[category as keyof typeof summaryCounts].toLocaleString() }
-                  </span>
-                </Badge>
-              )) }
-            </div>
-          ) }
-        </CardContent>
-      </Card>
+      <Breadcrumb className="px-6">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link href="/marketplace">Marketplace</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage className="text-sm font-medium">Bookings</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
-      <Card className="rounded-2xl border border-border/70 bg-background shadow-sm">
+      <Card className="rounded-2xl border-0 bg-background">
         <CardHeader>
-          <CardTitle>Recent bookings</CardTitle>
+          <CardTitle className="text-2xl font-semibold">Recent bookings</CardTitle>
           <CardDescription>
             Latest reservations sorted by when you made the booking request.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-5">
+          <section className="space-y-4 rounded-md border border-border/70 bg-muted/10 p-4">
+            <div>
+              <h3 className="text-base font-semibold text-foreground">Bookings overview</h3>
+              <p className="text-sm text-muted-foreground">
+                Track the status of every reservation you’ve made and see when the next one
+                becomes active.
+              </p>
+            </div>
+            { isError && (
+              <div className="rounded-md border border-destructive/70 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                Unable to load your bookings right now.
+              </div>
+            ) }
+            { isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-6 w-[180px]" />
+                <div className="flex flex-wrap gap-2">
+                  <Skeleton className="h-10 w-24" />
+                  <Skeleton className="h-10 w-24" />
+                  <Skeleton className="h-10 w-24" />
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-3">
+                { Object.entries(CATEGORY_LABELS).map(([category, label]) => {
+                  const summaryCategory = category as keyof typeof CATEGORY_META;
+                  const meta = CATEGORY_META[summaryCategory];
+                  const Icon = meta.icon;
+
+                  return (
+                    <div
+                      key={ category }
+                      className={ `rounded-md border px-4 py-3 ${meta.containerClassName}` }
+                    >
+                      <div className="flex items-center gap-2">
+                        <Icon className={ `size-4 ${meta.iconClassName}` } aria-hidden="true" />
+                        <span
+                          className={ `text-[11px] font-semibold uppercase tracking-[0.16em] ${meta.labelClassName}` }
+                        >
+                          { label }
+                        </span>
+                      </div>
+                      <span
+                        className={ `mt-2 block text-2xl font-bold leading-none tabular-nums ${meta.countClassName}` }
+                      >
+                        { summaryCounts[summaryCategory].toLocaleString() }
+                      </span>
+                    </div>
+                  );
+                }) }
+              </div>
+            ) }
+          </section>
+
           { isLoading ? (
-            <LoadingList />
+            <div className="space-y-3 rounded-md border border-border/70 bg-background p-4">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-11 w-full rounded-md" />
+              <Skeleton className="h-11 w-full rounded-md" />
+              <Skeleton className="h-11 w-full rounded-md" />
+            </div>
           ) : bookingRecords.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border/70 bg-muted/50 px-4 py-6 text-sm text-muted-foreground">
               You don’t have any bookings yet. Every reservation you place will appear here.
             </div>
           ) : (
-            <ScrollArea className="max-h-[480px] rounded-2xl border border-border/70 bg-muted/10">
-              <div className="space-y-4 p-4">
-                { sortedBookings.map((booking) => {
-                  const isCancelable = CANCELLABLE_BOOKING_STATUSES.includes(booking.status);
+            <ScrollArea className="max-h-[560px] rounded-md border border-border/70 bg-muted/10">
+              <Table aria-label="Recent bookings details">
+                <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead>Booking</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Start</TableHead>
+                    <TableHead>Duration</TableHead>
+                    <TableHead>Guests</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead>Requested</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  { sortedBookings.map((booking) => {
+                    const isCancelable = CANCELLABLE_BOOKING_STATUSES.includes(booking.status);
+                    const guestCount = booking.guestCount ?? 1;
 
-                  return (
-                    <article
-                      key={ booking.id }
-                      className="rounded-2xl border border-border/60 bg-background/80 p-4 shadow-sm"
-                    >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="space-y-1">
-                          <p className="text-sm font-semibold text-foreground">
-                            { booking.spaceName } · { booking.areaName }
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Booked{ ' ' }
-                            { formatDistanceToNow(new Date(booking.createdAt), { addSuffix: true, }) }
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
+                    return (
+                      <TableRow key={ booking.id }>
+                        <TableCell className="min-w-[240px]">
+                          <div className="space-y-1">
+                            <Link
+                              href={ `/customer/bookings/${booking.id}` }
+                              className="block text-sm font-semibold text-foreground hover:underline"
+                            >
+                              { booking.spaceName } · { booking.areaName }
+                            </Link>
+                            <p className="font-mono text-xs text-muted-foreground">
+                              { booking.id.slice(0, 8) }
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
                           <Badge variant={ BOOKING_STATUS_VARIANTS[booking.status] }>
                             { BOOKING_STATUS_LABELS[booking.status] }
                           </Badge>
-                          { isCancelable && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 px-3 text-[13px] font-semibold leading-none border-border/60 bg-background transition hover:border-destructive hover:bg-destructive/10 focus-visible:border-destructive focus-visible:ring-2 focus-visible:ring-destructive/50"
-                              disabled={ cancelMutation.isPending }
-                              onClick={ () => cancelMutation.mutate({ bookingId: booking.id, }) }
-                            >
-                              Cancel
-                            </Button>
-                          ) }
-                        </div>
-                      </div>
-                      <div className="mt-3 flex flex-wrap items-center gap-3 text-[13px] text-muted-foreground">
-                        <span>{ formatBookingDate(booking.createdAt) }</span>
-                        <span>
+                        </TableCell>
+                        <TableCell className="min-w-[180px]">
+                          <div className="space-y-1">
+                            <p className="text-sm text-foreground">{ formatBookingDate(booking.startAt) }</p>
+                            <p className="text-xs text-muted-foreground">
+                              { formatDistanceToNow(new Date(booking.startAt), { addSuffix: true, }) }
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
                           { booking.bookingHours } hour{ booking.bookingHours === 1 ? '' : 's' }
-                        </span>
-                      </div>
-                    </article>
-                  );
-                }) }
-              </div>
+                        </TableCell>
+                        <TableCell>
+                          { guestCount } guest{ guestCount === 1 ? '' : 's' }
+                        </TableCell>
+                        <TableCell className="font-semibold text-foreground">
+                          { formatBookingPrice(booking.price) }
+                        </TableCell>
+                        <TableCell className="min-w-[180px]">
+                          <div className="space-y-1">
+                            <p className="text-sm text-foreground">{ formatBookingDate(booking.createdAt) }</p>
+                            <p className="text-xs text-muted-foreground">
+                              { formatDistanceToNow(new Date(booking.createdAt), { addSuffix: true, }) }
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              asChild
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 px-3 text-[13px] hover:bg-primary/90 hover:text-primary-foreground dark:hover:bg-accent/50 dark:hover:text-accent-foreground"
+                            >
+                              <Link href={ `/customer/bookings/${booking.id}` }>View</Link>
+                            </Button>
+                            { isCancelable && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 px-3 text-[13px] font-semibold leading-none border-destructive/60 bg-background text-destructive transition hover:border-destructive hover:bg-destructive/10 hover:!text-destructive focus-visible:border-destructive focus-visible:!text-destructive focus-visible:ring-2 focus-visible:ring-destructive/50"
+                                disabled={ cancelMutation.isPending }
+                                onClick={ () => cancelMutation.mutate({ bookingId: booking.id, }) }
+                              >
+                                Cancel
+                              </Button>
+                            ) }
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  }) }
+                </TableBody>
+              </Table>
             </ScrollArea>
           ) }
         </CardContent>

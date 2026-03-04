@@ -23,7 +23,9 @@ import { useCustomerChatRooms, useChatMessages, useSendChatMessage } from '@/hoo
 import { useChatRoomsSubscription, useChatSubscription } from '@/hooks/use-chat-subscription';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import { CHAT_MESSAGE_MAX_LENGTH } from '@/lib/validations/chat';
 import type { ChatMessage } from '@/types/chat';
+import { ChatReportDialog } from '@/components/pages/Marketplace/ChatReportDialog';
 
 type CustomerChatRoomViewProps = {
   roomId?: string;
@@ -31,10 +33,22 @@ type CustomerChatRoomViewProps = {
 
 function CustomerChatsListSkeleton() {
   return (
-    <div className="space-y-3 py-4 px-2">
-      <Skeleton className="h-10 w-full rounded-2xl" />
-      <Skeleton className="h-10 w-full rounded-2xl" />
-      <Skeleton className="h-10 w-3/4 rounded-2xl" />
+    <div className="space-y-1 py-1">
+      { Array.from({ length: 6, }).map((_, index) => (
+        <div
+          key={ `chat-skeleton-${index}` }
+          className="flex w-full items-center gap-3 rounded-md px-3 py-2"
+        >
+          <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <Skeleton className="h-4 w-24 rounded-full" />
+              <Skeleton className="h-3 w-12 rounded-full" />
+            </div>
+            <Skeleton className="h-3 w-full rounded-full" />
+          </div>
+        </div>
+      )) }
     </div>
   );
 }
@@ -61,6 +75,7 @@ function CustomerConversationPlaceholder({ children, }: { children: ReactNode })
 }
 
 export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
+  const maxMessageLength = CHAT_MESSAGE_MAX_LENGTH;
   const {
     data: rooms,
     isLoading: roomsLoading,
@@ -97,9 +112,6 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
 
   const hostLabel = activeRoom?.partnerName ?? 'Host';
   const headerDisplayName = activeRoom?.spaceName ?? activeRoom?.partnerName ?? 'Conversation';
-  const headerLocationLabel = activeRoom
-    ? `${activeRoom.spaceCity ?? ''}${activeRoom.spaceCity && activeRoom.spaceRegion ? ', ' : ''}${activeRoom.spaceRegion ?? ''}` || 'Location unavailable'
-    : 'Select a chat from your inbox.';
   const headerAvatarInitials = (
     (activeRoom?.spaceName ?? activeRoom?.partnerName ?? 'UpSpace')
       .split(' ')
@@ -204,6 +216,10 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
     if (!trimmed) {
       return;
     }
+    if (trimmed.length > maxMessageLength) {
+      toast.error(`Message must be ${maxMessageLength} characters or fewer.`);
+      return;
+    }
 
     try {
       const result = await sendMessage.mutateAsync({
@@ -304,9 +320,9 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
   let listContent: ReactNode;
   if (roomsLoading) {
     listContent = (
-      <div className="flex flex-1 items-center justify-center">
+      <ScrollArea className="flex-1 h-full min-h-0">
         <CustomerChatsListSkeleton />
-      </div>
+      </ScrollArea>
     );
   } else if (roomsError) {
     listContent = <p className="text-sm text-destructive">Unable to load conversations.</p>;
@@ -329,10 +345,6 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
             const lastMessageTime = formatTimestamp(room.lastMessage?.createdAt);
             const isActive = room.id === activeRoom?.id;
             const hasNewMessage = room.lastMessage?.senderRole === 'partner';
-            const location =
-              room.spaceCity || room.spaceRegion
-                ? [room.spaceCity, room.spaceRegion].filter(Boolean).join(', ')
-                : null;
             const initials = room.partnerName
               ? room.partnerName
                   .split(' ')
@@ -358,7 +370,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                 className={ cn(
                   'relative flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition',
                   isActive
-                    ? 'bg-muted text-foreground'
+                    ? 'bg-card text-foreground dark:bg-muted'
                     : 'hover:bg-muted/70'
                 ) }
                 onClick={ handleConversationClick }
@@ -383,9 +395,6 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                   { hasNewMessage && !isActive ? (
                     <span className="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-destructive" aria-label="New message" />
                   ) : null }
-                  <p className="truncate text-xs text-muted-foreground">
-                    { location ?? 'Location unavailable' }
-                  </p>
                   <p
                     className={ cn(
                       'truncate text-xs text-muted-foreground',
@@ -469,39 +478,43 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
     );
   } else {
     messagesContent = (
-      <div className="space-y-3 px-5 py-4 text-sm text-muted-foreground">
+      <div className="flex w-full flex-col gap-3 px-5 py-4 text-sm text-muted-foreground">
         { messages.map((message) => {
           const isCustomerMessage = message.senderRole === 'customer';
-          const alignClass = isCustomerMessage ? 'items-end justify-end' : 'items-start justify-start';
+          const messageStackClass = isCustomerMessage ? 'self-end items-end' : 'self-start items-start';
           const bubbleClass = isCustomerMessage
             ? 'bg-primary text-primary-foreground'
             : 'bg-muted text-foreground';
           const timestamp = formatTimestamp(message.createdAt);
 
           return (
-            <div key={ message.id } className={ `flex ${alignClass}` }>
-              <div className="max-w-full sm:max-w-[520px] space-y-1">
-                <div
-                  className={ cn('inline-block rounded-[20px] px-4 py-2.5 text-[15px] shadow-sm', bubbleClass) }
-                >
-                  <p
-                    className={ cn(
-                      'whitespace-pre-line break-words text-foreground',
-                      isCustomerMessage && 'text-white font-medium'
-                    ) }
-                  >
-                    { message.content }
-                  </p>
-                </div>
+            <div
+              key={ message.id }
+              className={ cn(
+                'flex w-fit max-w-full min-w-0 flex-col space-y-1 sm:max-w-[520px]',
+                messageStackClass
+              ) }
+            >
+              <div
+                className={ cn('inline-block max-w-full min-w-0 rounded-[20px] px-4 py-2.5 text-[15px]', bubbleClass) }
+              >
                 <p
                   className={ cn(
-                    'text-xs text-muted-foreground leading-tight',
-                    isCustomerMessage ? 'text-right' : 'text-left'
+                    'block whitespace-pre-wrap break-all text-foreground',
+                    isCustomerMessage && 'text-white font-medium'
                   ) }
                 >
-                  { timestamp }
+                    { message.content }
                 </p>
               </div>
+              <p
+                className={ cn(
+                  'text-xs text-muted-foreground leading-tight',
+                  isCustomerMessage ? 'text-right' : 'text-left'
+                ) }
+              >
+                { timestamp }
+              </p>
             </div>
           );
         }) }
@@ -514,18 +527,18 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
   const showThreadPane = !isMobile || showThread;
 
   return (
-    <section className="flex h-full min-h-0 flex-1 w-full gap-4 overflow-hidden p-0 md:p-4">
+    <section className="flex h-full min-h-0 w-full flex-1 gap-0 overflow-hidden p-0">
       { /* Left sidebar: conversations */ }
       <aside
         className={ cn(
           'h-full min-h-0 flex-col gap-3 max-h-[100dvh] overflow-hidden',
-          showListPane ? 'flex w-full rounded-3xl bg-card p-4 shadow-sm md:border md:border-border/60' : 'hidden',
+          showListPane ? 'flex w-full bg-card p-4' : 'hidden',
           !isMobile && 'w-[400px]'
         ) }
       >
         { showListPane && (
           <>
-            <div className="space-y-1">
+            <div className="space-y-2">
               <span className="text-xl font-semibold tracking-tight text-foreground pb-1">
                 Chats
               </span>
@@ -534,7 +547,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                 onChange={ (event) => setSearchValue(event.target.value) }
                 placeholder="Search conversations"
                 aria-label="Search conversations"
-                className="h-10 rounded-lg border border-border/60 bg-background px-3 py-2 text-sm font-normal text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary"
+                className="mt-3 h-10 rounded-lg border-2 border-border/80 bg-background px-3 py-2 text-sm font-normal text-foreground shadow-none placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary focus-visible:ring-0"
               />
             </div>
             <div className="flex min-h-0 flex-1 flex-col">
@@ -549,7 +562,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
         className={ cn(
           'flex min-w-0 min-h-0 flex-1 flex-col h-full',
           showThreadPane
-            ? 'flex rounded-3xl md:border md:border-border/60 bg-card shadow-sm'
+            ? 'flex bg-card md:border-l-2 md:border-border/60'
             : 'hidden'
         ) }
       >
@@ -579,12 +592,13 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                     <span className="text-2xl font-semibold tracking-tight text-foreground">
                       { headerDisplayName }
                     </span>
-                    <span className="text-sm text-muted-foreground/90">
-                      { headerLocationLabel }
-                    </span>
                   </div>
                 </div>
               </div>
+              <ChatReportDialog
+                roomId={ activeRoom?.id ?? null }
+                targetLabel="host"
+              />
             </header>
           ) : null }
 
@@ -595,11 +609,11 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
             { activeRoom ? (
               <form
                 ref={ formRef }
-                className="sticky bottom-[calc(var(--safe-area-bottom)+3.25rem)] z-10 border-t px-4 py-4 md:bottom-0 bg-card"
+                className="sticky bottom-[calc(var(--safe-area-bottom)+3.25rem)] z-10 border-t px-4 py-4 md:bottom-0 bg-sidebar dark:bg-card"
                 onSubmit={ handleSend }
                 noValidate
               >
-                <div className="flex max-w-full items-end gap-3 rounded-2xl border bg-background p-2 focus-within:ring-1 focus-within:ring-primary focus-within:border-primary shadow-sm">
+                <div className="flex max-w-full items-end gap-3 rounded-sm border bg-background p-2 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
                   <Textarea
                     ref={ draftRef }
                     value={ draft }
@@ -607,6 +621,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                     placeholder="Type your message…"
                     aria-label="Message the host"
                     rows={ 1 }
+                    maxLength={ maxMessageLength }
                     className="min-h-[40px] max-h-24 flex-1 min-w-0 resize-none overflow-y-auto text-[15px] border-0 focus-visible:ring-0 shadow-none bg-transparent"
                     disabled={ sendMessage.isPending }
                     onKeyDown={ handleDraftKeyDown }
@@ -614,7 +629,7 @@ export function CustomerChatRoomView({ roomId, }: CustomerChatRoomViewProps) {
                   <Button
                     type="submit"
                     disabled={ sendMessage.isPending || !draft.trim() }
-                    className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl px-4"
+                    className="inline-flex h-10 shrink-0 items-center justify-center rounded-sm px-4"
                   >
                     <FiSend className="size-4" aria-hidden="true" />
                     <span className="sr-only sm:not-sr-only sm:ml-2">Send</span>

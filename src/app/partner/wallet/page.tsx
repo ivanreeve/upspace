@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import WalletPage from '@/components/pages/Wallet/WalletPage';
 import { SpacesChrome } from '@/components/pages/Spaces/SpacesChrome';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseReadOnlyServerClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
   title: 'Wallet | UpSpace',
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function WalletRoutePage() {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseReadOnlyServerClient();
   const { data: authData, } = await supabase.auth.getUser();
 
   if (!authData?.user) {

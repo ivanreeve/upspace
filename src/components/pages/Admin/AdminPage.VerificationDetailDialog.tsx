@@ -422,12 +422,17 @@ function ReviewDialogFooter({
   return (
     <DialogFooter className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-4">
       <div>
-        <Button variant="ghost" onClick={ onCancel } disabled={ isProcessing }>
+        <Button
+          variant="ghost"
+          className="hover:bg-sidebar"
+          onClick={ onCancel }
+          disabled={ isProcessing }
+        >
           Cancel
         </Button>
       </div>
       <div className="flex items-center gap-2">
-        <Button variant="outline" onClick={ onReject } disabled={ isProcessing }>
+        <Button variant="destructive" onClick={ onReject } disabled={ isProcessing }>
           <FiX className="size-4" aria-hidden="true" />
           Reject
         </Button>
@@ -481,7 +486,12 @@ function RejectionReasonDialog({
           />
         </div>
         <DialogFooter className="gap-2">
-          <Button variant="ghost" onClick={ onCancel } disabled={ isProcessing }>
+          <Button
+            variant="ghost"
+            className="hover:bg-sidebar"
+            onClick={ onCancel }
+            disabled={ isProcessing }
+          >
             Cancel
           </Button>
           <Button
@@ -571,7 +581,12 @@ function ValidityDialog({
           />
         </div>
         <DialogFooter className="gap-2">
-          <Button variant="ghost" onClick={ onCancel } disabled={ isProcessing }>
+          <Button
+            variant="ghost"
+            className="hover:bg-sidebar"
+            onClick={ onCancel }
+            disabled={ isProcessing }
+          >
             Cancel
           </Button>
           <Button onClick={ onConfirm } disabled={ isProcessing || (!isIndefinite && !draftValidUntil) }>

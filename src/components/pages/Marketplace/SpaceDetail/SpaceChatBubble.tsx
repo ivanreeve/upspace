@@ -21,6 +21,7 @@ import { useCustomerChatRoom, useChatMessages, useSendChatMessage } from '@/hook
 import { useChatSubscription } from '@/hooks/use-chat-subscription';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { cn } from '@/lib/utils';
+import { CHAT_MESSAGE_MAX_LENGTH } from '@/lib/validations/chat';
 import type { ChatMessage } from '@/types/chat';
 
 type SpaceChatBubbleProps = {
@@ -73,6 +74,7 @@ export function SpaceChatBubble({
   hostAvatarUrl,
   onClose,
 }: SpaceChatBubbleProps) {
+  const maxMessageLength = CHAT_MESSAGE_MAX_LENGTH;
   const { session, } = useSession();
   const {
     data: userProfile,
@@ -179,6 +181,10 @@ senderName,
     if (!trimmed) {
       return;
     }
+    if (trimmed.length > maxMessageLength) {
+      toast.error(`Message must be ${maxMessageLength} characters or fewer.`);
+      return;
+    }
 
     try {
       const result = await sendMessage.mutateAsync({
@@ -230,10 +236,11 @@ senderName,
 
     return (
       <ScrollArea className="h-full">
-        <div className="space-y-2 px-2 py-2">
+        <div className="flex w-full flex-col gap-2 px-2 py-2">
           { messages.map((message) => {
             const isCustomerMessage = message.senderRole === 'customer';
-            const alignClass = isCustomerMessage ? 'items-end justify-end' : 'items-start justify-start';
+            const containerClass = isCustomerMessage ? 'justify-end' : 'justify-start';
+            const stackClass = isCustomerMessage ? 'items-end' : 'items-start';
             const bubbleClass = isCustomerMessage
               ? 'bg-primary text-primary-foreground'
               : 'bg-muted text-foreground';
@@ -244,12 +251,12 @@ senderName,
             });
 
             return (
-              <div key={ message.id } className={ `flex ${alignClass}` }>
-                <div className="max-w-full sm:max-w-[520px] space-y-1">
-                  <div className={ `inline-block rounded-2xl px-4 py-2 text-sm shadow ${bubbleClass}` }>
+              <div key={ message.id } className={ cn('flex w-full min-w-0', containerClass) }>
+                <div className={ cn('flex w-fit max-w-full min-w-0 flex-col space-y-1 sm:max-w-[520px]', stackClass) }>
+                  <div className={ `inline-block max-w-full min-w-0 rounded-2xl px-4 py-2 text-sm shadow ${bubbleClass}` }>
                     <p
                       className={ cn(
-                        'whitespace-pre-line break-all text-sm font-medium',
+                        'block whitespace-pre-wrap break-all text-sm font-medium',
                         isCustomerMessage && 'text-white'
                       ) }
                     >
@@ -333,6 +340,7 @@ senderName,
                 placeholder="Type your message…"
                 aria-label="Message to host"
                 rows={ 1 }
+                maxLength={ maxMessageLength }
                 disabled={ sendMessage.isPending }
                 className="min-h-[40px] max-h-24 flex-1 min-w-0 resize-none overflow-y-auto text-sm leading-4"
                 onKeyDown={ handleDraftKeyDown }

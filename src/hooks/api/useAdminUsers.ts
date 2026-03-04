@@ -55,6 +55,7 @@ export function useAdminUsersQuery({
 
   return useQuery<AdminUsersPage>({
     queryKey: adminUserKeys.list(normalizedSearch, limit, cursor),
+    staleTime: 30_000,
     queryFn: async () => {
       const params = new URLSearchParams({ limit: String(limit), });
       if (normalizedSearch) {
@@ -107,7 +108,7 @@ export function useAdminDisableUserMutation() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminUserKeys.all, });
+      queryClient.invalidateQueries({ queryKey: adminUserKeys.list(), });
     },
   });
 }
@@ -137,7 +138,7 @@ export function useAdminEnableUserMutation() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminUserKeys.all, });
+      queryClient.invalidateQueries({ queryKey: adminUserKeys.list(), });
     },
   });
 }

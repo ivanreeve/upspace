@@ -32,6 +32,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useSession } from '@/components/auth/SessionProvider';
+import { useUserProfile } from '@/hooks/use-user-profile';
 
 type SpaceHeaderProps = {
   name: string;
@@ -53,7 +54,8 @@ export default function SpaceHeader({
   isBookmarked = false,
 }: SpaceHeaderProps) {
   const { session, } = useSession();
-  const isGuest = !session;
+  const { data: userProfile, } = useUserProfile();
+  const canUseBookmarks = Boolean(session) && userProfile?.role !== 'admin';
 
   const [isSaving, setIsSaving] = useState(false);
   const [savedOverride, setSavedOverride] = useState<boolean | null>(null);
@@ -150,7 +152,7 @@ icon: FaTelegramPlane,
   }, [shareUrl]);
 
   const handleSave = useCallback(async () => {
-    if (isSaving) {
+    if (!canUseBookmarks || isSaving) {
       return;
     }
 
@@ -179,7 +181,7 @@ icon: FaTelegramPlane,
     } finally {
       setIsSaving(false);
     }
-  }, [isSaving, isSaved, spaceId]);
+  }, [canUseBookmarks, isSaving, isSaved, spaceId]);
 
   return (
     <header className="space-y-0.5">
@@ -265,7 +267,7 @@ icon: FaTelegramPlane,
               </div>
             </DialogContent>
           </Dialog>
-          { !isGuest && (
+          { canUseBookmarks && (
             <button
               type="button"
             onClick={ handleSave }

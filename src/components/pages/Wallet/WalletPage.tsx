@@ -2,8 +2,10 @@
 
 import Link from 'next/link';
 import {
+  useCallback,
   useMemo,
   useReducer,
+  useState,
   type ComponentType,
   type ReactNode
 } from 'react';
@@ -20,9 +22,20 @@ import {
   FiSend,
   FiTrendingUp
 } from 'react-icons/fi';
+import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -56,6 +69,7 @@ import {
   useWallet,
   useWalletTransactions
 } from '@/hooks/use-wallet';
+import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { formatCurrencyMinor } from '@/lib/wallet';
 
@@ -444,36 +458,144 @@ function WalletHeader() {
   );
 }
 
-function WalletWithdrawalsCard({ walletCardClassName, }: { walletCardClassName: string }) {
+function WalletWithdrawalsCard({
+  walletCardClassName,
+  balanceMinor,
+  currency,
+  onPayoutSuccess,
+}: {
+  walletCardClassName: string;
+  balanceMinor?: string;
+  currency?: string;
+  onPayoutSuccess?: () => void;
+}) {
+  const authFetch = useAuthenticatedFetch();
+  const [payoutDialogOpen, setPayoutDialogOpen] = useState(false);
+  const [payoutAmount, setPayoutAmount] = useState('');
+  const [isPayoutPending, setIsPayoutPending] = useState(false);
+
+  const balanceNum = Number(balanceMinor ?? '0');
+  const canPayout = balanceNum >= 10000;
+
+  const handleRequestPayout = useCallback(async () => {
+    const amountMinor = Math.round(Number(payoutAmount) * 100);
+    if (!Number.isFinite(amountMinor) || amountMinor < 10000) {
+      toast.error('Minimum payout is ₱100.');
+      return;
+    }
+    if (amountMinor > balanceNum) {
+      toast.error('Payout amount exceeds available balance.');
+      return;
+    }
+
+    setIsPayoutPending(true);
+    try {
+      const response = await authFetch('/api/v1/wallet/payout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', },
+        body: JSON.stringify({ amountMinor, }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(typeof payload?.error === 'string' ? payload.error : 'Payout request failed.');
+      }
+      toast.success('Payout request submitted.');
+      setPayoutDialogOpen(false);
+      setPayoutAmount('');
+      onPayoutSuccess?.();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to request payout.');
+    } finally {
+      setIsPayoutPending(false);
+    }
+  }, [authFetch, balanceNum, onPayoutSuccess, payoutAmount]);
+
   return (
-    <Card className={ walletCardClassName }>
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground">
-            <FiDollarSign className="size-4" aria-hidden="true" />
-            PayMongo withdrawals
+    <>
+      <Card className={ walletCardClassName }>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              <FiDollarSign className="size-4" aria-hidden="true" />
+              PayMongo withdrawals
+            </div>
+            <CardTitle className="text-base">Withdrawals</CardTitle>
+            <CardDescription className="max-w-2xl">
+              Payouts are managed through PayMongo. This balance represents funds collected
+              from bookings that PayMongo released to you.
+            </CardDescription>
           </div>
-          <CardTitle className="text-base">Withdrawals</CardTitle>
-          <CardDescription className="max-w-2xl">
-            Payouts are managed through PayMongo. This balance represents funds collected
-            from bookings that PayMongo released to you.
-          </CardDescription>
-        </div>
-        <Button
-          asChild
-          className="dark:border dark:border-input dark:bg-background dark:text-foreground dark:hover:bg-input/50"
-        >
-          <a
-            href="https://dashboard.paymongo.com"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Open PayMongo dashboard
-            <FiArrowUpRight className="size-4" aria-hidden="true" />
-          </a>
-        </Button>
-      </CardHeader>
-    </Card>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={ () => setPayoutDialogOpen(true) }
+              disabled={ !canPayout }
+            >
+              <FiSend className="mr-2 size-4" aria-hidden="true" />
+              Request payout
+            </Button>
+            <Button
+              asChild
+              className="dark:border dark:border-input dark:bg-background dark:text-foreground dark:hover:bg-input/50"
+            >
+              <a
+                href="https://dashboard.paymongo.com"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open PayMongo dashboard
+                <FiArrowUpRight className="size-4" aria-hidden="true" />
+              </a>
+            </Button>
+          </div>
+        </CardHeader>
+      </Card>
+
+      <Dialog open={ payoutDialogOpen } onOpenChange={ setPayoutDialogOpen }>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Request payout</DialogTitle>
+            <DialogDescription>
+              Available balance: { formatCurrencyMinor(balanceMinor ?? '0', currency ?? 'PHP') }
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="payout-amount">Amount (PHP)</Label>
+              <Input
+                id="payout-amount"
+                type="number"
+                min={ 100 }
+                step={ 1 }
+                placeholder="100"
+                value={ payoutAmount }
+                onChange={ (e) => setPayoutAmount(e.target.value) }
+                aria-label="Payout amount in PHP"
+              />
+              <p className="text-xs text-muted-foreground">Minimum payout: ₱100</p>
+            </div>
+          </div>
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button variant="outline" onClick={ () => setPayoutDialogOpen(false) }>
+              Cancel
+            </Button>
+            <Button
+              variant="default"
+              className="hover:text-white"
+              onClick={ handleRequestPayout }
+              disabled={ isPayoutPending || !payoutAmount }
+            >
+              { isPayoutPending ? (
+                <FiLoader className="mr-2 size-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <FiSend className="mr-2 size-4" aria-hidden="true" />
+              ) }
+              Submit request
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -988,7 +1110,15 @@ export default function WalletPage() {
       <WalletBreadcrumbs />
       <WalletHeader />
 
-      <WalletWithdrawalsCard walletCardClassName={ walletCardClassName } />
+      <WalletWithdrawalsCard
+        walletCardClassName={ walletCardClassName }
+        balanceMinor={ wallet?.balanceMinor }
+        currency={ wallet?.currency }
+        onPayoutSuccess={ () => {
+          void refetchSummary();
+          void refetchTx();
+        } }
+      />
 
       <WalletSummaryCards
         walletCardClassName={ walletCardClassName }

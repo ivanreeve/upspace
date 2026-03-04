@@ -15,7 +15,7 @@ import {
 import { SpacesChrome } from '@/components/pages/Spaces/SpacesChrome';
 import { PartnerChatRoomView } from '@/components/pages/Marketplace/PartnerChatRoomView';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseReadOnlyServerClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/prisma';
 
 export const metadata: Metadata = {
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 };
 
 export default async function SpacesMessagesPage() {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseReadOnlyServerClient();
   const { data: authData, } = await supabase.auth.getUser();
 
   if (!authData?.user) {
@@ -73,16 +73,16 @@ export default async function SpacesMessagesPage() {
   return (
     <SpacesChrome
       initialSidebarOpen={ initialSidebarOpen }
-      insetClassName="p-2"
+      insetClassName="!px-0 !md:px-0 !py-0"
       insetStyle={ {
         height: '100svh',
         overflow: 'hidden',
         marginTop: 0,
         marginBottom: 0,
-        paddingBottom: 'calc(0.75rem + var(--safe-area-bottom))',
+        paddingBottom: 'var(--safe-area-bottom)',
       } }
     >
-      <div className="flex h-full w-full flex-col overflow-hidden p-0 sm:p-2">
+      <div className="flex h-full w-full flex-col overflow-hidden p-0">
         <PartnerChatRoomView />
       </div>
     </SpacesChrome>

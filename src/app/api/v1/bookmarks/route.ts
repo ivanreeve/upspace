@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
+import { enforceRateLimit, RateLimitExceededError } from '@/lib/rate-limit';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 const payloadSchema = z.object({ space_id: z.string().uuid(), });
@@ -20,14 +21,43 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  try {
+    await enforceRateLimit({
+ scope: 'bookmark-toggle',
+request: req,
+identity: authData.user.id, 
+});
+  } catch (error) {
+    if (error instanceof RateLimitExceededError) {
+      return NextResponse.json(
+        { error: error.message, },
+        {
+ status: 429,
+headers: { 'Retry-After': error.retryAfter.toString(), }, 
+}
+      );
+    }
+    console.error('Rate limit check failed for bookmark toggle', error);
+  }
+
   const dbUser = await prisma.user.findFirst({
     where: { auth_user_id: authData.user.id, },
-    select: { user_id: true, },
+    select: {
+      user_id: true,
+      role: true,
+    },
   });
 
   if (!dbUser) {
     return NextResponse.json(
       { error: 'User profile not found.', },
+      { status: 403, }
+    );
+  }
+
+  if (dbUser.role === 'admin') {
+    return NextResponse.json(
+      { error: 'Bookmarks are not available for admin accounts.', },
       { status: 403, }
     );
   }
@@ -96,14 +126,43 @@ export async function DELETE(req: NextRequest) {
     );
   }
 
+  try {
+    await enforceRateLimit({
+ scope: 'bookmark-toggle',
+request: req,
+identity: authData.user.id, 
+});
+  } catch (error) {
+    if (error instanceof RateLimitExceededError) {
+      return NextResponse.json(
+        { error: error.message, },
+        {
+ status: 429,
+headers: { 'Retry-After': error.retryAfter.toString(), }, 
+}
+      );
+    }
+    console.error('Rate limit check failed for bookmark toggle', error);
+  }
+
   const dbUser = await prisma.user.findFirst({
     where: { auth_user_id: authData.user.id, },
-    select: { user_id: true, },
+    select: {
+      user_id: true,
+      role: true,
+    },
   });
 
   if (!dbUser) {
     return NextResponse.json(
       { error: 'User profile not found.', },
+      { status: 403, }
+    );
+  }
+
+  if (dbUser.role === 'admin') {
+    return NextResponse.json(
+      { error: 'Bookmarks are not available for admin accounts.', },
       { status: 403, }
     );
   }

@@ -275,10 +275,18 @@ mode: 'insensitive',
     rows.flatMap((space) => space.space_image)
   );
 
-  const bookmarkUserId =
-    typeof input.user_id === 'string' && input.user_id.trim()
-      ? BigInt(input.user_id)
-      : null;
+  let bookmarkUserId: bigint | null = null;
+  if (typeof input.user_id === 'string' && input.user_id.trim()) {
+    const candidateUserId = BigInt(input.user_id);
+    const dbUser = await prisma.user.findUnique({
+      where: { user_id: candidateUserId, },
+      select: { role: true, },
+    });
+
+    if (dbUser && dbUser.role !== 'admin') {
+      bookmarkUserId = candidateUserId;
+    }
+  }
 
   const bookmarkedSpaceIds = new Set<string>();
   if (bookmarkUserId && spaceIds.length > 0) {

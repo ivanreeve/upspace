@@ -28,7 +28,12 @@
       "Bash(git cherry-pick:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(python3:*)",
+      "Bash(NEXT_PRIVATE_DEBUG_CACHE=1 pnpm build:*)",
+      "Bash(git stash:*)",
+      "Bash(pnpm list:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

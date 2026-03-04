@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
+import { FiMessageCircle } from 'react-icons/fi';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -15,7 +16,7 @@ import {
 import { MarketplaceChrome } from '@/components/pages/Marketplace/MarketplaceChrome';
 import { CustomerChatRoomView } from '@/components/pages/Marketplace/CustomerChatRoomView';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseReadOnlyServerClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/prisma';
 
 export const metadata: Metadata = {
@@ -24,7 +25,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CustomerMessagesPage() {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseReadOnlyServerClient();
   const { data: authData, } = await supabase.auth.getUser();
 
   if (!authData?.user) {
@@ -73,17 +74,32 @@ export default async function CustomerMessagesPage() {
   return (
     <MarketplaceChrome
       initialSidebarOpen={ initialSidebarOpen }
-      insetClassName="p-2"
+      insetClassName="!px-0 !md:px-0 !py-0"
       insetStyle={ {
         height: '100svh',
         overflow: 'hidden',
         marginTop: 0,
         marginBottom: 0,
-        paddingBottom: 'calc(0.75rem + var(--safe-area-bottom))',
+        paddingBottom: 'var(--safe-area-bottom)',
       } }
     >
-      <div className="flex h-full w-full flex-col overflow-hidden p-0 sm:p-2">
-        <CustomerChatRoomView />
+      <div className="flex h-full w-full flex-col overflow-hidden p-0">
+        { rooms.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
+            <FiMessageCircle className="size-10 text-muted-foreground" aria-hidden="true" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium">No conversations yet</p>
+              <p className="text-sm text-muted-foreground">
+                Start a conversation by visiting a space and messaging the host.
+              </p>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/marketplace">Browse spaces</Link>
+            </Button>
+          </div>
+        ) : (
+          <CustomerChatRoomView />
+        ) }
       </div>
     </MarketplaceChrome>
   );

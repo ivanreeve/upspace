@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import {
   FormEvent,
@@ -28,14 +28,30 @@ import { Textarea } from '@/components/ui/textarea';
 import { useChatMessages, usePartnerChatRooms, useSendChatMessage } from '@/hooks/api/useChat';
 import { useChatRoomsSubscription, useChatSubscription } from '@/hooks/use-chat-subscription';
 import { cn } from '@/lib/utils';
+import { CHAT_MESSAGE_MAX_LENGTH } from '@/lib/validations/chat';
 import type { ChatMessage } from '@/types/chat';
 
 function PartnerChatsListSkeleton() {
   return (
-    <div className="space-y-3 py-4 px-2">
-      <Skeleton className="h-12 w-full rounded-2xl" />
-      <Skeleton className="h-12 w-full rounded-2xl" />
-      <Skeleton className="h-12 w-3/4 rounded-2xl" />
+    <div className="space-y-1">
+      { Array.from({ length: 4, }).map((_, index) => (
+        <div
+          key={ `chat-skeleton-${index}` }
+          className="w-full rounded-2xl border p-3 text-left"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-24 rounded-full" />
+                <Skeleton className="h-3 w-32 rounded-full" />
+              </div>
+            </div>
+            <Skeleton className="h-3 w-12 rounded-full" />
+          </div>
+          <Skeleton className="mt-3 h-3 w-full rounded-full" />
+        </div>
+      )) }
     </div>
   );
 }
@@ -54,6 +70,7 @@ function PartnerConversationLoadingSkeleton() {
 }
 
 export function PartnerMessagesPanel() {
+  const maxMessageLength = CHAT_MESSAGE_MAX_LENGTH;
   const {
     data: rooms,
     isLoading: roomsLoading,
@@ -141,6 +158,10 @@ export function PartnerMessagesPanel() {
       return;
     }
     const trimmed = draft.trim();
+    if (trimmed.length > maxMessageLength) {
+      toast.error(`Message must be ${maxMessageLength} characters or fewer.`);
+      return;
+    }
     if (!trimmed) {
       return;
     }
@@ -192,12 +213,12 @@ export function PartnerMessagesPanel() {
 
             return (
               <div key={ message.id } className={ `flex ${alignClass}` }>
-                <div className="max-w-full sm:max-w-[520px] space-y-1 rounded-2xl px-4 py-3 text-sm shadow">
+                <div className="w-full min-w-0 sm:max-w-[520px] space-y-1 rounded-2xl px-4 py-3 text-sm shadow">
                   <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                     <span>{ message.senderName ?? (isCustomerMessage ? 'Customer' : 'You') }</span>
                     <span>{ timestamp }</span>
                   </div>
-                  <p className={ `whitespace-pre-line break-all ${bubbleClass} px-0 py-0 font-medium` }>
+                  <p className={ `block whitespace-pre-wrap break-all max-w-full ${bubbleClass} px-0 py-0 font-medium` }>
                     { message.content }
                   </p>
                 </div>
@@ -213,9 +234,11 @@ export function PartnerMessagesPanel() {
   let conversationsContent: ReactNode;
   if (roomsLoading) {
     conversationsContent = (
-      <div className="flex flex-1 items-center justify-center">
-        <PartnerChatsListSkeleton />
-      </div>
+      <ScrollArea className="h-[40vh] min-h-[32vh] sm:h-full sm:min-h-0 rounded-2xl border border-border/60 bg-background/60">
+        <div className="space-y-2 p-3">
+          <PartnerChatsListSkeleton />
+        </div>
+      </ScrollArea>
     );
   } else if (roomsError) {
     conversationsContent = <p className="text-sm text-destructive">Unable to load conversations.</p>;
@@ -269,7 +292,7 @@ export function PartnerMessagesPanel() {
                       <p className="text-xs text-muted-foreground">
                         { room.spaceName }
                         { room.spaceCity || room.spaceRegion
-                          ? ` · ${room.spaceCity ?? ''}${room.spaceCity && room.spaceRegion ? ', ' : ''}${room.spaceRegion ?? ''}`
+                          ? ` Â· ${room.spaceCity ?? ''}${room.spaceCity && room.spaceRegion ? ', ' : ''}${room.spaceRegion ?? ''}`
                           : '' }
                       </p>
                     </div>
@@ -331,9 +354,10 @@ export function PartnerMessagesPanel() {
               <Textarea
                 value={ draft }
                   onChange={ (event) => setDraft(event.target.value) }
-                  placeholder="Reply to the customer…"
+                  placeholder="Reply to the customerï¿½"
                   aria-label="Reply to conversation"
                   rows={ 3 }
+                  maxLength={ maxMessageLength }
                   disabled={ sendMessage.isPending }
                 />
                 <div className="flex justify-end">
@@ -343,7 +367,7 @@ export function PartnerMessagesPanel() {
                     className="inline-flex items-center gap-2"
                   >
                     <FiSend className="size-4" aria-hidden="true" />
-                    <span>{ sendMessage.isPending ? 'Sending…' : 'Send reply' }</span>
+                    <span>{ sendMessage.isPending ? 'Sendingâ€¦' : 'Send reply' }</span>
                   </Button>
                 </div>
             </form>
@@ -358,3 +382,15 @@ export function PartnerMessagesPanel() {
     </section>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+

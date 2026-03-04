@@ -201,7 +201,7 @@ type VerificationRow = {
 
 function LoadingTable() {
   return (
-    <div className="rounded-md border border-border/70 bg-background/80">
+    <div className="rounded-md border border-border/70 bg-muted/20">
       <Table>
         <TableHeader>
           <TableRow>
@@ -295,7 +295,7 @@ function DesktopTable({
   onViewDetails: (verification: PendingVerification) => void;
 }) {
   return (
-    <div className="hidden rounded-md border border-border/70 bg-background/80 md:block">
+    <div className="hidden rounded-md border border-border/70 bg-muted/20 md:block">
       <Table>
         <TableHeader>
           <TableRow>
@@ -464,7 +464,7 @@ function PaginationFooter({
   onPageSizeChange: (value: string) => void;
 }) {
   return (
-    <div className="mt-4 flex flex-col gap-2 rounded-md border border-border/70 bg-background/80 px-4 py-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
+    <div className="mt-4 flex flex-col gap-2 rounded-md border border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
       <div className="flex items-center gap-2 font-medium text-foreground">
         <span>Page { pageIndex + 1 }</span>
         <span className="hidden md:inline">•</span>

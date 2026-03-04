@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 
 import LandingPage from '@/components/pages/LandingPage/LandingPage';
 import { Footer } from '@/components/ui/footer';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseReadOnlyServerClient } from '@/lib/supabase/server';
 
 // Use ISR with 1 hour revalidation for static landing page content
 // Session check still happens dynamically via cookies
@@ -19,7 +19,7 @@ export default async function Home() {
   let showHero = true;
 
   try {
-    const supabase = await createSupabaseServerClient();
+    const supabase = await createSupabaseReadOnlyServerClient();
     const { data, } = await supabase.auth.getSession();
 
     showHero = !Boolean(data?.session?.user);

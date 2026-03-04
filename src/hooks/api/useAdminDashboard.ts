@@ -74,6 +74,10 @@ export type AdminDashboardAuditEvent = {
 };
 
 export type AdminDashboardMetrics = {
+  revenue: {
+    totalMinor: string;
+    transactionCount: number;
+  };
   bookings: {
     total: number;
     statusCounts: { status: string; count: number }[];
@@ -143,6 +147,7 @@ export function useAdminDashboardQuery(options?: AdminDashboardQueryOptions) {
       const payload = await response.json();
       return payload.data;
     },
+    staleTime: 30_000,
     ...options,
   });
 }

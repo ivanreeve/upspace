@@ -23,11 +23,12 @@ import {
   Search,
   Settings,
   Ticket,
-  User,
   Users,
-  UserX
+  UserX,
+  X
 } from 'lucide-react';
 import { LuMessageSquareText } from 'react-icons/lu';
+import { FiFlag, FiTrendingUp } from 'react-icons/fi';
 import {
   MdManageSearch,
   MdOutlineAccountBalanceWallet,
@@ -48,6 +49,13 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card';
+import {
+  ResponsiveCommandDialog as CommandDialog,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList
+} from '@/components/ui/command';
 import { Kbd } from '@/components/ui/kbd';
 import { LogoSymbolic } from '@/components/ui/logo-symbolic';
 import {
@@ -73,9 +81,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSession } from '@/components/auth/SessionProvider';
+import { VoiceSearchButton } from '@/components/ui/voice-search-button';
+import { VoiceSearchDialog } from '@/components/ui/voice-search-dialog';
 import { useCachedAvatar } from '@/hooks/use-cached-avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUserProfile, type UserProfile } from '@/hooks/use-user-profile';
+import { useNotificationsQuery } from '@/hooks/api/useNotifications';
+import { useNotificationSubscription } from '@/hooks/use-notification-subscription';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 
@@ -89,6 +101,12 @@ type MarketplaceChromeProps = {
   messageHref?: string;
 };
 
+const marketplaceSearchDialogClassName =
+  '[&_[data-slot=command-item][data-selected=true]]:bg-transparent [&_[data-slot=command-item][data-selected=true]:hover]:bg-accent';
+
+const marketplaceSearchActionItemClassName =
+  'text-muted-foreground hover:!bg-[oklch(0.955_0.02_204.6929)] dark:hover:!bg-[oklch(0.24_0.02_204.6929)] hover:!text-primary hover:[&_svg]:!text-primary data-[selected=true]:!bg-[oklch(0.955_0.02_204.6929)] dark:data-[selected=true]:!bg-[oklch(0.24_0.02_204.6929)] data-[selected=true]:!text-foreground';
+
 type SidebarFooterContentProps = {
   avatarUrl: string | null;
   avatarFallback: string;
@@ -100,10 +118,12 @@ type SidebarFooterContentProps = {
   isGuest: boolean;
   isSidebarLoading: boolean;
   showNotifications?: boolean;
-  showAccount?: boolean;
   showWallet?: boolean;
   showTransactionHistory?: boolean;
   showSettings?: boolean;
+  transactionHistoryHref?: string;
+  notificationsHref?: string;
+  settingsHref?: string;
 };
 
 function GradientSparklesIcon({
@@ -249,10 +269,12 @@ function SidebarFooterContent({
   isGuest,
   isSidebarLoading,
   showNotifications = true,
-  showAccount = true,
   showWallet = false,
   showTransactionHistory = true,
   showSettings = true,
+  transactionHistoryHref = '/customer/transactions',
+  notificationsHref = '/customer/notifications',
+  settingsHref = '/customer/settings',
 }: SidebarFooterContentProps) {
   const {
  state, isMobile, 
@@ -386,28 +408,17 @@ function SidebarFooterContent({
                     </span>
                   </div>
                 </div>
-                { (showAccount ||
-                  showWallet ||
+                { (showWallet ||
                   showSettings ||
                   showNotifications ||
                   showTransactionHistory) && (
                   <DropdownMenuSeparator className="my-1" />
                 ) }
-                { (showAccount ||
-                  showWallet ||
+                { (showWallet ||
                   showSettings ||
                   showNotifications ||
                   showTransactionHistory) && (
                   <div className="space-y-0.5 py-2">
-                    { showAccount && (
-                      <DropdownMenuItem
-                        onSelect={ () => onNavigate('/customer/account') }
-                        className={ sidebarAccountMenuItemClassName }
-                      >
-                        <User className="size-4" aria-hidden="true" />
-                        <span>Account</span>
-                      </DropdownMenuItem>
-                    ) }
                     { showWallet && (
                       <DropdownMenuItem
                         onSelect={ () => onNavigate('/partner/wallet') }
@@ -419,7 +430,7 @@ function SidebarFooterContent({
                     ) }
                     { showSettings && (
                       <DropdownMenuItem
-                        onSelect={ () => onNavigate('/customer/settings') }
+                        onSelect={ () => onNavigate(settingsHref) }
                         className={ sidebarAccountMenuItemClassName }
                       >
                         <Settings className="size-4" aria-hidden="true" />
@@ -428,7 +439,7 @@ function SidebarFooterContent({
                     ) }
                     { showNotifications && (
                       <DropdownMenuItem
-                        onSelect={ () => onNavigate('/customer/notifications') }
+                        onSelect={ () => onNavigate(notificationsHref) }
                         className={ sidebarAccountMenuItemClassName }
                       >
                         <NotificationIcon className="size-4" aria-hidden="true" />
@@ -437,7 +448,7 @@ function SidebarFooterContent({
                     ) }
                     { showTransactionHistory && (
                       <DropdownMenuItem
-                        onSelect={ () => onNavigate('/customer/transactions') }
+                        onSelect={ () => onNavigate(transactionHistoryHref) }
                         className={ sidebarAccountMenuItemClassName }
                       >
                         <CreditCard className="size-4" aria-hidden="true" />
@@ -548,6 +559,7 @@ type SidebarLinkItemProps = {
   className?: string;
   labelBadge?: React.ReactNode;
   isActive?: boolean;
+  hasUnreadDot?: boolean;
 };
 
 function SidebarLinkItem({
@@ -559,6 +571,7 @@ function SidebarLinkItem({
   className,
   labelBadge,
   isActive = false,
+  hasUnreadDot = false,
 }: SidebarLinkItemProps) {
   const {
  className: iconClassName, ...restIconProps 
@@ -573,16 +586,20 @@ function SidebarLinkItem({
         isActive={ isActive }
       >
         <Link href={ href } aria-current={ isActive ? 'page' : undefined }>
-          <span className="sidebar-link-icon" aria-hidden="true">
+          <span className="sidebar-link-icon relative" aria-hidden="true">
             <Icon
               className={ cn('size-4', iconClassName) }
               aria-hidden="true"
               { ...restIconProps }
             />
+            { hasUnreadDot ? (
+              <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-destructive ring-2 ring-sidebar" />
+            ) : null }
           </span>
           <span data-sidebar-label className="inline-flex items-center gap-1.5">
             <span>{ label }</span>
             { labelBadge }
+            { hasUnreadDot ? <span className="sr-only">Unread</span> : null }
           </span>
         </Link>
       </SidebarMenuButton>
@@ -605,6 +622,9 @@ function MobileTopNav({
   showNotifications = true,
   showTransactionHistory = true,
   showAccountLinks = true,
+  transactionHistoryHref = '/customer/transactions',
+  notificationsHref = '/customer/notifications',
+  settingsHref = '/customer/settings',
 }: {
   avatarUrl: string | null;
   avatarFallback: string;
@@ -620,6 +640,9 @@ function MobileTopNav({
   showNotifications?: boolean;
   showTransactionHistory?: boolean;
   showAccountLinks?: boolean;
+  transactionHistoryHref?: string;
+  notificationsHref?: string;
+  settingsHref?: string;
 }) {
   const { toggleSidebar, } = useSidebar();
   const hasAdditionalLinks =
@@ -647,7 +670,7 @@ function MobileTopNav({
         <div className="flex items-center gap-2">
           { showNotifications && !isGuest && (
             <Link
-              href="/customer/notifications"
+              href={ notificationsHref }
               aria-label="Notifications"
               className="rounded-full p-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
@@ -736,14 +759,7 @@ function MobileTopNav({
                     { showAccountLinks && (
                       <>
                         <DropdownMenuItem
-                          onSelect={ () => onNavigate('/customer/account') }
-                          className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
-                        >
-                          <User className="size-4" aria-hidden="true" />
-                          <span>Account</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onSelect={ () => onNavigate('/customer/settings') }
+                          onSelect={ () => onNavigate(settingsHref) }
                           className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
                         >
                           <Settings className="size-4" aria-hidden="true" />
@@ -753,7 +769,7 @@ function MobileTopNav({
                     ) }
                     { showNotifications && (
                       <DropdownMenuItem
-                        onSelect={ () => onNavigate('/customer/notifications') }
+                        onSelect={ () => onNavigate(notificationsHref) }
                         className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
                       >
                         <NotificationIcon className="size-4" aria-hidden="true" />
@@ -762,7 +778,7 @@ function MobileTopNav({
                     ) }
                     { showTransactionHistory && (
                       <DropdownMenuItem
-                        onSelect={ () => onNavigate('/customer/transactions') }
+                        onSelect={ () => onNavigate(transactionHistoryHref) }
                         className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
                       >
                         <CreditCard className="size-4" aria-hidden="true" />
@@ -889,6 +905,7 @@ function useMarketplaceNavData() {
     ? 'Guest'
     : (registeredFirstName ?? resolvedHandleLabel ?? 'UpSpace User');
   const userEmail = session?.user?.email ?? null;
+  const authUserId = session?.user?.id ?? null;
   const handleNavigation = React.useCallback(
     (href: string) => {
       router.push(href);
@@ -925,6 +942,7 @@ function useMarketplaceNavData() {
       avatarFallback,
       avatarDisplayName,
       resolvedHandleLabel,
+      authUserId,
       userEmail,
       onNavigate: handleNavigation,
       onLogout: handleLogout,
@@ -938,6 +956,7 @@ function useMarketplaceNavData() {
       avatarDisplayName,
       avatarFallback,
       avatarUrl,
+      authUserId,
       handleLogout,
       handleNavigation,
       isGuest,
@@ -1155,8 +1174,42 @@ export function MarketplaceChrome({
   const shouldShowAiSearch = isCustomerRole || isPartnerRole || isAdminRole;
   const shouldShowNotifications = isCustomerRole || isPartnerRole;
   const resolvedMessageHref = messageHref ?? '/customer/messages';
+  useNotificationSubscription(navData.authUserId);
+  const { data: unreadMessageNotifications, } = useNotificationsQuery({
+    enabled:
+      shouldShowNotifications &&
+      !navData.isGuest &&
+      Boolean(navData.authUserId),
+    type: 'message',
+    unread: true,
+    limit: 1,
+  });
+  const hasUnreadMessages = (unreadMessageNotifications?.pages[0]?.data.length ?? 0) > 0;
+  const transactionHistoryHref = isPartnerRole
+    ? '/partner/transactions'
+    : '/customer/transactions';
+  const notificationsHref = isPartnerRole
+    ? '/partner/notifications'
+    : '/customer/notifications';
+  const settingsHref = isPartnerRole
+    ? '/partner/settings'
+    : '/customer/settings';
   const pathname = usePathname();
-  const isAccountRoute = (pathname ?? '').startsWith('/customer/account');
+  const isMarketplaceRoute = Boolean(
+    pathname && pathname.startsWith('/marketplace')
+  );
+  const hasExternalSearchHandler = Boolean(onSearchOpen);
+  const shouldUseCustomerSearchDialog =
+    isCustomerRole && !hasExternalSearchHandler && !isMarketplaceRoute;
+  const [isCustomerSearchOpen, setIsCustomerSearchOpen] = React.useState(false);
+  const [customerSearchValue, setCustomerSearchValue] = React.useState('');
+  const trimmedCustomerSearchValue = customerSearchValue.trim();
+  const [isVoiceSearchOpen, setIsVoiceSearchOpen] = React.useState(false);
+  const isAccountRoute = Boolean(
+    pathname &&
+      (pathname.startsWith('/customer/settings') ||
+        pathname.startsWith('/partner/settings'))
+  );
   const isMobile = useIsMobile();
   const shouldRenderMobileBottomNav =
     isMobile && !isAccountRoute && !isPartnerRole;
@@ -1172,14 +1225,116 @@ export function MarketplaceChrome({
         : undefined,
     [isMobile, shouldRenderMobileBottomNav]
   );
+  const handleCustomerSearchDialogOpenChange = React.useCallback(
+    (open: boolean) => {
+      setIsCustomerSearchOpen(open);
+      if (!open) {
+        setCustomerSearchValue('');
+      }
+    },
+    []
+  );
+  const handleCustomerQuickActionNavigate = React.useCallback(
+    (href: string) => {
+      handleCustomerSearchDialogOpenChange(false);
+      onNavigate(href);
+    },
+    [handleCustomerSearchDialogOpenChange, onNavigate]
+  );
+  const handleCustomerSearchSubmit = React.useCallback(
+    (value?: string) => {
+      const normalized = (value ?? customerSearchValue).trim();
+      const target = normalized
+        ? `/marketplace?q=${encodeURIComponent(normalized)}`
+        : '/marketplace';
+      handleCustomerSearchDialogOpenChange(false);
+      onNavigate(target);
+    },
+    [customerSearchValue, handleCustomerSearchDialogOpenChange, onNavigate]
+  );
+  const handleCustomerVoiceSearchSubmit = React.useCallback(
+    (value: string) => {
+      setCustomerSearchValue(value);
+      setIsVoiceSearchOpen(false);
+      handleCustomerSearchSubmit(value);
+    },
+    [handleCustomerSearchSubmit]
+  );
+  const handleCustomerVoiceButtonClick = React.useCallback(() => {
+    handleCustomerSearchDialogOpenChange(false);
+    setIsVoiceSearchOpen(true);
+  }, [handleCustomerSearchDialogOpenChange]);
+  const customerQuickActions = React.useMemo(
+    () => [
+      {
+        value: 'home',
+        label: 'Marketplace home',
+        href: '/marketplace',
+        icon: Home,
+      },
+      {
+        value: 'messages',
+        label: 'Messages',
+        href: resolvedMessageHref,
+        icon: MessageSquare,
+      },
+      {
+        value: 'bookings',
+        label: 'Bookings',
+        href: '/customer/bookings',
+        icon: Ticket,
+      },
+      {
+        value: 'bookmarks',
+        label: 'Bookmarks',
+        href: '/customer/bookmarks',
+        icon: Bookmark,
+      },
+      {
+        value: 'notifications',
+        label: 'Notifications',
+        href: notificationsHref,
+        icon: NotificationIcon,
+      },
+      {
+        value: 'transactions',
+        label: 'Transactions',
+        href: transactionHistoryHref,
+        icon: CreditCard,
+      },
+      {
+        value: 'settings',
+        label: 'Settings',
+        href: settingsHref,
+        icon: Settings,
+      },
+      {
+        value: 'ai assistant',
+        label: 'AI Assistant',
+        href: '/marketplace/ai-assistant',
+        icon: GradientSparklesIcon,
+      }
+    ],
+    [notificationsHref, resolvedMessageHref, settingsHref, transactionHistoryHref]
+  );
   const handleSearch = React.useCallback(() => {
     if (onSearchOpen) {
       onSearchOpen();
       return;
     }
 
+    if (shouldUseCustomerSearchDialog) {
+      handleCustomerSearchDialogOpenChange(true);
+      return;
+    }
+
     onNavigate('/marketplace?search=1');
-  }, [onNavigate, onSearchOpen]);
+  }, [
+    handleCustomerSearchDialogOpenChange,
+    onNavigate,
+    onSearchOpen,
+    shouldUseCustomerSearchDialog
+  ]);
 
   const mobileBottomNavActions = React.useMemo((): MobileBottomNavAction[] => {
     if (isAdminRole) {
@@ -1191,12 +1346,17 @@ export function MarketplaceChrome({
         },
         {
           label: 'Dashboard',
-          href: '/marketplace/dashboard',
+          href: '/admin/dashboard',
           icon: BarChart3,
         },
         {
+          label: 'Reports',
+          href: '/admin/reports',
+          icon: FiTrendingUp,
+        },
+        {
           label: 'Queue',
-          href: '/admin',
+          href: '/admin/verification-queue',
           icon: FileText,
         },
         {
@@ -1208,6 +1368,11 @@ export function MarketplaceChrome({
           label: 'Unpublish requests',
           href: '/admin/unpublish-requests',
           icon: EyeOff,
+        },
+        {
+          label: 'Chat reports',
+          href: '/admin/chat-reports',
+          icon: FiFlag,
         },
         {
           label: 'Users',
@@ -1262,7 +1427,7 @@ export function MarketplaceChrome({
     if (shouldShowNotifications && !isCustomerRole) {
       actions.push({
         label: 'Notifications',
-        href: '/customer/notifications',
+        href: notificationsHref,
         icon: NotificationIcon,
       });
     }
@@ -1290,12 +1455,13 @@ export function MarketplaceChrome({
     isAdminRole,
     isCustomerRole,
     isPartnerRole,
+    notificationsHref,
     resolvedMessageHref,
     shouldShowNotifications
   ]);
 
   React.useEffect(() => {
-    if (!onSearchOpen) return undefined;
+    if (!onSearchOpen && !shouldUseCustomerSearchDialog) return undefined;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
@@ -1304,35 +1470,119 @@ export function MarketplaceChrome({
       if (!event.metaKey && !event.ctrlKey) return;
 
       event.preventDefault();
-      onSearchOpen();
+      handleSearch();
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onSearchOpen]);
+  }, [handleSearch, onSearchOpen, shouldUseCustomerSearchDialog]);
 
   return (
     <SidebarProvider
       className="bg-background min-h-screen"
       initialOpen={ initialSidebarOpen }
     >
+      { shouldUseCustomerSearchDialog && (
+        <>
+          <CommandDialog
+            open={ isCustomerSearchOpen }
+            onOpenChange={ handleCustomerSearchDialogOpenChange }
+            title="Search spaces"
+            description="Search the UpSpace marketplace"
+            position="top"
+            fullWidth
+            className={ marketplaceSearchDialogClassName }
+          >
+            <CommandInput
+              value={ customerSearchValue }
+              onValueChange={ setCustomerSearchValue }
+              placeholder="Search Spaces..."
+              aria-label="Search spaces"
+              onKeyDown={ (event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  handleCustomerSearchSubmit();
+                }
+              } }
+              endAdornment={ (
+                <VoiceSearchButton onClick={ handleCustomerVoiceButtonClick } />
+              ) }
+            />
+            <CommandList>
+              <CommandGroup heading="Quick Actions" forceMount>
+                <CommandItem
+                  value={ trimmedCustomerSearchValue
+                    ? `search ${trimmedCustomerSearchValue}`
+                    : 'search marketplace' }
+                  onSelect={ () => handleCustomerSearchSubmit() }
+                  className={ marketplaceSearchActionItemClassName }
+                >
+                  <Search className="size-4" aria-hidden="true" />
+                  <span>Search marketplace</span>
+                  { trimmedCustomerSearchValue && (
+                    <span className="truncate text-muted-foreground">
+                      &quot;{ trimmedCustomerSearchValue }&quot;
+                    </span>
+                  ) }
+                  <Kbd className="ml-auto flex items-center gap-1 text-[10px] bg-primary border-primary text-primary-foreground dark:bg-muted/70 dark:border-border dark:text-muted-foreground">
+                    Enter
+                  </Kbd>
+                </CommandItem>
+                { customerQuickActions.map((action) => {
+                  const ActionIcon = action.icon;
+
+                  return (
+                    <CommandItem
+                      key={ action.value }
+                      value={ action.value }
+                      onSelect={ () => handleCustomerQuickActionNavigate(action.href) }
+                      className={ marketplaceSearchActionItemClassName }
+                    >
+                      <ActionIcon className="size-4" aria-hidden="true" />
+                      <span>{ action.label }</span>
+                    </CommandItem>
+                  );
+                }) }
+                { trimmedCustomerSearchValue && (
+                  <CommandItem
+                    value="clear search"
+                    onSelect={ () => setCustomerSearchValue('') }
+                    className={ marketplaceSearchActionItemClassName }
+                  >
+                    <X className="size-4" aria-hidden="true" />
+                    <span>Clear search</span>
+                  </CommandItem>
+                ) }
+              </CommandGroup>
+            </CommandList>
+          </CommandDialog>
+          <VoiceSearchDialog
+            open={ isVoiceSearchOpen }
+            onOpenChange={ setIsVoiceSearchOpen }
+            onSubmit={ handleCustomerVoiceSearchSubmit }
+          />
+        </>
+      ) }
       { dialogSlot }
       { isMobile && (
-        <MobileTopNav
-          avatarUrl={ cachedAvatarUrl }
-          avatarFallback={ navData.avatarFallback }
-          onSearchOpen={ handleSearch }
-          displayName={ navData.avatarDisplayName }
-          emailLabel={ navData.userEmail ?? 'Email unavailable' }
-          onNavigate={ navData.onNavigate }
-          onLogout={ navData.onLogout }
-          isGuest={ navData.isGuest }
-          showSidebarToggle={ isPartnerRole }
-          showThemeSwitcher={ isCustomerRole || isAdminRole }
-          showNotifications={ shouldShowNotifications }
-          showTransactionHistory={ showTransactionHistory }
-          showAccountLinks={ !isAdminRole }
-        />
+          <MobileTopNav
+            avatarUrl={ cachedAvatarUrl }
+            avatarFallback={ navData.avatarFallback }
+            onSearchOpen={ handleSearch }
+            displayName={ navData.avatarDisplayName }
+            emailLabel={ navData.userEmail ?? 'Email unavailable' }
+            onNavigate={ navData.onNavigate }
+            onLogout={ navData.onLogout }
+            isGuest={ navData.isGuest }
+            showSidebarToggle={ isPartnerRole }
+            showThemeSwitcher={ isCustomerRole || isAdminRole }
+            showNotifications={ shouldShowNotifications }
+            showTransactionHistory={ showTransactionHistory }
+            showAccountLinks={ !isAdminRole }
+            transactionHistoryHref={ transactionHistoryHref }
+            notificationsHref={ notificationsHref }
+            settingsHref={ settingsHref }
+          />
       ) }
       <div className="flex min-h-screen w-full gap-5">
         <Sidebar
@@ -1402,15 +1652,12 @@ export function MarketplaceChrome({
                   ) }
                   { shouldShowNotifications && (
                     <SidebarLinkItem
-                      href="/customer/notifications"
+                      href={ notificationsHref }
                       label="Notifications"
                       icon={ NotificationIcon }
                       tooltip="Notifications"
                       iconProps={ { className: 'size-[19px] -translate-y-px', } }
-                      isActive={ isSidebarPathActive(
-                        pathname,
-                        '/customer/notifications'
-                      ) }
+                      isActive={ isSidebarPathActive(pathname, notificationsHref) }
                     />
                   ) }
                   { isCustomerRole && (
@@ -1430,6 +1677,7 @@ export function MarketplaceChrome({
                       icon={ SidebarMessageIcon }
                       tooltip="Messages"
                       iconProps={ { strokeWidth: 2, } }
+                      hasUnreadDot={ hasUnreadMessages }
                       isActive={ isSidebarPathActive(
                         pathname,
                         resolvedMessageHref,
@@ -1505,25 +1753,37 @@ export function MarketplaceChrome({
                   ) }
                   { isAdminRole && (
                     <SidebarLinkItem
-                      href="/marketplace/dashboard"
+                      href="/admin/dashboard"
                       label="Dashboard"
                       icon={ BarChart3 }
                       tooltip="Dashboard"
                       iconProps={ { strokeWidth: 2, } }
                       isActive={ isSidebarPathActive(
                         pathname,
-                        '/marketplace/dashboard'
+                        '/admin/dashboard'
                       ) }
                     />
                   ) }
                   { isAdminRole && (
                     <SidebarLinkItem
-                      href="/admin"
+                      href="/admin/reports"
+                      label="Reports"
+                      icon={ FiTrendingUp }
+                      tooltip="Reports"
+                      isActive={ isSidebarPathActive(
+                        pathname,
+                        '/admin/reports'
+                      ) }
+                    />
+                  ) }
+                  { isAdminRole && (
+                    <SidebarLinkItem
+                      href="/admin/verification-queue"
                       label="Verification Queue"
                       icon={ FileText }
                       tooltip="Verification queue"
                       iconProps={ { strokeWidth: 2, } }
-                      isActive={ isSidebarPathActive(pathname, '/admin') }
+                      isActive={ isSidebarPathActive(pathname, '/admin/verification-queue') }
                     />
                   ) }
                   { isAdminRole && (
@@ -1549,6 +1809,19 @@ export function MarketplaceChrome({
                       isActive={ isSidebarPathActive(
                         pathname,
                         '/admin/unpublish-requests'
+                      ) }
+                    />
+                  ) }
+                  { isAdminRole && (
+                    <SidebarLinkItem
+                      href="/admin/chat-reports"
+                      label="Chat reports"
+                      icon={ FiFlag }
+                      tooltip="Chat reports"
+                      iconProps={ { strokeWidth: 2, } }
+                      isActive={ isSidebarPathActive(
+                        pathname,
+                        '/admin/chat-reports'
                       ) }
                     />
                   ) }
@@ -1589,10 +1862,12 @@ export function MarketplaceChrome({
               isGuest={ navData.isGuest }
               isSidebarLoading={ navData.isSidebarLoading }
               showNotifications={ shouldShowNotifications }
-              showAccount={ !isAdminRole }
               showWallet={ isPartnerRole }
               showTransactionHistory={ showTransactionHistory }
               showSettings={ !isAdminRole }
+              transactionHistoryHref={ transactionHistoryHref }
+              notificationsHref={ notificationsHref }
+              settingsHref={ settingsHref }
             />
           </SidebarFooter>
           <SidebarRail />

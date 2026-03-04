@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiUsers } from 'react-icons/fi';
 import { toast } from 'sonner';
 
 import { AdminRowActions } from './AdminRowActions';
@@ -70,6 +70,7 @@ export function AdminUsersPage() {
     isError,
     error,
     isFetching,
+    refetch,
   } = useAdminUsersQuery({
     limit: pageSize,
     cursor,
@@ -221,7 +222,7 @@ export function AdminUsersPage() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-md border border-border/70 bg-background/80 shadow-sm">
+          <div className="overflow-hidden rounded-md border border-border/70 bg-muted/20">
             { isLoadingPage ? (
               <div className="rounded-md border border-border/70 bg-background/80">
                 <Table>
@@ -267,6 +268,11 @@ export function AdminUsersPage() {
                 <p className="mt-4 text-center text-sm text-muted-foreground">
                   { error instanceof Error ? error.message : 'Unable to load users right now.' }
                 </p>
+                <div className="mt-4 flex justify-center">
+                  <Button variant="outline" size="sm" onClick={ () => refetch() }>
+                    Retry
+                  </Button>
+                </div>
               </div>
             ) : (
               <Table>
@@ -333,8 +339,13 @@ export function AdminUsersPage() {
                   )) }
                   { users.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={ 6 } className="py-8 text-center text-sm text-muted-foreground">
-                        No users matched your search.
+                      <TableCell colSpan={ 6 } className="py-12 text-center">
+                        <div className="flex flex-col items-center gap-2">
+                          <FiUsers className="size-5 text-muted-foreground" aria-hidden="true" />
+                          <p className="text-sm text-muted-foreground">
+                            { searchParam ? 'No users matched your search.' : 'No users found.' }
+                          </p>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ) }
