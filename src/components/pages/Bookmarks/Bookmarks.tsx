@@ -174,6 +174,7 @@ export function Bookmarks({ bookmarkUserId, }: BookmarksProps) {
               key={ space.space_id }
               space={ space }
               onBookmarkChange={ handleBookmarkChange }
+              canUseBookmarks
             />
           )) }
         </div>

@@ -123,7 +123,7 @@ const MetricCard = ({
   }, [changePct]);
 
   return (
-    <Card className="rounded-md border border-border/70 bg-background/80 shadow-sm">
+    <Card className="rounded-md border border-border/70 bg-muted/20 shadow-none">
       <CardHeader className="space-y-1">
         <CardTitle className="text-base font-semibold">{ title }</CardTitle>
         <CardDescription className="text-xs text-muted-foreground">
@@ -337,127 +337,123 @@ export function AdminReportsPage() {
 
             <Separator />
 
-            <div className="grid gap-6 lg:grid-cols-2">
-              <Card className="rounded-md border border-border/70 bg-background/80 shadow-sm">
-                <CardHeader className="space-y-1">
-                  <CardTitle className="text-base font-semibold">
+            <div className="grid gap-8 lg:grid-cols-2">
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <h3 className="text-lg font-semibold tracking-tight">
                     Queue Health
-                  </CardTitle>
-                  <CardDescription className="text-xs text-muted-foreground">
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
                     Pending volume and resolution speed for admin queues.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="overflow-hidden rounded-md border border-border/70">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Queue</TableHead>
-                          <TableHead>Pending</TableHead>
-                          <TableHead>Oldest (days)</TableHead>
-                          <TableHead>Avg resolution (days)</TableHead>
-                          <TableHead>Resolved</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        { isLoadingData ? (
-                          <TableSkeletonRows rows={ 4 } columns={ 5 } />
-                        ) : queueHealth.length ? (
-                          queueHealth.map((queue) => (
-                            <TableRow key={ queue.key }>
-                              <TableCell className="font-medium">
-                                { queue.label }
-                              </TableCell>
-                              <TableCell>{ formatCount(queue.pendingCount) }</TableCell>
-                              <TableCell>
-                                { queue.oldestPendingDays === null
-                                  ? '-'
-                                  : queue.oldestPendingDays }
-                              </TableCell>
-                              <TableCell>
-                                { queue.averageResolutionDays === null
-                                  ? '-'
-                                  : queue.averageResolutionDays.toFixed(1) }
-                              </TableCell>
-                              <TableCell>
-                                { formatCount(queue.resolvedCount) }
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={ 5 } className="py-10 text-center text-sm text-muted-foreground">
-                              No queue activity in this range.
+                  </p>
+                </div>
+                <div className="overflow-hidden rounded-md border border-border/70 bg-muted/20">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Queue</TableHead>
+                        <TableHead>Pending</TableHead>
+                        <TableHead>Oldest (days)</TableHead>
+                        <TableHead>Avg resolution (days)</TableHead>
+                        <TableHead>Resolved</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      { isLoadingData ? (
+                        <TableSkeletonRows rows={ 4 } columns={ 5 } />
+                      ) : queueHealth.length ? (
+                        queueHealth.map((queue) => (
+                          <TableRow key={ queue.key }>
+                            <TableCell className="font-medium">
+                              { queue.label }
+                            </TableCell>
+                            <TableCell>{ formatCount(queue.pendingCount) }</TableCell>
+                            <TableCell>
+                              { queue.oldestPendingDays === null
+                                ? '-'
+                                : queue.oldestPendingDays }
+                            </TableCell>
+                            <TableCell>
+                              { queue.averageResolutionDays === null
+                                ? '-'
+                                : queue.averageResolutionDays.toFixed(1) }
+                            </TableCell>
+                            <TableCell>
+                              { formatCount(queue.resolvedCount) }
                             </TableCell>
                           </TableRow>
-                        ) }
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CardContent>
-              </Card>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={ 5 } className="py-10 text-center text-sm text-muted-foreground">
+                            No queue activity in this range.
+                          </TableCell>
+                        </TableRow>
+                      ) }
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
 
-              <Card className="rounded-md border border-border/70 bg-background/80 shadow-sm">
-                <CardHeader className="space-y-1">
-                  <CardTitle className="text-base font-semibold">
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <h3 className="text-lg font-semibold tracking-tight">
                     Cancellation Risk
-                  </CardTitle>
-                  <CardDescription className="text-xs text-muted-foreground">
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
                     Spaces with the highest cancellation rates in the period.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="overflow-hidden rounded-md border border-border/70">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Space</TableHead>
-                          <TableHead>Location</TableHead>
-                          <TableHead>Bookings</TableHead>
-                          <TableHead>Cancelled</TableHead>
-                          <TableHead>Rate</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        { isLoadingData ? (
-                          <TableSkeletonRows rows={ 4 } columns={ 5 } />
-                        ) : topCancellationSpaces.length ? (
-                          topCancellationSpaces.map((space) => (
-                            <TableRow key={ space.space_id }>
-                              <TableCell className="font-medium">
-                                { space.space_name }
-                              </TableCell>
-                              <TableCell>
-                                { space.city }, { space.region }
-                              </TableCell>
-                              <TableCell>{ formatCount(space.totalBookings) }</TableCell>
-                              <TableCell>{ formatCount(space.cancelledBookings) }</TableCell>
-                              <TableCell>
-                                <span
-                                  className={ cn(
-                                    'text-xs font-semibold',
-                                    space.cancellationRate >= 0.3
-                                      ? 'text-destructive'
-                                      : 'text-muted-foreground'
-                                  ) }
-                                >
-                                  { formatRate(space.cancellationRate) }
-                                </span>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={ 5 } className="py-10 text-center text-sm text-muted-foreground">
-                              No high-cancellation spaces in this range.
+                  </p>
+                </div>
+                <div className="overflow-hidden rounded-md border border-border/70 bg-muted/20">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Space</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Bookings</TableHead>
+                        <TableHead>Cancelled</TableHead>
+                        <TableHead>Rate</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      { isLoadingData ? (
+                        <TableSkeletonRows rows={ 4 } columns={ 5 } />
+                      ) : topCancellationSpaces.length ? (
+                        topCancellationSpaces.map((space) => (
+                          <TableRow key={ space.space_id }>
+                            <TableCell className="font-medium">
+                              { space.space_name }
+                            </TableCell>
+                            <TableCell>
+                              { space.city }, { space.region }
+                            </TableCell>
+                            <TableCell>{ formatCount(space.totalBookings) }</TableCell>
+                            <TableCell>{ formatCount(space.cancelledBookings) }</TableCell>
+                            <TableCell>
+                              <span
+                                className={ cn(
+                                  'text-xs font-semibold',
+                                  space.cancellationRate >= 0.3
+                                    ? 'text-destructive'
+                                    : 'text-muted-foreground'
+                                ) }
+                              >
+                                { formatRate(space.cancellationRate) }
+                              </span>
                             </TableCell>
                           </TableRow>
-                        ) }
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CardContent>
-              </Card>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={ 5 } className="py-10 text-center text-sm text-muted-foreground">
+                            No high-cancellation spaces in this range.
+                          </TableCell>
+                        </TableRow>
+                      ) }
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
             </div>
           </>
         ) }

@@ -180,6 +180,11 @@ export async function middleware(request: NextRequest) {
         ? ROLE_REDIRECT_MAP[profile.role]
         : '/marketplace';
 
+    if (profile?.role === 'admin' && pathname === '/marketplace/dashboard') {
+      const adminDashboardUrl = new URL('/admin/dashboard', request.url);
+      return redirectWithCookies(adminDashboardUrl, response);
+    }
+
     if (process.env.NODE_ENV === 'development') {
       console.log(`[Middleware] Auth user on ${pathname}: onboarded=${isOnboard}, role=${profile?.role}, target=${redirectTarget}`);
     }

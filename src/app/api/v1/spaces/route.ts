@@ -1,4 +1,4 @@
-import type { Prisma, verification_status } from '@prisma/client';
+import { Prisma, type verification_status } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -720,23 +720,50 @@ export async function GET(req: NextRequest) {
     const nextCursor = hasNext ? items[items.length - 1].id : null;
     const spaceIds = items.map((space) => space.id);
 
-    // Preload rating aggregates for listed spaces to avoid N+1 queries
-    const ratingAggregates = spaceIds.length > 0
-      ? await prisma.review.groupBy({
-        by: ['space_id'],
-        where: { space_id: { in: spaceIds, }, },
-        _avg: { rating_star: true, },
-        _count: { rating_star: true, },
-      })
-      : [];
+    // Batch-fetch ratings and bookmarks via Postgres functions
+    interface RatingRow { space_id: string; average_rating: number; total_reviews: number }
+    interface BookmarkRow { db_user_id: bigint; space_id: string | null }
+
+    const ratingPromise = spaceIds.length > 0
+      ? prisma.$queryRaw<RatingRow[]>(
+        Prisma.sql`SELECT * FROM get_space_ratings_batch(${spaceIds}::uuid[])`
+      )
+      : Promise.resolve([] as RatingRow[]);
+
+    // Resolve bookmarks: use batch RPC for authenticated users, Prisma for bookmark_user_id param
+    let bookmarkPromise: Promise<Set<string> | null>;
+    if (bookmark_user_id) {
+      // Explicit bookmark_user_id filter — already applied in WHERE clause,
+      // but we still need the set for the isBookmarked flag
+      bookmarkPromise = spaceIds.length > 0
+        ? prisma.bookmark.findMany({
+          where: {
+            user_id: BigInt(bookmark_user_id),
+            space_id: { in: spaceIds, },
+          },
+          select: { space_id: true, },
+        }).then((rows) => new Set(rows.map((r) => r.space_id).filter((id): id is string => id !== null)))
+        : Promise.resolve(null);
+    } else if (supabaseUserId && spaceIds.length > 0) {
+      bookmarkPromise = prisma.$queryRaw<BookmarkRow[]>(
+        Prisma.sql`SELECT * FROM get_user_bookmarks_batch(${supabaseUserId}::uuid, ${spaceIds}::uuid[])`
+      ).then((rows) => {
+        const ids = rows
+          .filter((r) => r.space_id !== null)
+          .map((r) => r.space_id as string);
+        return ids.length > 0 ? new Set(ids) : null;
+      });
+    } else {
+      bookmarkPromise = Promise.resolve(null);
+    }
+
+    const [ratingRows, bookmarkedSpaceIds] = await Promise.all([ratingPromise, bookmarkPromise]);
 
     const ratingMap = new Map<string, { average_rating: number; total_reviews: number }>();
-    for (const aggregate of ratingAggregates) {
-      const avg = aggregate._avg.rating_star ?? null;
-      const count = aggregate._count.rating_star ?? 0;
-      ratingMap.set(aggregate.space_id, {
-        average_rating: avg === null ? 0 : Number(avg),
-        total_reviews: count,
+    for (const row of ratingRows) {
+      ratingMap.set(row.space_id, {
+        average_rating: Number(row.average_rating),
+        total_reviews: row.total_reviews,
       });
     }
 
@@ -751,29 +778,6 @@ export async function GET(req: NextRequest) {
       const startingPrice = computeStartingPriceFromAreasCached(space.id, areaPayloads);
       startingPriceMap.set(space.id, startingPrice);
     }
-
-    let bookmarkLookupUserId: bigint | null = null;
-    if (bookmark_user_id) {
-      bookmarkLookupUserId = BigInt(bookmark_user_id);
-    } else if (spaceIds.length > 0 && supabaseUserId) {
-      const dbUser = await prisma.user.findFirst({
-        where: { auth_user_id: supabaseUserId, },
-        select: { user_id: true, },
-      });
-      bookmarkLookupUserId = dbUser?.user_id ?? null;
-    }
-
-    const bookmarkedSpaceIds = bookmarkLookupUserId && spaceIds.length > 0
-      ? new Set(
-        (await prisma.bookmark.findMany({
-          where: {
-            user_id: bookmarkLookupUserId,
-            space_id: { in: spaceIds, },
-          },
-          select: { space_id: true, },
-        })).map((bookmark) => bookmark.space_id)
-      )
-      : null;
 
     const payload = items.map((space) => {
       const base = serializeSpace(space);

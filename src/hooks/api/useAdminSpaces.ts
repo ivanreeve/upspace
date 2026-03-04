@@ -58,6 +58,7 @@ export function useAdminSpacesQuery({
 
   return useQuery<AdminSpacesPage>({
     queryKey: adminSpacesKeys.list(normalizedSearch, limit, cursor),
+    staleTime: 30_000,
     queryFn: async () => {
       const params = new URLSearchParams({ limit: String(limit), });
       if (normalizedSearch) {

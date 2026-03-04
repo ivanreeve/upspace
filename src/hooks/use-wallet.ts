@@ -64,10 +64,7 @@ export function useWallet(options?: { enabled?: boolean }) {
   return useQuery<WalletData>({
     queryKey: walletQueryKey,
     queryFn: async () => {
-      const response = await fetch('/api/v1/wallet?limit=1', {
-        credentials: 'same-origin',
-        cache: 'no-store',
-      });
+      const response = await fetch('/api/v1/wallet?limit=1', { credentials: 'same-origin', });
 
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
@@ -102,10 +99,7 @@ export function useWalletTransactions(options?: {
       if (filters?.type) params.set('type', filters.type);
       if (filters?.status) params.set('status', filters.status);
 
-      const response = await fetch(`/api/v1/wallet?${params.toString()}`, {
-        credentials: 'same-origin',
-        cache: 'no-store',
-      });
+      const response = await fetch(`/api/v1/wallet?${params.toString()}`, { credentials: 'same-origin', });
 
       const payload = await response.json().catch(() => null);
       if (!response.ok) {

@@ -42,12 +42,22 @@ headers: { 'Retry-After': error.retryAfter.toString(), },
 
   const dbUser = await prisma.user.findFirst({
     where: { auth_user_id: authData.user.id, },
-    select: { user_id: true, },
+    select: {
+      user_id: true,
+      role: true,
+    },
   });
 
   if (!dbUser) {
     return NextResponse.json(
       { error: 'User profile not found.', },
+      { status: 403, }
+    );
+  }
+
+  if (dbUser.role === 'admin') {
+    return NextResponse.json(
+      { error: 'Bookmarks are not available for admin accounts.', },
       { status: 403, }
     );
   }
@@ -137,12 +147,22 @@ headers: { 'Retry-After': error.retryAfter.toString(), },
 
   const dbUser = await prisma.user.findFirst({
     where: { auth_user_id: authData.user.id, },
-    select: { user_id: true, },
+    select: {
+      user_id: true,
+      role: true,
+    },
   });
 
   if (!dbUser) {
     return NextResponse.json(
       { error: 'User profile not found.', },
+      { status: 403, }
+    );
+  }
+
+  if (dbUser.role === 'admin') {
+    return NextResponse.json(
+      { error: 'Bookmarks are not available for admin accounts.', },
       { status: 403, }
     );
   }

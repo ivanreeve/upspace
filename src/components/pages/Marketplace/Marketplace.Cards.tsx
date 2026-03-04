@@ -18,6 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { Space } from '@/lib/api/spaces';
 import { cn } from '@/lib/utils';
 import { useSession } from '@/components/auth/SessionProvider';
+import { useUserProfile } from '@/hooks/use-user-profile';
 
 const peso = new Intl.NumberFormat('en-PH', {
   style: 'currency',
@@ -49,6 +50,10 @@ export function SkeletonGrid({ count = 12, }: { count?: number }) {
 export function CardsGrid({
  items, isLoading,
 }: { items: Space[]; isLoading?: boolean }) {
+  const { session, } = useSession();
+  const { data: userProfile, } = useUserProfile();
+  const canUseBookmarks = Boolean(session) && userProfile?.role !== 'admin';
+
   if (items.length === 0) {
     if (isLoading) {
       return <SkeletonGrid />;
@@ -58,7 +63,11 @@ export function CardsGrid({
   return (
     <div className="grid w-full justify-items-stretch grid-cols-1 gap-x-5 gap-y-6 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
       { items.map((space) => (
-        <SpaceCard key={ space.space_id } space={ space } />
+        <SpaceCard
+          key={ space.space_id }
+          space={ space }
+          canUseBookmarks={ canUseBookmarks }
+        />
       )) }
     </div>
   );
@@ -67,12 +76,12 @@ export function CardsGrid({
 function SpaceCardComponent({
   space,
   onBookmarkChange,
+  canUseBookmarks,
 }: {
   space: Space;
   onBookmarkChange?: (spaceId: string, isBookmarked: boolean) => void;
+  canUseBookmarks: boolean;
 }) {
-  const { session, } = useSession();
-  const isGuest = !session;
   const [isSaved, setIsSaved] = useState(Boolean(space.isBookmarked));
   const [isSaving, setIsSaving] = useState(false);
 
@@ -92,7 +101,7 @@ function SpaceCardComponent({
       : null;
 
   const handleToggleSave = useCallback(async () => {
-    if (isSaving) {
+    if (!canUseBookmarks || isSaving) {
       return;
     }
 
@@ -122,7 +131,7 @@ function SpaceCardComponent({
     } finally {
       setIsSaving(false);
     }
-  }, [isSaved, isSaving, onBookmarkChange, space.space_id]);
+  }, [canUseBookmarks, isSaved, isSaving, onBookmarkChange, space.space_id]);
 
   return (
     <Card className="w-full rounded-md group flex flex-col overflow-hidden text-card-foreground border-none bg-transparent shadow-none py-0 !gap-3">
@@ -139,7 +148,7 @@ function SpaceCardComponent({
         ) : (
           <div className="h-full w-full rounded-md bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/20" />
         ) }
-        { !isGuest && (
+        { canUseBookmarks && (
           <button
             type="button"
             onClick={ handleToggleSave }
@@ -214,6 +223,7 @@ export const SpaceCard = memo(SpaceCardComponent, (prevProps, nextProps) => {
     prevProps.space.total_reviews === nextProps.space.total_reviews &&
     prevProps.space.image_url === nextProps.space.image_url &&
     prevProps.space.distance_meters === nextProps.space.distance_meters &&
-    prevProps.onBookmarkChange === nextProps.onBookmarkChange
+    prevProps.onBookmarkChange === nextProps.onBookmarkChange &&
+    prevProps.canUseBookmarks === nextProps.canUseBookmarks
   );
 });

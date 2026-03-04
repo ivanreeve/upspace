@@ -222,7 +222,7 @@ export function AdminUsersPage() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-md border border-border/70 bg-background/80 shadow-sm">
+          <div className="overflow-hidden rounded-md border border-border/70 bg-muted/20">
             { isLoadingPage ? (
               <div className="rounded-md border border-border/70 bg-background/80">
                 <Table>

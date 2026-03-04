@@ -97,7 +97,7 @@ export function useMarkNotificationRead() {
       return payload.data as NotificationRecord;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: notificationKeys.all, });
+      queryClient.invalidateQueries({ queryKey: notificationKeys.list(), });
     },
   });
 }
@@ -118,7 +118,7 @@ export function useMarkAllNotificationsRead() {
       return (payload?.data ?? { updatedCount: 0, }) as { updatedCount: number };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: notificationKeys.all, });
+      queryClient.invalidateQueries({ queryKey: notificationKeys.list(), });
     },
   });
 }
@@ -143,7 +143,7 @@ export function useDeleteNotification() {
       return payload.data as { deleted: boolean };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: notificationKeys.all, });
+      queryClient.invalidateQueries({ queryKey: notificationKeys.list(), });
     },
   });
 }

@@ -1218,7 +1218,7 @@ export function MarketplaceChrome({
         },
         {
           label: 'Dashboard',
-          href: '/marketplace/dashboard',
+          href: '/admin/dashboard',
           icon: BarChart3,
         },
         {
@@ -1228,7 +1228,7 @@ export function MarketplaceChrome({
         },
         {
           label: 'Queue',
-          href: '/admin',
+          href: '/admin/verification-queue',
           icon: FileText,
         },
         {
@@ -1544,14 +1544,14 @@ export function MarketplaceChrome({
                   ) }
                   { isAdminRole && (
                     <SidebarLinkItem
-                      href="/marketplace/dashboard"
+                      href="/admin/dashboard"
                       label="Dashboard"
                       icon={ BarChart3 }
                       tooltip="Dashboard"
                       iconProps={ { strokeWidth: 2, } }
                       isActive={ isSidebarPathActive(
                         pathname,
-                        '/marketplace/dashboard'
+                        '/admin/dashboard'
                       ) }
                     />
                   ) }
@@ -1569,12 +1569,12 @@ export function MarketplaceChrome({
                   ) }
                   { isAdminRole && (
                     <SidebarLinkItem
-                      href="/admin"
+                      href="/admin/verification-queue"
                       label="Verification Queue"
                       icon={ FileText }
                       tooltip="Verification queue"
                       iconProps={ { strokeWidth: 2, } }
-                      isActive={ isSidebarPathActive(pathname, '/admin') }
+                      isActive={ isSidebarPathActive(pathname, '/admin/verification-queue') }
                     />
                   ) }
                   { isAdminRole && (

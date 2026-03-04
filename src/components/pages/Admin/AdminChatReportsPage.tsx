@@ -1,7 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import {
+  FiAlertCircle,
+  FiCheckCircle,
+  FiChevronLeft,
+  FiChevronRight,
+  FiXCircle
+} from 'react-icons/fi';
 import { toast } from 'sonner';
 
 import {
@@ -323,7 +329,7 @@ export function AdminChatReportsPage() {
     }
 
     return (
-      <div className="overflow-hidden rounded-md border border-border/70 bg-background/80 shadow-sm">
+      <div className="overflow-hidden rounded-md border border-border/70 bg-muted/20">
         <Table>
           <TableHeader>
             <TableRow>
@@ -371,7 +377,10 @@ export function AdminChatReportsPage() {
                 </TableCell>
                 <TableCell>{ formatDate(report.created_at) }</TableCell>
                 <TableCell>
-                  <Badge variant={ mapStatusVariant(report.status) }>
+                  <Badge variant={ mapStatusVariant(report.status) } className="gap-1.5">
+                    { report.status === 'pending' && <FiAlertCircle className="size-3.5" aria-hidden="true" /> }
+                    { report.status === 'resolved' && <FiCheckCircle className="size-3.5" aria-hidden="true" /> }
+                    { report.status === 'dismissed' && <FiXCircle className="size-3.5" aria-hidden="true" /> }
                     { CHAT_REPORT_STATUS_LABELS[report.status] }
                   </Badge>
                 </TableCell>
@@ -382,25 +391,27 @@ export function AdminChatReportsPage() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="rounded-md"
+                        className="gap-1.5 rounded-md"
                         disabled={ resolveMutation.isPending || dismissMutation.isPending }
                         onClick={ () => handleResolve(report) }
                       >
+                        <FiCheckCircle className="size-4" aria-hidden="true" />
                         Resolve
                       </Button>
                       <Button
                         type="button"
                         variant="destructive"
                         size="sm"
-                        className="rounded-md"
+                        className="gap-1.5 rounded-md"
                         disabled={ resolveMutation.isPending || dismissMutation.isPending }
                         onClick={ () => openDismissDialog(report) }
                       >
+                        <FiXCircle className="size-4" aria-hidden="true" />
                         Dismiss
                       </Button>
                     </div>
                   ) : (
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground text-right block">
                       { report.processed_by ? `By ${report.processed_by.name}` : 'Processed' }
                     </span>
                   ) }
@@ -432,8 +443,11 @@ export function AdminChatReportsPage() {
                 <TabsTrigger
                   key={ tab.value }
                   value={ tab.value }
-                  className="rounded-md px-3 py-1.5"
+                  className="gap-2 rounded-md px-3 py-1.5"
                 >
+                  { tab.value === 'pending' && <FiAlertCircle className="size-4" aria-hidden="true" /> }
+                  { tab.value === 'resolved' && <FiCheckCircle className="size-4" aria-hidden="true" /> }
+                  { tab.value === 'dismissed' && <FiXCircle className="size-4" aria-hidden="true" /> }
                   { tab.label }
                 </TabsTrigger>
               )) }
@@ -528,8 +542,8 @@ export function AdminChatReportsPage() {
           <DialogFooter>
             <Button
               type="button"
-              variant="outline"
-              className="rounded-md"
+              variant="ghost"
+              className="hover:bg-sidebar rounded-md"
               onClick={ () => {
                 setDismissingReport(null);
                 setDismissalNote('');

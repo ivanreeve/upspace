@@ -147,6 +147,7 @@ export function useAdminDashboardQuery(options?: AdminDashboardQueryOptions) {
       const payload = await response.json();
       return payload.data;
     },
+    staleTime: 30_000,
     ...options,
   });
 }

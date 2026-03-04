@@ -107,6 +107,7 @@ export function useAdminReportsQuery({
 
   return useQuery<AdminReportPayload>({
     queryKey: adminReportsKeys.detail(days),
+    staleTime: 30_000,
     queryFn: async () => {
       const params = new URLSearchParams({ days: String(days), });
       const response = await authFetch(`/api/v1/admin/reports?${params.toString()}`);

@@ -48,6 +48,7 @@ export function useCustomerChatRoom(spaceId: string | null) {
   return useQuery<ChatRoomDetail | null>({
     queryKey: spaceId ? chatKeys.roomDetail(spaceId) : ['chat-room', 'space', spaceId],
     enabled: Boolean(spaceId),
+    staleTime: 15_000,
     queryFn: async () => {
       if (!spaceId) {
         return null;
@@ -106,6 +107,7 @@ export function useChatMessages(roomId: string | null) {
   return useQuery<ChatMessage[]>({
     queryKey: roomId ? chatKeys.messages(roomId) : ['chat-room', 'messages', roomId],
     enabled: Boolean(roomId),
+    staleTime: 10_000,
     queryFn: async () => {
       if (!roomId) {
         return [];

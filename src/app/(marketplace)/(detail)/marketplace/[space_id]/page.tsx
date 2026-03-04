@@ -49,8 +49,11 @@ export default async function SpaceDetailPage({ params, }: Props) {
   const bookmarkUserPromise = authData?.user
     ? prisma.user.findFirst({
       where: { auth_user_id: authData.user.id, },
-      select: { user_id: true, },
-    })
+      select: {
+        user_id: true,
+        role: true,
+      },
+    }).then((dbUser) => (dbUser?.role === 'admin' ? null : dbUser))
     : Promise.resolve(null);
 
   let space: Awaited<ReturnType<typeof getSpaceDetail>> = null;

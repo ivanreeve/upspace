@@ -1,9 +1,9 @@
 import { MarketplaceDashboardContent } from './MarketplaceDashboardContent';
 
 export const metadata = {
-  title: 'Admin Dashboard | UpSpace',
+  title: 'Marketplace Dashboard | UpSpace',
   description:
-    'Unified audit log spanning bookings, coworking spaces, client registrations, and partner verifications.',
+    'Access role-specific marketplace insights and communication tools.',
 };
 
 export default function MarketplaceDashboardPage() {

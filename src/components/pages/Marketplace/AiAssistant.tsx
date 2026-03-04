@@ -296,6 +296,8 @@ function BookingConfirmationCard({ bookingAction, }: {
   bookingAction: BookingAction;
 }) {
   const checkoutMutation = useCreateCheckoutSessionMutation();
+  const { data: profile, } = useUserProfile();
+  const isCustomer = profile?.role === 'customer';
 
   const handleProceedToPayment = () => {
     checkoutMutation.mutate(
@@ -387,14 +389,20 @@ function BookingConfirmationCard({ bookingAction, }: {
           </p>
         ) : null }
 
-        <Button
-          className="w-full"
-          onClick={ handleProceedToPayment }
-          disabled={ checkoutMutation.isPending }
-          aria-label="Proceed to payment checkout"
-        >
-          { checkoutMutation.isPending ? 'Starting checkout...' : 'Proceed to Payment' }
-        </Button>
+        { isCustomer ? (
+          <Button
+            className="w-full"
+            onClick={ handleProceedToPayment }
+            disabled={ checkoutMutation.isPending }
+            aria-label="Proceed to payment checkout"
+          >
+            { checkoutMutation.isPending ? 'Starting checkout...' : 'Proceed to Payment' }
+          </Button>
+        ) : (
+          <p className="text-xs text-center text-muted-foreground">
+            Only customers can book reservations.
+          </p>
+        ) }
       </CardContent>
     </Card>
   );
@@ -404,16 +412,18 @@ function MessageBubble({
   message,
   isThinking = false,
   iconRef,
+  canUseBookmarks,
 }: {
   message: ChatMessage;
   isThinking?: boolean;
   iconRef?: (node: HTMLDivElement | null) => void;
+  canUseBookmarks: boolean;
 }) {
   const [searchingMessageIndex, setSearchingMessageIndex] = React.useState(0);
   const isUser = message.role === 'user';
   const hasSpaceResults = Boolean(message.spaceResults?.length);
   const hasContent = message.content.trim().length > 0;
-  const shouldShowBubble = isThinking || (!hasSpaceResults && hasContent);
+  const shouldShowBubble = isThinking || hasContent;
 
   React.useEffect(() => {
     if (!isThinking) return;
@@ -479,14 +489,20 @@ function MessageBubble({
                       key={ space.space_id }
                       className="min-w-[320px] max-w-[360px] snap-start space-card-entrance"
                     >
-                      <SpaceCard space={ space } />
+                      <SpaceCard
+                        space={ space }
+                        canUseBookmarks={ canUseBookmarks }
+                      />
                     </div>
                   )) }
                 </div>
               </div>
             ) : (
               <div className="space-card-entrance">
-                <SpaceCard space={ message.spaceResults![0] } />
+                <SpaceCard
+                  space={ message.spaceResults![0] }
+                  canUseBookmarks={ canUseBookmarks }
+                />
               </div>
             ) }
           </div>
@@ -530,6 +546,8 @@ export function AiAssistant() {
   } | null>(null);
   const hasMessages = messages.length > 0;
   const { data: userProfile, } = useUserProfile();
+  const canUseBookmarks =
+    userProfile?.role === 'customer' || userProfile?.role === 'partner';
   const {
     location: userLocation, error: locationError,
   } = useGeolocation();
@@ -1196,6 +1214,7 @@ conversationId: finalConversationId,
                         <MessageBubble
                           key={ message.id }
                           message={ message }
+                          canUseBookmarks={ canUseBookmarks }
                           iconRef={
                             message.role === 'assistant'
                               ? registerIconRef(message.id)
@@ -1211,6 +1230,7 @@ conversationId: finalConversationId,
                             role: 'assistant',
                             content: 'Thinking…',
                           } }
+                          canUseBookmarks={ canUseBookmarks }
                           isThinking
                           iconRef={ registerIconRef('assistant-thinking') }
                         />

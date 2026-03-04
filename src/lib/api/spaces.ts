@@ -95,10 +95,7 @@ export async function listSpaces(params: ListSpacesParams = {}) {
   }
 
   const query = sp.toString();
-  const response = await fetch(query ? `/api/v1/spaces?${query}` : '/api/v1/spaces', {
-    headers: { accept: 'application/json', },
-    cache: 'no-store',
-  });
+  const response = await fetch(query ? `/api/v1/spaces?${query}` : '/api/v1/spaces', { headers: { accept: 'application/json', }, });
   if (!response.ok) {
     throw new Error(`Failed to fetch spaces (${response.status})`);
   }
@@ -122,7 +119,6 @@ export async function suggestSpaces(params: SuggestSpacesParams) {
   const query = sp.toString();
   const response = await fetch(`/api/v1/spaces/suggest?${query}`, {
     headers: { accept: 'application/json', },
-    cache: 'no-store',
     signal: params.signal,
   });
 

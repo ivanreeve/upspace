@@ -14,7 +14,7 @@ export const ONBOARDING_PATH = '/onboarding';
 export const ROLE_REDIRECT_MAP: Record<string, string> = {
   customer: '/marketplace',
   partner: '/partner/spaces',
-  admin: '/admin',
+  admin: '/admin/verification-queue',
 };
 
 export const ROLE_ACCESS_MAP: Record<string, string[]> = {

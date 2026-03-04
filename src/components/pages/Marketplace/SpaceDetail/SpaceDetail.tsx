@@ -72,6 +72,7 @@ import { MAX_BOOKING_HOURS, MIN_BOOKING_HOURS } from '@/lib/bookings/constants';
 import { BOOKING_DURATION_VARIABLE_KEYS, type PriceRuleOperand, type PriceRuleRecord } from '@/lib/pricing-rules';
 import { evaluatePriceRule, type PriceRuleEvaluationResult } from '@/lib/pricing-rules-evaluator';
 import { useUserBookingsQuery, useCreateCheckoutSessionMutation } from '@/hooks/api/useBookings';
+import { useUserProfile } from '@/hooks/use-user-profile';
 
 const DESCRIPTION_COLLAPSED_HEIGHT = 360; // px
 const DESKTOP_BREAKPOINT_QUERY = '(min-width: 1024px)';
@@ -173,7 +174,7 @@ type SpaceDescriptionSectionProps = {
 type UseSpaceBookingParams = {
   hasAreas: boolean;
   isBookingOpen: boolean;
-  isGuest: boolean;
+  canBook: boolean;
   session: SessionValue;
   setIsBookingOpen: Dispatch<SetStateAction<boolean>>;
   space: MarketplaceSpaceDetail;
@@ -818,7 +819,7 @@ function BookingReservationOverlay({
 function useSpaceBooking({
   hasAreas,
   isBookingOpen,
-  isGuest,
+  canBook,
   session,
   setIsBookingOpen,
   space,
@@ -1092,7 +1093,7 @@ function useSpaceBooking({
       !isPricingLoading &&
       activePriceRule &&
       totalPrice !== null &&
-      !isGuest &&
+      canBook &&
       !createCheckoutSession.isPending &&
       !isOverCapacity
   );
@@ -1166,6 +1167,8 @@ function SpaceDetailContent({ space, }: SpaceDetailProps) {
   const { session, } = useSession();
   const pathname = usePathname();
   const isGuest = !session;
+  const { data: profile, } = useUserProfile();
+  const canBook = !isGuest && profile?.role === 'customer';
   const { data: userBookings = [], } = useUserBookingsQuery({ enabled: !isGuest, });
 
   const hasConfirmedBooking = useMemo(
@@ -1194,7 +1197,7 @@ function SpaceDetailContent({ space, }: SpaceDetailProps) {
   const booking = useSpaceBooking({
     hasAreas,
     isBookingOpen,
-    isGuest,
+    canBook,
     session,
     setIsBookingOpen,
     space,
@@ -1283,9 +1286,9 @@ function SpaceDetailContent({ space, }: SpaceDetailProps) {
           <div
             className={ cn(
               'grid gap-6 lg:items-start',
-              isGuest
-                ? 'lg:grid-cols-1'
-                : 'lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]'
+              canBook
+                ? 'lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]'
+                : 'lg:grid-cols-1'
             ) }
           >
             <div className="space-y-4">
@@ -1298,7 +1301,7 @@ function SpaceDetailContent({ space, }: SpaceDetailProps) {
                 messageButtonRef={ messageHostButtonRef }
               />
 
-              { !isGuest && (
+              { canBook && (
                 <div className="lg:hidden">
                   <BookingCard
                     spaceName={ space.name }
@@ -1315,7 +1318,7 @@ function SpaceDetailContent({ space, }: SpaceDetailProps) {
               />
             </div>
 
-            { !isGuest && (
+            { canBook && (
               <div className="hidden lg:block">
                 <BookingCard
                   spaceName={ space.name }
