@@ -27,6 +27,7 @@ TabsList,
 TabsTrigger
 } from '@/components/ui/tabs';
 import { AdminDashboardPayload, useAdminDashboardQuery } from '@/hooks/api/useAdminDashboard';
+import { formatCurrencyMinor } from '@/lib/wallet';
 
 type AdminDashboardProps = {
   mockPayload?: AdminDashboardPayload;
@@ -130,6 +131,19 @@ export function AdminDashboard({ mockPayload, }: AdminDashboardProps) {
       description: 'Partner business verification throughput.',
       value: metrics?.verifications.total,
       statuses: metrics?.verifications.statusCounts ?? [],
+    },
+    {
+      title: 'Revenue',
+      description: 'Total transaction volume.',
+      value: metrics?.revenue.totalMinor
+        ? formatCurrencyMinor(metrics.revenue.totalMinor, 'PHP')
+        : '₱0',
+      statuses: [
+        {
+          status: 'transactions',
+          count: metrics?.revenue.transactionCount,
+        }
+      ],
     }
   ];
 
@@ -395,23 +409,23 @@ export function AdminDashboard({ mockPayload, }: AdminDashboardProps) {
   };
 
   const summaryCardClasses =
-    'rounded-2xl border border-border/50 bg-background/70 shadow-sm';
-  const dataGridClass = 'grid gap-4 lg:grid-cols-[1.45fr,1fr]';
+    'rounded-md border border-border/50 bg-muted/20 shadow-none';
+  const dataGridClass = 'grid gap-8 lg:grid-cols-[1.45fr,1fr]';
   const logCardContentClass = 'space-y-3';
   const scrollWrapperClass =
-    'max-h-[320px] overflow-auto rounded-xl border border-border/50 bg-muted/5 p-2';
+    'max-h-[400px] overflow-auto rounded-md border border-border/50 bg-muted/20 p-2';
   const valueTextClass = 'text-2xl font-semibold leading-tight tracking-tight';
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       { showError && (
-        <div className="rounded-2xl border border-destructive/70 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-md border border-destructive/70 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           { error instanceof Error
             ? error.message
             : 'Unable to load dashboard data.' }
         </div>
       ) }
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
         { summaryCards.map((card) => (
           <Card className={ summaryCardClasses } key={ card.title }>
             <CardHeader className="space-y-1">
@@ -448,27 +462,27 @@ export function AdminDashboard({ mockPayload, }: AdminDashboardProps) {
       <Separator />
 
       <div className={ dataGridClass }>
-        <Card className="rounded-2xl border border-border/60 bg-background shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base">Unified audit log</CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <h3 className="text-lg font-semibold tracking-tight">Unified audit log</h3>
+            <p className="text-sm text-muted-foreground">
               Tracks bookings, spaces, customers, and verifications with Prisma
               audit data.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className={ logCardContentClass }>
+            </p>
+          </div>
+          <div className={ logCardContentClass }>
             <div className={ scrollWrapperClass }>{ renderAuditLog() }</div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card className="rounded-2xl border border-border/60 bg-background shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base">Recent Prisma records</CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <h3 className="text-lg font-semibold tracking-tight">Recent Prisma records</h3>
+            <p className="text-sm text-muted-foreground">
               Snapshots of the latest entries for each table in the schema.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </p>
+          </div>
+          <div className="space-y-4">
             <Tabs defaultValue="bookings">
               <TabsList className="grid grid-cols-4 gap-1 rounded-md bg-muted p-1 text-[11px] font-semibold uppercase tracking-wide">
                 <TabsTrigger value="bookings">Bookings</TabsTrigger>
@@ -499,8 +513,8 @@ export function AdminDashboard({ mockPayload, }: AdminDashboardProps) {
                 </TabsContent>
               </div>
             </Tabs>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

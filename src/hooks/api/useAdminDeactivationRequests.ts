@@ -94,8 +94,9 @@ export function useAdminDeactivationRequestsQuery({
         nextCursor: payload.nextCursor ?? null,
       };
     },
+    staleTime: 30_000,
     refetchInterval: REFRESH_INTERVAL_MS,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -116,7 +117,7 @@ export function useApproveDeactivationRequestMutation() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminDeactivationRequestKeys.all, });
+      queryClient.invalidateQueries({ queryKey: adminDeactivationRequestKeys.list(), });
     },
   });
 }
@@ -127,7 +128,7 @@ export function useRejectDeactivationRequestMutation() {
 
   return useMutation({
     mutationFn: async ({
- requestId, reason, 
+ requestId, reason,
 }: { requestId: string; reason: string }) => {
       const response = await authFetch(`/api/v1/admin/deactivation-requests/${requestId}`, {
         method: 'PATCH',
@@ -144,7 +145,7 @@ export function useRejectDeactivationRequestMutation() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminDeactivationRequestKeys.all, });
+      queryClient.invalidateQueries({ queryKey: adminDeactivationRequestKeys.list(), });
     },
   });
 }

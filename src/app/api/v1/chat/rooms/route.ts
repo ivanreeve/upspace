@@ -132,7 +132,10 @@ export async function GET(req: NextRequest) {
               },
             },
           },
-          chat_message: { orderBy: { created_at: 'asc', }, },
+          chat_message: {
+            orderBy: { created_at: 'asc', },
+            take: 50,
+          },
         },
       });
 

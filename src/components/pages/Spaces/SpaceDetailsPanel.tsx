@@ -1344,7 +1344,9 @@ function useSpaceDetailsPanelController(spaceId: string | null) {
   } = uiState;
 
   const getDefaultAreaFormValues = () =>
-    createAreaFormDefaults(space?.pricing_rules?.[0]?.id ?? null);
+    createAreaFormDefaults(
+      space?.pricing_rules?.find((rule) => rule.is_active)?.id ?? null
+    );
 
   const categoryRefs = useRef<Record<string, HTMLElement | null>>({});
   const descriptionValue = descriptionForm.watch('description');

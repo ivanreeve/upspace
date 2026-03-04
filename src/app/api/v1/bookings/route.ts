@@ -3,7 +3,8 @@ import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { sendBookingNotificationEmail } from '@/lib/email';
+import { sendBookingNotificationEmail, sendBookingRejectionEmail } from '@/lib/email';
+import { notifyBookingEvent } from '@/lib/notifications/booking';
 import {
   BOOKING_PRICE_MINOR_FACTOR,
   formatFullName,
@@ -12,21 +13,25 @@ import {
   normalizeNumeric
 } from '@/lib/bookings/serializer';
 import type { BookingRecord, BookingStatus } from '@/lib/bookings/types';
-import { MAX_BOOKING_HOURS, MIN_BOOKING_HOURS } from '@/lib/bookings/constants';
+import { MAX_BOOKING_HOURS, MIN_BOOKING_HOURS, isValidStatusTransition } from '@/lib/bookings/constants';
 import { countActiveBookingsOverlap, resolveBookingDecision } from '@/lib/bookings/occupancy';
 import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { evaluatePriceRule } from '@/lib/pricing-rules-evaluator';
 import type { PriceRuleRecord } from '@/lib/pricing-rules';
+import { isTestingModeEnabled } from '@/lib/testing-mode';
 
 const createBookingSchema = z.object({
   spaceId: z.string().uuid(),
   areaId: z.string().uuid(),
   bookingHours: z.number().int().min(MIN_BOOKING_HOURS).max(MAX_BOOKING_HOURS),
-  price: z.number().nonnegative().nullable().optional(),
   startAt: z.string().datetime().optional(),
   guestCount: z.number().int().min(1).max(999).optional(),
 });
+
+const BOOKING_CANCELLATION_REASON_MIN_LENGTH = 5;
+const BOOKING_CANCELLATION_REASON_MAX_LENGTH = 500;
+const MESSAGE_NOTIFICATION_PREVIEW_MAX_LENGTH = 180;
 
 const bulkUpdateSchema = z.object({
   ids: z.array(z.string().uuid()).min(1),
@@ -41,6 +46,18 @@ const bulkUpdateSchema = z.object({
     'completed',
     'noshow'
   ] satisfies readonly BookingStatus[]),
+  cancellationReason: z
+    .string()
+    .trim()
+    .min(
+      BOOKING_CANCELLATION_REASON_MIN_LENGTH,
+      `Cancellation reason must be at least ${BOOKING_CANCELLATION_REASON_MIN_LENGTH} characters.`
+    )
+    .max(
+      BOOKING_CANCELLATION_REASON_MAX_LENGTH,
+      `Cancellation reason cannot exceed ${BOOKING_CANCELLATION_REASON_MAX_LENGTH} characters.`
+    )
+    .optional(),
 });
 
 const unauthorizedResponse = NextResponse.json(
@@ -142,7 +159,18 @@ export async function PATCH(req: NextRequest) {
   const parsed = bulkUpdateSchema.safeParse(body ?? {});
 
   if (!parsed.success) {
-    return invalidPayloadResponse;
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? 'Invalid request payload.', },
+      { status: 400, }
+    );
+  }
+
+  const cancellationReason = parsed.data.cancellationReason?.trim();
+  if (parsed.data.status === 'cancelled' && !cancellationReason) {
+    return NextResponse.json(
+      { error: `Cancellation reason must be at least ${BOOKING_CANCELLATION_REASON_MIN_LENGTH} characters.`, },
+      { status: 400, }
+    );
   }
 
   const supabase = await createSupabaseServerClient();
@@ -183,6 +211,23 @@ export async function PATCH(req: NextRequest) {
     );
   }
 
+  const newStatus = parsed.data.status;
+
+  // Validate that all bookings can transition to the requested status.
+  const invalidRows = rows.filter(
+    (row) => !isValidStatusTransition(row.status as BookingStatus, newStatus)
+  );
+  if (invalidRows.length > 0) {
+    const sample = invalidRows[0];
+    return NextResponse.json(
+      {
+        error: `Cannot change booking from '${sample.status}' to '${newStatus}'.`,
+        invalidBookingIds: invalidRows.map((row) => row.id),
+      },
+      { status: 400, }
+    );
+  }
+
   const targetIds = rows.map((row) => row.id);
 
   await prisma.booking.updateMany({
@@ -190,7 +235,7 @@ export async function PATCH(req: NextRequest) {
       id: { in: targetIds, },
       ...partnerFilter,
     },
-    data: { status: parsed.data.status, },
+    data: { status: newStatus, },
   });
 
   const updatedRows = await prisma.booking.findMany({
@@ -202,7 +247,202 @@ export async function PATCH(req: NextRequest) {
   });
 
   const bookings = await mapBookingsWithProfiles(updatedRows);
+
+  // Send notifications for status changes (non-blocking)
+  for (const row of updatedRows) {
+    const ctx = {
+      bookingId: row.id,
+      spaceId: row.space_id,
+      areaId: row.area_id,
+      spaceName: row.space_name,
+      areaName: row.area_name,
+      customerAuthId: row.user_auth_id,
+      partnerAuthId: row.partner_auth_id,
+    };
+
+    try {
+      switch (newStatus) {
+        case 'rejected':
+          await notifyBookingEvent(
+            ctx,
+            {
+ title: 'Booking rejected',
+body: `${row.area_name} at ${row.space_name} was rejected by the host.`, 
+},
+            null
+          );
+          try {
+            const customerEmail = await resolveUserEmail(row.user_auth_id);
+            if (customerEmail) {
+              await sendBookingRejectionEmail({
+                to: customerEmail,
+                spaceName: row.space_name,
+                areaName: row.area_name,
+                bookingHours: normalizeNumeric(row.booking_hours) ?? 0,
+                price: normalizeNumeric(row.price_minor) !== null
+                  ? Number(row.price_minor) / BOOKING_PRICE_MINOR_FACTOR
+                  : null,
+                link: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/marketplace/${row.space_id}`,
+              });
+            }
+          } catch (emailError) {
+            console.error('Failed to send rejection email', {
+ bookingId: row.id,
+error: emailError, 
+});
+          }
+          break;
+        case 'cancelled':
+          await notifyBookingEvent(
+            ctx,
+            null,
+            {
+ title: 'Booking cancelled',
+body: `${row.area_name} in ${row.space_name} was cancelled.`, 
+}
+          );
+          break;
+        case 'checkedin':
+          await notifyBookingEvent(
+            ctx,
+            {
+ title: 'Checked in',
+body: `You're checked in at ${row.area_name} · ${row.space_name}.`, 
+},
+            null
+          );
+          break;
+        case 'checkedout':
+          await notifyBookingEvent(
+            ctx,
+            {
+ title: 'Checked out',
+body: `You've checked out of ${row.area_name} · ${row.space_name}.`, 
+},
+            null
+          );
+          break;
+        case 'completed':
+          await notifyBookingEvent(
+            ctx,
+            {
+ title: 'Booking completed',
+body: `Your session at ${row.area_name} · ${row.space_name} is complete.`, 
+},
+            null
+          );
+          break;
+        case 'noshow':
+          await notifyBookingEvent(
+            ctx,
+            {
+ title: 'Marked as no-show',
+body: `You were marked as a no-show for ${row.area_name} · ${row.space_name}.`, 
+},
+            null
+          );
+          break;
+      }
+    } catch (notifError) {
+      console.error('Failed to create status change notification', {
+ bookingId: row.id,
+status: newStatus,
+error: notifError, 
+});
+    }
+  }
+
+  if (newStatus === 'cancelled' && cancellationReason) {
+    const authIds = Array.from(
+      new Set(
+        updatedRows.flatMap((row) =>
+          [row.user_auth_id, row.partner_auth_id].filter(
+            (authId): authId is string => Boolean(authId)
+          )
+        )
+      )
+    );
+
+    const users = await prisma.user.findMany({
+      where: { auth_user_id: { in: authIds, }, },
+      select: {
+        auth_user_id: true,
+        user_id: true,
+      },
+    });
+    const userIdByAuthId = new Map(users.map((user) => [user.auth_user_id, user.user_id]));
+
+    const cancellationMessage = (spaceName: string, areaName: string) =>
+      `Your booking for ${areaName} at ${spaceName} was cancelled by the host.\nReason: ${cancellationReason}`;
+
+    for (const row of updatedRows) {
+      const partnerAuthId = row.partner_auth_id;
+      const partnerUserId = partnerAuthId
+        ? userIdByAuthId.get(partnerAuthId)
+        : undefined;
+      const customerUserId = userIdByAuthId.get(row.user_auth_id);
+
+      if (!partnerAuthId || !partnerUserId || !customerUserId) {
+        continue;
+      }
+
+      try {
+        const room = await prisma.chat_room.upsert({
+          where: {
+            space_id_customer_id: {
+              space_id: row.space_id,
+              customer_id: customerUserId,
+            },
+          },
+          update: {},
+          create: {
+            space_id: row.space_id,
+            customer_id: customerUserId,
+          },
+          select: { id: true, },
+        });
+
+        const content = cancellationMessage(row.space_name, row.area_name);
+
+        await prisma.chat_message.create({
+          data: {
+            room_id: room.id,
+            sender_id: partnerUserId,
+            sender_role: 'partner',
+            content,
+          },
+        });
+
+        await prisma.app_notification.create({
+          data: {
+            user_auth_id: row.user_auth_id,
+            title: 'New message from host',
+            body:
+              content.length > MESSAGE_NOTIFICATION_PREVIEW_MAX_LENGTH
+                ? `${content.slice(0, MESSAGE_NOTIFICATION_PREVIEW_MAX_LENGTH - 3)}...`
+                : content,
+            href: `/customer/messages/${room.id}`,
+            type: 'message',
+            booking_id: row.id,
+            space_id: row.space_id,
+            area_id: row.area_id,
+          },
+        });
+      } catch (chatError) {
+        console.error('Failed to send booking cancellation reason via chat', {
+          bookingId: row.id,
+          error: chatError,
+        });
+      }
+    }
+  }
+
   return NextResponse.json({ data: bookings, });
+}
+
+async function resolveUserEmail(authId: string): Promise<string | null> {
+  const { data, } = await (await createSupabaseServerClient()).auth.admin.getUserById(authId);
+  return data?.user?.email ?? null;
 }
 
 export async function POST(req: NextRequest) {
@@ -240,6 +480,13 @@ export async function POST(req: NextRequest) {
   if (dbUser.role !== 'customer') {
     return NextResponse.json(
       { error: 'Only customers can create bookings.', },
+      { status: 403, }
+    );
+  }
+
+  if (!isTestingModeEnabled()) {
+    return NextResponse.json(
+      { error: 'Direct booking creation is disabled. Use checkout instead.', },
       { status: 403, }
     );
   }
@@ -381,9 +628,9 @@ export async function POST(req: NextRequest) {
     typeof priceEvaluation.price === 'number'
       ? Math.round(priceEvaluation.price * guestMultiplier * BOOKING_PRICE_MINOR_FACTOR)
       : null;
-  if (priceMinor === null) {
+  if (priceMinor === null || !Number.isFinite(priceMinor) || priceMinor <= 0) {
     return NextResponse.json(
-      { error: 'Unable to compute a price for this booking.', },
+      { error: 'Unable to compute a valid price for this booking.', },
       { status: 400, }
     );
   }

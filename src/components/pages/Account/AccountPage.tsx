@@ -4,9 +4,10 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FiChevronLeft } from 'react-icons/fi';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -30,6 +31,8 @@ export default function AccountPage() {
   const { data: profile, } = useUserProfile();
   const queryClient = useQueryClient();
   const router = useRouter();
+  const pathname = usePathname();
+  const pageTitle = pathname?.includes('/settings') ? 'Settings' : 'Account';
 
   const [firstName, setFirstName] = useState('');
   const [middleName, setMiddleName] = useState('');
@@ -224,10 +227,10 @@ export default function AccountPage() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-2">
                   <h1 className="text-3xl font-semibold leading-tight text-foreground sm:text-4xl">
-                    Account
+                    { pageTitle }
                   </h1>
                   <p className="text-sm text-muted-foreground sm:text-base">
-                    Tune your profile details and manage how your data is handled across UpSpace.
+                    Manage your profile, security, and notification preferences across UpSpace.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -244,179 +247,245 @@ export default function AccountPage() {
             </div>
           </header>
 
-          <div className="grid gap-6 lg:grid-cols-[1.65fr,1fr]">
-            <section className="space-y-4 rounded-md border border-border/70 bg-card/80 p-6 shadow-sm backdrop-blur">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-foreground">Profile information</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Keep your details current so bookings and receipts look right.
-                  </p>
-                </div>
-                <span className="text-xs font-medium text-muted-foreground">
-                  Max { PROFILE_FIELD_MAX_LENGTH } characters per field
-                </span>
+          <section className="space-y-4 rounded-md border border-border/70 bg-card/80 p-6 shadow-sm backdrop-blur">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-foreground">Account Profile</h2>
+                <p className="text-sm text-muted-foreground">
+                  Update the details that appear on bookings, receipts, and messages.
+                </p>
               </div>
+              <span className="text-xs font-medium text-muted-foreground">
+                Max { PROFILE_FIELD_MAX_LENGTH } characters per field
+              </span>
+            </div>
 
-              <div className="flex flex-col gap-2 rounded-md border border-border/70 bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-foreground">Handle</p>
-                  <p className="text-xs text-muted-foreground">
-                    Handles stay fixed after sign up to keep links stable.
-                  </p>
-                </div>
-                <span className="rounded-md bg-muted px-3 py-2 text-sm font-semibold text-foreground">
-                  @{ profile?.handle ?? 'not-set' }
-                </span>
+            <div className="flex flex-col gap-2 rounded-md border border-border/70 bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">Handle</p>
+                <p className="text-xs text-muted-foreground">
+                  Handles stay fixed after sign up to keep links stable.
+                </p>
               </div>
+              <span className="rounded-md bg-muted px-3 py-2 text-sm font-semibold text-foreground">
+                @{ profile?.handle ?? 'not-set' }
+              </span>
+            </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <Label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium text-foreground">First name</span>
-                  <Input
-                    value={ firstName }
-                    onChange={ (event) => setFirstName(event.target.value) }
-                    maxLength={ PROFILE_FIELD_MAX_LENGTH }
-                    placeholder="Taylor"
-                    aria-label="First name"
-                  />
-                </Label>
-                <Label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium text-foreground">Middle name</span>
-                  <Input
-                    value={ middleName }
-                    onChange={ (event) => setMiddleName(event.target.value) }
-                    maxLength={ PROFILE_FIELD_MAX_LENGTH }
-                    placeholder="A."
-                    aria-label="Middle name"
-                  />
-                </Label>
-                <Label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium text-foreground">Last name</span>
-                  <Input
-                    value={ lastName }
-                    onChange={ (event) => setLastName(event.target.value) }
-                    maxLength={ PROFILE_FIELD_MAX_LENGTH }
-                    placeholder="Reeves"
-                    aria-label="Last name"
-                  />
-                </Label>
-                <Label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium text-foreground">Birthday</span>
-                  <Input
-                    type="date"
-                    value={ birthday }
-                    onChange={ (event) => setBirthday(event.target.value) }
-                    aria-label="Birthday"
-                  />
-                  <span className="text-xs text-muted-foreground">
-                    Optional. Used to personalize reminders and receipts.
-                  </span>
-                </Label>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Label className="flex flex-col gap-2">
+                <span className="text-sm font-medium text-foreground">First name</span>
+                <Input
+                  value={ firstName }
+                  onChange={ (event) => setFirstName(event.target.value) }
+                  maxLength={ PROFILE_FIELD_MAX_LENGTH }
+                  placeholder="Taylor"
+                  aria-label="First name"
+                />
+              </Label>
+              <Label className="flex flex-col gap-2">
+                <span className="text-sm font-medium text-foreground">Middle name</span>
+                <Input
+                  value={ middleName }
+                  onChange={ (event) => setMiddleName(event.target.value) }
+                  maxLength={ PROFILE_FIELD_MAX_LENGTH }
+                  placeholder="A."
+                  aria-label="Middle name"
+                />
+              </Label>
+              <Label className="flex flex-col gap-2">
+                <span className="text-sm font-medium text-foreground">Last name</span>
+                <Input
+                  value={ lastName }
+                  onChange={ (event) => setLastName(event.target.value) }
+                  maxLength={ PROFILE_FIELD_MAX_LENGTH }
+                  placeholder="Reeves"
+                  aria-label="Last name"
+                />
+              </Label>
+              <Label className="flex flex-col gap-2">
+                <span className="text-sm font-medium text-foreground">Birthday</span>
+                <Input
+                  type="date"
+                  value={ birthday }
+                  onChange={ (event) => setBirthday(event.target.value) }
+                  aria-label="Birthday"
+                />
+                <span className="text-xs text-muted-foreground">
+                  Optional. Used to personalize reminders and receipts.
+                </span>
+              </Label>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                type="button"
+                className="w-full sm:w-auto"
+                onClick={ handleSaveProfile }
+                disabled={ isProfileSaving }
+              >
+                { isProfileSaving ? 'Saving...' : 'Save changes' }
+              </Button>
+            </div>
+          </section>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <section className="space-y-4 rounded-md border border-border/70 bg-muted/30 p-6 shadow-sm">
+              <div className="space-y-2">
+                <h2 className="text-lg font-semibold text-foreground">Security</h2>
+                <p className="text-sm text-muted-foreground">
+                  Manage how you sign in and keep your account protected.
+                </p>
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button
-                  type="button"
-                  className="w-full sm:w-auto"
-                  onClick={ handleSaveProfile }
-                  disabled={ isProfileSaving }
-                >
-                  { isProfileSaving ? 'Saving...' : 'Save changes' }
-                </Button>
-                <Button
-                  variant="outline"
-                  type="button"
-                  className="w-full sm:w-auto"
-                  onClick={ handleSignOut }
-                >
-                  Sign out
-                </Button>
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-3 rounded-md border border-border/60 bg-background/80 p-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Password</p>
+                    <p className="text-xs text-muted-foreground">
+                      Update your sign-in password and recovery details.
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                    Coming soon
+                  </Badge>
+                </div>
+                <div className="flex items-start justify-between gap-3 rounded-md border border-border/60 bg-background/80 p-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Two-factor authentication</p>
+                    <p className="text-xs text-muted-foreground">
+                      Add another layer of security to sign-ins.
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                    Coming soon
+                  </Badge>
+                </div>
               </div>
             </section>
 
             <section className="space-y-4 rounded-md border border-border/70 bg-muted/30 p-6 shadow-sm">
               <div className="space-y-2">
-                <h2 className="text-lg font-semibold text-foreground">Profile health</h2>
+                <h2 className="text-lg font-semibold text-foreground">Notifications</h2>
                 <p className="text-sm text-muted-foreground">
-                  Make sure your partner storefront or bookings carry the right signature.
+                  Control which updates you receive from UpSpace.
                 </p>
               </div>
-              <div className="space-y-3 text-sm text-muted-foreground">
-                <div className="flex items-start gap-3 rounded-md border border-border/60 bg-background/80 p-3">
-                  <span className="mt-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500" aria-hidden="true" />
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-3 rounded-md border border-border/60 bg-background/80 p-3">
                   <div>
-                    <p className="font-medium text-foreground">Live profile</p>
-                    <p>
-                      { profile?.role === 'partner'
-                        ? 'Partners show their handle and contact on listings.'
-                        : 'Customers use their name and handle for bookings and messaging.' }
+                    <p className="text-sm font-semibold text-foreground">Booking alerts</p>
+                    <p className="text-xs text-muted-foreground">
+                      Get notified about new bookings and changes.
                     </p>
                   </div>
+                  <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                    Coming soon
+                  </Badge>
                 </div>
-                <div className="flex items-start gap-3 rounded-md border border-border/60 bg-background/80 p-3">
-                  <span className="mt-0.5 h-2.5 w-2.5 rounded-full bg-primary" aria-hidden="true" />
+                <div className="flex items-start justify-between gap-3 rounded-md border border-border/60 bg-background/80 p-3">
                   <div>
-                    <p className="font-medium text-foreground">Data ownership</p>
-                    <p>
-                      You stay in control of your account with quick deactivation and deletion flows below.
+                    <p className="text-sm font-semibold text-foreground">Product updates</p>
+                    <p className="text-xs text-muted-foreground">
+                      Receive updates about new tools and features.
                     </p>
                   </div>
+                  <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                    Coming soon
+                  </Badge>
                 </div>
               </div>
             </section>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <section className="space-y-4 rounded-md border border-border/70 bg-card/80 p-6 shadow-sm">
-              <div className="space-y-2">
-                <h2 className="text-xl font-semibold text-foreground">Deactivate account</h2>
-                <p className="text-sm text-muted-foreground">
-                  Disables sign-in, hides your profile, and pauses storefront visibility for partners.
-                </p>
-                <ul className="list-inside list-disc text-xs text-muted-foreground">
-                  <li>Reactivation brings back all bookings and workspace history.</li>
-                  <li>No data is deleted during deactivation.</li>
-                </ul>
+          <section className="space-y-4 rounded-md border border-border/70 bg-muted/30 p-6 shadow-sm">
+            <div className="space-y-2">
+              <h2 className="text-lg font-semibold text-foreground">Account status</h2>
+              <p className="text-sm text-muted-foreground">
+                Review how your profile appears across the marketplace.
+              </p>
+            </div>
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <div className="flex items-start gap-3 rounded-md border border-border/60 bg-background/80 p-3">
+                <span className="mt-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500" aria-hidden="true" />
+                <div>
+                  <p className="font-medium text-foreground">Live profile</p>
+                  <p>
+                    { profile?.role === 'partner'
+                      ? 'Partners show their handle and contact on listings.'
+                      : 'Customers use their name and handle for bookings and messaging.' }
+                  </p>
+                </div>
               </div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <Button
-                  type="button"
-                  variant="destructive"
-                  className="w-full sm:w-auto"
-                  onClick={ handleDeactivateAccount }
-                  disabled={ isDeactivating }
-                >
-                  { isDeactivating ? 'Submitting request...' : 'Deactivate account' }
-                </Button>
+              <div className="flex items-start gap-3 rounded-md border border-border/60 bg-background/80 p-3">
+                <span className="mt-0.5 h-2.5 w-2.5 rounded-full bg-primary" aria-hidden="true" />
+                <div>
+                  <p className="font-medium text-foreground">Data ownership</p>
+                  <p>
+                    You stay in control of your account with quick deactivation and deletion flows below.
+                  </p>
+                </div>
               </div>
-            </section>
+            </div>
+          </section>
 
-            <section className="space-y-4 rounded-md border border-border/70 bg-card/80 p-6 shadow-sm">
-              <div className="space-y-2">
-                <h2 className="text-xl font-semibold text-foreground">Delete account</h2>
-                <p className="text-sm text-muted-foreground">
-                  { profile?.role === 'partner'
-                    ? 'Submit a delete request for admin review. Approved requests enter a 30-day window.'
-                    : 'Delete your account with a 30-day grace period. Signing in during that window cancels deletion.' }
-                </p>
-                <ul className="list-inside list-disc text-xs text-muted-foreground">
-                  <li>Bookings and payouts tied to your account will stop.</li>
-                  <li>You can cancel deletion at any time during the 30-day window.</li>
-                </ul>
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                  onClick={ handleDeleteAccount }
-                  disabled={ isDeleting }
-                >
-                  { isDeleting ? 'Submitting request...' : 'Delete account' }
-                </Button>
-              </div>
-            </section>
-          </div>
+          <section className="space-y-4 rounded-md border border-destructive/30 bg-destructive/5 p-6 shadow-sm">
+            <div className="space-y-2">
+              <h2 className="text-lg font-semibold text-foreground">Danger zone</h2>
+              <p className="text-sm text-muted-foreground">
+                These actions affect access to your account and can take time to reverse.
+              </p>
+            </div>
+            <div className="grid gap-6 lg:grid-cols-2">
+              <section className="space-y-4 rounded-md border border-border/70 bg-card/80 p-6 shadow-sm">
+                <div className="space-y-2">
+                  <h3 className="text-base font-semibold text-foreground">Deactivate account</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Disables sign-in, hides your profile, and pauses storefront visibility for partners.
+                  </p>
+                  <ul className="list-inside list-disc text-xs text-muted-foreground">
+                    <li>Reactivation brings back all bookings and workspace history.</li>
+                    <li>No data is deleted during deactivation.</li>
+                  </ul>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    className="w-full sm:w-auto"
+                    onClick={ handleDeactivateAccount }
+                    disabled={ isDeactivating }
+                  >
+                    { isDeactivating ? 'Submitting request...' : 'Deactivate account' }
+                  </Button>
+                </div>
+              </section>
+
+              <section className="space-y-4 rounded-md border border-border/70 bg-card/80 p-6 shadow-sm">
+                <div className="space-y-2">
+                  <h3 className="text-base font-semibold text-foreground">Delete account</h3>
+                  <p className="text-sm text-muted-foreground">
+                    { profile?.role === 'partner'
+                      ? 'Submit a delete request for admin review. Approved requests enter a 30-day window.'
+                      : 'Delete your account with a 30-day grace period. Signing in during that window cancels deletion.' }
+                  </p>
+                  <ul className="list-inside list-disc text-xs text-muted-foreground">
+                    <li>Bookings and payouts tied to your account will stop.</li>
+                    <li>You can cancel deletion at any time during the 30-day window.</li>
+                  </ul>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                    onClick={ handleDeleteAccount }
+                    disabled={ isDeleting }
+                  >
+                    { isDeleting ? 'Submitting request...' : 'Delete account' }
+                  </Button>
+                </div>
+              </section>
+            </div>
+          </section>
         </div>
       </main>
 

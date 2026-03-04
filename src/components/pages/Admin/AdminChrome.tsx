@@ -8,6 +8,7 @@ Layers,
 Users,
 X
 } from 'lucide-react';
+import { FiFlag, FiTrendingUp } from 'react-icons/fi';
 
 import { MarketplaceChrome } from '../Marketplace/MarketplaceChrome';
 
@@ -26,6 +27,12 @@ type AdminChromeProps = {
   children: React.ReactNode
   initialSidebarOpen?: boolean
 };
+
+const marketplaceSearchDialogClassName =
+  '[&_[data-slot=command-item][data-selected=true]]:bg-transparent [&_[data-slot=command-item][data-selected=true]:hover]:bg-accent';
+
+const marketplaceSearchActionItemClassName =
+  'text-muted-foreground hover:!bg-[oklch(0.955_0.02_204.6929)] dark:hover:!bg-[oklch(0.24_0.02_204.6929)] hover:!text-primary hover:[&_svg]:!text-primary data-[selected=true]:!bg-[oklch(0.955_0.02_204.6929)] dark:data-[selected=true]:!bg-[oklch(0.24_0.02_204.6929)] data-[selected=true]:!text-foreground';
 
 export function AdminChrome({
   children,
@@ -75,47 +82,74 @@ export function AdminChrome({
             description="Navigate admin features"
             position="top"
             fullWidth
-        >
-          <CommandInput
-            value={ searchValue }
-            onValueChange={ setSearchValue }
-            placeholder="Search admin..."
-            aria-label="Search admin"
-            endAdornment={ (
-              <VoiceSearchButton onClick={ handleVoiceButtonClick } />
-            ) }
-          />
-          <CommandList>
-          <CommandGroup heading="Quick Actions" forceMount>
-            <CommandItem
-              value="pending verifications"
-              onSelect={ () => handleNavigate('/admin') }
-            >
-              <CheckCircle className="size-4" aria-hidden="true" />
-              <span>Pending Verifications</span>
-              <Kbd className="ml-auto flex items-center gap-1 text-[10px]">
-                Enter
-              </Kbd>
-            </CommandItem>
-            <CommandItem value="users" onSelect={ () => handleNavigate('/admin/users') }>
-              <Users className="size-4" aria-hidden="true" />
-              <span>Users</span>
-            </CommandItem>
-            <CommandItem value="spaces" onSelect={ () => handleNavigate('/admin/spaces') }>
-              <Layers className="size-4" aria-hidden="true" />
-              <span>Spaces</span>
-            </CommandItem>
-            { searchValue.trim() && (
-              <CommandItem
-                value="clear search"
-                  onSelect={ () => setSearchValue('') }
-                >
-                  <X className="size-4" aria-hidden="true" />
-                  <span>Clear search</span>
-                </CommandItem>
+            className={ marketplaceSearchDialogClassName }
+          >
+            <CommandInput
+              value={ searchValue }
+              onValueChange={ setSearchValue }
+              placeholder="Search admin..."
+              aria-label="Search admin"
+              endAdornment={ (
+                <VoiceSearchButton onClick={ handleVoiceButtonClick } />
               ) }
-            </CommandGroup>
-          </CommandList>
+            />
+            <CommandList>
+              <CommandGroup heading="Quick Actions" forceMount>
+                <CommandItem
+                  value="pending verifications"
+                  onSelect={ () => handleNavigate('/admin/verification-queue') }
+                  className={ marketplaceSearchActionItemClassName }
+                >
+                  <CheckCircle className="size-4" aria-hidden="true" />
+                  <span>Pending Verifications</span>
+                  <Kbd className="ml-auto flex items-center gap-1 text-[10px] bg-primary border-primary text-primary-foreground dark:bg-muted/70 dark:border-border dark:text-muted-foreground">
+                    Enter
+                  </Kbd>
+                </CommandItem>
+                <CommandItem
+                  value="reports"
+                  onSelect={ () => handleNavigate('/admin/reports') }
+                  className={ marketplaceSearchActionItemClassName }
+                >
+                  <FiTrendingUp className="size-4" aria-hidden="true" />
+                  <span>Reports</span>
+                </CommandItem>
+                <CommandItem
+                  value="users"
+                  onSelect={ () => handleNavigate('/admin/users') }
+                  className={ marketplaceSearchActionItemClassName }
+                >
+                  <Users className="size-4" aria-hidden="true" />
+                  <span>Users</span>
+                </CommandItem>
+                <CommandItem
+                  value="spaces"
+                  onSelect={ () => handleNavigate('/admin/spaces') }
+                  className={ marketplaceSearchActionItemClassName }
+                >
+                  <Layers className="size-4" aria-hidden="true" />
+                  <span>Spaces</span>
+                </CommandItem>
+                <CommandItem
+                  value="chat reports"
+                  onSelect={ () => handleNavigate('/admin/chat-reports') }
+                  className={ marketplaceSearchActionItemClassName }
+                >
+                  <FiFlag className="size-4" aria-hidden="true" />
+                  <span>Chat reports</span>
+                </CommandItem>
+                { searchValue.trim() && (
+                  <CommandItem
+                    value="clear search"
+                    onSelect={ () => setSearchValue('') }
+                    className={ marketplaceSearchActionItemClassName }
+                  >
+                    <X className="size-4" aria-hidden="true" />
+                    <span>Clear search</span>
+                  </CommandItem>
+                ) }
+              </CommandGroup>
+            </CommandList>
           </CommandDialog>
           <VoiceSearchDialog
             open={ isVoiceSearchOpen }

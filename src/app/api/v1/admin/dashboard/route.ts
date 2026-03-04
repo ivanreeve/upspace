@@ -1,8 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { subDays } from 'date-fns';
+import { Prisma } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
 import { AdminSessionError, requireAdminSession } from '@/lib/auth/require-admin-session';
+
+interface DashboardMetrics {
+  revenue: { totalMinor: string; transactionCount: number };
+  bookings: { total: number; statusCounts: { status: string; count: number }[] };
+  spaces: { total: number; published: number; unpublished: number };
+  clients: {
+    total: number;
+    active: number;
+    deactivated: number;
+    pendingDeletion: number;
+    deleted: number;
+    newLast7Days: number;
+  };
+  verifications: { total: number; statusCounts: { status: string; count: number }[] };
+}
 
 const AUDIT_TABLES = ['booking', 'space', 'user', 'verification'];
 
@@ -10,68 +25,17 @@ export async function GET(_req: NextRequest) {
   try {
     await requireAdminSession(_req);
 
-    const sevenDaysAgo = subDays(new Date(), 7);
-
     const [
-      totalBookings,
-      bookingStatusCounts,
-      totalSpaces,
-      publishedSpaces,
-      totalClients,
-      activeClients,
-      deactivatedClients,
-      pendingDeletionClients,
-      deletedClients,
-      newClientRegistrations,
-      verificationStatusCounts,
+      metricsRows,
       recentBookings,
       recentSpaces,
       recentClients,
       recentVerifications,
       auditEvents
     ] = await Promise.all([
-      prisma.booking.count(),
-      prisma.booking.groupBy({
-        by: ['status'],
-        _count: { status: true, },
-      }),
-      prisma.space.count(),
-      prisma.space.count({ where: { is_published: true, }, }),
-      prisma.user.count({ where: { role: 'customer', }, }),
-      prisma.user.count({
- where: {
- role: 'customer',
-status: 'active', 
-}, 
-}),
-      prisma.user.count({
- where: {
- role: 'customer',
-status: 'deactivated', 
-}, 
-}),
-      prisma.user.count({
- where: {
- role: 'customer',
-status: 'pending_deletion', 
-}, 
-}),
-      prisma.user.count({
- where: {
- role: 'customer',
-status: 'deleted', 
-}, 
-}),
-      prisma.user.count({
-        where: {
-          role: 'customer',
-          created_at: { gte: sevenDaysAgo, },
-        },
-      }),
-      prisma.verification.groupBy({
-        by: ['status'],
-        _count: { status: true, },
-      }),
+      prisma.$queryRaw<[{ get_admin_dashboard_metrics: DashboardMetrics }]>(
+        Prisma.sql`SELECT get_admin_dashboard_metrics()`
+      ),
       prisma.booking.findMany({
         orderBy: { created_at: 'desc', },
         take: 5,
@@ -161,41 +125,10 @@ status: 'deleted',
       })
     ]);
 
-    const totalVerifications = verificationStatusCounts.reduce(
-      (sum, status) => sum + status._count.status,
-      0
-    );
+    const metrics = metricsRows[0].get_admin_dashboard_metrics;
 
     const payload = {
-      metrics: {
-        bookings: {
-          total: totalBookings,
-          statusCounts: bookingStatusCounts.map((entry) => ({
-            status: entry.status,
-            count: entry._count.status,
-          })),
-        },
-        spaces: {
-          total: totalSpaces,
-          published: publishedSpaces,
-          unpublished: Math.max(0, totalSpaces - publishedSpaces),
-        },
-        clients: {
-          total: totalClients,
-          active: activeClients,
-          deactivated: deactivatedClients,
-          pendingDeletion: pendingDeletionClients,
-          deleted: deletedClients,
-          newLast7Days: newClientRegistrations,
-        },
-        verifications: {
-          total: totalVerifications,
-          statusCounts: verificationStatusCounts.map((entry) => ({
-            status: entry.status,
-            count: entry._count.status,
-          })),
-        },
-      },
+      metrics,
       recent: {
         bookings: recentBookings.map((booking) => ({
           id: booking.id,

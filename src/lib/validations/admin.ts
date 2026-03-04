@@ -50,3 +50,12 @@ export const spaceVisibilityActionSchema = z.object({
 });
 
 export type SpaceVisibilityActionInput = z.infer<typeof spaceVisibilityActionSchema>;
+
+export const adminReportQuerySchema = z.object({
+  days: z
+    .enum(['7', '30', '90'])
+    .transform((value) => Number(value))
+    .optional(),
+});
+
+export type AdminReportQuery = z.infer<typeof adminReportQuerySchema>;

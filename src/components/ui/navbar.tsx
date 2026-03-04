@@ -14,8 +14,7 @@ import {
   FiLayers,
   FiLogOut,
   FiSettings,
-  FiSidebar,
-  FiUser
+  FiSidebar
 } from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
 
@@ -73,6 +72,7 @@ type AccountMenuProps = {
   showTransactionHistory: boolean;
   showNotifications: boolean;
   showAccountLinks: boolean;
+  transactionHistoryHref: string;
 };
 
 function AccountMenu({
@@ -86,6 +86,7 @@ function AccountMenu({
   showTransactionHistory,
   showNotifications,
   showAccountLinks,
+  transactionHistoryHref,
 }: AccountMenuProps) {
   const hasAdditionalLinks =
     showAccountLinks || showNotifications || showTransactionHistory;
@@ -131,13 +132,6 @@ function AccountMenu({
         { showAccountLinks && (
           <>
             <DropdownMenuItem
-              onSelect={ () => onNavigate('/customer/account') }
-              className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
-            >
-              <FiUser className="size-4" aria-hidden="true" />
-              <span>Account</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
               onSelect={ () => onNavigate('/customer/settings') }
               className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
             >
@@ -157,7 +151,7 @@ function AccountMenu({
         ) }
         { showTransactionHistory && (
           <DropdownMenuItem
-            onSelect={ () => onNavigate('/customer/transactions') }
+            onSelect={ () => onNavigate(transactionHistoryHref) }
             className="dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary"
           >
             <FiCreditCard className="size-4" aria-hidden="true" />
@@ -304,6 +298,8 @@ export default function NavBar({
     resolvedRole === 'customer' || resolvedRole === 'partner';
   const hasNotifications = hasTransactionHistory;
   const showAccountLinks = !isAdmin;
+  const transactionHistoryHref =
+    resolvedRole === 'partner' ? '/partner/transactions' : '/customer/transactions';
   const handleNavigate = React.useCallback(
     (href: string) => {
       router.push(href);
@@ -388,6 +384,7 @@ export default function NavBar({
                           showTransactionHistory={ hasTransactionHistory }
                           showNotifications={ hasNotifications }
                           showAccountLinks={ showAccountLinks }
+                          transactionHistoryHref={ transactionHistoryHref }
                         />
                     ) }
                   </div>
@@ -411,6 +408,7 @@ export default function NavBar({
               showTransactionHistory={ hasTransactionHistory }
               showNotifications={ hasNotifications }
               showAccountLinks={ showAccountLinks }
+              transactionHistoryHref={ transactionHistoryHref }
             />
             ) }
             { resolvedMenuItems.length > 0 && (

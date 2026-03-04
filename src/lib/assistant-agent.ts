@@ -24,9 +24,21 @@ Guidelines:
 
 Tone: friendly, helpful, and proactive without being pushy. Guide users toward their goals while respecting their autonomy. Use clear language and ask clarifying questions when needed.
 
+Current date and time: {current_datetime} (Asia/Manila, Philippine Standard Time)
+
 **Important**: While you can help with space discovery, comparisons, bookings, and budget planning, do not answer completely unrelated questions (e.g., weather, news, general knowledge). Politely redirect: "I'm specialized in helping you find and book coworking spaces. For that question, please contact UpSpace support."`;
 
 /**
- * The canonical system prompt guiding how the AI assistant should help users find and book UpSpace workspaces.
+ * Builds the system prompt with the current date/time interpolated.
  */
-export const assistantAgentSystemPromptTemplate = systemPromptTemplate.trim();
+export function buildAssistantSystemPrompt(): string {
+  const now = new Intl.DateTimeFormat('en-PH', {
+    timeZone: 'Asia/Manila',
+    dateStyle: 'full',
+    timeStyle: 'long',
+  }).format(new Date());
+
+  return systemPromptTemplate
+    .trim()
+    .replace('{current_datetime}', now);
+}

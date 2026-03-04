@@ -45,8 +45,9 @@ export function usePartnerDashboardFeedQuery(
       const payload = await response.json();
       return (payload?.data ?? []) as DashboardFeedItem[];
     },
-    staleTime: 30_000,
-    refetchInterval: 30_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
     ...options,
   });
 }

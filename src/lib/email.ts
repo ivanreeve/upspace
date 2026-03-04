@@ -221,6 +221,196 @@ export async function sendBookingNotificationEmail({
   });
 }
 
+export async function sendBookingRejectionEmail({
+  to,
+  spaceName,
+  areaName,
+  bookingHours,
+  price,
+  link,
+}: SendBookingEmailOptions) {
+  if (!DEFAULT_FROM) {
+    throw new Error('EMAIL_FROM or EMAIL_SMTP_USER must be defined to send emails.');
+  }
+
+  const transporter = getTransporter();
+  const from = EMAIL_FROM_NAME ? `${EMAIL_FROM_NAME} <${DEFAULT_FROM}>` : DEFAULT_FROM;
+  const priceLabel =
+    typeof price === 'number'
+      ? `Total: ${BOOKING_PRICE_FORMATTER.format(price)}`
+      : '';
+  const durationLabel = `Duration: ${bookingHours} hour${bookingHours === 1 ? '' : 's'}`;
+  const subject = `Booking rejected for ${spaceName}`;
+  const ctaLink = link ?? `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/marketplace`;
+
+  const text = [
+    `Your booking at ${spaceName} has been rejected by the host.`,
+    `Area: ${areaName}`,
+    durationLabel,
+    priceLabel,
+    'If a payment was captured, a refund will be processed automatically.',
+    `View details: ${ctaLink}`
+  ].filter(Boolean).join('\n');
+
+  const html = `
+    <div style="font-family:'Inter','Segoe UI',system-ui,sans-serif;background-color:#f8f9fb;padding:24px;color:#111827;">
+      <div style="max-width:620px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+        <div style="background:#111827;color:#fff;padding:16px 20px;">
+          <h2 style="margin:0;font-size:18px;font-weight:700;">Booking rejected</h2>
+        </div>
+        <div style="padding:20px;">
+          <p style="margin:0 0 8px;">Hi there,</p>
+          <p style="margin:0 0 16px;">Your booking at <strong>${spaceName}</strong> has been rejected by the host.</p>
+          <div style="margin:0 0 12px;padding:12px 14px;border:1px solid #e5e7eb;border-radius:10px;background:#f9fafb;">
+            <p style="margin:0 0 6px;"><strong>Area:</strong> ${areaName}</p>
+            <p style="margin:0 0 6px;"><strong>${durationLabel}</strong></p>
+            ${priceLabel ? `<p style="margin:0;">${priceLabel}</p>` : ''}
+          </div>
+          <p style="margin:0 0 12px;color:#6b7280;font-size:14px;">If a payment was captured, a refund will be processed automatically.</p>
+          <a href="${ctaLink}" style="display:inline-block;margin-top:8px;padding:12px 16px;background:#2563eb;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;">View details</a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  await transporter.sendMail({
+ from,
+to,
+subject,
+text,
+html, 
+});
+}
+
+export async function sendBookingCancellationEmail({
+  to,
+  spaceName,
+  areaName,
+  bookingHours,
+  price,
+  link,
+}: SendBookingEmailOptions) {
+  if (!DEFAULT_FROM) {
+    throw new Error('EMAIL_FROM or EMAIL_SMTP_USER must be defined to send emails.');
+  }
+
+  const transporter = getTransporter();
+  const from = EMAIL_FROM_NAME ? `${EMAIL_FROM_NAME} <${DEFAULT_FROM}>` : DEFAULT_FROM;
+  const priceLabel =
+    typeof price === 'number'
+      ? `Total: ${BOOKING_PRICE_FORMATTER.format(price)}`
+      : '';
+  const durationLabel = `Duration: ${bookingHours} hour${bookingHours === 1 ? '' : 's'}`;
+  const subject = `Booking cancelled at ${spaceName}`;
+  const ctaLink = link ?? `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/marketplace`;
+
+  const text = [
+    `A booking at ${spaceName} has been cancelled.`,
+    `Area: ${areaName}`,
+    durationLabel,
+    priceLabel,
+    'A refund has been initiated if a payment was captured.',
+    `View details: ${ctaLink}`
+  ].filter(Boolean).join('\n');
+
+  const html = `
+    <div style="font-family:'Inter','Segoe UI',system-ui,sans-serif;background-color:#f8f9fb;padding:24px;color:#111827;">
+      <div style="max-width:620px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+        <div style="background:#111827;color:#fff;padding:16px 20px;">
+          <h2 style="margin:0;font-size:18px;font-weight:700;">Booking cancelled</h2>
+        </div>
+        <div style="padding:20px;">
+          <p style="margin:0 0 8px;">Hi there,</p>
+          <p style="margin:0 0 16px;">A booking at <strong>${spaceName}</strong> has been cancelled.</p>
+          <div style="margin:0 0 12px;padding:12px 14px;border:1px solid #e5e7eb;border-radius:10px;background:#f9fafb;">
+            <p style="margin:0 0 6px;"><strong>Area:</strong> ${areaName}</p>
+            <p style="margin:0 0 6px;"><strong>${durationLabel}</strong></p>
+            ${priceLabel ? `<p style="margin:0;">${priceLabel}</p>` : ''}
+          </div>
+          <p style="margin:0 0 12px;color:#6b7280;font-size:14px;">A refund has been initiated if a payment was captured.</p>
+          <a href="${ctaLink}" style="display:inline-block;margin-top:8px;padding:12px 16px;background:#2563eb;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;">View details</a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  await transporter.sendMail({
+ from,
+to,
+subject,
+text,
+html, 
+});
+}
+
+export type SendRefundEmailOptions = {
+  to: string;
+  spaceName: string;
+  areaName: string;
+  amount: string;
+  status: 'succeeded' | 'failed';
+  link?: string | null;
+};
+
+export async function sendRefundNotificationEmail({
+  to,
+  spaceName,
+  areaName,
+  amount,
+  status,
+  link,
+}: SendRefundEmailOptions) {
+  if (!DEFAULT_FROM) {
+    throw new Error('EMAIL_FROM or EMAIL_SMTP_USER must be defined to send emails.');
+  }
+
+  const transporter = getTransporter();
+  const from = EMAIL_FROM_NAME ? `${EMAIL_FROM_NAME} <${DEFAULT_FROM}>` : DEFAULT_FROM;
+  const statusLabel = status === 'succeeded' ? 'completed' : 'failed';
+  const subject = `Refund ${statusLabel} for ${spaceName}`;
+  const ctaLink = link ?? `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/marketplace`;
+
+  const headerColor = status === 'succeeded' ? '#111827' : '#991b1b';
+  const statusMessage = status === 'succeeded'
+    ? `Your refund of <strong>${amount}</strong> for your booking at <strong>${spaceName}</strong> has been completed.`
+    : `Your refund for your booking at <strong>${spaceName}</strong> could not be processed. Please contact support for assistance.`;
+
+  const text = [
+    `Refund ${statusLabel} for ${spaceName}.`,
+    `Area: ${areaName}`,
+    `Amount: ${amount}`,
+    status === 'failed' ? 'Please contact support for assistance.' : '',
+    `View details: ${ctaLink}`
+  ].filter(Boolean).join('\n');
+
+  const html = `
+    <div style="font-family:'Inter','Segoe UI',system-ui,sans-serif;background-color:#f8f9fb;padding:24px;color:#111827;">
+      <div style="max-width:620px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+        <div style="background:${headerColor};color:#fff;padding:16px 20px;">
+          <h2 style="margin:0;font-size:18px;font-weight:700;">Refund ${statusLabel}</h2>
+        </div>
+        <div style="padding:20px;">
+          <p style="margin:0 0 8px;">Hi there,</p>
+          <p style="margin:0 0 16px;">${statusMessage}</p>
+          <div style="margin:0 0 12px;padding:12px 14px;border:1px solid #e5e7eb;border-radius:10px;background:#f9fafb;">
+            <p style="margin:0 0 6px;"><strong>Area:</strong> ${areaName}</p>
+            <p style="margin:0;"><strong>Refund amount:</strong> ${amount}</p>
+          </div>
+          <a href="${ctaLink}" style="display:inline-block;margin-top:8px;padding:12px 16px;background:#2563eb;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;">View details</a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  await transporter.sendMail({
+ from,
+to,
+subject,
+text,
+html, 
+});
+}
+
 export type SendDeactivationRejectionEmailOptions = {
   to: string;
   reason: string;

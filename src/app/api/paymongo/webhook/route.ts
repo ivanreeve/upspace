@@ -3,7 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   checkoutEventSchema,
   handleCheckoutEvent,
+  handlePaymentEvent,
   handleWalletEvent,
+  paymentEventSchema,
   walletEventSchema
 } from './handlers';
 
@@ -44,11 +46,11 @@ export async function POST(req: NextRequest) {
   const isLive = attributes?.livemode === true;
 
   if (
-    !verifyPaymongoSignature({
+    !(await verifyPaymongoSignature({
       payload: payloadText,
       signature,
       useLiveSignature: isLive,
-    })
+    }))
   ) {
     return NextResponse.json(
       { message: 'Invalid PayMongo signature.', },
@@ -88,6 +90,18 @@ export async function POST(req: NextRequest) {
     }
 
     return handleCheckoutEvent(validation.data.data.attributes);
+  }
+
+  if (eventType.startsWith('payment.')) {
+    const validation = paymentEventSchema.safeParse(parsedPayload);
+    if (!validation.success) {
+      return NextResponse.json(
+        { message: 'Unexpected payment webhook payload.', },
+        { status: 400, }
+      );
+    }
+
+    return handlePaymentEvent(validation.data.data.attributes);
   }
 
   return RECEIVED_RESPONSE;

@@ -38,10 +38,7 @@ export type ReviewTagOption = {
 };
 
 export async function fetchSpaceReviews(spaceId: string) {
-  const response = await fetch(`/api/v1/spaces/${spaceId}/reviews`, {
-    headers: { accept: 'application/json', },
-    cache: 'no-store',
-  });
+  const response = await fetch(`/api/v1/spaces/${spaceId}/reviews`, { headers: { accept: 'application/json', }, });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch space reviews (${response.status})`);
@@ -74,10 +71,7 @@ export async function createSpaceReview(spaceId: string, payload: CreateSpaceRev
 }
 
 export async function fetchCommonReviewTags() {
-  const response = await fetch('/api/v1/reviews/tags', {
-    headers: { accept: 'application/json', },
-    cache: 'no-store',
-  });
+  const response = await fetch('/api/v1/reviews/tags', { headers: { accept: 'application/json', }, });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch common review tags (${response.status})`);

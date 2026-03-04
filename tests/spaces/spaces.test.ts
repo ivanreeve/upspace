@@ -59,7 +59,10 @@ vi.mock('@/lib/spaces/image-urls', () => ({
   isAbsoluteUrl: vi.fn((path: string) => path.startsWith('http')),
 }));
 vi.mock('@/lib/spaces/partner-serializer', () => ({ deriveSpaceStatus: vi.fn(() => 'approved'), }));
-vi.mock('@/lib/spaces/pricing', () => ({ computeStartingPriceFromAreas: vi.fn(() => 100), }));
+vi.mock('@/lib/spaces/pricing', () => ({
+  computeStartingPriceFromAreas: vi.fn(() => 100),
+  computeStartingPriceFromAreasCached: vi.fn(() => 100),
+}));
 vi.mock('@/data/spaces', () => ({ WEEKDAY_ORDER: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], }));
 vi.doMock('@/lib/cache/redis', () => ({
   SPACES_LIST_CACHE_TTL_SECONDS: 60,
@@ -187,6 +190,46 @@ _count: { rating_star: 2, },
   it('returns 400 for invalid availability range', async () => {
     const response = await GET(createRequest('http://localhost/api/v1/spaces?available_from=10:00&available_to=09:00'));
     expect(response.status).toBe(400);
+  });
+
+  it('applies amenities-only filters against amenity_choice names', async () => {
+    const listResult = spaceFixtures.listResult;
+    mockPrisma.space.findMany.mockResolvedValueOnce(listResult);
+    mockPrisma.review.groupBy.mockResolvedValueOnce([]);
+    setAuthUser(null);
+
+    const response = await GET(
+      createRequest('http://localhost/api/v1/spaces?amenities=Loyalty%20rewards')
+    );
+
+    expect(response.status).toBe(200);
+
+    const findManyCall = mockPrisma.space.findMany.mock.calls[0]?.[0] as {
+      where?: {
+        AND?: unknown[];
+      };
+    };
+
+    expect(findManyCall.where?.AND).toEqual(expect.arrayContaining([
+      {
+        amenity: {
+          some: {
+            OR: [
+              {
+                amenity_choice: {
+                  is: {
+                    name: {
+                      equals: 'Loyalty rewards',
+                      mode: 'insensitive',
+                    },
+                  },
+                },
+              }
+            ],
+          },
+        },
+      }
+    ]));
   });
 });
 

@@ -242,7 +242,7 @@ export function AdminDeactivationRequestsPage() {
   const tableBody = (() => {
     if (isLoading) {
       return (
-        <div className="rounded-md border border-border/60 bg-background/80">
+        <div className="rounded-md border border-border/60 bg-muted/20">
           <Table>
             <TableHeader>
               <TableRow>
@@ -315,7 +315,7 @@ export function AdminDeactivationRequestsPage() {
 
     return (
       <>
-        <div className="hidden rounded-md border border-border/60 bg-background/80 md:block">
+        <div className="hidden rounded-md border border-border/60 bg-muted/20 md:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -401,7 +401,7 @@ export function AdminDeactivationRequestsPage() {
         </div>
         <div className="space-y-3 md:hidden">
           { requests.map((request) => (
-            <Card key={ request.id } className="border-border/70 bg-background/80">
+            <Card key={ request.id } className="border-border/70 bg-muted/20">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
@@ -475,7 +475,7 @@ export function AdminDeactivationRequestsPage() {
   const isFetchingPage = isFetching && !isLoading;
 
   const paginationFooter = (
-    <div className="mt-4 flex flex-col gap-2 rounded-md border border-border/70 bg-background/80 px-4 py-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
+    <div className="mt-4 flex flex-col gap-2 rounded-md border border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
       <div className="flex items-center gap-2 font-medium text-foreground">
         <span>Page { pageIndex + 1 }</span>
         <span className="hidden md:inline">•</span>
@@ -577,7 +577,12 @@ export function AdminDeactivationRequestsPage() {
             maxLength={ 1000 }
           />
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={ () => setIsRejectDialogOpen(false) } disabled={ isRejecting }>
+            <Button
+              variant="ghost"
+              className="hover:bg-sidebar"
+              onClick={ () => setIsRejectDialogOpen(false) }
+              disabled={ isRejecting }
+            >
               Cancel
             </Button>
             <Button variant="destructive" onClick={ handleConfirmReject } disabled={ isRejecting }>

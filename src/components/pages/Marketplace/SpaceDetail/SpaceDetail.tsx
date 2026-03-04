@@ -22,7 +22,7 @@ import {
 } from 'react-icons/fi';
 import { CgSpinner } from 'react-icons/cg';
 import { toast } from 'sonner';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 import SpaceHeader from './SpaceHeader';
 import SpacePhotos from './SpacePhotos';
@@ -72,6 +72,7 @@ import { MAX_BOOKING_HOURS, MIN_BOOKING_HOURS } from '@/lib/bookings/constants';
 import { BOOKING_DURATION_VARIABLE_KEYS, type PriceRuleOperand, type PriceRuleRecord } from '@/lib/pricing-rules';
 import { evaluatePriceRule, type PriceRuleEvaluationResult } from '@/lib/pricing-rules-evaluator';
 import { useUserBookingsQuery, useCreateCheckoutSessionMutation } from '@/hooks/api/useBookings';
+import { useUserProfile } from '@/hooks/use-user-profile';
 
 const DESCRIPTION_COLLAPSED_HEIGHT = 360; // px
 const DESKTOP_BREAKPOINT_QUERY = '(min-width: 1024px)';
@@ -173,7 +174,7 @@ type SpaceDescriptionSectionProps = {
 type UseSpaceBookingParams = {
   hasAreas: boolean;
   isBookingOpen: boolean;
-  isGuest: boolean;
+  canBook: boolean;
   session: SessionValue;
   setIsBookingOpen: Dispatch<SetStateAction<boolean>>;
   space: MarketplaceSpaceDetail;
@@ -740,7 +741,11 @@ function BookingReservationOverlay({
         open={ isDesktopViewport && isBookingOpen }
         onOpenChange={ setIsBookingOpen }
       >
-        <DialogContent showCloseButton={ false }>
+        <DialogContent
+          showCloseButton={ false }
+          fullWidth
+          className="max-h-[90vh] overflow-y-auto lg:max-w-[1024px]"
+        >
           <DialogHeader>
             <DialogTitle>Book a reservation</DialogTitle>
             <DialogDescription>
@@ -776,7 +781,10 @@ function BookingReservationOverlay({
         open={ !isDesktopViewport && isBookingOpen }
         onOpenChange={ setIsBookingOpen }
       >
-        <SheetContent side="bottom" className="gap-4">
+        <SheetContent
+          side="bottom"
+          className="max-h-[90vh] gap-4 overflow-y-auto rounded-t-2xl"
+        >
           <SheetHeader>
             <SheetTitle>Book a reservation</SheetTitle>
           </SheetHeader>
@@ -811,7 +819,7 @@ function BookingReservationOverlay({
 function useSpaceBooking({
   hasAreas,
   isBookingOpen,
-  isGuest,
+  canBook,
   session,
   setIsBookingOpen,
   space,
@@ -1085,7 +1093,7 @@ function useSpaceBooking({
       !isPricingLoading &&
       activePriceRule &&
       totalPrice !== null &&
-      !isGuest &&
+      canBook &&
       !createCheckoutSession.isPending &&
       !isOverCapacity
   );
@@ -1100,7 +1108,6 @@ function useSpaceBooking({
         spaceId: space.id,
         areaId: selectedArea.id,
         bookingHours,
-        price: totalPrice ?? 0,
         startAt: bookingStartAtIso,
         guestCount,
       });
@@ -1122,8 +1129,7 @@ function useSpaceBooking({
     selectedArea,
     session,
     setIsBookingOpen,
-    space.id,
-    totalPrice
+    space.id
   ]);
 
   return {
@@ -1161,6 +1167,8 @@ function SpaceDetailContent({ space, }: SpaceDetailProps) {
   const { session, } = useSession();
   const pathname = usePathname();
   const isGuest = !session;
+  const { data: profile, } = useUserProfile();
+  const canBook = !isGuest && profile?.role === 'customer';
   const { data: userBookings = [], } = useUserBookingsQuery({ enabled: !isGuest, });
 
   const hasConfirmedBooking = useMemo(
@@ -1189,11 +1197,26 @@ function SpaceDetailContent({ space, }: SpaceDetailProps) {
   const booking = useSpaceBooking({
     hasAreas,
     isBookingOpen,
-    isGuest,
+    canBook,
     session,
     setIsBookingOpen,
     space,
   });
+
+  const searchParams = useSearchParams();
+  const hasAutoOpened = useRef(false);
+  const { handleOpenBooking, } = booking;
+  useEffect(() => {
+    if (
+      searchParams.get('book') === 'true' &&
+      canBook &&
+      hasAreas &&
+      !hasAutoOpened.current
+    ) {
+      hasAutoOpened.current = true;
+      handleOpenBooking();
+    }
+  }, [searchParams, canBook, hasAreas, handleOpenBooking]);
 
   const messageHostButtonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -1278,9 +1301,9 @@ function SpaceDetailContent({ space, }: SpaceDetailProps) {
           <div
             className={ cn(
               'grid gap-6 lg:items-start',
-              isGuest
-                ? 'lg:grid-cols-1'
-                : 'lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]'
+              canBook
+                ? 'lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]'
+                : 'lg:grid-cols-1'
             ) }
           >
             <div className="space-y-4">
@@ -1293,7 +1316,7 @@ function SpaceDetailContent({ space, }: SpaceDetailProps) {
                 messageButtonRef={ messageHostButtonRef }
               />
 
-              { !isGuest && (
+              { canBook && (
                 <div className="lg:hidden">
                   <BookingCard
                     spaceName={ space.name }
@@ -1310,7 +1333,7 @@ function SpaceDetailContent({ space, }: SpaceDetailProps) {
               />
             </div>
 
-            { !isGuest && (
+            { canBook && (
               <div className="hidden lg:block">
                 <BookingCard
                   spaceName={ space.name }

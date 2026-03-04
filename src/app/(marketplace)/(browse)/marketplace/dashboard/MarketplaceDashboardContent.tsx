@@ -1,9 +1,7 @@
 'use client';
 
 import { Skeleton } from '@/components/ui/skeleton';
-import { AdminDashboard } from '@/components/pages/Admin/AdminDashboard';
 import { PartnerMessagesPanel } from '@/components/pages/Marketplace/PartnerMessagesPanel';
-import { mockAdminDashboardPayload } from '@/data/admin-dashboard-mock';
 import { useUserProfile } from '@/hooks/use-user-profile';
 
 export function MarketplaceDashboardContent() {
@@ -45,19 +43,10 @@ export function MarketplaceDashboardContent() {
 
   if (profile.role === 'admin') {
     return (
-      <section className="space-y-5 py-8 md:space-y-6 md:py-10">
-        <header className="space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight md:text-[32px]">
-            Admin dashboard
-          </h1>
-          <p className="text-sm text-muted-foreground md:text-base">
-            Unified audit log for bookings, coworking spaces, client registrations, and partner verifications.
-          </p>
-          <p className="text-xs text-muted-foreground">
-            The preview renders a representative dataset so you can evaluate layout density immediately.
-          </p>
-        </header>
-        <AdminDashboard mockPayload={ mockAdminDashboardPayload } />
+      <section className="space-y-6 py-8">
+        <div className="rounded-md border border-border/70 bg-muted/10 px-4 py-3 text-sm text-muted-foreground">
+          Admin dashboards now live at <span className="font-medium">/admin/dashboard</span>.
+        </div>
       </section>
     );
   }

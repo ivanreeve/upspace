@@ -27,6 +27,20 @@ export type GetUserBookmarksInput = z.infer<typeof getUserBookmarksInputSchema>;
 export type GetUserBookingHistoryInput = z.infer<typeof getUserBookingHistoryInputSchema>;
 export type GetSimilarSpacesInput = z.infer<typeof getSimilarSpacesInputSchema>;
 
+async function resolveBookmarkEligibleUserId(userId: string): Promise<bigint | null> {
+  const numericUserId = BigInt(userId);
+  const dbUser = await prisma.user.findUnique({
+    where: { user_id: numericUserId, },
+    select: { role: true, },
+  });
+
+  if (!dbUser || dbUser.role === 'admin') {
+    return null;
+  }
+
+  return numericUserId;
+}
+
 /**
  * Get user's bookmarked spaces.
  */
@@ -36,8 +50,17 @@ export async function getUserBookmarks(input: unknown) {
  user_id, limit,
 } = validated;
 
+  const bookmarkUserId = await resolveBookmarkEligibleUserId(user_id);
+  if (!bookmarkUserId) {
+    return {
+      user_id,
+      bookmarks: [],
+      total_count: 0,
+    };
+  }
+
   const bookmarks = await prisma.bookmark.findMany({
-    where: { user_id: BigInt(user_id), },
+    where: { user_id: bookmarkUserId, },
     include: {
       space: {
         include: {
@@ -217,6 +240,9 @@ export async function getSimilarSpaces(input: unknown) {
   const {
  space_id, limit, user_id,
 } = validated;
+  const bookmarkUserId = user_id
+    ? await resolveBookmarkEligibleUserId(user_id)
+    : null;
 
   // Fetch the reference space
   const referenceSpace = await prisma.space.findUnique({
@@ -260,9 +286,9 @@ export async function getSimilarSpaces(input: unknown) {
       amenity: { include: { amenity_choice: true, }, },
       area: { include: { price_rule: { select: { definition: true, }, }, }, },
       review: { select: { rating_star: true, }, },
-      bookmark: user_id
+      bookmark: bookmarkUserId
         ? {
-            where: { user_id: BigInt(user_id), },
+            where: { user_id: bookmarkUserId, },
             take: 1,
           }
         : false,
@@ -326,7 +352,7 @@ export async function getSimilarSpaces(input: unknown) {
       amenity_count: spaceAmenities.length,
       amenity_overlap: amenityOverlap,
       similarity_score: similarityScore,
-      is_bookmarked: user_id ? (space.bookmark as unknown[]).length > 0 : false,
+      is_bookmarked: bookmarkUserId ? (space.bookmark as unknown[]).length > 0 : false,
     };
   });
 

@@ -4,6 +4,10 @@ import type { AdminDashboardPayload } from '@/hooks/api/useAdminDashboard';
 
 export const mockAdminDashboardPayload: AdminDashboardPayload = {
   metrics: {
+    revenue: {
+      totalMinor: '1250000',
+      transactionCount: 312,
+    },
     bookings: {
       total: 312,
       statusCounts: [

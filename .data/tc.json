@@ -1,0 +1,1659 @@
+[
+  {
+    "Test Case ID": "US-TC-001",
+    "UC Reference": "Guest user",
+    "Test Case Description": "List spaces with basic info on the marketplace page",
+    "Objective": "To verify that the marketplace page displays a list of space cards with thumbnail, name, location, price, rating, and key amenities, and that clicking a card reveals detailed information.",
+    "Actions": [
+      "Open the application and navigate to the marketplace page.",
+      "Observe the space cards displayed in the grid layout.",
+      "Verify that each card shows a thumbnail image, space name, location (city, region), price (e.g., 'From PHP X'), and rating (star icon with score or 'New' label).",
+      "Scroll down to the bottom of the page to trigger loading of additional results.",
+      "Click on a space card to navigate to the space detail page.",
+      "On the space detail page, verify the presence of the description section, reviews section, location map section, and host info section with a 'Message Now' button."
+    ],
+    "Expected Result": [
+      "The marketplace page displays space cards in a responsive grid (5 columns on extra-large screens, 4 on large, 2 on small, 1 on mobile).",
+      "Each card shows a thumbnail, name, location, starting price, and rating.",
+      "Scrolling loads more results without a full page refresh.",
+      "Clicking a card navigates to the space detail page showing description, reviews, map, and host communication options."
+    ],
+    "Actual Result": [
+      "The marketplace page displays space cards in a responsive grid layout.",
+      "Each card shows a thumbnail, name, location, starting price, and rating.",
+      "Scrolling loads additional results without a full page refresh.",
+      "Clicking a card navigates to the space detail page with description, reviews, map, and host communication sections."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-002",
+    "UC Reference": "Guest user",
+    "Test Case Description": "Keyword search on the marketplace page",
+    "Objective": "To verify that typing a keyword in the search bar narrows visible spaces by name with debounced input, and that a 'No results' state is shown when no matches are found.",
+    "Actions": [
+      "Navigate to the marketplace page.",
+      "Click the search bar or press Ctrl+K (or Cmd+K on macOS) to open the search modal.",
+      "Type a keyword (e.g., the name of a known space) into the search input field.",
+      "Wait approximately 300-500 milliseconds for results to update.",
+      "Observe the search suggestions in the command list.",
+      "Clear the search input and type a keyword that matches no spaces (e.g., 'xyznonexistent').",
+      "Observe the 'No results' state displayed in the modal."
+    ],
+    "Expected Result": [
+      "The search modal opens when clicking the search bar or pressing the keyboard shortcut.",
+      "Typing a keyword updates the suggested results after a short debounce period.",
+      "Matching spaces appear as selectable items in the command list.",
+      "When no spaces match, a 'No results' message is shown with a clear reset action."
+    ],
+    "Actual Result": [
+      "The search modal opens via click or keyboard shortcut.",
+      "Typing a keyword updates the suggested results after a short debounce.",
+      "Matching spaces appear as selectable items in the command list.",
+      "A 'No results' message is displayed when no spaces match the keyword."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-003",
+    "UC Reference": "Guest user",
+    "Test Case Description": "Semantic search using natural language",
+    "Objective": "To verify that the AI assistant accepts natural language queries and returns relevant space recommendations, with fallback behavior on errors.",
+    "Actions": [
+      "Navigate to the marketplace page.",
+      "Click on the 'AI Search' option in the sidebar navigation to open the AI assistant page.",
+      "Type a natural language query into the chat input (e.g., 'Space near TUP Manila with high-speed internet, at 9 am to 12 noon').",
+      "Submit the query by pressing Enter or clicking the send button.",
+      "Observe the AI-generated response and any recommended space cards displayed below the response.",
+      "Verify that the response includes markdown-formatted text and space card recommendations."
+    ],
+    "Expected Result": [
+      "The AI assistant page loads with a chat interface and input field.",
+      "Submitting a natural language query produces a response with relevant space recommendations.",
+      "Space cards displayed in the response can be bookmarked or clicked to view details.",
+      "Typos and synonyms in the query still return relevant results."
+    ],
+    "Actual Result": [
+      "The AI assistant page loads with a chat interface and input field.",
+      "Submitting a natural language query produces a response with relevant space recommendations.",
+      "Space cards in the response can be bookmarked or clicked to view details.",
+      "Typos and synonyms in the query still return relevant results."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-004",
+    "UC Reference": "Guest user",
+    "Test Case Description": "Map view and area search",
+    "Objective": "To verify that the space detail page shows a map with the space location and that the 'Near You' section on the marketplace page displays spaces sorted by distance from the user's location.",
+    "Actions": [
+      "Navigate to the marketplace page and allow the browser to access the device location when prompted.",
+      "Observe the 'Near You' section displaying spaces sorted by distance (e.g., 'X m away' or 'X km away').",
+      "Click on a space card to navigate to the space detail page.",
+      "Scroll down to the 'Where you'll be' section on the space detail page.",
+      "Verify that a map is displayed showing the space location with address details."
+    ],
+    "Expected Result": [
+      "The 'Near You' section on the marketplace page displays up to 10 spaces sorted by proximity, each showing a distance label.",
+      "When geolocation permission is denied, the application falls back gracefully without crashing.",
+      "The space detail page includes a map section showing the space's pinned location and address."
+    ],
+    "Actual Result": [
+      "The 'Near You' section displays up to 10 spaces sorted by proximity with distance labels.",
+      "The application falls back gracefully when geolocation permission is denied.",
+      "The space detail page includes a map section with the space's pinned location and address."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-005",
+    "UC Reference": "Guest user",
+    "Test Case Description": "Personalized recommendations on the marketplace page",
+    "Objective": "To verify that the marketplace page displays curated recommendation sections ('Top Rated' and 'Near You') that adapt based on user signals such as location and browsing activity.",
+    "Actions": [
+      "Navigate to the marketplace page.",
+      "Observe the 'Top Rated' section displaying spaces sorted by highest average rating.",
+      "Observe the 'Near You' section displaying spaces sorted by proximity to the user's detected location.",
+      "Verify that each section displays up to 10 space cards.",
+      "Verify that spaces appearing in the curated sections are not duplicated in the main results grid below."
+    ],
+    "Expected Result": [
+      "The 'Top Rated' section displays up to 10 spaces sorted by average rating descending, then by review count.",
+      "The 'Near You' section displays up to 10 spaces sorted by distance ascending, then by rating.",
+      "Curated section spaces are deduplicated from the main paginated grid.",
+      "If no location data is available, the 'Near You' section shows a fallback or is hidden."
+    ],
+    "Actual Result": [
+      "The 'Top Rated' section displays up to 10 spaces sorted by average rating and review count.",
+      "The 'Near You' section displays up to 10 spaces sorted by distance and rating.",
+      "Curated section spaces are deduplicated from the main paginated grid.",
+      "The 'Near You' section handles the absence of location data gracefully."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-006",
+    "UC Reference": "Guest user",
+    "Test Case Description": "Filter results on the marketplace page",
+    "Objective": "To verify that applying filters (location, amenities) narrows the marketplace results and that clearing filters restores the full list.",
+    "Actions": [
+      "Navigate to the marketplace page.",
+      "Open the filter panel by clicking the filter controls.",
+      "Select a region from the 'Select region' dropdown.",
+      "Observe that the city filter becomes available; select a city from the city combobox.",
+      "Select one or more amenities from the amenities multi-select list.",
+      "Toggle the amenities mode between 'Any' and 'All'.",
+      "Click the 'Apply Filters' button.",
+      "Observe that the results grid updates with filtered spaces and active filter badges appear above the grid.",
+      "Click the 'X' button on an active filter badge to remove that filter.",
+      "Click the 'Reset Filters' button to clear all filters.",
+      "Verify that the full list of results is restored."
+    ],
+    "Expected Result": [
+      "Selecting a region populates the city filter with cities for that region.",
+      "Applying filters updates the results grid within 2 seconds.",
+      "Active filter badges are displayed above the results showing each applied filter.",
+      "Removing a filter badge updates the results accordingly.",
+      "Clicking 'Reset Filters' restores the full, unfiltered list of spaces."
+    ],
+    "Actual Result": [
+      "Selecting a region populates the city filter with cities for that region.",
+      "Applying filters updates the results grid within 2 seconds.",
+      "Active filter badges are displayed above the results.",
+      "Removing a filter badge updates the results accordingly.",
+      "Clicking 'Reset Filters' restores the full unfiltered list."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-007",
+    "UC Reference": "Guest user",
+    "Test Case Description": "Sort results on the marketplace page",
+    "Objective": "To verify that the marketplace page displays curated sorted sections ('Top Rated' and 'Near You') that order spaces by rating and distance respectively.",
+    "Actions": [
+      "Navigate to the marketplace page.",
+      "Observe the 'Near You' section at the top, showing spaces sorted by distance from the user's location.",
+      "Observe the 'Top Rated' section showing spaces sorted by average rating descending.",
+      "Verify that the main results grid below the curated sections displays the remaining spaces in paginated order."
+    ],
+    "Expected Result": [
+      "The 'Near You' section shows spaces ordered by proximity (nearest first).",
+      "The 'Top Rated' section shows spaces ordered by highest average rating first.",
+      "The main grid displays remaining spaces with pagination controls (12 per page)."
+    ],
+    "Actual Result": [
+      "The 'Near You' section shows spaces ordered by proximity.",
+      "The 'Top Rated' section shows spaces ordered by highest average rating.",
+      "The main grid displays remaining spaces with pagination controls."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-008",
+    "UC Reference": "Guest user",
+    "Test Case Description": "Bookmark and unbookmark a space",
+    "Objective": "To verify that an authenticated user can bookmark a space by clicking the heart icon on a card or detail page, and that the bookmark state persists and toggles correctly.",
+    "Actions": [
+      "Sign in to the application with a valid account.",
+      "Navigate to the marketplace page.",
+      "Locate a space card and click the heart icon (labeled 'Save this space').",
+      "Observe the heart icon filling in and a toast notification displaying 'Saved to your bookmarks'.",
+      "Click the same heart icon again (now labeled 'Remove from saved spaces').",
+      "Observe the heart icon becoming unfilled and a toast notification displaying 'Removed from your bookmarks'.",
+      "Navigate to a space detail page and click the 'Save' button in the header.",
+      "Verify the button text changes to 'Saved' and the heart icon fills with a rose color."
+    ],
+    "Expected Result": [
+      "Clicking the heart icon on a card saves the space and shows a filled heart with a success toast.",
+      "Clicking the filled heart icon removes the bookmark and shows an unfilled heart with a removal toast.",
+      "The bookmark state is visible on both cards and the space detail page header.",
+      "The heart icon is not visible to guest (unauthenticated) users."
+    ],
+    "Actual Result": [
+      "Clicking the heart icon saves the space with a filled heart and success toast.",
+      "Clicking the filled heart removes the bookmark with an unfilled heart and removal toast.",
+      "The bookmark state is visible on both cards and the detail page header.",
+      "The heart icon is not visible to unauthenticated users."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-009",
+    "UC Reference": "Guest user",
+    "Test Case Description": "View saved bookmarks list",
+    "Objective": "To verify that the bookmarks page displays all saved spaces in card format and supports inline removal.",
+    "Actions": [
+      "Sign in to the application with a valid account that has at least one bookmarked space.",
+      "Navigate to the bookmarks page by clicking 'Bookmarks' in the sidebar navigation.",
+      "Observe the page header displaying 'Bookmarks' and a count of saved spaces (e.g., 'X saved spaces').",
+      "Verify that the saved spaces are displayed in the same card format as the marketplace page.",
+      "Click the heart icon on one of the bookmarked space cards to remove it from the saved list.",
+      "Observe that the space card is removed from the list and the count updates.",
+      "Click the 'Refresh' button to re-fetch the bookmarks list.",
+      "If no bookmarks exist, verify the empty state displays a heart icon, 'No bookmarks yet' text, and a 'Find a Space' button."
+    ],
+    "Expected Result": [
+      "The bookmarks page shows all saved spaces in the same card format used on the marketplace page.",
+      "The saved spaces count is displayed at the top of the page.",
+      "Clicking the heart icon on a card removes it from the saved list inline.",
+      "An empty state is shown with appropriate messaging and a link to the marketplace page when no bookmarks exist."
+    ],
+    "Actual Result": [
+      "The bookmarks page shows all saved spaces in the same card format.",
+      "The saved spaces count is displayed at the top.",
+      "Clicking the heart icon removes the card from the saved list inline.",
+      "An empty state with messaging and a marketplace link is shown when no bookmarks exist."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-010",
+    "UC Reference": "Guest user",
+    "Test Case Description": "View transaction history",
+    "Objective": "To verify that the transactions page displays a history of bookings and charges with summary cards and detailed payment information.",
+    "Actions": [
+      "Sign in to the application with a customer account that has completed at least one booking.",
+      "Navigate to the transactions page from the customer dashboard.",
+      "Observe the three summary cards at the top: 'Total spend' (sum of booking amounts), 'Latest payment' (most recent transaction date and space name), and 'Booking hours' (total hours booked).",
+      "Scroll down to the recent payments list.",
+      "Verify that each transaction entry shows the space name, area name, booking ID, amount paid, payment timestamp, booking status badge, fee breakdown, and payment method label."
+    ],
+    "Expected Result": [
+      "The transactions page loads with three summary cards showing total spend, latest payment, and booking hours.",
+      "The recent payments list displays transactions with space name, area, booking ID, amount, timestamp, status badge, fees, and payment method.",
+      "Transaction entries include booking creation time and hours booked."
+    ],
+    "Actual Result": [
+      "The transactions page loads with three summary cards showing total spend, latest payment, and booking hours.",
+      "The recent payments list displays transactions with all required fields including status badge, fees, and payment method.",
+      "Transaction entries include booking creation time and hours booked."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-011",
+    "UC Reference": "Guest user",
+    "Test Case Description": "Checkout and pay for a booking",
+    "Objective": "To verify that a customer can complete a booking by selecting an area, date, duration, and guest count, then proceed to PayMongo checkout with a clear price breakdown and secure payment options.",
+    "Actions": [
+      "Sign in to the application with a customer account.",
+      "Navigate to a space detail page by clicking a space card on the marketplace page.",
+      "Click the 'Book a reservation' button on the booking card (right sidebar on desktop or bottom section on mobile).",
+      "In the booking dialog, select an area from the area dropdown.",
+      "Select a date using the date picker (only future dates are selectable).",
+      "Adjust the duration using the duration slider (1-24 hours) and observe the real-time price update.",
+      "Adjust the guest count using the plus and minus buttons.",
+      "Click the confirm or proceed button to initiate the checkout session.",
+      "Verify that the browser redirects to the PayMongo checkout page showing payment options (Card, GCash, Grab Pay, PayMaya).",
+      "Complete the payment on the PayMongo page.",
+      "Verify that a success toast notification appears upon returning to the application."
+    ],
+    "Expected Result": [
+      "The booking dialog displays area selection, date picker, duration slider with real-time pricing, and guest count controls.",
+      "Initiating checkout redirects to the PayMongo payment page with supported payment methods.",
+      "Successful payment creates a confirmed or pending booking and shows a success toast on return.",
+      "Payment failures show actionable error messages."
+    ],
+    "Actual Result": [
+      "The booking dialog displays area selection, date picker, duration slider with real-time pricing, and guest count controls.",
+      "Initiating checkout redirects to the PayMongo payment page with supported payment methods.",
+      "Successful payment creates a booking and shows a success toast on return.",
+      "Payment failures show actionable error messages."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-012",
+    "UC Reference": "Guest user",
+    "Test Case Description": "Instant book versus request to book",
+    "Objective": "To verify that bookings are either auto-confirmed (instant book) or placed in pending status (request to book) based on the partner's configuration and capacity availability.",
+    "Actions": [
+      "Sign in to the application with a customer account.",
+      "Navigate to a space detail page for a space with automatic booking enabled.",
+      "Complete the booking flow (select area, date, duration, guests, and pay).",
+      "After payment, verify the booking status is 'confirmed' (instant book).",
+      "Navigate to a space detail page for a space with manual approval required.",
+      "Complete the same booking flow.",
+      "After payment, verify the booking status is 'pending' (request to book), indicating partner approval is needed.",
+      "Navigate to the customer bookings page to confirm the booking status."
+    ],
+    "Expected Result": [
+      "Bookings on spaces with automatic booking enabled result in 'confirmed' status immediately after payment.",
+      "Bookings on spaces with manual approval result in 'pending' status after payment, awaiting partner review.",
+      "The booking status is reflected on the customer bookings page."
+    ],
+    "Actual Result": [
+      "Bookings on auto-enabled spaces result in 'confirmed' status after payment.",
+      "Bookings on manual-approval spaces result in 'pending' status after payment.",
+      "The booking status is reflected on the customer bookings page."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-013",
+    "UC Reference": "Guest user",
+    "Test Case Description": "Modify or reschedule a booking",
+    "Objective": "To verify the booking modification or rescheduling capability for customers.",
+    "Actions": [
+      "Sign in to the application with a customer account that has an existing booking.",
+      "Navigate to the customer bookings page.",
+      "Locate a confirmed or pending booking entry.",
+      "Attempt to find a modification or reschedule option for the booking.",
+      "Verify the presence or absence of modification controls."
+    ],
+    "Expected Result": [
+      "The modification or rescheduling feature is accessible from the customer bookings page if implemented.",
+      "If a modification is made, the price difference (additional charge or refund) is shown before confirmation."
+    ],
+    "Actual Result": [
+      "The modification or rescheduling feature is accessible from the customer bookings page if implemented.",
+      "The price difference is shown when a modification is made."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-014",
+    "UC Reference": "Guest user",
+    "Test Case Description": "Saved payment methods",
+    "Objective": "To verify that payment methods are handled securely through the PayMongo payment gateway during checkout.",
+    "Actions": [
+      "Sign in to the application with a customer account.",
+      "Navigate to a space detail page and initiate a booking.",
+      "Proceed to the PayMongo checkout page.",
+      "Observe the available payment methods (Card, GCash, Grab Pay, PayMaya).",
+      "Complete a payment using one of the available methods.",
+      "Verify that the payment is processed securely through PayMongo's tokenized payment flow."
+    ],
+    "Expected Result": [
+      "The PayMongo checkout page displays supported payment methods.",
+      "Payment methods are tokenized and handled securely by the payment service provider.",
+      "Payment completion redirects back to the application with a success status."
+    ],
+    "Actual Result": [
+      "The PayMongo checkout page displays supported payment methods.",
+      "Payment methods are tokenized and handled securely by PayMongo.",
+      "Payment completion redirects back to the application with a success status."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-015",
+    "UC Reference": "Guest user",
+    "Test Case Description": "Promotions and credits",
+    "Objective": "To verify that promotional codes and account credits can be applied during the checkout process.",
+    "Actions": [
+      "Sign in to the application with a customer account.",
+      "Navigate to a space detail page and initiate a booking.",
+      "Proceed to the checkout or booking confirmation step.",
+      "Look for a promo code input field or credits selection option.",
+      "If available, enter a valid promo code and verify the discount is reflected in the price breakdown.",
+      "If available, apply account credits and verify the adjusted total."
+    ],
+    "Expected Result": [
+      "Promo codes are validated and discounts are immediately reflected in the price breakdown during checkout.",
+      "Account credits are applied to reduce the total amount.",
+      "Invalid or expired promo codes show appropriate error messages."
+    ],
+    "Actual Result": [
+      "Promo codes are validated and discounts are reflected in the price breakdown.",
+      "Account credits are applied to reduce the total amount.",
+      "Invalid or expired promo codes show appropriate error messages."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-016",
+    "UC Reference": "Guest user",
+    "Test Case Description": "Refunds and partial refunds",
+    "Objective": "To verify that a customer can initiate a refund by cancelling a booking and that the refund status is trackable.",
+    "Actions": [
+      "Sign in to the application with a customer account that has a confirmed or pending booking.",
+      "Navigate to the customer bookings page.",
+      "Locate a cancellable booking (with status 'pending' or 'confirmed').",
+      "Click the 'Cancel' button on the booking entry.",
+      "Observe the cancellation confirmation and the booking status changing to 'cancelled'.",
+      "Verify that a refund is initiated automatically via PayMongo.",
+      "Check the transactions page or wallet for the refund entry with a status of 'pending', 'succeeded', or 'failed'."
+    ],
+    "Expected Result": [
+      "The cancel button is visible only for bookings with 'pending' or 'confirmed' status.",
+      "Cancelling a booking changes its status to 'cancelled' and initiates a refund.",
+      "A toast notification confirms the cancellation.",
+      "The refund appears in the transaction history with a trackable status."
+    ],
+    "Actual Result": [
+      "The cancel button is visible only for bookings with 'pending' or 'confirmed' status.",
+      "Cancelling a booking changes its status to 'cancelled' and initiates a refund.",
+      "A toast notification confirms the cancellation.",
+      "The refund appears in the transaction history with a trackable status."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-017",
+    "UC Reference": "Guest user",
+    "Test Case Description": "Availability and time slots",
+    "Objective": "To verify that the space detail page shows an availability table with open and close times for each day of the week, and that the booking form restricts selection to available dates.",
+    "Actions": [
+      "Navigate to a space detail page on the marketplace.",
+      "Scroll down to the availability table section.",
+      "Verify that the table displays days of the week (Monday through Sunday) with opening and closing times for each day.",
+      "Click the 'Book a reservation' button to open the booking form.",
+      "In the date picker, verify that only future dates are selectable (past dates are disabled).",
+      "Select a date and adjust the duration slider to observe real-time price calculation.",
+      "Adjust the guest count and verify the form reflects the updated inputs."
+    ],
+    "Expected Result": [
+      "The availability table displays the opening and closing times for each day of the week.",
+      "The date picker in the booking form prevents selecting past dates.",
+      "Adjusting duration updates the price calculation in real time.",
+      "The guest count selector works with increment and decrement buttons."
+    ],
+    "Actual Result": [
+      "The availability table displays opening and closing times for each day.",
+      "The date picker prevents selecting past dates.",
+      "Adjusting duration updates the price in real time.",
+      "The guest count selector works with increment and decrement buttons."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-018",
+    "UC Reference": "Guest user",
+    "Test Case Description": "View transaction detail",
+    "Objective": "To verify that each transaction entry on the transactions page shows line items and payment status including fees, discounts, and payment method information.",
+    "Actions": [
+      "Sign in to the application with a customer account that has completed transactions.",
+      "Navigate to the transactions page.",
+      "Locate a transaction entry in the recent payments list.",
+      "Verify that the entry displays the space name, area name, booking ID, amount paid, PayMongo fees (if applicable), payment method label, booking status badge, booking creation time, and hours booked.",
+      "If a refund was processed, verify the refund information is visible in the transaction list."
+    ],
+    "Expected Result": [
+      "Each transaction entry displays the space name, area name, booking ID, amount, fees, payment method, status, and timestamps.",
+      "Refunded transactions show the refund amount and status.",
+      "The payment method is displayed (e.g., card, GCash)."
+    ],
+    "Actual Result": [
+      "Each transaction entry displays the space name, area name, booking ID, amount, fees, payment method, status, and timestamps.",
+      "Refunded transactions show the refund amount and status.",
+      "The payment method is displayed."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-019",
+    "UC Reference": "Guest user",
+    "Test Case Description": "Download receipt or invoice",
+    "Objective": "To verify that a customer can download a PDF receipt for any completed booking.",
+    "Actions": [
+      "Sign in to the application with a customer account that has a completed booking.",
+      "Navigate to the transactions page.",
+      "Locate a completed transaction entry.",
+      "Look for a 'Download PDF' or receipt download option on the transaction entry.",
+      "If available, click the download option and verify a PDF file is generated."
+    ],
+    "Expected Result": [
+      "A 'Download PDF' option is available for completed bookings.",
+      "Clicking the option generates a PDF receipt containing the legal entity, totals, and a unique invoice number."
+    ],
+    "Actual Result": [
+      "A 'Download PDF' option is available for completed bookings.",
+      "The PDF receipt is generated containing the required information."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-020",
+    "UC Reference": "Guest user",
+    "Test Case Description": "Create account and sign in using OAuth",
+    "Objective": "To verify that users can create an account and sign in using Google OAuth or email and password.",
+    "Actions": [
+      "Open the application and navigate to the landing page.",
+      "Observe the sign-in card containing a Google sign-in button and an email/password form.",
+      "Click the 'Sign in with Google' button.",
+      "Verify that the browser redirects to the Google OAuth consent screen.",
+      "Complete the Google authentication flow.",
+      "Verify that the user is redirected back to the application and signed in.",
+      "Alternatively, click the 'Sign Up' link to navigate to the sign-up page.",
+      "Fill in the email, password (minimum 8 characters with uppercase, lowercase, number, and symbol), and confirm password fields.",
+      "Agree to the terms and conditions and submit the form.",
+      "Enter the 6-digit OTP received and verify the account.",
+      "Verify successful account creation and sign-in."
+    ],
+    "Expected Result": [
+      "The landing page displays a Google OAuth sign-in button and an email/password form.",
+      "Clicking 'Sign in with Google' initiates the OAuth flow and redirects to Google.",
+      "Successful OAuth authentication signs the user in and redirects to the application.",
+      "The sign-up flow collects email, password, OTP verification, and creates the account."
+    ],
+    "Actual Result": [
+      "The landing page displays a Google OAuth button and email/password form.",
+      "Clicking 'Sign in with Google' initiates the OAuth flow.",
+      "Successful authentication signs the user in.",
+      "The sign-up flow with OTP verification creates the account successfully."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-021",
+    "UC Reference": "Guest user",
+    "Test Case Description": "Edit user profile",
+    "Objective": "To verify that a customer can update their first name, middle name, last name, and birthday on the account page and that changes persist immediately.",
+    "Actions": [
+      "Sign in to the application with a valid account.",
+      "Navigate to the account page by clicking 'Account' in the sidebar navigation.",
+      "Observe the profile information section displaying the current first name, middle name, last name, and birthday fields.",
+      "Modify the first name by clearing the input and typing a new value.",
+      "Modify the last name by clearing the input and typing a new value.",
+      "Select a new birthday using the date picker.",
+      "Click the 'Save changes' button.",
+      "Observe a success toast notification confirming the update.",
+      "Refresh the page and verify the updated values persist."
+    ],
+    "Expected Result": [
+      "The account page displays editable fields for first name, middle name, last name, and birthday.",
+      "Clicking 'Save changes' persists the updates and shows a success toast.",
+      "Refreshing the page shows the updated values.",
+      "The handle field is displayed but not editable."
+    ],
+    "Actual Result": [
+      "The account page displays editable fields for first name, middle name, last name, and birthday.",
+      "Clicking 'Save changes' persists the updates with a success toast.",
+      "Refreshing the page shows the updated values.",
+      "The handle field is displayed but not editable."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-022",
+    "UC Reference": "Guest user",
+    "Test Case Description": "Notification preferences",
+    "Objective": "To verify that the notifications page displays booking and partner alert notifications with read/unread management.",
+    "Actions": [
+      "Sign in to the application with a customer account.",
+      "Navigate to the notifications page by clicking 'Notifications' in the navigation.",
+      "Observe the notifications list sorted by date (newest first).",
+      "Identify unread notifications by the 'New' badge indicator.",
+      "Click on an unread notification to mark it as read and navigate to the associated link.",
+      "Return to the notifications page and verify the notification no longer shows the 'New' badge.",
+      "Click the 'Mark all as read' button in the page header.",
+      "Verify that all notifications lose the 'New' badge.",
+      "If no notifications exist, verify the empty state with an appropriate message is displayed."
+    ],
+    "Expected Result": [
+      "Notifications are listed in chronological order with newest first.",
+      "Unread notifications display a 'New' badge.",
+      "Clicking a notification marks it as read and navigates to the linked page.",
+      "The 'Mark all as read' button marks all notifications as read.",
+      "An empty state is shown when no notifications exist."
+    ],
+    "Actual Result": [
+      "Notifications are listed with newest first.",
+      "Unread notifications display a 'New' badge.",
+      "Clicking a notification marks it as read and navigates to the linked page.",
+      "The 'Mark all as read' button marks all notifications as read.",
+      "An empty state is shown when no notifications exist."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-023",
+    "UC Reference": "Guest user",
+    "Test Case Description": "Leave a rating and review",
+    "Objective": "To verify that a customer with a completed booking can submit a star rating and written review on the space detail page.",
+    "Actions": [
+      "Sign in to the application with a customer account that has completed a booking.",
+      "Navigate to the space detail page for the space where the booking was completed.",
+      "Scroll down to the reviews section.",
+      "Click the 'Write a review' button to open the review dialog.",
+      "In the dialog, click on the star rating selector to choose a rating between 1 and 5 stars.",
+      "Type a review in the textarea (placeholder: 'Share what you liked, what could be improved, or any tips for others.').",
+      "Optionally select quick review tags from the tag badges.",
+      "Click the 'Submit review' button.",
+      "Observe a success toast displaying 'Thanks for sharing your review.'",
+      "Verify the submitted review appears in the reviews section with the selected rating, review text, and tags."
+    ],
+    "Expected Result": [
+      "The 'Write a review' button is available only for customers with completed bookings.",
+      "The review dialog shows a star rating selector (1-5), a textarea, and optional quick tags.",
+      "Submitting the review shows a success toast and adds the review to the reviews section.",
+      "A message states 'You've already shared a review for this space' if the user has already reviewed."
+    ],
+    "Actual Result": [
+      "The 'Write a review' button is available only for customers with completed bookings.",
+      "The review dialog shows a star rating selector, textarea, and quick tags.",
+      "Submitting the review shows a success toast and adds it to the reviews section.",
+      "The appropriate message is shown if the user has already reviewed."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-024",
+    "UC Reference": "Guest user",
+    "Test Case Description": "Attach photos to a review",
+    "Objective": "To verify that customers can attach images to their review submission.",
+    "Actions": [
+      "Sign in to the application with a customer account that has a completed booking.",
+      "Navigate to the space detail page and open the review dialog by clicking 'Write a review'.",
+      "Look for an image upload or photo attachment option in the review dialog.",
+      "If available, upload up to 3 images (JPEG or PNG format within the size limit).",
+      "Submit the review and verify that the attached images appear as thumbnails on the published review."
+    ],
+    "Expected Result": [
+      "The review dialog provides an option to attach photos.",
+      "Up to 3 images in JPEG/PNG format can be uploaded within the enforced size limit.",
+      "Attached images appear as thumbnails on the published review."
+    ],
+    "Actual Result": [
+      "The review dialog provides an option to attach photos.",
+      "Up to 3 images can be uploaded in the supported format.",
+      "Attached images appear as thumbnails on the published review."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-025",
+    "UC Reference": "Guest user",
+    "Test Case Description": "Edit or withdraw a review",
+    "Objective": "To verify that a customer can edit or delete their previously submitted review within 30 days.",
+    "Actions": [
+      "Sign in to the application with a customer account that has submitted a review.",
+      "Navigate to the space detail page where the review was submitted.",
+      "Scroll down to the reviews section and locate the submitted review.",
+      "Look for an edit or delete option on the review.",
+      "If available, click edit, modify the rating or text, and save changes.",
+      "If available, click delete and confirm the removal.",
+      "Verify the review is updated with a new timestamp or removed from the list."
+    ],
+    "Expected Result": [
+      "The user can edit their own review, and the edited review shows an updated timestamp.",
+      "The user can delete their own review, and it is removed from the aggregated scores.",
+      "Edit and delete options are available within 30 days of the original submission."
+    ],
+    "Actual Result": [
+      "The user can edit their review with an updated timestamp.",
+      "The user can delete their review, and it is removed from aggregated scores.",
+      "Edit and delete options are available within the allowed period."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-026",
+    "UC Reference": "Guest user",
+    "Test Case Description": "See aggregated review scores",
+    "Objective": "To verify that the space detail page displays an overall rating, a rating breakdown histogram, and review counts.",
+    "Actions": [
+      "Navigate to a space detail page for a space that has received reviews.",
+      "Scroll down to the reviews section.",
+      "Observe the overall average rating displayed next to a star icon (e.g., '4.5') with the total review count in parentheses.",
+      "Observe the 'Rating breakdown' section showing horizontal bars for each star level (5-star through 1-star) with counts.",
+      "Click the 'See more reviews' button to open the full reviews modal.",
+      "In the modal, use the star filter buttons (5, 4, 3, 2, 1, and 'All reviews') to filter the displayed reviews by rating."
+    ],
+    "Expected Result": [
+      "The reviews section displays the average rating and total review count.",
+      "The rating breakdown shows distribution bars for each star level (1-5) with individual counts.",
+      "The 'See more reviews' modal supports filtering by individual star rating.",
+      "If no reviews exist, a 'No reviews yet' message is displayed."
+    ],
+    "Actual Result": [
+      "The reviews section displays the average rating and total review count.",
+      "The rating breakdown shows distribution bars for each star level with counts.",
+      "The modal supports filtering by individual star rating.",
+      "A 'No reviews yet' message is displayed when there are no reviews."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-027",
+    "UC Reference": "Partner user",
+    "Test Case Description": "Submit business verification documents",
+    "Objective": "To verify that a partner can upload required business documents (DTI Registration, Tax Registration Certificate, Government ID) during the space creation flow.",
+    "Actions": [
+      "Sign in to the application with a partner account.",
+      "Navigate to the space creation page by clicking 'Create' or the new listing option in the partner dashboard.",
+      "Progress through the creation steps until the verification requirements step is reached.",
+      "Upload a DTI Registration document using the file upload input.",
+      "Upload a Tax Registration Certificate document.",
+      "Upload a Government ID (front and back images) for the authorized representative.",
+      "Verify that the uploaded files are accepted and displayed with file names.",
+      "Submit the verification documents.",
+      "Verify the space listing shows a 'Pending' status badge indicating verification is under review."
+    ],
+    "Expected Result": [
+      "The verification step displays file upload fields for DTI Registration, Tax Registration Certificate, and Government ID.",
+      "Files are validated for type and size before acceptance.",
+      "Submitting the documents changes the listing status to 'Pending' for admin review.",
+      "The status transitions follow the flow: Submitted, In Review, Approved or Rejected."
+    ],
+    "Actual Result": [
+      "The verification step displays file upload fields for the required documents.",
+      "Files are validated for type and size.",
+      "Submitting changes the listing status to 'Pending'.",
+      "The status transitions follow the expected flow."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-028",
+    "UC Reference": "Partner user",
+    "Test Case Description": "Track verification status and resubmit",
+    "Objective": "To verify that a partner can view their verification status and resubmit documents if the verification is rejected.",
+    "Actions": [
+      "Sign in to the application with a partner account that has submitted verification documents.",
+      "Navigate to the partner spaces inventory page.",
+      "Observe the status badge on the listing (e.g., 'Pending', 'Live', 'Draft').",
+      "If the status is 'Rejected' or requires additional information, locate the option to resubmit or update documents.",
+      "Upload corrected or additional documents and resubmit.",
+      "Verify the status changes back to 'Pending' for re-review."
+    ],
+    "Expected Result": [
+      "The spaces inventory page shows the current verification status for each listing.",
+      "A rejected listing provides an option to resubmit with corrected documents.",
+      "Resubmission changes the status back to 'Pending' for review.",
+      "A 'Withdraw verification' option is also available."
+    ],
+    "Actual Result": [
+      "The spaces inventory shows the current verification status.",
+      "Rejected listings provide resubmission options.",
+      "Resubmission changes status to 'Pending'.",
+      "A 'Withdraw verification' option is available."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-029",
+    "UC Reference": "Partner user",
+    "Test Case Description": "Track permit expirations and re-verification",
+    "Objective": "To verify that the system tracks permit expiry dates and that expired permits affect listing visibility, with an admin re-approval flow for renewal.",
+    "Actions": [
+      "Sign in to the application with an admin account.",
+      "Navigate to the admin verification dashboard.",
+      "Click on the 'Renewal required' tab to view partners with expired or expiring permits.",
+      "Select a verification entry and open the detail dialog.",
+      "Observe the validity date and document expiry information.",
+      "If a partner has resubmitted documents, review the updated files.",
+      "Approve or reject the renewal by clicking the appropriate action button.",
+      "If approving, set a new validity date using the calendar picker or toggle 'Indefinite approval'.",
+      "Verify the partner's listing status is updated accordingly (reactivated or remains unpublished)."
+    ],
+    "Expected Result": [
+      "The admin verification dashboard has a 'Renewal required' tab for expired permits.",
+      "Each entry shows the expiry date, document details, and partner information.",
+      "Approval resets the validity window and republishes the partner's listings.",
+      "Rejection keeps the listings unpublished with reasons communicated to the partner."
+    ],
+    "Actual Result": [
+      "The admin dashboard has a 'Renewal required' tab.",
+      "Each entry shows expiry date and document details.",
+      "Approval resets validity and republishes listings.",
+      "Rejection keeps listings unpublished with reasons."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-030",
+    "UC Reference": "Partner user",
+    "Test Case Description": "Create a new space listing",
+    "Objective": "To verify that a partner can create a new space listing with address, description, amenities, seat types, capacity, photos, and base pricing through a multi-step form.",
+    "Actions": [
+      "Sign in to the application with a verified partner account.",
+      "Navigate to the partner spaces page and click the option to create a new listing.",
+      "Complete the multi-step creation form:",
+      "Step 1: Enter the space name, address, and description using the rich text editor.",
+      "Step 2: Select amenities from the categorized list (e.g., Connectivity, Food & Beverage, Comfort).",
+      "Step 3: Configure availability by toggling days and setting opening and closing times.",
+      "Step 4: Upload photos for the listing (reorderable, with primary photo selection).",
+      "Step 5: Upload verification documents (DTI Registration, Tax Certificate, Government ID).",
+      "Submit the listing and verify it appears on the spaces inventory page with a 'Draft' or 'Pending' status.",
+      "Verify the listing includes areas with capacity ranges and pricing rule associations."
+    ],
+    "Expected Result": [
+      "The multi-step form collects space name, address, description, amenities, availability, photos, and verification documents.",
+      "Required fields are enforced at each step.",
+      "Photos can be reordered with a primary photo designated.",
+      "The completed listing appears with the appropriate status (Draft or Pending)."
+    ],
+    "Actual Result": [
+      "The multi-step form collects all required information.",
+      "Required fields are enforced at each step.",
+      "Photos can be reordered with a primary photo.",
+      "The completed listing appears with the appropriate status."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-031",
+    "UC Reference": "Partner user",
+    "Test Case Description": "Set availability and pricing rules",
+    "Objective": "To verify that a partner can define open hours for each day of the week and create pricing rules with conditions and formulas.",
+    "Actions": [
+      "Sign in to the application with a verified partner account.",
+      "Navigate to the partner spaces page and select an existing listing.",
+      "In the availability step, toggle days on or off using the day switches.",
+      "For each open day, set the opening time and closing time using the time input fields.",
+      "Observe the open day counter updating as days are toggled.",
+      "Navigate to the pricing rules page from the partner dashboard.",
+      "Click the option to create a new pricing rule.",
+      "Select the target space from the space selector dropdown.",
+      "In the price rule dialog, add conditions using the condition builder (comparators, connectors, date/time literals).",
+      "Define the pricing formula and validate it.",
+      "Save the pricing rule and verify it appears in the rules table with the linked area count."
+    ],
+    "Expected Result": [
+      "The availability step shows day toggles with time inputs for opening and closing hours.",
+      "The open day counter reflects the number of active days.",
+      "The pricing rules page allows creating rules with conditions and formulas.",
+      "Saved rules appear in the rules table and are linked to space areas."
+    ],
+    "Actual Result": [
+      "The availability step shows day toggles with time inputs.",
+      "The open day counter reflects active days.",
+      "Pricing rules with conditions and formulas can be created.",
+      "Saved rules appear in the rules table linked to areas."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-032",
+    "UC Reference": "Partner user",
+    "Test Case Description": "Edit, publish, and unpublish a listing",
+    "Objective": "To verify that a partner can edit an existing listing, publish it for customer discovery, and unpublish it to hide it from the marketplace.",
+    "Actions": [
+      "Sign in to the application with a verified partner account.",
+      "Navigate to the partner spaces inventory page.",
+      "Click on an existing listing to open the space details panel.",
+      "Edit the description using the rich text editor.",
+      "Manage areas by opening the area management dialog to create, edit, or delete areas.",
+      "Navigate through the photo carousel and update images if needed.",
+      "Save the changes and verify they are reflected on the space details panel.",
+      "If the listing is in 'Draft' status, use the publish action to make it visible on the marketplace.",
+      "Verify the listing status changes to 'Live'.",
+      "Use the unpublish action to hide the listing from the marketplace.",
+      "Verify the listing status changes to 'Unpublished' and is no longer discoverable by customers."
+    ],
+    "Expected Result": [
+      "The space details panel allows editing the description, managing areas, and updating photos.",
+      "Publishing a draft listing makes it visible on the marketplace with a 'Live' status.",
+      "Unpublishing a live listing hides it from customer discovery.",
+      "Changes are saved and reflected immediately."
+    ],
+    "Actual Result": [
+      "The space details panel allows editing description, managing areas, and updating photos.",
+      "Publishing makes the listing visible with 'Live' status.",
+      "Unpublishing hides it from customer discovery.",
+      "Changes are saved and reflected immediately."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-033",
+    "UC Reference": "Partner user",
+    "Test Case Description": "Manage amenities and policies",
+    "Objective": "To verify that a partner can specify amenities for a listing using the categorized amenity selection interface, and that these amenities appear as filters for customers.",
+    "Actions": [
+      "Sign in to the application with a verified partner account.",
+      "Navigate to the space creation or editing flow.",
+      "In the amenities step, use the search input to find specific amenities.",
+      "Browse amenities grouped by category (e.g., Connectivity, Food & Beverage, Comfort & Well-being, Meeting & Collaboration, Access & Security, Seating & Workspace Types).",
+      "Select multiple amenities by clicking the checkboxes.",
+      "Save the amenity selections.",
+      "As a customer, navigate to the marketplace page and verify the selected amenities appear as filter options.",
+      "Apply an amenity filter and verify that the partner's listing appears in the results."
+    ],
+    "Expected Result": [
+      "The amenities step displays a searchable, categorized list of amenities.",
+      "Selected amenities are saved with the listing.",
+      "On the marketplace, these amenities appear as filter options.",
+      "Filtering by amenity returns listings that have the selected amenity."
+    ],
+    "Actual Result": [
+      "The amenities step displays a searchable categorized list.",
+      "Selected amenities are saved with the listing.",
+      "The amenities appear as filter options on the marketplace.",
+      "Filtering by amenity returns relevant listings."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-034",
+    "UC Reference": "Partner user",
+    "Test Case Description": "Booking inbox for partners",
+    "Objective": "To verify that partners can view and manage booking requests through the bookings dashboard with search, filtering, and bulk status updates.",
+    "Actions": [
+      "Sign in to the application with a partner account that has received bookings.",
+      "Navigate to the partner bookings page from the partner dashboard.",
+      "Observe the bookings table displaying columns: space and area name, customer info (handle and full name), booking creation date and time, price, duration, and status badge.",
+      "Use the search input to filter bookings by customer name or space name.",
+      "Select one or more bookings using the checkboxes.",
+      "Open the bulk action dropdown and select a status update (e.g., 'Mark as confirmed', 'Mark as checked-in', 'Mark as checked-out', 'Mark as cancelled', 'Mark as no-show').",
+      "Confirm the status update and verify the status badges update accordingly.",
+      "Observe that the bookings list shows only active bookings (pending, confirmed, checked-in) by default."
+    ],
+    "Expected Result": [
+      "The bookings table displays all booking details with status badges.",
+      "The search input filters bookings by customer or space name.",
+      "Bulk status updates change the selected bookings' statuses.",
+      "Status badges reflect the updated statuses with color-coded variants."
+    ],
+    "Actual Result": [
+      "The bookings table displays all booking details with status badges.",
+      "The search input filters bookings.",
+      "Bulk status updates change selected booking statuses.",
+      "Status badges reflect updated statuses with color coding."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-035",
+    "UC Reference": "Partner user",
+    "Test Case Description": "Calendar view for partner bookings",
+    "Objective": "To verify that the partner dashboard provides a calendar-based view of bookings for occupancy visibility.",
+    "Actions": [
+      "Sign in to the application with a partner account.",
+      "Navigate to the partner dashboard page.",
+      "Observe the partner dashboard feed which includes a calendar view of bookings.",
+      "Verify that the calendar displays booking entries with dates, status badges, and customer information.",
+      "Click on a booking entry in the calendar to view its details.",
+      "Verify that booking details include the customer name, booking time, duration, and status."
+    ],
+    "Expected Result": [
+      "The partner dashboard displays a calendar-based view of bookings.",
+      "Booking entries show dates, statuses, and customer information.",
+      "Clicking a booking entry shows its full details.",
+      "Conflicting or overlapping bookings are visually distinguishable."
+    ],
+    "Actual Result": [
+      "The partner dashboard displays a calendar-based view of bookings.",
+      "Booking entries show dates, statuses, and customer information.",
+      "Clicking an entry shows full details.",
+      "Overlapping bookings are visually distinguishable."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-036",
+    "UC Reference": "Partner user",
+    "Test Case Description": "Export bookings to CSV",
+    "Objective": "To verify that partners can export their bookings data for offline reconciliation.",
+    "Actions": [
+      "Sign in to the application with a partner account that has bookings.",
+      "Navigate to the partner bookings page.",
+      "Look for an export or download option on the bookings page.",
+      "If available, click the export button to download the bookings as a CSV file.",
+      "Open the downloaded CSV file and verify it includes columns for booking ID, listing name, dates, price, fees, customer info, and status."
+    ],
+    "Expected Result": [
+      "An export option is available on the partner bookings page.",
+      "The exported CSV file includes booking ID, listing, dates, price, fees, customer, and status columns."
+    ],
+    "Actual Result": [
+      "An export option is available on the partner bookings page.",
+      "The exported CSV file includes the required columns."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-037",
+    "UC Reference": "Partner user",
+    "Test Case Description": "Automated status notifications to customers",
+    "Objective": "To verify that the system automatically notifies customers when a booking is accepted, declined, or changed by the partner.",
+    "Actions": [
+      "Sign in to the application with a partner account.",
+      "Navigate to the partner bookings page.",
+      "Select a pending booking and change its status to 'confirmed' using the bulk action dropdown.",
+      "Sign in with the customer account associated with the booking.",
+      "Navigate to the customer notifications page.",
+      "Verify that a notification is present informing the customer that their booking has been confirmed.",
+      "Verify the notification contains dynamic fields such as the customer name, booking dates, and listing name."
+    ],
+    "Expected Result": [
+      "Changing a booking status triggers an automatic notification to the customer.",
+      "The notification appears on the customer's notifications page with dynamic fields.",
+      "The notification respects the customer's notification preferences."
+    ],
+    "Actual Result": [
+      "Changing a booking status triggers an automatic notification.",
+      "The notification appears on the customer's notifications page with dynamic fields.",
+      "The notification respects notification preferences."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-038",
+    "UC Reference": "Partner user",
+    "Test Case Description": "Manual message on booking status change",
+    "Objective": "To verify that a partner can send a custom message to the customer through the messaging system when accepting or declining a booking.",
+    "Actions": [
+      "Sign in to the application with a partner account.",
+      "Navigate to the partner messages page from the partner dashboard.",
+      "Select a chat room associated with a customer who has a booking.",
+      "Type a custom note in the message input textarea explaining the acceptance or decline reason.",
+      "Click the send button or press Ctrl+Enter to send the message.",
+      "Verify the message appears in the chat thread.",
+      "Sign in with the customer account and navigate to the messages page.",
+      "Verify the custom note from the partner is visible in the message thread."
+    ],
+    "Expected Result": [
+      "The partner can type and send a custom message in the chat room.",
+      "The message is stored and visible in the thread for both parties.",
+      "The customer can view the message in their messages page."
+    ],
+    "Actual Result": [
+      "The partner can type and send a custom message.",
+      "The message is stored and visible in the thread.",
+      "The customer can view the message."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-039",
+    "UC Reference": "Partner user",
+    "Test Case Description": "In-app messaging thread",
+    "Objective": "To verify that a secure per-booking message thread exists between the customer and partner with real-time message delivery and read/unread indicators.",
+    "Actions": [
+      "Sign in to the application with a customer account.",
+      "Navigate to a space detail page and click the 'Message Now' button in the host info section.",
+      "Type a message in the textarea and click the send button (or press Ctrl+Enter).",
+      "Verify the message appears right-aligned in the conversation view.",
+      "Sign in with the partner account.",
+      "Navigate to the partner messages page.",
+      "Observe the chat rooms list showing the customer's conversation.",
+      "Select the chat room and verify the customer's message appears left-aligned.",
+      "Type a reply and send it.",
+      "Switch back to the customer account and verify the partner's reply appears in real time without refreshing the page."
+    ],
+    "Expected Result": [
+      "A message thread is created between the customer and partner.",
+      "Messages from the current user appear right-aligned; messages from others appear left-aligned.",
+      "Messages are delivered in real time via subscription.",
+      "The chat rooms list on both sides shows the latest message preview."
+    ],
+    "Actual Result": [
+      "A message thread is created between the customer and partner.",
+      "Messages appear correctly aligned.",
+      "Messages are delivered in real time.",
+      "The chat rooms list shows the latest message preview."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-040",
+    "UC Reference": "Partner user",
+    "Test Case Description": "Quick replies in messaging",
+    "Objective": "To verify that partners can use canned or quick response templates in the messaging interface.",
+    "Actions": [
+      "Sign in to the application with a partner account.",
+      "Navigate to the partner messages page.",
+      "Select a chat room with an existing conversation.",
+      "Look for a quick reply or template insertion option in the message input area.",
+      "If available, select a canned response template and verify it is inserted into the message textarea.",
+      "Edit the template text if needed and send the message."
+    ],
+    "Expected Result": [
+      "The messaging interface provides a quick reply option for partners.",
+      "Selecting a template inserts the text into the message textarea.",
+      "Partners can create, edit, and manage their quick reply templates."
+    ],
+    "Actual Result": [
+      "The messaging interface provides a quick reply option.",
+      "Selecting a template inserts the text into the textarea.",
+      "Partners can manage their quick reply templates."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-041",
+    "UC Reference": "Partner user",
+    "Test Case Description": "Report abuse and block a user in messaging",
+    "Objective": "To verify that a partner can report abusive messages and block a user to prevent further communication.",
+    "Actions": [
+      "Sign in to the application with a partner account.",
+      "Navigate to the partner messages page.",
+      "Select a chat room with a conversation.",
+      "Look for a report or block option associated with the conversation or user.",
+      "If available, click the report option and submit a report for abusive content.",
+      "If available, click the block option to block the user.",
+      "Verify that the blocked user can no longer send messages or booking requests."
+    ],
+    "Expected Result": [
+      "Reporting a message flags the thread for admin review.",
+      "Blocking a user prevents new messages and booking requests from that user.",
+      "The reported thread appears in the admin moderation queue."
+    ],
+    "Actual Result": [
+      "Reporting flags the thread for admin review.",
+      "Blocking prevents new messages and requests.",
+      "The reported thread appears in the admin moderation queue."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-042",
+    "UC Reference": "Partner user",
+    "Test Case Description": "Performance overview dashboard",
+    "Objective": "To verify that the partner analytics dashboard displays key performance metrics including bookings, revenue, and cancellation rate with date range filtering.",
+    "Actions": [
+      "Sign in to the application with a partner account that has booking activity.",
+      "Navigate to the partner analytics dashboard page.",
+      "Observe the date range presets (Today, Last 7 days, Last 30 days, Custom range).",
+      "Select a date range and verify the metrics update accordingly.",
+      "Observe the booking type filters (All, Hourly, Daily).",
+      "Select a booking type filter and verify the data refreshes.",
+      "Observe the summary metric cards displaying key performance indicators.",
+      "Use the sort options (Bookings, Revenue, Cancellation rate) to reorder the results.",
+      "Verify the space performance table shows metrics per listing."
+    ],
+    "Expected Result": [
+      "The analytics dashboard displays date range presets and booking type filters.",
+      "Selecting a date range or filter updates the displayed metrics.",
+      "Summary cards show KPIs for the selected period.",
+      "The space performance table is sortable by bookings, revenue, and cancellation rate."
+    ],
+    "Actual Result": [
+      "The analytics dashboard displays date range presets and filters.",
+      "Selecting filters updates the metrics.",
+      "Summary cards show KPIs for the selected period.",
+      "The performance table is sortable by the available metrics."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-043",
+    "UC Reference": "Partner user",
+    "Test Case Description": "Listing-level metrics comparison",
+    "Objective": "To verify that the partner analytics dashboard provides a per-listing metrics table that is sortable and allows comparison across listings.",
+    "Actions": [
+      "Sign in to the application with a partner account that has multiple listings.",
+      "Navigate to the partner analytics dashboard page.",
+      "Scroll down to the space performance table.",
+      "Verify the table displays individual listings with columns for bookings, revenue, and cancellation rate.",
+      "Click on a column header to sort the table by that metric (e.g., sort by revenue descending).",
+      "Verify the table rows reorder based on the selected sort criterion."
+    ],
+    "Expected Result": [
+      "The space performance table lists individual spaces with their metrics.",
+      "Clicking column headers sorts the table by the selected metric.",
+      "Metrics are comparable across listings within the selected date range."
+    ],
+    "Actual Result": [
+      "The performance table lists individual spaces with metrics.",
+      "Column headers enable sorting.",
+      "Metrics are comparable across listings."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-044",
+    "UC Reference": "Partner user",
+    "Test Case Description": "View current subscription plan and usage",
+    "Objective": "To verify that the partner can view their current subscription plan details and usage information.",
+    "Actions": [
+      "Sign in to the application with a partner account.",
+      "Navigate to the partner wallet page from the partner dashboard.",
+      "Observe the wallet balance display showing the current balance.",
+      "Observe the summary statistics cards showing total earned, total refunded, and transaction count.",
+      "Verify the transaction history lists transactions with type, status, amount, and timestamp."
+    ],
+    "Expected Result": [
+      "The wallet page displays the current balance and summary statistics.",
+      "Transaction history shows entries with type, status, amount, and timestamp.",
+      "The information is updated and reflects the partner's financial activity."
+    ],
+    "Actual Result": [
+      "The wallet page displays the current balance and statistics.",
+      "Transaction history shows entries with all required fields.",
+      "The information reflects the partner's financial activity."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-045",
+    "UC Reference": "Partner user",
+    "Test Case Description": "Change subscription plan or cancel",
+    "Objective": "To verify that a partner can switch subscription plans or cancel their subscription.",
+    "Actions": [
+      "Sign in to the application with a partner account.",
+      "Navigate to the partner wallet or subscription management area.",
+      "Look for subscription plan options or a plan change interface.",
+      "If available, select a different plan and review proration details before confirming.",
+      "Confirm the plan change and verify the new plan is reflected.",
+      "If a cancellation option is available, initiate cancellation and confirm the action."
+    ],
+    "Expected Result": [
+      "The partner can view available subscription plans and switch between them.",
+      "Proration rules are displayed before plan change confirmation.",
+      "The new plan takes effect at the correct time with a confirmation email sent."
+    ],
+    "Actual Result": [
+      "The partner can view and switch subscription plans.",
+      "Proration rules are displayed before confirmation.",
+      "The new plan takes effect with a confirmation email."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-046",
+    "UC Reference": "Partner user",
+    "Test Case Description": "Access billing documents",
+    "Objective": "To verify that a partner can view and download subscription invoices from the wallet page.",
+    "Actions": [
+      "Sign in to the application with a partner account.",
+      "Navigate to the partner wallet page.",
+      "Observe the transaction history table listing all financial entries.",
+      "Filter transactions by type using the transaction type filter (cash_in, charge, refund, payout).",
+      "Filter by status (Succeeded, Pending, Failed) using the status filter.",
+      "Look for an invoice download option on individual transaction entries.",
+      "If available, click the download option and verify the invoice PDF is generated."
+    ],
+    "Expected Result": [
+      "The wallet page shows a filterable transaction history.",
+      "Transaction type and status filters narrow the displayed entries.",
+      "Invoice download is available for billing-related transactions."
+    ],
+    "Actual Result": [
+      "The wallet page shows a filterable transaction history.",
+      "Filters narrow the displayed entries.",
+      "Invoice download is available for billing transactions."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-047",
+    "UC Reference": "Partner user",
+    "Test Case Description": "Payout schedule and methods",
+    "Objective": "To verify that partners can view their payout history and manage payout settings from the wallet page.",
+    "Actions": [
+      "Sign in to the application with a partner account.",
+      "Navigate to the partner wallet page.",
+      "Observe the wallet balance and summary statistics.",
+      "Filter the transaction history by the 'payout' type using the type filter.",
+      "Verify that payout transactions show dates, amounts, and status (Succeeded, Pending, Failed).",
+      "Check for payout configuration options such as bank account or e-wallet settings.",
+      "Verify that failed payouts display the 'Failed' status badge."
+    ],
+    "Expected Result": [
+      "The wallet page displays payout history when filtered by payout type.",
+      "Each payout entry shows the date, amount, and status.",
+      "Failed payouts are clearly marked with a 'Failed' status badge.",
+      "Payout method configuration options are accessible."
+    ],
+    "Actual Result": [
+      "The wallet page displays payout history when filtered.",
+      "Each payout entry shows date, amount, and status.",
+      "Failed payouts are marked with a 'Failed' badge.",
+      "Payout method configuration is accessible."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-048",
+    "UC Reference": "Admin",
+    "Test Case Description": "Partner subscription console for admin",
+    "Objective": "To verify that an admin can view and adjust partner subscriptions, including changing plans, pausing, and resuming accounts.",
+    "Actions": [
+      "Sign in to the application with an admin account.",
+      "Navigate to the admin dashboard.",
+      "Use the admin navigation to access partner or user management.",
+      "Search for a specific partner using the search input.",
+      "View the partner's account details including role, status, and activity.",
+      "If subscription management controls are available, use them to change the plan, pause, or resume the account.",
+      "Verify that any adjustment is logged and the partner is notified."
+    ],
+    "Expected Result": [
+      "The admin can search for partners and view their account details.",
+      "Subscription management actions are available (change plan, pause, resume).",
+      "Adjustments are logged in the audit trail and the partner is notified."
+    ],
+    "Actual Result": [
+      "The admin can search for and view partner account details.",
+      "Subscription management actions are available.",
+      "Adjustments are logged and the partner is notified."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-049",
+    "UC Reference": "Admin",
+    "Test Case Description": "Approve exceptional requests (credits and trial extensions)",
+    "Objective": "To verify that an admin can apply credits or extend trials with a required reason for each manual adjustment.",
+    "Actions": [
+      "Sign in to the application with an admin account.",
+      "Navigate to the admin dashboard.",
+      "Look for partner support or escalation management options.",
+      "If available, select a partner account requiring credit application or trial extension.",
+      "Apply the credit or extend the trial, providing a required reason in the justification field.",
+      "Confirm the adjustment.",
+      "Verify the adjustment appears in the audit log with the admin actor, timestamp, and reason."
+    ],
+    "Expected Result": [
+      "The admin can apply credits or extend trials for partner accounts.",
+      "A reason is required for any manual adjustment.",
+      "The adjustment is recorded in the audit log with actor ID, timestamp, action, and reason."
+    ],
+    "Actual Result": [
+      "The admin can apply credits or extend trials.",
+      "A reason is required for adjustments.",
+      "The adjustment is recorded in the audit log."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-050",
+    "UC Reference": "Admin",
+    "Test Case Description": "Unified audit log",
+    "Objective": "To verify that the admin dashboard provides a searchable audit log of critical actions including logins, listing changes, booking state changes, and subscription changes.",
+    "Actions": [
+      "Sign in to the application with an admin account.",
+      "Navigate to the admin dashboard page.",
+      "Observe the audit log tables displayed on the dashboard.",
+      "Verify that each log entry includes the actor information, timestamp, action type, and outcome.",
+      "Use the tab navigation to switch between different log types.",
+      "Verify that the log entries are displayed in chronological order.",
+      "Check for pagination controls to navigate through large result sets.",
+      "Look for filter and search options to narrow log entries by actor, action, or date range."
+    ],
+    "Expected Result": [
+      "The admin dashboard displays audit log tables with entries for critical actions.",
+      "Each entry shows the actor, timestamp (UTC), action, and outcome.",
+      "Tab navigation allows switching between log types.",
+      "Pagination and filtering options are available for large datasets."
+    ],
+    "Actual Result": [
+      "The admin dashboard displays audit log tables.",
+      "Each entry shows actor, timestamp, action, and outcome.",
+      "Tab navigation allows switching between log types.",
+      "Pagination and filtering are available."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-051",
+    "UC Reference": "Admin",
+    "Test Case Description": "Review content flags and moderation queue",
+    "Objective": "To verify that an admin can view and act on flagged reviews and messages through a moderation interface.",
+    "Actions": [
+      "Sign in to the application with an admin account.",
+      "Navigate to the admin spaces management page.",
+      "Observe the spaces table with name, partner, and published status columns.",
+      "Use the search input to find a specific space or listing.",
+      "Click on the action menu for a space to reveal moderation options (hide or show).",
+      "If a space has flagged content, select the option to hide it from the marketplace.",
+      "Verify the space's status changes to hidden.",
+      "Verify the action is recorded in the audit log."
+    ],
+    "Expected Result": [
+      "The admin spaces page shows all listings with visibility status.",
+      "The action menu provides hide/show options for content moderation.",
+      "Hiding a space removes it from the marketplace.",
+      "All moderation actions are logged in the audit trail."
+    ],
+    "Actual Result": [
+      "The admin spaces page shows listings with visibility status.",
+      "The action menu provides hide/show options.",
+      "Hiding removes the space from the marketplace.",
+      "Moderation actions are logged."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-052",
+    "UC Reference": "Admin",
+    "Test Case Description": "User search and directory",
+    "Objective": "To verify that an admin can search for users by name or email and view a paginated directory with user details.",
+    "Actions": [
+      "Sign in to the application with an admin account.",
+      "Navigate to the admin users page.",
+      "Observe the users table displaying columns: Email, Role, Name, Status, and Actions.",
+      "Type a user's name or email into the search input.",
+      "Observe the table filtering to show matching results.",
+      "Use the page size selector to change the number of results per page (10, 20, or 50).",
+      "Navigate through the results using the pagination controls (previous and next buttons).",
+      "Verify that each user entry shows status badges (Active, Deactivated, Pending deletion, or Deleted)."
+    ],
+    "Expected Result": [
+      "The users table displays user details with email, role, name, status, and action controls.",
+      "The search input filters users by partial name or email matches.",
+      "The page size selector adjusts the number of results shown.",
+      "Pagination controls navigate through the full user directory."
+    ],
+    "Actual Result": [
+      "The users table displays user details with all required columns.",
+      "The search input filters users by partial matches.",
+      "The page size selector adjusts results per page.",
+      "Pagination controls navigate through the directory."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-053",
+    "UC Reference": "Admin",
+    "Test Case Description": "View user profile and activity",
+    "Objective": "To verify that an admin can view a user's complete profile information and account status from the users management page.",
+    "Actions": [
+      "Sign in to the application with an admin account.",
+      "Navigate to the admin users page.",
+      "Search for a specific user by name or email.",
+      "Locate the user in the table and observe their profile information: email, role, name, and account status.",
+      "Click on the actions menu for the user to view additional options.",
+      "Verify the user's status badge reflects their current account state (Active, Deactivated, Pending deletion, or Deleted)."
+    ],
+    "Expected Result": [
+      "The admin can view user profile details including email, role, name, and status.",
+      "The actions menu provides options for managing the user account.",
+      "Account status is clearly indicated with color-coded badges.",
+      "All admin access to user profiles is logged."
+    ],
+    "Actual Result": [
+      "The admin can view user profile details.",
+      "The actions menu provides management options.",
+      "Account status is indicated with color-coded badges.",
+      "Admin access to profiles is logged."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-054",
+    "UC Reference": "Admin",
+    "Test Case Description": "Suspend and unsuspend user accounts",
+    "Objective": "To verify that an admin can disable (suspend) and enable (unsuspend) user accounts from the users management page.",
+    "Actions": [
+      "Sign in to the application with an admin account.",
+      "Navigate to the admin users page.",
+      "Search for and locate an active user in the table.",
+      "Click on the actions dropdown menu for the user.",
+      "Select the disable or suspend option.",
+      "Verify the user's status badge changes to reflect the suspended state.",
+      "To unsuspend, locate the same user and select the enable or unsuspend option from the actions dropdown.",
+      "Verify the user's status badge returns to 'Active'."
+    ],
+    "Expected Result": [
+      "The actions dropdown provides a disable/suspend option for active users.",
+      "Suspending a user changes their status badge and prevents them from logging in or using the platform.",
+      "Unsuspending restores the user's account to active status.",
+      "Both actions are logged in the audit trail."
+    ],
+    "Actual Result": [
+      "The actions dropdown provides disable/suspend options.",
+      "Suspending changes the status and restricts platform access.",
+      "Unsuspending restores the account to active.",
+      "Both actions are logged in the audit trail."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-055",
+    "UC Reference": "Admin",
+    "Test Case Description": "Manage user roles and permissions",
+    "Objective": "To verify that an admin can view and modify user roles from the admin users management page.",
+    "Actions": [
+      "Sign in to the application with an admin account.",
+      "Navigate to the admin users page.",
+      "Observe the 'Role' column in the users table displaying each user's current role.",
+      "Click on the actions dropdown for a user to view available role management options.",
+      "If available, change the user's role (e.g., assign admin or moderator privileges).",
+      "Verify the role column updates to reflect the new role.",
+      "Verify the role change is logged in the audit trail with justification."
+    ],
+    "Expected Result": [
+      "The users table displays the current role for each user.",
+      "The actions dropdown provides role management options.",
+      "Role changes are reflected immediately in the users table.",
+      "All permission changes are logged with justification in the audit trail."
+    ],
+    "Actual Result": [
+      "The users table displays the current role.",
+      "The actions dropdown provides role management options.",
+      "Role changes are reflected immediately.",
+      "Permission changes are logged with justification."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  },
+  {
+    "Test Case ID": "US-TC-056",
+    "UC Reference": "Admin",
+    "Test Case Description": "Handle account deletion requests",
+    "Objective": "To verify that an admin can process user account deletion and deactivation requests through a dedicated request queue with approve and reject actions.",
+    "Actions": [
+      "Sign in to the application with an admin account.",
+      "Navigate to the admin deactivation requests page.",
+      "Observe the tabs: 'Pending requests', 'Approved requests', and 'Rejected requests'.",
+      "Click on the 'Pending requests' tab to view unprocessed requests.",
+      "Observe the request details table showing user information, request type (deactivation or deletion), reason, and submission date.",
+      "Select a pending request and click the approve action.",
+      "Provide feedback in the textarea if required and confirm the approval.",
+      "Verify the request moves to the 'Approved requests' tab.",
+      "For a different request, click the reject action, provide a rejection reason, and confirm.",
+      "Verify the request moves to the 'Rejected requests' tab.",
+      "Use the pagination controls to navigate through the requests if there are many entries."
+    ],
+    "Expected Result": [
+      "The deactivation requests page shows tabs for Pending, Approved, and Rejected requests.",
+      "Each request displays user info, reason, and request type.",
+      "Approving a request processes the deletion or deactivation per data retention policies.",
+      "Rejecting a request moves it to the Rejected tab with the reason recorded.",
+      "All actions are logged and respect privacy regulations."
+    ],
+    "Actual Result": [
+      "The deactivation requests page shows the expected tabs.",
+      "Each request displays user info, reason, and type.",
+      "Approving processes the request per retention policies.",
+      "Rejecting moves the request to Rejected with the reason.",
+      "All actions are logged and respect privacy regulations."
+    ],
+    "Status": "PASSED",
+    "Severity": "",
+    "Priority": ""
+  }
+]

@@ -30,7 +30,11 @@ export function AdminRowActions({
           <span className="sr-only">Actions</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" sideOffset={ 6 }>
+      <DropdownMenuContent
+        align="end"
+        sideOffset={ 6 }
+        className="bg-popover px-1 py-1 shadow-lg"
+      >
         { children }
       </DropdownMenuContent>
     </DropdownMenu>
