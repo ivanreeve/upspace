@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
+import { parseErrorMessage } from '@/lib/api/parse-error-message';
 
 export type AdminSpace = {
   id: string;
@@ -27,22 +28,6 @@ export const adminSpacesKeys = {
     ['admin-spaces', 'list', search ?? null, limit ?? 20, cursor ?? null] as const,
 };
 
-const parseErrorMessage = async (response: Response) => {
-  try {
-    const body = await response.json();
-    if (typeof body?.error === 'string') {
-      return body.error;
-    }
-    if (typeof body?.message === 'string') {
-      return body.message;
-    }
-  } catch {
-    // ignore
-  }
-
-  return 'Something went wrong. Please try again.';
-};
-
 export function useAdminSpacesQuery({
   search,
   limit = 20,
@@ -58,7 +43,7 @@ export function useAdminSpacesQuery({
 
   return useQuery<AdminSpacesPage>({
     queryKey: adminSpacesKeys.list(normalizedSearch, limit, cursor),
-    staleTime: 30_000,
+    staleTime: 60_000,
     queryFn: async () => {
       const params = new URLSearchParams({ limit: String(limit), });
       if (normalizedSearch) {

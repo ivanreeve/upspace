@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 
 import { useSession } from '@/components/auth/SessionProvider';
 
@@ -22,21 +21,14 @@ export type UserProfile = {
 
 export function useUserProfile() {
   const { session, } = useSession();
-  const queryClient = useQueryClient();
-
-  useEffect(() => {
-    if (!session) {
-      queryClient.removeQueries({
-        queryKey: ['user-profile'],
-        exact: true,
-      });
-    }
-  }, [queryClient, session]);
 
   return useQuery<UserProfile>({
     queryKey: ['user-profile'],
     queryFn: async () => {
-      const response = await fetch('/api/v1/auth/profile', { credentials: 'same-origin', });
+      const response = await fetch('/api/v1/auth/profile', {
+        credentials: 'same-origin',
+        cache: 'no-store',
+      });
 
       if (!response.ok) {
         throw new Error('Unable to load user profile.');
@@ -46,6 +38,7 @@ export function useUserProfile() {
     },
     enabled: Boolean(session),
     staleTime: 1000 * 60 * 5,
-    retry: 1,
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
   });
 }

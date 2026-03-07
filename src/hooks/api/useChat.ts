@@ -9,21 +9,7 @@ import {
 
 import type { ChatMessage, ChatRoomDetail, ChatRoomSummary } from '@/types/chat';
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
-
-const parseErrorMessage = async (response: Response) => {
-  try {
-    const body = await response.json();
-    if (typeof body?.error === 'string') {
-      return body.error;
-    }
-    if (typeof body?.message === 'string') {
-      return body.message;
-    }
-  } catch {
-    // ignore
-  }
-  return 'Something went wrong. Please try again.';
-};
+import { parseErrorMessage } from '@/lib/api/parse-error-message';
 
 export const chatKeys = {
   rooms: ['chat-rooms'] as const,
@@ -107,7 +93,7 @@ export function useChatMessages(roomId: string | null) {
   return useQuery<ChatMessage[]>({
     queryKey: roomId ? chatKeys.messages(roomId) : ['chat-room', 'messages', roomId],
     enabled: Boolean(roomId),
-    staleTime: 10_000,
+    staleTime: 15_000,
     queryFn: async () => {
       if (!roomId) {
         return [];

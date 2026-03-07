@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
+import { parseErrorMessage } from '@/lib/api/parse-error-message';
 import { adminUnpublishRequestKeys } from '@/hooks/api/useAdminUnpublishRequests';
 import { adminSpacesKeys } from '@/hooks/api/useAdminSpaces';
 
@@ -65,21 +66,6 @@ export const adminVerificationKeys = {
 type ApproveVerificationInput = {
   verificationId: string;
   validUntil: string | null;
-};
-
-const parseErrorMessage = async (response: Response) => {
-  try {
-    const body = await response.json();
-    if (typeof body?.error === 'string') {
-      return body.error;
-    }
-    if (typeof body?.message === 'string') {
-      return body.message;
-    }
-  } catch {
-    // ignore
-  }
-  return 'Something went wrong. Please try again.';
 };
 
 export function usePendingVerificationsQuery({
@@ -196,6 +182,7 @@ export function useRejectVerificationMutation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminVerificationKeys.all, });
+      queryClient.invalidateQueries({ queryKey: adminUnpublishRequestKeys.all, });
     },
   });
 }

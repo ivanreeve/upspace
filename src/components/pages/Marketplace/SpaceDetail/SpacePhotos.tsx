@@ -220,6 +220,7 @@ export default function SpacePhotos({
             src={ image.url }
             alt={ alt }
             fill
+            loading="lazy"
             sizes="(min-width: 1280px) 360px, (min-width: 1024px) 300px, 100vw"
             className={ `object-cover ${blurBackground ? 'scale-105 blur-[2px] brightness-50' : ''}` }
           />
@@ -406,6 +407,7 @@ export default function SpacePhotos({
                                   src={ preview.url }
                                   alt={ `${group.label} preview photo` }
                                   fill
+                                  loading="lazy"
                                   sizes="176px"
                                   className="object-cover"
                                 />
@@ -456,6 +458,7 @@ export default function SpacePhotos({
                               src={ image.url }
                               alt={ `${spaceName} ${group.label} photo ${index + 1}` }
                               fill
+                              loading="lazy"
                               sizes="(min-width: 1280px) 360px, (min-width: 1024px) 300px, 100vw"
                               className="object-cover transition-transform cursor-pointer"
                             />

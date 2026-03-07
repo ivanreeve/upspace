@@ -26,16 +26,17 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCreatePriceRuleMutation, usePartnerSpacesQuery } from '@/hooks/api/usePartnerSpaces';
+import type { SpaceRecord } from '@/data/spaces';
 import type { PriceRuleFormValues } from '@/lib/pricing-rules';
 
-export function PriceRuleCreationPage() {
+export function PriceRuleCreationPage({ initialSpaces, }: { initialSpaces?: SpaceRecord[] } = {}) {
   const router = useRouter();
   const {
     data: spaces,
     isLoading,
     isError,
     error,
-  } = usePartnerSpacesQuery();
+  } = usePartnerSpacesQuery(initialSpaces ? { initialData: initialSpaces, } : undefined);
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const formState = usePriceRuleFormState();
   const createPriceRuleMutation = useCreatePriceRuleMutation(selectedSpaceId ?? '');
@@ -90,7 +91,7 @@ export function PriceRuleCreationPage() {
         </div>
       </div>
 
-      <Card className="mt-6 border-border/70 bg-background/80">
+      <Card className="mt-6 border-border/70 bg-background/80 shadow-none">
         <CardHeader className="flex flex-col gap-1">
           <CardTitle className="text-lg">Target space</CardTitle>
           <CardDescription className="text-sm text-muted-foreground">

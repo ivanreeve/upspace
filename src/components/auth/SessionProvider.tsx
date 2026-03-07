@@ -9,6 +9,7 @@ useState,
 type ReactNode
 } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { clearSpaceFormDraft } from '@/hooks/useSpaceFormPersistence';
@@ -29,6 +30,7 @@ const SessionContext = createContext<SessionContextValue>({
 export function SessionProvider({ children, }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     let mounted = true;
@@ -51,8 +53,28 @@ export function SessionProvider({ children, }: { children: ReactNode }) {
       setIsLoading(false);
 
       if (event === 'SIGNED_OUT') {
+        queryClient.clear();
         clearSpaceFormDraft();
         clearStoredPhotoState();
+
+        // Centralized redirect: always navigate to the landing page after
+        // sign-out, regardless of whether the signOut() call itself succeeded
+        // or errored.  This prevents stale page content from remaining visible
+        // when the session is cleared locally.
+        window.location.replace('/');
+        return;
+      }
+
+      // On SIGNED_IN / TOKEN_REFRESHED, mark the profile query as stale so
+      // it refetches in the background.  We use cancelRefetch: false so that
+      // an already in-flight query (started by INITIAL_SESSION) is NOT
+      // cancelled — avoiding the perpetual-skeleton bug for customers while
+      // still ensuring the profile resolves for all roles.
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        queryClient.invalidateQueries(
+          { queryKey: ['user-profile'], },
+          { cancelRefetch: false, }
+        );
       }
     });
 
@@ -60,7 +82,7 @@ export function SessionProvider({ children, }: { children: ReactNode }) {
       mounted = false;
       subscription?.unsubscribe();
     };
-  }, []);
+  }, [queryClient]);
 
   const value = useMemo(
     () => ({

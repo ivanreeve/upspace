@@ -9,6 +9,7 @@ import {
 
 import type { AreaRecord, SpaceRecord } from '@/data/spaces';
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
+import { parseErrorMessage } from '@/lib/api/parse-error-message';
 import type { AreaFormValues, SpaceFormValues } from '@/lib/validations/spaces';
 import type { PriceRuleFormValues, PriceRuleRecord } from '@/lib/pricing-rules';
 
@@ -18,21 +19,6 @@ export const partnerSpacesKeys = {
   detail: (spaceId: string) => ['partner-spaces', 'detail', spaceId] as const,
   verification: (spaceId: string) => ['partner-spaces', 'verification', spaceId] as const,
   pricingRules: (spaceId: string) => ['partner-spaces', 'pricing-rules', spaceId] as const,
-};
-
-const parseErrorMessage = async (response: Response) => {
-  try {
-    const body = await response.json();
-    if (typeof body?.error === 'string') {
-      return body.error;
-    }
-    if (typeof body?.message === 'string') {
-      return body.message;
-    }
-  } catch {
-    // ignore
-  }
-  return 'Something went wrong. Please try again.';
 };
 
 export function usePartnerSpacesQuery(

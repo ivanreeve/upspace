@@ -3,6 +3,7 @@
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
 
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
+import { parseErrorMessage } from '@/lib/api/parse-error-message';
 
 export type AdminReportTrendMetric = {
   current: number;
@@ -35,7 +36,12 @@ export type AdminReportRefundTrends = {
 };
 
 export type AdminReportQueueHealth = {
-  key: 'verifications' | 'unpublish_requests' | 'deactivation_requests' | 'chat_reports';
+  key:
+    | 'verifications'
+    | 'unpublish_requests'
+    | 'deactivation_requests'
+    | 'chat_reports'
+    | 'payout_requests';
   label: string;
   pendingCount: number;
   oldestPendingDays: number | null;
@@ -84,21 +90,6 @@ type AdminReportsQueryOptions = Omit<
   'queryKey' | 'queryFn'
 >;
 
-const parseErrorMessage = async (response: Response) => {
-  try {
-    const body = await response.json();
-    if (typeof body?.error === 'string') {
-      return body.error;
-    }
-    if (typeof body?.message === 'string') {
-      return body.message;
-    }
-  } catch {
-    // ignore
-  }
-  return 'Unable to load admin report.';
-};
-
 export function useAdminReportsQuery({
   days = 30,
   ...options
@@ -107,12 +98,12 @@ export function useAdminReportsQuery({
 
   return useQuery<AdminReportPayload>({
     queryKey: adminReportsKeys.detail(days),
-    staleTime: 30_000,
+    staleTime: 60_000,
     queryFn: async () => {
       const params = new URLSearchParams({ days: String(days), });
       const response = await authFetch(`/api/v1/admin/reports?${params.toString()}`);
       if (!response.ok) {
-        throw new Error(await parseErrorMessage(response));
+        throw new Error(await parseErrorMessage(response, 'Unable to load admin report.'));
       }
       const payload = await response.json();
       return payload.data;

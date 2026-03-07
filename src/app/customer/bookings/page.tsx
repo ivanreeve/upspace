@@ -6,6 +6,7 @@ import { CustomerBookingsPanel } from '@/components/pages/Customer/CustomerBooki
 import { MarketplaceChrome } from '@/components/pages/Marketplace/MarketplaceChrome';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
 import { prisma } from '@/lib/prisma';
+import { getCustomerBookings } from '@/lib/queries/booking';
 import { createSupabaseReadOnlyServerClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
@@ -30,13 +31,15 @@ export default async function CustomerBookingsRoute() {
     redirect('/');
   }
 
+  const initialBookings = await getCustomerBookings(authData.user.id).catch(() => []);
+
   const cookieStore = await cookies();
   const sidebarCookie = cookieStore.get(SIDEBAR_STATE_COOKIE)?.value;
   const initialSidebarOpen = parseSidebarState(sidebarCookie);
 
   return (
     <MarketplaceChrome initialSidebarOpen={ initialSidebarOpen }>
-      <CustomerBookingsPanel />
+      <CustomerBookingsPanel initialBookings={ initialBookings } />
     </MarketplaceChrome>
   );
 }

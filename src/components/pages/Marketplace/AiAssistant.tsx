@@ -3,7 +3,8 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
 FiAlertCircle,
 FiMapPin,
@@ -44,20 +45,11 @@ import {
 import { AiChatSidebar } from '@/components/pages/Marketplace/AiChatSidebar';
 import { useSession } from '@/components/auth/SessionProvider';
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
+import { applyBookingActionStatus, type BookingActionRecord } from '@/lib/ai/booking-action';
+import type { BookingDetailRecord } from '@/types/booking-detail';
 
-type BookingAction = {
-  action: 'checkout';
-  spaceId: string;
-  areaId: string;
-  bookingHours: number;
-  price: number;
-  startAt: string;
-  guestCount: number;
-  spaceName: string;
-  areaName: string;
-  priceCurrency: string;
-  requiresHostApproval?: boolean;
-};
+type BookingAction = BookingActionRecord;
+type ResumePaymentStatus = 'success' | 'cancel';
 
 type ChatMessage = {
   id: string;
@@ -97,6 +89,79 @@ const getFriendlyAiErrorMessage = (error: Error) => {
   }
 
   return 'UpSpace could not complete that request right now. Please try again shortly.';
+};
+
+const BOOKING_STATUS_POLL_INTERVAL_MS = 8000;
+const BOOKING_PRICE_MINOR_FACTOR = 100;
+const FINAL_BOOKING_STATUSES = new Set([
+  'confirmed',
+  'cancelled',
+  'rejected',
+  'expired',
+  'checkedin',
+  'checkedout',
+  'completed',
+  'noshow'
+]);
+
+const shouldPollBookingDetail = (
+  action: BookingAction,
+  detail: BookingDetailRecord | undefined,
+  resumePaymentStatus?: ResumePaymentStatus
+) => {
+  if (!action.bookingId) {
+    return false;
+  }
+
+  if (resumePaymentStatus === 'success' && !detail?.paymentCaptured) {
+    return true;
+  }
+
+  if (!detail) {
+    return true;
+  }
+
+  return !FINAL_BOOKING_STATUSES.has(detail.status);
+};
+
+const reconcileBookingAction = (
+  action: BookingAction,
+  detail?: BookingDetailRecord,
+  resumePaymentStatus?: ResumePaymentStatus
+): BookingAction => {
+  if (!detail) {
+    return resumePaymentStatus
+      ? applyBookingActionStatus(action, {
+          bookingStatus: action.bookingStatus ?? 'pending',
+          checkoutUrl: action.checkoutUrl,
+          paymentCaptured: resumePaymentStatus === 'success',
+          paymentOutcome: resumePaymentStatus,
+          requiresHostApproval: action.requiresHostApproval,
+          reviewState: action.reviewState,
+          testingMode: action.testingMode,
+        })
+      : action;
+  }
+
+  return applyBookingActionStatus(
+    {
+      ...action,
+      price:
+        detail.priceMinor !== null
+          ? Number(detail.priceMinor) / BOOKING_PRICE_MINOR_FACTOR
+          : action.price,
+      startAt: detail.startAt,
+    },
+    {
+      bookingStatus: detail.status,
+      checkoutUrl: action.checkoutUrl,
+      paymentCaptured: detail.paymentCaptured,
+      paymentOutcome: resumePaymentStatus,
+      requiresHostApproval: action.requiresHostApproval,
+      reviewState: detail.reviewState,
+      testingMode: action.testingMode,
+    }
+  );
 };
 
 const shimmerTextStyle: React.CSSProperties = {
@@ -292,21 +357,65 @@ function MicGradientIcon({ className, }: { className?: string }) {
   );
 }
 
-function BookingConfirmationCard({ bookingAction, }: {
+function BookingConfirmationCard({
+  bookingAction,
+  resumePaymentStatus,
+}: {
   bookingAction: BookingAction;
+  resumePaymentStatus?: ResumePaymentStatus;
 }) {
   const checkoutMutation = useCreateCheckoutSessionMutation();
   const { data: profile, } = useUserProfile();
+  const authFetch = useAuthenticatedFetch();
   const isCustomer = profile?.role === 'customer';
+  const bookingDetailQuery = useQuery<BookingDetailRecord | null>({
+    queryKey: ['ai-booking-detail', bookingAction.bookingId, resumePaymentStatus ?? 'none'],
+    enabled: Boolean(isCustomer && bookingAction.bookingId),
+    queryFn: async () => {
+      if (!bookingAction.bookingId) {
+        return null;
+      }
+
+      const response = await authFetch(`/api/v1/bookings/${bookingAction.bookingId}`);
+      if (!response.ok) {
+        throw new Error('Unable to refresh booking status.');
+      }
+
+      const payload = await response.json();
+      return payload.data as BookingDetailRecord;
+    },
+    refetchInterval: (query) => shouldPollBookingDetail(
+      bookingAction,
+      query.state.data ?? undefined,
+      resumePaymentStatus
+    )
+      ? BOOKING_STATUS_POLL_INTERVAL_MS
+      : false,
+    staleTime: 2000,
+  });
+
+  const effectiveBookingAction = React.useMemo(
+    () => reconcileBookingAction(
+      bookingAction,
+      bookingDetailQuery.data ?? undefined,
+      resumePaymentStatus
+    ),
+    [bookingAction, bookingDetailQuery.data, resumePaymentStatus]
+  );
 
   const handleProceedToPayment = () => {
+    if (effectiveBookingAction.checkoutUrl) {
+      window.location.assign(effectiveBookingAction.checkoutUrl);
+      return;
+    }
+
     checkoutMutation.mutate(
       {
-        spaceId: bookingAction.spaceId,
-        areaId: bookingAction.areaId,
-        bookingHours: bookingAction.bookingHours,
-        startAt: bookingAction.startAt,
-        guestCount: bookingAction.guestCount,
+        spaceId: effectiveBookingAction.spaceId,
+        areaId: effectiveBookingAction.areaId,
+        bookingHours: effectiveBookingAction.bookingHours,
+        startAt: effectiveBookingAction.startAt,
+        guestCount: effectiveBookingAction.guestCount,
       },
       {
         onSuccess: (data) => {
@@ -319,7 +428,7 @@ function BookingConfirmationCard({ bookingAction, }: {
     );
   };
 
-  const startDate = new Date(bookingAction.startAt);
+  const startDate = new Date(effectiveBookingAction.startAt);
   const formattedDate = startDate.toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
@@ -330,6 +439,17 @@ function BookingConfirmationCard({ bookingAction, }: {
     hour: 'numeric',
     minute: '2-digit',
   });
+  const shouldShowPaymentAction = isCustomer
+    && ['checkout_ready', 'payment_cancelled'].includes(effectiveBookingAction.flowState ?? 'checkout_ready');
+  const buttonLabel = effectiveBookingAction.testingMode
+    ? 'View Booking Confirmation'
+    : effectiveBookingAction.checkoutUrl
+      ? 'Open Payment Checkout'
+      : checkoutMutation.isPending
+        ? 'Starting checkout...'
+        : effectiveBookingAction.flowState === 'confirmed'
+          ? 'View Booking Details'
+          : 'Proceed to Payment';
 
   return (
     <Card className="w-full border-primary/20 bg-primary/[0.03] rounded-2xl overflow-hidden mt-2">
@@ -342,11 +462,11 @@ function BookingConfirmationCard({ bookingAction, }: {
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Space</span>
-            <span className="font-medium">{ bookingAction.spaceName }</span>
+            <span className="font-medium">{ effectiveBookingAction.spaceName }</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Area</span>
-            <span className="font-medium">{ bookingAction.areaName }</span>
+            <span className="font-medium">{ effectiveBookingAction.areaName }</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Date</span>
@@ -362,7 +482,7 @@ function BookingConfirmationCard({ bookingAction, }: {
               Duration
             </span>
             <span className="font-medium">
-              { bookingAction.bookingHours } hour{ bookingAction.bookingHours > 1 ? 's' : '' }
+              { effectiveBookingAction.bookingHours } hour{ effectiveBookingAction.bookingHours > 1 ? 's' : '' }
             </span>
           </div>
           <div className="flex items-center justify-between">
@@ -370,33 +490,64 @@ function BookingConfirmationCard({ bookingAction, }: {
               <FiUsers className="mr-1 inline size-3.5" aria-hidden="true" />
               Guests
             </span>
-            <span className="font-medium">{ bookingAction.guestCount }</span>
+            <span className="font-medium">{ effectiveBookingAction.guestCount }</span>
           </div>
           <hr className="border-border/50" />
           <div className="flex justify-between text-base">
             <span className="font-semibold">Total</span>
             <span className="font-semibold text-primary">
-              { bookingAction.priceCurrency }{ ' ' }
-              { bookingAction.price.toLocaleString('en-US', { minimumFractionDigits: 2, }) }
+              { effectiveBookingAction.priceCurrency }{ ' ' }
+              { effectiveBookingAction.price.toLocaleString('en-US', { minimumFractionDigits: 2, }) }
             </span>
           </div>
         </div>
 
-        { bookingAction.requiresHostApproval ? (
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-foreground">
+            { effectiveBookingAction.statusTitle ?? 'Checkout ready' }
+          </p>
+          <p className="text-xs text-muted-foreground">
+            { effectiveBookingAction.statusDetail ?? 'Complete payment to continue with this booking.' }
+          </p>
+        </div>
+
+        { effectiveBookingAction.requiresHostApproval ? (
           <p className="text-xs text-muted-foreground">
             <FiAlertCircle className="mr-1 inline size-3" aria-hidden="true" />
             This booking requires host approval after payment.
           </p>
         ) : null }
 
-        { isCustomer ? (
+        { bookingDetailQuery.isFetching && shouldPollBookingDetail(
+          effectiveBookingAction,
+          bookingDetailQuery.data ?? undefined,
+          resumePaymentStatus
+        ) ? (
+          <p className="text-xs text-muted-foreground">
+            Refreshing booking status...
+          </p>
+        ) : null }
+
+        { effectiveBookingAction.checkoutUrl && !effectiveBookingAction.testingMode ? (
+          <p className="text-xs text-muted-foreground">
+            Your payment checkout is ready. Opening it will continue this booking.
+          </p>
+        ) : null }
+
+        { shouldShowPaymentAction ? (
           <Button
             className="w-full"
             onClick={ handleProceedToPayment }
-            disabled={ checkoutMutation.isPending }
+            disabled={ checkoutMutation.isPending && !effectiveBookingAction.checkoutUrl }
             aria-label="Proceed to payment checkout"
           >
-            { checkoutMutation.isPending ? 'Starting checkout...' : 'Proceed to Payment' }
+            { buttonLabel }
+          </Button>
+        ) : isCustomer && effectiveBookingAction.bookingId ? (
+          <Button asChild className="w-full" variant="outline">
+            <Link href={ `/customer/bookings/${effectiveBookingAction.bookingId}` }>
+              { buttonLabel }
+            </Link>
           </Button>
         ) : (
           <p className="text-xs text-center text-muted-foreground">
@@ -414,12 +565,14 @@ function MessageBubble({
   iconRef,
   canUseBookmarks,
   canBook,
+  resumePaymentStatus,
 }: {
   message: ChatMessage;
   isThinking?: boolean;
   iconRef?: (node: HTMLDivElement | null) => void;
   canUseBookmarks: boolean;
   canBook: boolean;
+  resumePaymentStatus?: ResumePaymentStatus;
 }) {
   const [searchingMessageIndex, setSearchingMessageIndex] = React.useState(0);
   const isUser = message.role === 'user';
@@ -513,7 +666,10 @@ function MessageBubble({
         ) : null }
         { message.bookingAction ? (
           <div className="w-full max-w-[720px]">
-            <BookingConfirmationCard bookingAction={ message.bookingAction } />
+            <BookingConfirmationCard
+              bookingAction={ message.bookingAction }
+              resumePaymentStatus={ resumePaymentStatus }
+            />
           </div>
         ) : null }
       </div>
@@ -531,6 +687,7 @@ export function AiAssistant() {
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [activeConversationId, setActiveConversationId] = React.useState<string | null>(null);
+  const [resumePaymentHints, setResumePaymentHints] = React.useState<Record<string, ResumePaymentStatus>>({});
   const {
     isSupported: isVoiceSupported,
     status: voiceStatus,
@@ -562,6 +719,9 @@ export function AiAssistant() {
   const {
     session, isLoading: sessionLoading,
   } = useSession();
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const authFetch = useAuthenticatedFetch();
   const queryClient = useQueryClient();
   const createConversation = useCreateAiConversationMutation();
@@ -609,6 +769,56 @@ export function AiAssistant() {
     [fetchConversationDetail, queryClient]
   );
 
+  const consumedResumeKeyRef = React.useRef<string | null>(null);
+
+  React.useEffect(() => {
+    if (sessionLoading || !session) {
+      return;
+    }
+
+    const conversationId = searchParams.get('conversation_id');
+    const bookingId = searchParams.get('booking_id');
+    const paymentParam = searchParams.get('payment');
+    const paymentStatus =
+      paymentParam === 'success' || paymentParam === 'cancel'
+        ? paymentParam
+        : null;
+
+    if (!conversationId && !bookingId && !paymentStatus) {
+      return;
+    }
+
+    const resumeKey = `${conversationId ?? ''}|${bookingId ?? ''}|${paymentStatus ?? ''}`;
+    if (consumedResumeKeyRef.current === resumeKey) {
+      return;
+    }
+
+    consumedResumeKeyRef.current = resumeKey;
+
+    if (conversationId) {
+      void handleSelectConversation(conversationId);
+    }
+
+    if (bookingId && paymentStatus) {
+      setResumePaymentHints((previous) => ({
+        ...previous,
+        [bookingId]: paymentStatus,
+      }));
+
+      if (paymentStatus === 'success') {
+        toast.success('Payment received. Reopening your AI booking conversation.');
+      } else {
+        toast.error('Payment was cancelled. You can retry from the booking card.');
+      }
+    }
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete('conversation_id');
+    nextParams.delete('booking_id');
+    nextParams.delete('payment');
+    router.replace(`${pathname}${nextParams.toString() ? `?${nextParams}` : ''}`, { scroll: false, });
+  }, [handleSelectConversation, pathname, router, searchParams, session, sessionLoading]);
+
   const greetingName = React.useMemo(() => {
     const firstName = userProfile?.firstName?.trim();
     if (firstName) {
@@ -638,7 +848,7 @@ export function AiAssistant() {
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
-      const response = await fetch('/api/v1/ai-assistant', {
+      const response = await authFetch('/api/v1/ai-assistant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', },
         body: JSON.stringify({
@@ -650,7 +860,6 @@ export function AiAssistant() {
           })),
           conversation_id: conversationId,
           ...(userLocation ? { location: userLocation, } : {}),
-          ...(userProfile?.userId ? { user_id: userProfile.userId, } : {}),
         }),
         cache: 'no-store',
         signal: controller.signal,
@@ -1221,6 +1430,11 @@ conversationId: finalConversationId,
                           message={ message }
                           canUseBookmarks={ canUseBookmarks }
                           canBook={ canBook }
+                          resumePaymentStatus={
+                            message.bookingAction?.bookingId
+                              ? resumePaymentHints[message.bookingAction.bookingId]
+                              : undefined
+                          }
                           iconRef={
                             message.role === 'assistant'
                               ? registerIconRef(message.id)
@@ -1238,6 +1452,7 @@ conversationId: finalConversationId,
                           } }
                           canUseBookmarks={ canUseBookmarks }
                           canBook={ canBook }
+                          resumePaymentStatus={ undefined }
                           isThinking
                           iconRef={ registerIconRef('assistant-thinking') }
                         />

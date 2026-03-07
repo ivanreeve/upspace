@@ -16,6 +16,7 @@ export function useAuthenticatedFetch() {
     return fetch(input, {
       ...init,
       headers,
+      cache: init?.cache ?? 'no-store',
     }) as Promise<T>;
   }, [accessToken]);
 }

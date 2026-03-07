@@ -115,6 +115,26 @@ const LOCALE_OPTIONS = {
 const formatDateTime = (value: string) =>
   new Date(value).toLocaleString('en-PH', LOCALE_OPTIONS);
 
+const getPayoutStatusSummary = (transaction: WalletTransactionRecord) => {
+  if (transaction.type !== 'payout') {
+    return null;
+  }
+
+  if (transaction.status === 'pending') {
+    return 'Awaiting admin review.';
+  }
+
+  if (!transaction.processedAt) {
+    return transaction.status === 'succeeded'
+      ? 'Completed.'
+      : 'Rejected and released back to your wallet.';
+  }
+
+  return transaction.status === 'succeeded'
+    ? `Completed ${formatDateTime(transaction.processedAt)}`
+    : `Rejected ${formatDateTime(transaction.processedAt)} and released back to your wallet.`;
+};
+
 type MonthSeriesItem = {
   key: string;
   label: string;
@@ -310,6 +330,7 @@ function TransactionArticle({ transaction, }: { transaction: WalletTransactionRe
   const badgeVariant = STATUS_BADGE_VARIANTS[transaction.status] ?? 'secondary';
   const amountLabel = formatCurrencyMinor(transaction.amountMinor, transaction.currency);
   const isCredit = transaction.type === 'charge' || transaction.type === 'cash_in';
+  const payoutStatusSummary = getPayoutStatusSummary(transaction);
 
   return (
     <article className="group relative flex items-center justify-between gap-4 rounded-md border bg-sidebar px-4 py-3 transition-colors hover:bg-accent/20 dark:bg-card">
@@ -330,6 +351,16 @@ function TransactionArticle({ transaction, }: { transaction: WalletTransactionRe
               </>
             ) }
           </div>
+          { payoutStatusSummary && (
+            <p className="truncate text-xs text-muted-foreground">
+              { payoutStatusSummary }
+            </p>
+          ) }
+          { transaction.type === 'payout' && transaction.resolutionNote && (
+            <p className="truncate text-xs text-muted-foreground">
+              Note: { transaction.resolutionNote }
+            </p>
+          ) }
         </div>
       </div>
 
@@ -982,7 +1013,7 @@ function WalletTransactionsCard({
       { transactions.length > 0 && (
         <div className="border-t border-border/40 bg-muted/10 px-6 py-1">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Showing { transactions.length } { transactions.length === 1 ? 'entry' : 'entries' } • Synced with PayMongo
+            Showing { transactions.length } { transactions.length === 1 ? 'entry' : 'entries' } • Synced with payments and payout reviews
           </p>
         </div>
       ) }

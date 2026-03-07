@@ -60,18 +60,8 @@ export default async function SpaceDetailPage({ params, }: Props) {
   let spaceLoadFailed = false;
 
   try {
-    const [bookmarkUser, spaceResult] = await Promise.all([
-      bookmarkUserPromise,
-      getSpaceDetail(space_id, { bookmarkUserId: undefined, })
-    ]);
-
-    // If we have a bookmark user, re-fetch with bookmark info
-    // This is a tradeoff - we get faster initial load but may need a second query
-    if (bookmarkUser?.user_id && spaceResult) {
-      space = await getSpaceDetail(space_id, { bookmarkUserId: bookmarkUser.user_id, });
-    } else {
-      space = spaceResult;
-    }
+    const bookmarkUser = await bookmarkUserPromise;
+    space = await getSpaceDetail(space_id, { bookmarkUserId: bookmarkUser?.user_id, });
   } catch (error) {
     spaceLoadFailed = true;
     console.error('Failed to fetch marketplace space detail', error);
