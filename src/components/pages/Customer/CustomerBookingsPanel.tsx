@@ -36,6 +36,9 @@ import { CANCELLABLE_BOOKING_STATUSES } from '@/lib/bookings/constants';
 import type { BookingRecord, BookingStatus } from '@/lib/bookings/types';
 import { useUserBookingsQuery } from '@/hooks/api/useBookings';
 import { useCustomerCancelBookingMutation } from '@/hooks/api/useCustomerCancelBooking';
+import { ComplaintDialog } from '@/components/pages/Customer/ComplaintDialog';
+
+const COMPLAINTABLE_BOOKING_STATUSES: BookingStatus[] = ['confirmed', 'completed', 'checkedin', 'checkedout'];
 
 const STATUS_CATEGORY_MAP: Record<BookingStatus, 'successful' | 'pending' | 'cancelled'> = {
   confirmed: 'successful',
@@ -262,6 +265,7 @@ export function CustomerBookingsPanel({ initialBookings, }: { initialBookings?: 
                 <TableBody>
                   { sortedBookings.map((booking) => {
                     const isCancelable = CANCELLABLE_BOOKING_STATUSES.includes(booking.status);
+                    const isComplaintable = COMPLAINTABLE_BOOKING_STATUSES.includes(booking.status);
                     const guestCount = booking.guestCount ?? 1;
 
                     return (
@@ -319,6 +323,9 @@ export function CustomerBookingsPanel({ initialBookings, }: { initialBookings?: 
                             >
                               <Link href={ `/customer/bookings/${booking.id}` }>View</Link>
                             </Button>
+                            { isComplaintable && (
+                              <ComplaintDialog bookingId={ booking.id } />
+                            ) }
                             { isCancelable && (
                               <Button
                                 size="sm"

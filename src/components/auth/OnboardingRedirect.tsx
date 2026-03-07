@@ -13,6 +13,7 @@ export function OnboardingRedirect() {
   const {
     data: profile,
     isLoading,
+    isError: isProfileError,
   } = useUserProfile();
   const {
     session,
@@ -26,7 +27,19 @@ export function OnboardingRedirect() {
   const redirectTarget = profile?.role ? ROLE_REDIRECT_MAP[profile.role] : '/marketplace';
 
   useEffect(() => {
-    if (!isSessionResolved || isLoading || !session || !profile) {
+    if (!isSessionResolved || isLoading || !session) {
+      return;
+    }
+
+    // If the profile failed to load, do not redirect.  The middleware already
+    // handles server-side redirects for authenticated users on public routes,
+    // so a client-side redirect here would race with it and could send users
+    // to the wrong destination (e.g. admins ending up on /marketplace).
+    if (!profile && isProfileError) {
+      return;
+    }
+
+    if (!profile) {
       return;
     }
 
@@ -49,6 +62,7 @@ export function OnboardingRedirect() {
     isOnboardingRoute,
     isOnPublicRoute,
     isLoading,
+    isProfileError,
     profile,
     redirectTarget,
     router,

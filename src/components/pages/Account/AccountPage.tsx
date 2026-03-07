@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FiChevronLeft } from 'react-icons/fi';
 import { toast } from 'sonner';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { Badge } from '@/components/ui/badge';
@@ -30,7 +30,6 @@ const PROFILE_FIELD_MAX_LENGTH = 50;
 export default function AccountPage() {
   const { data: profile, } = useUserProfile();
   const queryClient = useQueryClient();
-  const router = useRouter();
   const pathname = usePathname();
   const pageTitle = pathname?.includes('/settings') ? 'Settings' : 'Account';
 
@@ -66,7 +65,7 @@ export default function AccountPage() {
     if (error) {
       console.error('Sign-out failed', error);
     }
-    await router.push('/');
+    // Navigation is handled centrally by SessionProvider's onAuthStateChange.
   };
 
   const handleDeactivateAccount = () => setIsDialogOpen(true);

@@ -313,11 +313,8 @@ export default function NavBar({
 
     if (error) {
       console.error('Supabase sign-out failed', error);
-      return;
     }
-
-    await router.replace('/');
-  }, [router]);
+  }, []);
 
   return (
     <nav

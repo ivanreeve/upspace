@@ -91,7 +91,7 @@ export function PriceRuleCreationPage({ initialSpaces, }: { initialSpaces?: Spac
         </div>
       </div>
 
-      <Card className="mt-6 border-border/70 bg-background/80">
+      <Card className="mt-6 border-border/70 bg-background/80 shadow-none">
         <CardHeader className="flex flex-col gap-1">
           <CardTitle className="text-lg">Target space</CardTitle>
           <CardDescription className="text-sm text-muted-foreground">

@@ -36,7 +36,12 @@ export type AdminReportRefundTrends = {
 };
 
 export type AdminReportQueueHealth = {
-  key: 'verifications' | 'unpublish_requests' | 'deactivation_requests' | 'chat_reports';
+  key:
+    | 'verifications'
+    | 'unpublish_requests'
+    | 'deactivation_requests'
+    | 'chat_reports'
+    | 'payout_requests';
   label: string;
   pendingCount: number;
   oldestPendingDays: number | null;

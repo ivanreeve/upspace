@@ -1,6 +1,6 @@
-import { AdminDashboard } from './AdminDashboard';
+import React from 'react';
 
-import { mockAdminDashboardPayload } from '@/data/admin-dashboard-mock';
+import { AdminDashboard } from './AdminDashboard';
 
 export function AdminDashboardPage() {
   return (
@@ -13,10 +13,10 @@ export function AdminDashboardPage() {
           Unified audit log for bookings, coworking spaces, client registrations, and partner verifications.
         </p>
         <p className="text-xs text-muted-foreground">
-          The preview renders a representative dataset so you can evaluate layout density immediately.
+          Live operational data from recent records, metrics, and audit events.
         </p>
       </header>
-      <AdminDashboard mockPayload={ mockAdminDashboardPayload } />
+      <AdminDashboard />
     </section>
   );
 }

@@ -38,6 +38,8 @@ function mapWalletTransaction(
     currency: transaction.currency,
     description: transaction.description,
     bookingId,
+    processedAt: transaction.processed_at?.toISOString() ?? null,
+    resolutionNote: transaction.resolution_note,
     booking: bookingInfo
       ? {
         id: bookingId ?? '',

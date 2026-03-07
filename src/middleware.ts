@@ -107,11 +107,23 @@ export async function middleware(request: NextRequest) {
       return redirectWithCookies(homeUrl, response);
     }
 
-    const cookieHeader = request.headers.get('cookie');
-    const sharedHeaders = new Headers();
+    // Build the cookie header from the original request cookies, then overlay
+    // any cookies that were refreshed by the getUser() call above (e.g. rotated
+    // Supabase auth tokens).  Without this, internal fetches would send stale
+    // tokens that have already been consumed by the middleware's own getUser().
+    const cookieMap = new Map<string, string>();
+    for (const cookie of request.cookies.getAll()) {
+      cookieMap.set(cookie.name, `${cookie.name}=${cookie.value}`);
+    }
+    for (const cookie of response.cookies.getAll()) {
+      cookieMap.set(cookie.name, `${cookie.name}=${cookie.value}`);
+    }
 
-    if (cookieHeader) {
-      sharedHeaders.set('cookie', cookieHeader);
+    const sharedHeaders = new Headers();
+    const mergedCookieHeader = Array.from(cookieMap.values()).join('; ');
+
+    if (mergedCookieHeader) {
+      sharedHeaders.set('cookie', mergedCookieHeader);
     }
 
     sharedHeaders.set('x-upspace-internal-call', '1');
@@ -194,6 +206,11 @@ export async function middleware(request: NextRequest) {
       return redirectWithCookies(adminDashboardUrl, response);
     }
 
+    if (profile?.role === 'admin' && pathname.startsWith('/marketplace/ai-assistant')) {
+      const adminRedirectUrl = new URL(redirectTarget, request.url);
+      return redirectWithCookies(adminRedirectUrl, response);
+    }
+
     if (process.env.NODE_ENV === 'development') {
       console.log(`[Middleware] Auth user on ${pathname}: onboarded=${isOnboard}, role=${profile?.role}, target=${redirectTarget}`);
     }
@@ -230,6 +247,30 @@ export async function middleware(request: NextRequest) {
     }
   } catch (error) {
     console.error('Supabase middleware error', error);
+
+    // If an authenticated user's profile fetch failed, redirect to a safe
+    // default instead of falling through to a potentially stale page.
+    if (!isPathPublic(pathname) || PUBLIC_PATHS.has(pathname)) {
+      try {
+        const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        if (url && anonKey) {
+          const supabase = createServerClient(url, anonKey, {
+            cookies: {
+              getAll() { return request.cookies.getAll(); },
+              setAll() { /* read-only check */ },
+            },
+          });
+          const { data, } = await supabase.auth.getUser();
+          if (data?.user && PUBLIC_PATHS.has(pathname)) {
+            const fallbackUrl = new URL('/marketplace', request.url);
+            return redirectWithCookies(fallbackUrl, response);
+          }
+        }
+      } catch {
+        // Last-resort: let the page handle it
+      }
+    }
   }
 
   return response;

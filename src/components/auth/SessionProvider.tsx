@@ -56,6 +56,25 @@ export function SessionProvider({ children, }: { children: ReactNode }) {
         queryClient.clear();
         clearSpaceFormDraft();
         clearStoredPhotoState();
+
+        // Centralized redirect: always navigate to the landing page after
+        // sign-out, regardless of whether the signOut() call itself succeeded
+        // or errored.  This prevents stale page content from remaining visible
+        // when the session is cleared locally.
+        window.location.replace('/');
+        return;
+      }
+
+      // On SIGNED_IN / TOKEN_REFRESHED, mark the profile query as stale so
+      // it refetches in the background.  We use cancelRefetch: false so that
+      // an already in-flight query (started by INITIAL_SESSION) is NOT
+      // cancelled — avoiding the perpetual-skeleton bug for customers while
+      // still ensuring the profile resolves for all roles.
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        queryClient.invalidateQueries(
+          { queryKey: ['user-profile'], },
+          { cancelRefetch: false, }
+        );
       }
     });
 

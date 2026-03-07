@@ -987,6 +987,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (dbUser.role === 'admin') {
+      return NextResponse.json(
+        { error: 'AI Assistant is not available for admin accounts.', },
+        { status: 403, }
+      );
+    }
+
     const {
       messages, query, location, conversation_id,
     } = parsed;

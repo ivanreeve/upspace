@@ -28,7 +28,7 @@ import {
   X
 } from 'lucide-react';
 import { LuMessageSquareText } from 'react-icons/lu';
-import { FiFlag, FiTrendingUp } from 'react-icons/fi';
+import { FiAlertCircle, FiFlag, FiTrendingUp } from 'react-icons/fi';
 import {
   MdManageSearch,
   MdOutlineAccountBalanceWallet,
@@ -922,11 +922,10 @@ function useMarketplaceNavData() {
 
     if (error) {
       console.error('Supabase sign-out failed', error);
-      return;
     }
-
-    await router.replace('/');
-  }, [router]);
+    // Navigation is handled centrally by SessionProvider's onAuthStateChange
+    // handler when it receives the SIGNED_OUT event.
+  }, []);
 
   const metadataRole = session?.user?.user_metadata?.role as
     | 'customer'
@@ -937,8 +936,8 @@ function useMarketplaceNavData() {
     ? undefined
     : (metadataRole ?? userProfile?.role);
   const shouldShowSidebarLoading =
-    isSessionLoading || (!isGuest && !metadataRole && isProfileLoading);
-  const shouldFallbackToGuestSidebar = !isGuest && isProfileError;
+    isSessionLoading || (!isGuest && !metadataRole && (isProfileLoading || isProfileError));
+  const shouldFallbackToGuestSidebar = false;
 
   return React.useMemo(
     () => ({
@@ -1008,11 +1007,8 @@ function AccountLockOverlay({ profile, }: AccountLockOverlayProps) {
 
     if (error) {
       console.error('Supabase sign-out failed', error);
-      return;
     }
-
-    await router.replace('/');
-  }, [router]);
+  }, []);
 
   if (!profile || profile.status === 'active') {
     return null;
@@ -1175,7 +1171,7 @@ export function MarketplaceChrome({
   const isPartnerRole = effectiveRole === 'partner';
   const isAdminRole = effectiveRole === 'admin';
   const showTransactionHistory = isCustomerRole || isPartnerRole;
-  const shouldShowAiSearch = isCustomerRole || isPartnerRole || isAdminRole;
+  const shouldShowAiSearch = isCustomerRole || isPartnerRole;
   const shouldShowNotifications = isCustomerRole || isPartnerRole;
   const resolvedMessageHref = messageHref ?? '/customer/messages';
   useNotificationSubscription(navData.authUserId);
@@ -1289,6 +1285,12 @@ export function MarketplaceChrome({
         icon: Ticket,
       },
       {
+        value: 'complaints',
+        label: 'Complaints',
+        href: '/customer/complaints',
+        icon: FiAlertCircle,
+      },
+      {
         value: 'bookmarks',
         label: 'Bookmarks',
         href: '/customer/bookmarks',
@@ -1359,6 +1361,11 @@ export function MarketplaceChrome({
           icon: FiTrendingUp,
         },
         {
+          label: 'Payouts',
+          href: '/admin/payout-requests',
+          icon: DollarSign,
+        },
+        {
           label: 'Queue',
           href: '/admin/verification-queue',
           icon: FileText,
@@ -1377,6 +1384,11 @@ export function MarketplaceChrome({
           label: 'Chat reports',
           href: '/admin/chat-reports',
           icon: FiFlag,
+        },
+        {
+          label: 'Complaints',
+          href: '/admin/complaints',
+          icon: FiAlertCircle,
         },
         {
           label: 'Users',
@@ -1674,6 +1686,16 @@ export function MarketplaceChrome({
                       isActive={ isSidebarPathActive(pathname, '/customer/bookings') }
                     />
                   ) }
+                  { isCustomerRole && (
+                    <SidebarLinkItem
+                      href="/customer/complaints"
+                      label="Complaints"
+                      icon={ FiAlertCircle }
+                      tooltip="Complaints"
+                      iconProps={ { strokeWidth: 2, } }
+                      isActive={ isSidebarPathActive(pathname, '/customer/complaints') }
+                    />
+                  ) }
                   { shouldShowNotifications && (
                     <SidebarLinkItem
                       href={ resolvedMessageHref }
@@ -1755,6 +1777,19 @@ export function MarketplaceChrome({
                       ) }
                     />
                   ) }
+                  { isPartnerRole && (
+                    <SidebarLinkItem
+                      href="/partner/complaints"
+                      label="Complaints"
+                      icon={ FiAlertCircle }
+                      tooltip="Complaints"
+                      iconProps={ { strokeWidth: 2, } }
+                      isActive={ isSidebarPathActive(
+                        pathname,
+                        '/partner/complaints'
+                      ) }
+                    />
+                  ) }
                   { isAdminRole && (
                     <SidebarLinkItem
                       href="/admin/dashboard"
@@ -1777,6 +1812,19 @@ export function MarketplaceChrome({
                       isActive={ isSidebarPathActive(
                         pathname,
                         '/admin/reports'
+                      ) }
+                    />
+                  ) }
+                  { isAdminRole && (
+                    <SidebarLinkItem
+                      href="/admin/payout-requests"
+                      label="Payout requests"
+                      icon={ DollarSign }
+                      tooltip="Payout requests"
+                      iconProps={ { strokeWidth: 2, } }
+                      isActive={ isSidebarPathActive(
+                        pathname,
+                        '/admin/payout-requests'
                       ) }
                     />
                   ) }
@@ -1826,6 +1874,19 @@ export function MarketplaceChrome({
                       isActive={ isSidebarPathActive(
                         pathname,
                         '/admin/chat-reports'
+                      ) }
+                    />
+                  ) }
+                  { isAdminRole && (
+                    <SidebarLinkItem
+                      href="/admin/complaints"
+                      label="Complaints"
+                      icon={ FiAlertCircle }
+                      tooltip="Complaints"
+                      iconProps={ { strokeWidth: 2, } }
+                      isActive={ isSidebarPathActive(
+                        pathname,
+                        '/admin/complaints'
                       ) }
                     />
                   ) }

@@ -21,24 +21,50 @@ interface DashboardMetrics {
 
 const AUDIT_TABLES = ['booking', 'space', 'user', 'verification'];
 
-export async function GET(_req: NextRequest) {
+const DEFAULT_PAGE = 1;
+const DEFAULT_RECENT_SIZE = 5;
+const DEFAULT_AUDIT_SIZE = 12;
+const MAX_PAGE_SIZE = 50;
+
+function clampInt(value: string | null, fallback: number, max: number): number {
+  if (!value) return fallback;
+  const parsed = Math.max(1, parseInt(value, 10));
+  return Number.isNaN(parsed) ? fallback : Math.min(parsed, max);
+}
+
+export async function GET(req: NextRequest) {
   try {
-    await requireAdminSession(_req);
+    await requireAdminSession(req);
+
+    const url = req.nextUrl;
+    const recentPage = clampInt(url.searchParams.get('recentPage'), DEFAULT_PAGE, 1000);
+    const recentSize = clampInt(url.searchParams.get('recentSize'), DEFAULT_RECENT_SIZE, MAX_PAGE_SIZE);
+    const auditPage = clampInt(url.searchParams.get('auditPage'), DEFAULT_PAGE, 1000);
+    const auditSize = clampInt(url.searchParams.get('auditSize'), DEFAULT_AUDIT_SIZE, MAX_PAGE_SIZE);
+
+    const recentSkip = (recentPage - 1) * recentSize;
+    const auditSkip = (auditPage - 1) * auditSize;
 
     const [
       metricsRows,
       recentBookings,
+      recentBookingsTotal,
       recentSpaces,
+      recentSpacesTotal,
       recentClients,
+      recentClientsTotal,
       recentVerifications,
-      auditEvents
+      recentVerificationsTotal,
+      auditEvents,
+      auditTotal
     ] = await Promise.all([
       prisma.$queryRaw<[{ get_admin_dashboard_metrics: DashboardMetrics }]>(
         Prisma.sql`SELECT get_admin_dashboard_metrics()`
       ),
       prisma.booking.findMany({
         orderBy: { created_at: 'desc', },
-        take: 5,
+        skip: recentSkip,
+        take: recentSize,
         select: {
           id: true,
           space_id: true,
@@ -53,9 +79,11 @@ export async function GET(_req: NextRequest) {
           partner_auth_id: true,
         },
       }),
+      prisma.booking.count(),
       prisma.space.findMany({
         orderBy: { updated_at: 'desc', },
-        take: 5,
+        skip: recentSkip,
+        take: recentSize,
         select: {
           id: true,
           name: true,
@@ -70,10 +98,12 @@ export async function GET(_req: NextRequest) {
           updated_at: true,
         },
       }),
+      prisma.space.count(),
       prisma.user.findMany({
         where: { role: 'customer', },
         orderBy: { created_at: 'desc', },
-        take: 5,
+        skip: recentSkip,
+        take: recentSize,
         select: {
           user_id: true,
           role: true,
@@ -85,9 +115,11 @@ export async function GET(_req: NextRequest) {
           updated_at: true,
         },
       }),
+      prisma.user.count({ where: { role: 'customer', }, }),
       prisma.verification.findMany({
         orderBy: { submitted_at: 'desc', },
-        take: 5,
+        skip: recentSkip,
+        take: recentSize,
         select: {
           id: true,
           space_id: true,
@@ -101,10 +133,12 @@ export async function GET(_req: NextRequest) {
           updated_at: true,
         },
       }),
+      prisma.verification.count(),
       prisma.audit_event.findMany({
         where: { object_table: { in: AUDIT_TABLES, }, },
         orderBy: { occured_at: 'desc', },
-        take: 12,
+        skip: auditSkip,
+        take: auditSize,
         select: {
           audit_id: true,
           occured_at: true,
@@ -122,7 +156,8 @@ export async function GET(_req: NextRequest) {
           old_value: true,
           new_value: true,
         },
-      })
+      }),
+      prisma.audit_event.count({ where: { object_table: { in: AUDIT_TABLES, }, }, })
     ]);
 
     const metrics = metricsRows[0].get_admin_dashboard_metrics;
@@ -148,7 +183,7 @@ export async function GET(_req: NextRequest) {
           name: space.name,
           city: space.city,
           region: space.region,
-          user_id: space.user_id,
+          user_id: space.user_id.toString(),
           is_published: space.is_published,
           unpublished_at: space.unpublished_at?.toISOString() ?? null,
           unpublished_reason: space.unpublished_reason,
@@ -179,6 +214,16 @@ export async function GET(_req: NextRequest) {
           updated_at: verification.updated_at.toISOString(),
         })),
       },
+      recentPagination: {
+        page: recentPage,
+        pageSize: recentSize,
+        totals: {
+          bookings: recentBookingsTotal,
+          spaces: recentSpacesTotal,
+          clients: recentClientsTotal,
+          verifications: recentVerificationsTotal,
+        },
+      },
       auditLog: auditEvents.map((event) => ({
         audit_id: event.audit_id.toString(),
         occured_at: event.occured_at.toISOString(),
@@ -195,6 +240,11 @@ export async function GET(_req: NextRequest) {
         old_value: event.old_value ?? null,
         new_value: event.new_value ?? null,
       })),
+      auditPagination: {
+        page: auditPage,
+        pageSize: auditSize,
+        total: auditTotal,
+      },
     };
 
     return NextResponse.json({ data: payload, });

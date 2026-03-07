@@ -79,6 +79,7 @@ import {
   validateDateLiteral,
   validateDatetimeLiteral
 } from '@/lib/pricing-rules-evaluator';
+import { cn } from '@/lib/utils';
 
 const ensureUniqueKey = (desired: string, existing: string[]) => {
   const normalized =
@@ -3664,6 +3665,20 @@ const pesoPreviewFormatter = new Intl.NumberFormat('en-PH', {
   minimumFractionDigits: 2,
 });
 
+const pricingRuleOptionCardClassName =
+  'group h-auto w-full flex-1 flex-col items-start gap-1 rounded-lg border border-border/70 p-3 text-left shadow-none transition-colors';
+
+const pricingRuleOptionHoverClassName =
+  'hover:!border-border hover:!bg-[oklch(0.955_0.02_204.6929)] hover:!text-primary dark:hover:!bg-[oklch(0.24_0.02_204.6929)] dark:hover:!text-secondary';
+
+const pricingRuleOptionDescriptionClassName =
+  'w-full text-left text-[11px] leading-snug break-words whitespace-normal';
+
+const builderModeToggleButtonClassName = cn(
+  'bg-muted text-muted-foreground',
+  pricingRuleOptionHoverClassName
+);
+
 type GuidedPriceRuleBuilderProps = {
   config: GuidedPriceRuleConfig;
   onChange: (updates: GuidedConfigUpdater) => void;
@@ -3772,11 +3787,21 @@ function GuidedPriceRuleBuilder({
                 key={ option.value }
                 type="button"
                 variant={ isActive ? 'default' : 'outline' }
-                className="h-auto w-full flex-1 flex-col items-start gap-1 rounded-lg border border-border/70 p-3 text-left hover:text-white"
+                className={ cn(
+                  pricingRuleOptionCardClassName,
+                  isActive ? 'border-primary' : pricingRuleOptionHoverClassName
+                ) }
                 onClick={ () => handleConditionChange(option.value) }
               >
                 <span className="text-sm font-semibold">{ option.title }</span>
-                <span className="w-full text-left text-[11px] text-muted-foreground leading-snug break-words whitespace-normal">
+                <span
+                  className={ cn(
+                    pricingRuleOptionDescriptionClassName,
+                    isActive
+                      ? 'text-white dark:text-foreground/80'
+                      : 'text-muted-foreground group-hover:text-primary dark:group-hover:text-secondary'
+                  ) }
+                >
                   { option.description }
                 </span>
               </Button>
@@ -3864,13 +3889,23 @@ function GuidedPriceRuleBuilder({
                   key={ option.value }
                   type="button"
                   variant={ isActive ? 'default' : 'outline' }
-                  className="h-auto w-full flex-1 flex-col items-start gap-1 rounded-lg border border-border/70 p-3 text-left hover:text-white"
+                  className={ cn(
+                    pricingRuleOptionCardClassName,
+                    isActive ? 'border-primary' : pricingRuleOptionHoverClassName
+                  ) }
                   onClick={ () => onChange({ fallbackType: option.value, }) }
                 >
                   <span className="text-sm font-semibold">
                     { option.title }
                   </span>
-                  <span className="w-full text-left text-[11px] text-muted-foreground leading-snug break-words whitespace-normal">
+                  <span
+                    className={ cn(
+                      pricingRuleOptionDescriptionClassName,
+                      isActive
+                        ? 'text-white dark:text-foreground/80'
+                        : 'text-muted-foreground group-hover:text-primary dark:group-hover:text-secondary'
+                    ) }
+                  >
                     { option.description }
                   </span>
                 </Button>
@@ -3955,7 +3990,7 @@ function PriceRulePreviewCard({ definition, }: PriceRulePreviewCardProps) {
   })();
 
   return (
-    <section className="rounded-xl border border-border/80 bg-background/80 p-4 shadow-sm">
+    <section className="rounded-xl border border-border/80 bg-background/80 p-4 shadow-none">
       <div className="space-y-1">
         <h3 className="text-sm font-semibold">Live price preview</h3>
         <p className="text-xs text-muted-foreground">
@@ -4097,6 +4132,11 @@ export function PriceRuleFormShell({
             <Button
               type="button"
               variant={ builderMode === 'guided' ? 'default' : 'outline' }
+              className={
+                builderMode === 'guided'
+                  ? undefined
+                  : builderModeToggleButtonClassName
+              }
               onClick={ () => {
                 if (!canUseGuidedBuilder || builderMode === 'guided') {
                   return;
@@ -4111,6 +4151,11 @@ export function PriceRuleFormShell({
             <Button
               type="button"
               variant={ builderMode === 'advanced' ? 'default' : 'outline' }
+              className={
+                builderMode === 'advanced'
+                  ? undefined
+                  : builderModeToggleButtonClassName
+              }
               onClick={ () => builderMode !== 'advanced' && setBuilderMode('advanced') }
               aria-pressed={ builderMode === 'advanced' }
             >
@@ -4193,13 +4238,17 @@ export function PriceRuleFormShell({
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="my-2 flex h-full flex-col items-start gap-1 bg-muted/30 text-left hover:bg-primary hover:text-white hover:[&_span.text-muted-foreground]:text-white"
+                      className={ cn(
+                        pricingRuleOptionCardClassName,
+                        'my-2 bg-muted/30',
+                        pricingRuleOptionHoverClassName
+                      ) }
                       onClick={ () => applyTemplate(template.key) }
                     >
                       <span className="text-sm font-semibold">
                         { template.name }
                       </span>
-                      <span className="text-[11px] text-muted-foreground leading-tight">
+                      <span className="text-[11px] text-muted-foreground leading-tight group-hover:text-primary dark:group-hover:text-secondary">
                         { template.summary }
                       </span>
                     </Button>

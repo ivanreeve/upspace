@@ -210,6 +210,31 @@ created_at: previousRange,
         processed_at: true,
       },
     });
+    const payoutPendingCountPromise = prisma.wallet_transaction.count({
+      where: {
+        type: 'payout',
+        status: 'pending',
+      },
+    });
+    const payoutOldestPromise = prisma.wallet_transaction.findFirst({
+      where: {
+        type: 'payout',
+        status: 'pending',
+      },
+      orderBy: { created_at: 'asc', },
+      select: { created_at: true, },
+    });
+    const payoutResolvedPromise = prisma.wallet_transaction.findMany({
+      where: {
+        type: 'payout',
+        status: { in: ['succeeded', 'failed'], },
+        processed_at: currentRange,
+      },
+      select: {
+        created_at: true,
+        processed_at: true,
+      },
+    });
 
     const [
       bookingStatusCurrent,
@@ -232,7 +257,10 @@ created_at: previousRange,
       deactivationResolved,
       chatPendingCount,
       chatOldest,
-      chatResolved
+      chatResolved,
+      payoutPendingCount,
+      payoutOldest,
+      payoutResolved
     ] = await Promise.all([
       bookingStatusCurrentPromise,
       bookingStatusPreviousPromise,
@@ -254,7 +282,10 @@ created_at: previousRange,
       deactivationResolvedPromise,
       chatPendingCountPromise,
       chatOldestPromise,
-      chatResolvedPromise
+      chatResolvedPromise,
+      payoutPendingCountPromise,
+      payoutOldestPromise,
+      payoutResolvedPromise
     ]);
 
     const bookingTotalCurrent = bookingStatusCurrent.reduce(
@@ -389,6 +420,22 @@ created_at: previousRange,
           }))
         ),
         resolvedCount: chatResolved.length,
+      },
+      {
+        key: 'payout_requests',
+        label: 'Payout requests',
+        pendingCount: payoutPendingCount,
+        oldestPendingDays: calculateOldestPendingDays(
+          payoutOldest?.created_at ?? null,
+          rangeEnd
+        ),
+        averageResolutionDays: calculateAverageResolutionDays(
+          payoutResolved.map((item) => ({
+            createdAt: item.created_at,
+            processedAt: item.processed_at,
+          }))
+        ),
+        resolvedCount: payoutResolved.length,
       }
     ];
 
