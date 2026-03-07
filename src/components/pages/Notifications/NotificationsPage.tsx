@@ -11,13 +11,15 @@ import {
   FiTrash2
 } from 'react-icons/fi';
 import { toast } from 'sonner';
+import type { InfiniteData } from '@tanstack/react-query';
 
 import { useSession } from '@/components/auth/SessionProvider';
 import {
   useDeleteNotification,
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
-  useNotificationsQuery
+  useNotificationsQuery,
+  type NotificationsPage as NotificationsPageData
 } from '@/hooks/api/useNotifications';
 import { useNotificationSubscription } from '@/hooks/use-notification-subscription';
 import { Badge } from '@/components/ui/badge';
@@ -55,7 +57,7 @@ const notificationDateFormatter = new Intl.DateTimeFormat('en-PH', {
   timeStyle: 'short',
 });
 
-export function NotificationsPage() {
+export function NotificationsPage({ initialData, }: { initialData?: InfiniteData<NotificationsPageData, string | undefined> } = {}) {
   const { session, } = useSession();
   const [activeFilter, setActiveFilter] = useState<FilterValue>(undefined);
 
@@ -70,7 +72,10 @@ export function NotificationsPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useNotificationsQuery({ type: activeFilter, });
+  } = useNotificationsQuery({
+ type: activeFilter,
+initialData: !activeFilter ? initialData : undefined, 
+});
   const markNotificationRead = useMarkNotificationRead();
   const markAllNotificationsRead = useMarkAllNotificationsRead();
   const deleteNotification = useDeleteNotification();

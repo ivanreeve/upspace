@@ -1,11 +1,6 @@
 'use client';
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  useActionState
-} from 'react';
+import { useEffect, useState, useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -16,8 +11,6 @@ import { loginAction } from '@/app/(auth)/signin/actions';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
-
 const initialState: LoginState = {
   ok: false,
   redirectTo: undefined,
@@ -52,49 +45,20 @@ export default function EmailPasswordForm({
 
   const [state, formAction] =
     useActionState<LoginState, FormData>(loginAction, initialState);
-  const lastSyncedAccessTokenRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!state.ok || !state.redirectTo) {
       return;
     }
 
-    const redirectTo = state.redirectTo;
-    const syncSessionAndRedirect = async () => {
-      const accessToken = state.supabaseSession?.access_token ?? null;
-      const refreshToken = state.supabaseSession?.refresh_token ?? null;
-
-      if (!accessToken || !refreshToken) {
-        lastSyncedAccessTokenRef.current = null;
-        window.location.assign(redirectTo);
-        return;
-      }
-
-      if (lastSyncedAccessTokenRef.current !== accessToken) {
-        lastSyncedAccessTokenRef.current = accessToken;
-        const supabase = getSupabaseBrowserClient();
-
-        try {
-          const { error, } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-
-          if (error) {
-            console.error('Failed to sync Supabase session on client', error);
-            lastSyncedAccessTokenRef.current = null;
-          }
-        } catch (error) {
-          console.error('Failed to sync Supabase session on client', error);
-          lastSyncedAccessTokenRef.current = null;
-        }
-      }
-
-      window.location.assign(redirectTo);
-    };
-
-    void syncSessionAndRedirect();
-  }, [state.ok, state.redirectTo, state.supabaseSession]);
+    // The server action (loginAction) already established the session
+    // server-side via signInWithPassword(), which writes auth cookies in the
+    // action response.  A full page navigation picks these up automatically
+    // — no client-side setSession() needed (and calling it can overwrite or
+    // conflict with the server-set cookies, causing auth failures on the
+    // destination page).
+    window.location.assign(state.redirectTo);
+  }, [state.ok, state.redirectTo]);
 
   useEffect(() => {
     if (state.ok) return;

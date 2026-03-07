@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
+import { parseErrorMessage } from '@/lib/api/parse-error-message';
 
 export type AiConversationSummary = {
   id: string;
@@ -28,16 +29,6 @@ export type AiConversationDetail = AiConversationSummary & {
 export const aiConversationKeys = {
   all: ['ai-conversations'] as const,
   detail: (id: string) => ['ai-conversations', id] as const,
-};
-
-const parseErrorMessage = async (response: Response): Promise<string> => {
-  try {
-    const body = await response.json();
-    if (typeof body?.error === 'string') return body.error;
-  } catch {
-    /* ignore */
-  }
-  return 'Something went wrong. Please try again.';
 };
 
 export function useAiConversationsQuery() {
@@ -101,8 +92,9 @@ export function useDeleteAiConversationMutation() {
       const response = await authFetch(`/api/v1/ai/conversations/${id}`, { method: 'DELETE', });
       if (!response.ok) throw new Error(await parseErrorMessage(response));
     },
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: aiConversationKeys.all, });
+      queryClient.removeQueries({ queryKey: aiConversationKeys.detail(id), });
     },
   });
 }
@@ -113,7 +105,7 @@ export function useRenameAiConversationMutation() {
 
   return useMutation<AiConversationSummary, Error, { id: string; title: string }>({
     mutationFn: async ({
- id, title, 
+ id, title,
 }) => {
       const response = await authFetch(`/api/v1/ai/conversations/${id}`, {
         method: 'PATCH',
@@ -124,8 +116,9 @@ export function useRenameAiConversationMutation() {
       const data = await response.json();
       return data.conversation as AiConversationSummary;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: aiConversationKeys.all, });
+      queryClient.invalidateQueries({ queryKey: aiConversationKeys.detail(variables.id), });
     },
   });
 }

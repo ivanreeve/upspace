@@ -59,3 +59,32 @@ export const adminReportQuerySchema = z.object({
 });
 
 export type AdminReportQuery = z.infer<typeof adminReportQuerySchema>;
+
+export const adminPayoutRequestsQuerySchema = z.object({
+  status: z.enum(['pending', 'succeeded', 'failed']).default('pending'),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  cursor: z.string().uuid().optional(),
+});
+
+export type AdminPayoutRequestsQuery = z.infer<typeof adminPayoutRequestsQuerySchema>;
+
+export const adminPayoutRequestActionSchema = z
+  .object({
+    action: z.enum(['complete', 'reject']),
+    resolution_note: z
+      .string()
+      .trim()
+      .max(1000, 'Resolution note must be 1000 characters or less.')
+      .optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.action === 'reject' && !data.resolution_note) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'A rejection reason is required.',
+        path: ['resolution_note'],
+      });
+    }
+  });
+
+export type AdminPayoutRequestActionInput = z.infer<typeof adminPayoutRequestActionSchema>;

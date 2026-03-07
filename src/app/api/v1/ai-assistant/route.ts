@@ -1,3 +1,5 @@
+import { createHash } from 'crypto';
+
 import { OpenRouter } from '@openrouter/sdk';
 import type {
   AssistantMessage,
@@ -25,20 +27,30 @@ import {
 } from '@/lib/ai/search-reference-data';
 import { buildAssistantSystemPrompt } from '@/lib/assistant-agent';
 import {
+  createBookingCheckoutInputSchema,
   getBookingAvailability,
   getBookingPricing,
   validateBookingRequest,
   createBookingCheckout
 } from '@/lib/ai/booking-tools';
+import {
+applyBookingActionStatus,
+isReusableBookingAction,
+parseBookingAction,
+type BookingActionRecord
+} from '@/lib/ai/booking-action';
 import { compareSpaces } from '@/lib/ai/comparison-tools';
 import { estimateMonthlyCost, findBudgetOptimalSpaces } from '@/lib/ai/budget-tools';
 import { getUserBookmarks, getUserBookingHistory, getSimilarSpaces } from '@/lib/ai/recommendation-tools';
+import { getCustomerBookingDetailRecord, type BookingReviewState } from '@/lib/bookings/detail';
+import { BOOKING_PRICE_MINOR_FACTOR } from '@/lib/bookings/serializer';
 import {
   hasNonLatin1Chars,
   normalizeOpenRouterApiKey,
   sanitizeOpenRouterJson,
   sanitizeOpenRouterString
 } from '@/lib/ai/openrouter-sanitize';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 
@@ -65,7 +77,6 @@ const requestSchema = z
       .max(2000, 'Keep your question under 2,000 characters.')
       .optional(),
     messages: z.array(messageSchema).min(1).optional(),
-    user_id: z.string().regex(/^\d+$/).optional(),
     location: coordinateSchema.optional(),
     conversation_id: z.string().uuid().optional(),
   })
@@ -280,7 +291,7 @@ const validateBookingFunctionDefinition: AiFunctionDefinition = {
 const createBookingCheckoutFunctionDefinition: AiFunctionDefinition = {
   name: 'create_booking_checkout',
   description:
-    'Validate availability, pricing, and capacity for a booking, then return checkout-ready parameters. Use this when the user confirms they want to proceed with booking a specific area.',
+    'Create a live booking checkout session via the booking API. Use this when the user confirms they want to proceed with booking a specific area.',
   parametersJsonSchema: {
     type: 'object',
     properties: {
@@ -846,6 +857,97 @@ const TOOL_DEFINITIONS: ToolDefinitionJson[] = [
   },
 }));
 
+async function resolveAuthenticatedAssistantUser() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: authData,
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !authData?.user) {
+    return null;
+  }
+
+  return prisma.user.findFirst({
+    where: { auth_user_id: authData.user.id, },
+    select: {
+      user_id: true,
+      auth_user_id: true,
+      role: true,
+    },
+  });
+}
+
+function buildBookingRequestKey(
+  customerAuthId: string,
+  input: z.infer<typeof createBookingCheckoutInputSchema>
+) {
+  return createHash('sha256')
+    .update([
+      customerAuthId,
+      input.space_id,
+      input.area_id,
+      input.start_at.toISOString(),
+      input.booking_hours.toString(),
+      input.guest_count.toString()
+    ].join('|'))
+    .digest('hex');
+}
+
+async function resolveStoredBookingAction(
+  conversationId: string,
+  requestKey: string,
+  customerAuthId: string
+): Promise<BookingActionRecord | null> {
+  const messages = await prisma.ai_conversation_message.findMany({
+    where: {
+      conversation_id: conversationId,
+      role: 'assistant',
+    },
+    orderBy: { created_at: 'desc', },
+    take: 20,
+    select: { booking_action: true, },
+  });
+
+  const matchingAction = messages
+    .map((message) => parseBookingAction(message.booking_action))
+    .find((action) => action?.requestKey === requestKey);
+
+  if (!matchingAction || !isReusableBookingAction(matchingAction)) {
+    return null;
+  }
+
+  if (!matchingAction.bookingId) {
+    return matchingAction;
+  }
+
+  const detail = await getCustomerBookingDetailRecord(matchingAction.bookingId, customerAuthId);
+  if (!detail) {
+    return null;
+  }
+
+  const hydratedAction = applyBookingActionStatus(
+    {
+      ...matchingAction,
+      price:
+        detail.priceMinor !== null
+          ? Number(detail.priceMinor) / BOOKING_PRICE_MINOR_FACTOR
+          : matchingAction.price,
+      startAt: detail.startAt,
+    },
+    {
+      bookingStatus: detail.status,
+      checkoutUrl: matchingAction.checkoutUrl,
+      paymentCaptured: detail.paymentCaptured,
+      reviewState: detail.reviewState as BookingReviewState,
+      requiresHostApproval: matchingAction.requiresHostApproval,
+      testingMode: matchingAction.testingMode,
+    }
+  );
+
+  return isReusableBookingAction(hydratedAction) ? hydratedAction : null;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const jsonBody = await request.json().catch(() => null);
@@ -873,16 +975,48 @@ export async function POST(request: NextRequest) {
       messages: Array.isArray(jsonBody?.messages)
         ? jsonBody.messages
         : undefined,
-      user_id:
-        typeof payload.user_id === 'string' ? payload.user_id : undefined,
       location: payload.location,
       conversation_id: payload.conversation_id,
     });
 
+    const dbUser = await resolveAuthenticatedAssistantUser();
+    if (!dbUser) {
+      return NextResponse.json(
+        { error: 'Authentication required.', },
+        { status: 401, }
+      );
+    }
+
+    if (dbUser.role === 'admin') {
+      return NextResponse.json(
+        { error: 'AI Assistant is not available for admin accounts.', },
+        { status: 403, }
+      );
+    }
+
     const {
-      messages, query, user_id, location, conversation_id,
+      messages, query, location, conversation_id,
     } = parsed;
+    const user_id = dbUser.user_id.toString();
     const trimmedQuery = query?.trim();
+
+    if (conversation_id) {
+      const existingConversation = await prisma.ai_conversation.findFirst({
+        where: {
+          id: conversation_id,
+          user_id: dbUser.user_id,
+          deleted_at: null,
+        },
+        select: { id: true, },
+      });
+
+      if (!existingConversation) {
+        return NextResponse.json(
+          { error: 'Conversation not found.', },
+          { status: 404, }
+        );
+      }
+    }
 
     const conversation: ConversationMessage[] =
       messages && messages.length
@@ -1082,7 +1216,44 @@ export async function POST(request: NextRequest) {
 
       if (functionCallName === 'create_booking_checkout') {
         try {
-          const result = await createBookingCheckout(callArgs);
+          const normalizedCheckoutArgs = createBookingCheckoutInputSchema.parse(callArgs);
+          const requestKey = buildBookingRequestKey(
+            dbUser.auth_user_id,
+            normalizedCheckoutArgs
+          );
+
+          const existingBookingAction = conversation_id
+            ? await resolveStoredBookingAction(
+                conversation_id,
+                requestKey,
+                dbUser.auth_user_id
+              )
+            : null;
+
+          if (existingBookingAction) {
+            bookingAction = existingBookingAction;
+            historyMessages.push(createToolResponseMessage(callId, existingBookingAction));
+            continue;
+          }
+
+          const assistantCheckoutBase = conversation_id
+            ? `${request.nextUrl.origin}/marketplace/ai-assistant?conversation_id=${conversation_id}&booking_id=__BOOKING_ID__`
+            : null;
+
+          const result = await createBookingCheckout(
+            callArgs,
+            dbUser.role === 'customer'
+              ? {
+                  auth_user_id: dbUser.auth_user_id,
+                  user_id: dbUser.user_id,
+                }
+              : null,
+            {
+              cancelUrl: assistantCheckoutBase ? `${assistantCheckoutBase}&payment=cancel` : undefined,
+              requestKey,
+              successUrl: assistantCheckoutBase ? `${assistantCheckoutBase}&payment=success` : undefined,
+            }
+          );
           if ('action' in result && result.action === 'checkout') {
             bookingAction = result;
           }

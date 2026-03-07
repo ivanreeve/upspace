@@ -56,22 +56,25 @@ export async function GET() {
       );
     }
 
-      return NextResponse.json({
-      userId: dbUser.user_id.toString(),
-      handle: dbUser.handle,
-      firstName: dbUser.first_name,
-      middleName: dbUser.middle_name,
-      lastName: dbUser.last_name,
-      avatar: dbUser.avatar,
-      isOnboard: dbUser.is_onboard,
-      role: dbUser.role,
-      status: dbUser.status,
-      birthday: dbUser.birthday ? dbUser.birthday.toISOString().slice(0, 10) : null,
-      pendingDeletionAt: dbUser.pending_deletion_at
-        ? dbUser.pending_deletion_at.toISOString()
-        : null,
-      expiresAt: dbUser.expires_at ? dbUser.expires_at.toISOString() : null,
-    });
+      return NextResponse.json(
+      {
+        userId: dbUser.user_id.toString(),
+        handle: dbUser.handle,
+        firstName: dbUser.first_name,
+        middleName: dbUser.middle_name,
+        lastName: dbUser.last_name,
+        avatar: dbUser.avatar,
+        isOnboard: dbUser.is_onboard,
+        role: dbUser.role,
+        status: dbUser.status,
+        birthday: dbUser.birthday ? dbUser.birthday.toISOString().slice(0, 10) : null,
+        pendingDeletionAt: dbUser.pending_deletion_at
+          ? dbUser.pending_deletion_at.toISOString()
+          : null,
+        expiresAt: dbUser.expires_at ? dbUser.expires_at.toISOString() : null,
+      },
+      { headers: { 'Cache-Control': 'no-store', }, }
+    );
   } catch (error) {
     const databaseResponse = createDatabaseErrorResponse(error);
     if (databaseResponse) {

@@ -1,8 +1,11 @@
 'use client';
 
+import React from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -21,17 +24,16 @@ import {
   TableRow
 } from '@/components/ui/table';
 import {
-Tabs,
-TabsContent,
-TabsList,
-TabsTrigger
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
 } from '@/components/ui/tabs';
-import { AdminDashboardPayload, useAdminDashboardQuery } from '@/hooks/api/useAdminDashboard';
+import { useAdminDashboardQuery, type AdminDashboardParams } from '@/hooks/api/useAdminDashboard';
 import { formatCurrencyMinor } from '@/lib/wallet';
 
-type AdminDashboardProps = {
-  mockPayload?: AdminDashboardPayload;
-};
+const RECENT_PAGE_SIZE = 5;
+const AUDIT_PAGE_SIZE = 12;
 
 const formatTimestamp = (value?: string | null) =>
   value
@@ -65,17 +67,77 @@ const TableSkeleton = () => (
   </div>
 );
 
-export function AdminDashboard({ mockPayload, }: AdminDashboardProps) {
+function PaginationControls({
+  page,
+  pageSize,
+  total,
+  onPageChange,
+  isLoading,
+}: {
+  page: number;
+  pageSize: number;
+  total: number;
+  onPageChange: (page: number) => void;
+  isLoading: boolean;
+}) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const hasPrev = page > 1;
+  const hasNext = page < totalPages;
+
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="flex items-center justify-between pt-2">
+      <p className="text-xs text-muted-foreground">
+        Page { page } of { totalPages } ({ total } total)
+      </p>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7"
+          disabled={ !hasPrev || isLoading }
+          onClick={ () => onPageChange(page - 1) }
+          aria-label="Previous page"
+        >
+          <ChevronLeft className="size-4" aria-hidden="true" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7"
+          disabled={ !hasNext || isLoading }
+          onClick={ () => onPageChange(page + 1) }
+          aria-label="Next page"
+        >
+          <ChevronRight className="size-4" aria-hidden="true" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export function AdminDashboard() {
+  const [recentPage, setRecentPage] = React.useState(1);
+  const [auditPage, setAuditPage] = React.useState(1);
+
+  const params: AdminDashboardParams = {
+    recentPage,
+    recentSize: RECENT_PAGE_SIZE,
+    auditPage,
+    auditSize: AUDIT_PAGE_SIZE,
+  };
+
   const {
-    data: liveData,
+    data,
     isLoading,
+    isFetching,
     isError,
     error,
-  } = useAdminDashboardQuery({ enabled: !mockPayload, });
-  const data = mockPayload ?? liveData;
+  } = useAdminDashboardQuery(params, { placeholderData: (prev) => prev, });
+
   const metrics = data?.metrics;
-  const isLoadingData = Boolean(isLoading && !mockPayload);
-  const showError = !mockPayload && isError;
+  const isLoadingData = isLoading;
 
   const summaryCards = [
     {
@@ -408,6 +470,18 @@ export function AdminDashboard({ mockPayload, }: AdminDashboardProps) {
     );
   };
 
+  const activeRecentTab = React.useRef<string>('bookings');
+  const getRecentTotal = () => {
+    if (!data?.recentPagination) return 0;
+    const totals = data.recentPagination.totals;
+    const tab = activeRecentTab.current;
+    if (tab === 'bookings') return totals.bookings;
+    if (tab === 'spaces') return totals.spaces;
+    if (tab === 'customers') return totals.clients;
+    if (tab === 'verifications') return totals.verifications;
+    return 0;
+  };
+
   const summaryCardClasses =
     'rounded-md border border-border/50 bg-muted/20 shadow-none';
   const dataGridClass = 'grid gap-8 lg:grid-cols-[1.45fr,1fr]';
@@ -418,7 +492,7 @@ export function AdminDashboard({ mockPayload, }: AdminDashboardProps) {
 
   return (
     <div className="space-y-6">
-      { showError && (
+      { isError && (
         <div className="rounded-md border border-destructive/70 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           { error instanceof Error
             ? error.message
@@ -472,6 +546,15 @@ export function AdminDashboard({ mockPayload, }: AdminDashboardProps) {
           </div>
           <div className={ logCardContentClass }>
             <div className={ scrollWrapperClass }>{ renderAuditLog() }</div>
+            { data?.auditPagination && (
+              <PaginationControls
+                page={ data.auditPagination.page }
+                pageSize={ data.auditPagination.pageSize }
+                total={ data.auditPagination.total }
+                onPageChange={ setAuditPage }
+                isLoading={ isFetching }
+              />
+            ) }
           </div>
         </div>
 
@@ -483,7 +566,13 @@ export function AdminDashboard({ mockPayload, }: AdminDashboardProps) {
             </p>
           </div>
           <div className="space-y-4">
-            <Tabs defaultValue="bookings">
+            <Tabs
+              defaultValue="bookings"
+              onValueChange={ (val) => {
+                activeRecentTab.current = val;
+                setRecentPage(1);
+              } }
+            >
               <TabsList className="grid grid-cols-4 gap-1 rounded-md bg-muted p-1 text-[11px] font-semibold uppercase tracking-wide">
                 <TabsTrigger value="bookings">Bookings</TabsTrigger>
                 <TabsTrigger value="spaces">Spaces</TabsTrigger>
@@ -513,6 +602,15 @@ export function AdminDashboard({ mockPayload, }: AdminDashboardProps) {
                 </TabsContent>
               </div>
             </Tabs>
+            { data?.recentPagination && (
+              <PaginationControls
+                page={ data.recentPagination.page }
+                pageSize={ data.recentPagination.pageSize }
+                total={ getRecentTotal() }
+                onPageChange={ setRecentPage }
+                isLoading={ isFetching }
+              />
+            ) }
           </div>
         </div>
       </div>

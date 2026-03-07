@@ -28,7 +28,7 @@ import {
   X
 } from 'lucide-react';
 import { LuMessageSquareText } from 'react-icons/lu';
-import { FiFlag, FiTrendingUp } from 'react-icons/fi';
+import { FiAlertCircle, FiFlag, FiTrendingUp } from 'react-icons/fi';
 import {
   MdManageSearch,
   MdOutlineAccountBalanceWallet,
@@ -106,6 +106,8 @@ const marketplaceSearchDialogClassName =
 
 const marketplaceSearchActionItemClassName =
   'text-muted-foreground hover:!bg-[oklch(0.955_0.02_204.6929)] dark:hover:!bg-[oklch(0.24_0.02_204.6929)] hover:!text-primary hover:[&_svg]:!text-primary data-[selected=true]:!bg-[oklch(0.955_0.02_204.6929)] dark:data-[selected=true]:!bg-[oklch(0.24_0.02_204.6929)] data-[selected=true]:!text-foreground';
+
+const sidebarMenuItemRightInsetClassName = 'pr-2';
 
 type SidebarFooterContentProps = {
   avatarUrl: string | null;
@@ -223,7 +225,9 @@ function SidebarToggleMenuItem() {
     <SidebarMenuItem
       className={ cn(
         'flex items-center gap-2',
-        isExpanded ? 'justify-between pr-2 pl-1' : 'justify-center pr-1'
+        isExpanded
+          ? `justify-between pl-1 ${sidebarMenuItemRightInsetClassName}`
+          : 'justify-center pr-1'
       ) }
     >
       { isExpanded && (
@@ -482,7 +486,7 @@ function SidebarLoadingSkeleton() {
       { Array.from({ length: 5, }).map((_, index) => (
         <SidebarMenuItem
           key={ `sidebar-skeleton-${index}` }
-          className="pointer-events-none"
+          className={ cn('pointer-events-none', sidebarMenuItemRightInsetClassName) }
         >
           <SidebarMenuButton
             type="button"
@@ -578,7 +582,7 @@ function SidebarLinkItem({
 } = iconProps ?? {};
 
   return (
-    <SidebarMenuItem>
+    <SidebarMenuItem className={ sidebarMenuItemRightInsetClassName }>
       <SidebarMenuButton
         asChild
         tooltip={ tooltip }
@@ -918,11 +922,10 @@ function useMarketplaceNavData() {
 
     if (error) {
       console.error('Supabase sign-out failed', error);
-      return;
     }
-
-    await router.replace('/');
-  }, [router]);
+    // Navigation is handled centrally by SessionProvider's onAuthStateChange
+    // handler when it receives the SIGNED_OUT event.
+  }, []);
 
   const metadataRole = session?.user?.user_metadata?.role as
     | 'customer'
@@ -933,8 +936,8 @@ function useMarketplaceNavData() {
     ? undefined
     : (metadataRole ?? userProfile?.role);
   const shouldShowSidebarLoading =
-    isSessionLoading || (!isGuest && !metadataRole && isProfileLoading);
-  const shouldFallbackToGuestSidebar = !isGuest && isProfileError;
+    isSessionLoading || (!isGuest && !metadataRole && (isProfileLoading || isProfileError));
+  const shouldFallbackToGuestSidebar = false;
 
   return React.useMemo(
     () => ({
@@ -1004,11 +1007,8 @@ function AccountLockOverlay({ profile, }: AccountLockOverlayProps) {
 
     if (error) {
       console.error('Supabase sign-out failed', error);
-      return;
     }
-
-    await router.replace('/');
-  }, [router]);
+  }, []);
 
   if (!profile || profile.status === 'active') {
     return null;
@@ -1171,7 +1171,7 @@ export function MarketplaceChrome({
   const isPartnerRole = effectiveRole === 'partner';
   const isAdminRole = effectiveRole === 'admin';
   const showTransactionHistory = isCustomerRole || isPartnerRole;
-  const shouldShowAiSearch = isCustomerRole || isPartnerRole || isAdminRole;
+  const shouldShowAiSearch = isCustomerRole || isPartnerRole;
   const shouldShowNotifications = isCustomerRole || isPartnerRole;
   const resolvedMessageHref = messageHref ?? '/customer/messages';
   useNotificationSubscription(navData.authUserId);
@@ -1285,6 +1285,12 @@ export function MarketplaceChrome({
         icon: Ticket,
       },
       {
+        value: 'complaints',
+        label: 'Complaints',
+        href: '/customer/complaints',
+        icon: FiAlertCircle,
+      },
+      {
         value: 'bookmarks',
         label: 'Bookmarks',
         href: '/customer/bookmarks',
@@ -1340,7 +1346,7 @@ export function MarketplaceChrome({
     if (isAdminRole) {
       return [
         {
-          label: 'Home',
+          label: 'Marketplace',
           href: '/marketplace',
           icon: Home,
         },
@@ -1353,6 +1359,11 @@ export function MarketplaceChrome({
           label: 'Reports',
           href: '/admin/reports',
           icon: FiTrendingUp,
+        },
+        {
+          label: 'Payouts',
+          href: '/admin/payout-requests',
+          icon: DollarSign,
         },
         {
           label: 'Queue',
@@ -1375,6 +1386,11 @@ export function MarketplaceChrome({
           icon: FiFlag,
         },
         {
+          label: 'Complaints',
+          href: '/admin/complaints',
+          icon: FiAlertCircle,
+        },
+        {
           label: 'Users',
           href: '/admin/users',
           icon: Users,
@@ -1390,7 +1406,7 @@ export function MarketplaceChrome({
     const actions: MobileBottomNavAction[] = [];
 
     actions.push({
-      label: 'Home',
+      label: 'Marketplace',
       href: '/marketplace',
       icon: Home,
     });
@@ -1598,13 +1614,13 @@ export function MarketplaceChrome({
                 <>
                   <SidebarLinkItem
                     href="/marketplace"
-                    label="Home"
+                    label="Marketplace"
                     icon={ SidebarHomeIcon }
-                    tooltip="Home"
+                    tooltip="Marketplace"
                     iconProps={ { className: 'size-[18px]', } }
                     isActive={ isSidebarPathActive(pathname, '/marketplace') }
                   />
-                  <SidebarMenuItem>
+                  <SidebarMenuItem className={ sidebarMenuItemRightInsetClassName }>
                     <SidebarMenuButton
                       tooltip="Search"
                       className="justify-start gap-2 group-data-[collapsible=icon]:justify-center"
@@ -1668,6 +1684,16 @@ export function MarketplaceChrome({
                       tooltip="Bookings"
                       iconProps={ { strokeWidth: 1.5, } }
                       isActive={ isSidebarPathActive(pathname, '/customer/bookings') }
+                    />
+                  ) }
+                  { isCustomerRole && (
+                    <SidebarLinkItem
+                      href="/customer/complaints"
+                      label="Complaints"
+                      icon={ FiAlertCircle }
+                      tooltip="Complaints"
+                      iconProps={ { strokeWidth: 2, } }
+                      isActive={ isSidebarPathActive(pathname, '/customer/complaints') }
                     />
                   ) }
                   { shouldShowNotifications && (
@@ -1751,6 +1777,19 @@ export function MarketplaceChrome({
                       ) }
                     />
                   ) }
+                  { isPartnerRole && (
+                    <SidebarLinkItem
+                      href="/partner/complaints"
+                      label="Complaints"
+                      icon={ FiAlertCircle }
+                      tooltip="Complaints"
+                      iconProps={ { strokeWidth: 2, } }
+                      isActive={ isSidebarPathActive(
+                        pathname,
+                        '/partner/complaints'
+                      ) }
+                    />
+                  ) }
                   { isAdminRole && (
                     <SidebarLinkItem
                       href="/admin/dashboard"
@@ -1773,6 +1812,19 @@ export function MarketplaceChrome({
                       isActive={ isSidebarPathActive(
                         pathname,
                         '/admin/reports'
+                      ) }
+                    />
+                  ) }
+                  { isAdminRole && (
+                    <SidebarLinkItem
+                      href="/admin/payout-requests"
+                      label="Payout requests"
+                      icon={ DollarSign }
+                      tooltip="Payout requests"
+                      iconProps={ { strokeWidth: 2, } }
+                      isActive={ isSidebarPathActive(
+                        pathname,
+                        '/admin/payout-requests'
                       ) }
                     />
                   ) }
@@ -1822,6 +1874,19 @@ export function MarketplaceChrome({
                       isActive={ isSidebarPathActive(
                         pathname,
                         '/admin/chat-reports'
+                      ) }
+                    />
+                  ) }
+                  { isAdminRole && (
+                    <SidebarLinkItem
+                      href="/admin/complaints"
+                      label="Complaints"
+                      icon={ FiAlertCircle }
+                      tooltip="Complaints"
+                      iconProps={ { strokeWidth: 2, } }
+                      isActive={ isSidebarPathActive(
+                        pathname,
+                        '/admin/complaints'
                       ) }
                     />
                   ) }

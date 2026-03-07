@@ -96,7 +96,10 @@ export async function POST(req: NextRequest) {
           description: 'Payout request',
           metadata: {
             requested_by: auth.dbUser!.auth_user_id,
+            requested_by_user_id: auth.dbUser!.user_id.toString(),
             requested_at: new Date().toISOString(),
+            balance_before_minor: wallet.balance_minor.toString(),
+            balance_after_minor: (wallet.balance_minor - BigInt(amountMinor)).toString(),
           },
         },
       });
@@ -125,4 +128,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

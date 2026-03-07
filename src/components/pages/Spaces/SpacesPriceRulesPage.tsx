@@ -17,9 +17,11 @@ FiTrash2
 } from 'react-icons/fi';
 import { GoArrowUpRight } from 'react-icons/go';
 import { toast } from 'sonner';
+import dynamic from 'next/dynamic';
 
-import PriceRuleDialog from './PriceRuleDialog';
 import { SpacesBreadcrumbs } from './SpacesBreadcrumbs';
+
+const PriceRuleDialog = dynamic(() => import('./PriceRuleDialog'), { ssr: false, });
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -644,24 +646,26 @@ export function SpacesPriceRulesPage() {
         </div>
       ) }
 
-      <PriceRuleDialog
-        open={ priceRuleDialogOpen }
-        mode={ editingPriceRule ? 'edit' : 'create' }
-        initialValues={
-          editingPriceRule
-            ? {
-                name: editingPriceRule.name,
-                description: editingPriceRule.description ?? '',
-                definition: editingPriceRule.definition,
-              }
-            : undefined
-        }
-        onOpenChange={ handlePriceRuleDialogOpenChange }
-        onSubmit={ handlePriceRuleSubmit }
-        isSubmitting={
-          createPriceRuleMutation.isPending || updatePriceRuleMutation.isPending
-        }
-      />
+      { priceRuleDialogOpen && (
+        <PriceRuleDialog
+          open={ priceRuleDialogOpen }
+          mode={ editingPriceRule ? 'edit' : 'create' }
+          initialValues={
+            editingPriceRule
+              ? {
+                  name: editingPriceRule.name,
+                  description: editingPriceRule.description ?? '',
+                  definition: editingPriceRule.definition,
+                }
+              : undefined
+          }
+          onOpenChange={ handlePriceRuleDialogOpenChange }
+          onSubmit={ handlePriceRuleSubmit }
+          isSubmitting={
+            createPriceRuleMutation.isPending || updatePriceRuleMutation.isPending
+          }
+        />
+      ) }
 
       <Dialog
         open={ testingRule !== null }

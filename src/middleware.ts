@@ -107,38 +107,59 @@ export async function middleware(request: NextRequest) {
       return redirectWithCookies(homeUrl, response);
     }
 
-    const syncProfileUrl = new URL('/api/v1/auth/sync-profile', request.url);
-    const cookieHeader = request.headers.get('cookie');
-    const sharedHeaders = new Headers();
+    // Build the cookie header from the original request cookies, then overlay
+    // any cookies that were refreshed by the getUser() call above (e.g. rotated
+    // Supabase auth tokens).  Without this, internal fetches would send stale
+    // tokens that have already been consumed by the middleware's own getUser().
+    const cookieMap = new Map<string, string>();
+    for (const cookie of request.cookies.getAll()) {
+      cookieMap.set(cookie.name, `${cookie.name}=${cookie.value}`);
+    }
+    for (const cookie of response.cookies.getAll()) {
+      cookieMap.set(cookie.name, `${cookie.name}=${cookie.value}`);
+    }
 
-    if (cookieHeader) {
-      sharedHeaders.set('cookie', cookieHeader);
+    const sharedHeaders = new Headers();
+    const mergedCookieHeader = Array.from(cookieMap.values()).join('; ');
+
+    if (mergedCookieHeader) {
+      sharedHeaders.set('cookie', mergedCookieHeader);
     }
 
     sharedHeaders.set('x-upspace-internal-call', '1');
 
-    const profileUrl = new URL('/api/v1/auth/profile', request.url);
-
-    // Parallelize sync and profile fetch to reduce middleware latency
-    const [syncResponse, profileResponse] = await Promise.all([
-      fetch(syncProfileUrl, {
+    // Only sync profile if we haven't already synced in this session
+    const hasSynced = request.cookies.get('upspace_synced')?.value === '1';
+    if (!hasSynced) {
+      const syncProfileUrl = new URL('/api/v1/auth/sync-profile', request.url);
+      const syncResponse = await fetch(syncProfileUrl, {
         method: 'POST',
         headers: new Headers(sharedHeaders),
         cache: 'no-store',
-      }),
-      fetch(profileUrl, {
-        headers: new Headers(sharedHeaders),
-        cache: 'no-store',
-      })
-    ]);
+      });
 
-    if (!syncResponse.ok) {
-      console.error(
-        'Failed to sync user profile in middleware',
-        syncResponse.status,
-        syncResponse.statusText
-      );
+      if (syncResponse.ok) {
+        // Mark as synced for 5 minutes to avoid redundant calls
+        response.cookies.set('upspace_synced', '1', {
+          path: '/',
+          maxAge: 300,
+          httpOnly: true,
+          sameSite: 'lax',
+        });
+      } else {
+        console.error(
+          'Failed to sync user profile in middleware',
+          syncResponse.status,
+          syncResponse.statusText
+        );
+      }
     }
+
+    const profileUrl = new URL('/api/v1/auth/profile', request.url);
+    const profileResponse = await fetch(profileUrl, {
+      headers: new Headers(sharedHeaders),
+      cache: 'no-store',
+    });
 
     if (!profileResponse.ok) {
       console.error('Failed to fetch user profile in middleware', profileResponse.status, profileResponse.statusText);
@@ -185,6 +206,11 @@ export async function middleware(request: NextRequest) {
       return redirectWithCookies(adminDashboardUrl, response);
     }
 
+    if (profile?.role === 'admin' && pathname.startsWith('/marketplace/ai-assistant')) {
+      const adminRedirectUrl = new URL(redirectTarget, request.url);
+      return redirectWithCookies(adminRedirectUrl, response);
+    }
+
     if (process.env.NODE_ENV === 'development') {
       console.log(`[Middleware] Auth user on ${pathname}: onboarded=${isOnboard}, role=${profile?.role}, target=${redirectTarget}`);
     }
@@ -221,6 +247,30 @@ export async function middleware(request: NextRequest) {
     }
   } catch (error) {
     console.error('Supabase middleware error', error);
+
+    // If an authenticated user's profile fetch failed, redirect to a safe
+    // default instead of falling through to a potentially stale page.
+    if (!isPathPublic(pathname) || PUBLIC_PATHS.has(pathname)) {
+      try {
+        const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        if (url && anonKey) {
+          const supabase = createServerClient(url, anonKey, {
+            cookies: {
+              getAll() { return request.cookies.getAll(); },
+              setAll() { /* read-only check */ },
+            },
+          });
+          const { data, } = await supabase.auth.getUser();
+          if (data?.user && PUBLIC_PATHS.has(pathname)) {
+            const fallbackUrl = new URL('/marketplace', request.url);
+            return redirectWithCookies(fallbackUrl, response);
+          }
+        }
+      } catch {
+        // Last-resort: let the page handle it
+      }
+    }
   }
 
   return response;

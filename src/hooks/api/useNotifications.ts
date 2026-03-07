@@ -1,33 +1,22 @@
 'use client';
 
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+useInfiniteQuery,
+useMutation,
+useQueryClient,
+type InfiniteData
+} from '@tanstack/react-query';
 
 import type { NotificationRecord } from '@/lib/notifications/types';
+import type { NotificationsPage } from '@/lib/queries/notification';
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
+import { parseErrorMessage } from '@/lib/api/parse-error-message';
+
+export type { NotificationsPage };
 
 export const notificationKeys = {
   all: ['notifications'] as const,
   list: (filters?: { type?: string; unread?: boolean }) => ['notifications', 'list', filters] as const,
-};
-
-type NotificationsPage = {
-  data: NotificationRecord[];
-  pagination: { hasMore: boolean; nextCursor: string | undefined };
-};
-
-const parseErrorMessage = async (response: Response) => {
-  try {
-    const body = await response.json();
-    if (typeof body?.error === 'string') {
-      return body.error;
-    }
-    if (typeof body?.message === 'string') {
-      return body.message;
-    }
-  } catch {
-    // ignore
-  }
-  return 'Something went wrong. Please try again.';
 };
 
 export function useNotificationsQuery(options?: {
@@ -35,6 +24,7 @@ export function useNotificationsQuery(options?: {
   type?: string;
   unread?: boolean;
   limit?: number;
+  initialData?: InfiniteData<NotificationsPage, string | undefined>;
 }) {
   const authFetch = useAuthenticatedFetch();
   const enabled = options?.enabled ?? true;
@@ -42,7 +32,7 @@ export function useNotificationsQuery(options?: {
   const type = options?.type;
   const unread = options?.unread;
 
-  return useInfiniteQuery<NotificationsPage>({
+  return useInfiniteQuery<NotificationsPage, Error, InfiniteData<NotificationsPage, string | undefined>, ReturnType<typeof notificationKeys.list>, string | undefined>({
     queryKey: notificationKeys.list({
       type,
       unread,
@@ -65,9 +55,10 @@ export function useNotificationsQuery(options?: {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) =>
       lastPage.pagination.hasMore ? lastPage.pagination.nextCursor : undefined,
+    initialData: options?.initialData,
     enabled,
     retry: 1,
-    staleTime: 1000 * 30,
+    staleTime: 60_000,
   });
 }
 
@@ -97,7 +88,7 @@ export function useMarkNotificationRead() {
       return payload.data as NotificationRecord;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: notificationKeys.list(), });
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all, });
     },
   });
 }
@@ -118,7 +109,7 @@ export function useMarkAllNotificationsRead() {
       return (payload?.data ?? { updatedCount: 0, }) as { updatedCount: number };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: notificationKeys.list(), });
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all, });
     },
   });
 }
@@ -143,7 +134,7 @@ export function useDeleteNotification() {
       return payload.data as { deleted: boolean };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: notificationKeys.list(), });
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all, });
     },
   });
 }

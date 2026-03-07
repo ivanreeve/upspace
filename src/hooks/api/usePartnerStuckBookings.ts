@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
 
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
 
@@ -8,7 +8,9 @@ export type StuckBookingsSummary = {
   pendingPaid: number;
 };
 
-export function usePartnerStuckBookingsQuery() {
+export function usePartnerStuckBookingsQuery(
+  options?: Omit<UseQueryOptions<StuckBookingsSummary, Error>, 'queryKey' | 'queryFn'>
+) {
   const authFetch = useAuthenticatedFetch();
 
   return useQuery<StuckBookingsSummary>({
@@ -21,6 +23,7 @@ export function usePartnerStuckBookingsQuery() {
       const body = await response.json();
       return body.data as StuckBookingsSummary;
     },
-    staleTime: 30_000,
+    staleTime: 60_000,
+    ...options,
   });
 }

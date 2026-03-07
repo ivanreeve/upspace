@@ -15,6 +15,8 @@ export type WalletTransactionRecord = {
   currency: string;
   description: string | null;
   bookingId: string | null;
+  processedAt: string | null;
+  resolutionNote: string | null;
   booking: {
     id: string;
     spaceName: string;

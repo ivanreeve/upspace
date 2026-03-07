@@ -358,9 +358,9 @@ export function AdminReportsPage() {
                         <TableHead>Resolved</TableHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody>
+                      <TableBody>
                       { isLoadingData ? (
-                        <TableSkeletonRows rows={ 4 } columns={ 5 } />
+                        <TableSkeletonRows rows={ 5 } columns={ 5 } />
                       ) : queueHealth.length ? (
                         queueHealth.map((queue) => (
                           <TableRow key={ queue.key }>

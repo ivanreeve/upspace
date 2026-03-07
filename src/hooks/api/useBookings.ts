@@ -7,30 +7,16 @@ import {
   type UseQueryOptions
 } from '@tanstack/react-query';
 
-import { customerBookingsKeys } from './useCustomerBookings';
+import { notificationKeys } from './useNotifications';
 
 import type { BookingRecord, BookingStatus } from '@/lib/bookings/types';
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
+import { parseErrorMessage } from '@/lib/api/parse-error-message';
 
-const bookingKeys = {
+export const bookingKeys = {
   base: ['bookings'] as const,
   user: () => ['bookings', 'user'] as const,
   partner: () => ['bookings', 'partner'] as const,
-};
-
-const parseErrorMessage = async (response: Response) => {
-  try {
-    const body = await response.json();
-    if (typeof body?.error === 'string') {
-      return body.error;
-    }
-    if (typeof body?.message === 'string') {
-      return body.message;
-    }
-  } catch {
-    // ignore
-  }
-  return 'Something went wrong. Please try again.';
 };
 
 const mergeUpdatedBookings = (
@@ -125,7 +111,8 @@ export function useCreateBookingMutation() {
         return [booking, ...previous];
       });
       queryClient.invalidateQueries({ queryKey: bookingKeys.partner(), });
-      queryClient.invalidateQueries({ queryKey: ['notifications'], });
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all, });
+      queryClient.invalidateQueries({ queryKey: ['partner', 'bookings', 'stuck'], });
     },
   });
 }
@@ -198,8 +185,9 @@ export function useBulkUpdateBookingStatusMutation() {
         bookingKeys.user(),
         (existing) => mergeUpdatedBookings(existing, updatedBookings)
       );
-      queryClient.invalidateQueries({ queryKey: customerBookingsKeys.all, });
-      queryClient.invalidateQueries({ queryKey: ['notifications'], });
+      queryClient.invalidateQueries({ queryKey: bookingKeys.user(), });
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all, });
+      queryClient.invalidateQueries({ queryKey: ['partner', 'bookings', 'stuck'], });
     },
   });
 }

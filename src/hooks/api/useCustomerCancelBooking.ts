@@ -3,7 +3,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-import { customerBookingsKeys } from './useCustomerBookings';
+import { bookingKeys } from './useBookings';
+import { notificationKeys } from './useNotifications';
 
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
 
@@ -25,7 +26,10 @@ export function useCustomerCancelBookingMutation() {
     },
     onSuccess: () => {
       toast.success('Booking cancelled.');
-      queryClient.invalidateQueries({ queryKey: customerBookingsKeys.all, });
+      queryClient.invalidateQueries({ queryKey: bookingKeys.user(), });
+      queryClient.invalidateQueries({ queryKey: bookingKeys.partner(), });
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all, });
+      queryClient.invalidateQueries({ queryKey: ['partner', 'bookings', 'stuck'], });
     },
     onError: (error) => {
       toast.error(error.message);

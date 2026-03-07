@@ -3,6 +3,7 @@
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
 
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
+import { parseErrorMessage } from '@/lib/api/parse-error-message';
 
 export type AdminDashboardBooking = {
   id: string;
@@ -101,6 +102,23 @@ export type AdminDashboardMetrics = {
   };
 };
 
+export type PaginationInfo = {
+  page: number;
+  pageSize: number;
+  total: number;
+};
+
+export type RecentPaginationInfo = {
+  page: number;
+  pageSize: number;
+  totals: {
+    bookings: number;
+    spaces: number;
+    clients: number;
+    verifications: number;
+  };
+};
+
 export type AdminDashboardPayload = {
   metrics: AdminDashboardMetrics;
   recent: {
@@ -109,45 +127,54 @@ export type AdminDashboardPayload = {
     clients: AdminDashboardClient[];
     verifications: AdminDashboardVerification[];
   };
+  recentPagination: RecentPaginationInfo;
   auditLog: AdminDashboardAuditEvent[];
+  auditPagination: PaginationInfo;
 };
 
-export const adminDashboardKeys = { all: ['admin-dashboard'] as const, };
+export type AdminDashboardParams = {
+  recentPage?: number;
+  recentSize?: number;
+  auditPage?: number;
+  auditSize?: number;
+};
+
+export const adminDashboardKeys = {
+  all: ['admin-dashboard'] as const,
+  paginated: (params: AdminDashboardParams) =>
+    ['admin-dashboard', params] as const,
+};
 
 type AdminDashboardQueryOptions = Omit<
   UseQueryOptions<AdminDashboardPayload>,
   'queryKey' | 'queryFn'
 >;
 
-const parseErrorMessage = async (response: Response) => {
-  try {
-    const body = await response.json();
-    if (typeof body?.error === 'string') {
-      return body.error;
-    }
-    if (typeof body?.message === 'string') {
-      return body.message;
-    }
-  } catch {
-    // ignore
-  }
-  return 'Unable to load dashboard data.';
-};
-
-export function useAdminDashboardQuery(options?: AdminDashboardQueryOptions) {
+export function useAdminDashboardQuery(
+  params: AdminDashboardParams = {},
+  options?: AdminDashboardQueryOptions
+) {
   const authFetch = useAuthenticatedFetch();
 
   return useQuery<AdminDashboardPayload>({
-    queryKey: adminDashboardKeys.all,
+    queryKey: adminDashboardKeys.paginated(params),
     queryFn: async () => {
-      const response = await authFetch('/api/v1/admin/dashboard');
+      const searchParams = new URLSearchParams();
+      if (params.recentPage) searchParams.set('recentPage', String(params.recentPage));
+      if (params.recentSize) searchParams.set('recentSize', String(params.recentSize));
+      if (params.auditPage) searchParams.set('auditPage', String(params.auditPage));
+      if (params.auditSize) searchParams.set('auditSize', String(params.auditSize));
+
+      const qs = searchParams.toString();
+      const url = `/api/v1/admin/dashboard${qs ? `?${qs}` : ''}`;
+      const response = await authFetch(url);
       if (!response.ok) {
-        throw new Error(await parseErrorMessage(response));
+        throw new Error(await parseErrorMessage(response, 'Unable to load dashboard data.'));
       }
       const payload = await response.json();
       return payload.data;
     },
-    staleTime: 30_000,
+    staleTime: 60_000,
     ...options,
   });
 }

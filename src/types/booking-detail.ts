@@ -27,7 +27,10 @@ export type BookingDetailRecord = {
   currency: string;
   status: BookingStatus;
   createdAt: string;
+  paymentCaptured: boolean;
   paymentMethod: string | null;
+  reviewState: 'host_approval' | 'capacity_review' | null;
+  latestStatusTitle: string | null;
   isLive: boolean | null;
   timeline: TimelineEvent[];
 };

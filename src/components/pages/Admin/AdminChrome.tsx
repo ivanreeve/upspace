@@ -4,11 +4,12 @@ import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
 CheckCircle,
+DollarSign,
 Layers,
 Users,
 X
 } from 'lucide-react';
-import { FiFlag, FiTrendingUp } from 'react-icons/fi';
+import { FiAlertCircle, FiFlag, FiTrendingUp } from 'react-icons/fi';
 
 import { MarketplaceChrome } from '../Marketplace/MarketplaceChrome';
 
@@ -115,6 +116,14 @@ export function AdminChrome({
                   <span>Reports</span>
                 </CommandItem>
                 <CommandItem
+                  value="payout requests"
+                  onSelect={ () => handleNavigate('/admin/payout-requests') }
+                  className={ marketplaceSearchActionItemClassName }
+                >
+                  <DollarSign className="size-4" aria-hidden="true" />
+                  <span>Payout requests</span>
+                </CommandItem>
+                <CommandItem
                   value="users"
                   onSelect={ () => handleNavigate('/admin/users') }
                   className={ marketplaceSearchActionItemClassName }
@@ -137,6 +146,14 @@ export function AdminChrome({
                 >
                   <FiFlag className="size-4" aria-hidden="true" />
                   <span>Chat reports</span>
+                </CommandItem>
+                <CommandItem
+                  value="complaints"
+                  onSelect={ () => handleNavigate('/admin/complaints') }
+                  className={ marketplaceSearchActionItemClassName }
+                >
+                  <FiAlertCircle className="size-4" aria-hidden="true" />
+                  <span>Complaints</span>
                 </CommandItem>
                 { searchValue.trim() && (
                   <CommandItem

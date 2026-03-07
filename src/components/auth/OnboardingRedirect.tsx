@@ -13,7 +13,7 @@ export function OnboardingRedirect() {
   const {
     data: profile,
     isLoading,
-    isFetching,
+    isError: isProfileError,
   } = useUserProfile();
   const {
     session,
@@ -22,13 +22,24 @@ export function OnboardingRedirect() {
 
   const isOnboardingRoute =
     pathname === ONBOARDING_PATH || pathname.startsWith(`${ONBOARDING_PATH}/`);
-  const isPublicRoute = PUBLIC_PATHS.has(pathname);
-  const isProfileLoading = isLoading || isFetching;
+  const isOnPublicRoute = PUBLIC_PATHS.has(pathname);
   const isSessionResolved = Boolean(session) || !isSessionLoading;
   const redirectTarget = profile?.role ? ROLE_REDIRECT_MAP[profile.role] : '/marketplace';
 
   useEffect(() => {
-    if (!isSessionResolved || isProfileLoading || !session || !profile) {
+    if (!isSessionResolved || isLoading || !session) {
+      return;
+    }
+
+    // If the profile failed to load, do not redirect.  The middleware already
+    // handles server-side redirects for authenticated users on public routes,
+    // so a client-side redirect here would race with it and could send users
+    // to the wrong destination (e.g. admins ending up on /marketplace).
+    if (!profile && isProfileError) {
+      return;
+    }
+
+    if (!profile) {
       return;
     }
 
@@ -39,22 +50,19 @@ export function OnboardingRedirect() {
       return;
     }
 
-    if (isPublicRoute && pathname !== redirectTarget) {
+    if (isOnboardingRoute) {
       router.replace(redirectTarget);
       return;
     }
 
-    const isRestrictedRoute =
-      pathname === ONBOARDING_PATH ||
-      pathname.startsWith(`${ONBOARDING_PATH}/`);
-
-    if (isRestrictedRoute) {
+    if (isOnPublicRoute && pathname !== redirectTarget) {
       router.replace(redirectTarget);
     }
   }, [
     isOnboardingRoute,
-    isPublicRoute,
-    isProfileLoading,
+    isOnPublicRoute,
+    isLoading,
+    isProfileError,
     profile,
     redirectTarget,
     router,
