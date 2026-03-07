@@ -66,13 +66,16 @@ import {
   PriceRuleFormValues,
   PriceRuleLiteralType,
   PriceRuleOperand,
+  PriceRuleVariable,
   PriceRuleVariableType,
   priceRuleSchema
 } from '@/lib/pricing-rules';
 import {
   evaluateFormula,
+  evaluatePriceRule,
   FormulaVariableValueMap,
   normalizeTimeLiteral,
+  PriceRuleEvaluationResult,
   validateDateLiteral,
   validateDatetimeLiteral
 } from '@/lib/pricing-rules-evaluator';
@@ -1526,6 +1529,292 @@ const createDefaultRule = (): PriceRuleFormValues => ({
   },
 });
 
+type GuidedPriceRuleConditionType = 'always' | 'weekend' | 'long-stay';
+
+type GuidedPriceRuleConfig = {
+  baseRate: string;
+  conditionType: GuidedPriceRuleConditionType;
+  weekendMultiplier: string;
+  longStayHours: string;
+  longStayDiscountPercent: string;
+  fallbackType: 'base' | 'custom';
+  fallbackRate: string;
+};
+
+type GuidedConfigUpdater =
+  | Partial<GuidedPriceRuleConfig>
+  | ((prev: GuidedPriceRuleConfig) => GuidedPriceRuleConfig);
+
+const createDefaultGuidedConfig = (): GuidedPriceRuleConfig => ({
+  baseRate: '500',
+  conditionType: 'always',
+  weekendMultiplier: '1.2',
+  longStayHours: '24',
+  longStayDiscountPercent: '10',
+  fallbackType: 'base',
+  fallbackRate: '500',
+});
+
+const parseNumberOrFallback = (value: string, fallback: number) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const parsePositiveNumberOrFallback = (value: string, fallback: number) => {
+  const parsed = parseNumberOrFallback(value, fallback);
+  return parsed > 0 ? parsed : fallback;
+};
+
+const clampPercent = (value: string, fallback: number) => {
+  const parsed = parseNumberOrFallback(value, fallback);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.min(100, Math.max(0, parsed));
+};
+
+const formatNumberValue = (value: number, fractionDigits = 2) => {
+  if (!Number.isFinite(value)) {
+    return '0';
+  }
+  const rounded = Number(value.toFixed(fractionDigits));
+  return rounded.toString();
+};
+
+const normalizeVariableForComparison = (variable: PriceRuleVariable) => {
+  const normalized: Record<string, string | number | boolean> = {
+    key: variable.key,
+    label: variable.label,
+    type: variable.type,
+  };
+  if (variable.initialValue !== undefined) {
+    normalized.initialValue = variable.initialValue;
+  }
+  if (variable.userInput !== undefined) {
+    normalized.userInput = variable.userInput;
+  }
+  return normalized;
+};
+
+const normalizeOperandForComparison = (operand: PriceRuleOperand) =>
+  operand.kind === 'variable'
+    ? {
+        kind: 'variable',
+        key: operand.key,
+      }
+    : {
+        kind: 'literal',
+        value: operand.value,
+        valueType: operand.valueType,
+      };
+
+const normalizeConditionForComparison = (condition: PriceRuleCondition) => ({
+  comparator: condition.comparator,
+  connector: condition.connector ? condition.connector.toLowerCase() : null,
+  negated: Boolean(condition.negated),
+  left: normalizeOperandForComparison(condition.left),
+  right: normalizeOperandForComparison(condition.right),
+});
+
+const normalizeDefinitionForComparison = (
+  definition: PriceRuleDefinition
+) => ({
+  formula: definition.formula.replace(/\s+/g, ' ').trim(),
+  variables: definition.variables
+    .map(normalizeVariableForComparison)
+    .sort((a, b) => String(a.key).localeCompare(String(b.key))),
+  conditions: definition.conditions.map(normalizeConditionForComparison),
+});
+
+const definitionsAreEquivalent = (
+  first: PriceRuleDefinition,
+  second: PriceRuleDefinition
+) =>
+  JSON.stringify(normalizeDefinitionForComparison(first)) ===
+  JSON.stringify(normalizeDefinitionForComparison(second));
+
+const buildDefinitionFromGuidedConfig = (
+  config: GuidedPriceRuleConfig
+): PriceRuleDefinition => {
+  const baseRateValue = parsePositiveNumberOrFallback(config.baseRate, 500);
+  const variables: PriceRuleVariable[] = [
+    ...PRICE_RULE_INITIAL_VARIABLES.map((variable) => ({ ...variable, })),
+    {
+      key: 'base_rate',
+      label: 'base rate',
+      type: 'number',
+      initialValue: formatNumberValue(baseRateValue),
+      userInput: false,
+    }
+  ];
+
+  const fallbackExpression =
+    config.conditionType !== 'always' && config.fallbackType === 'custom'
+      ? 'fallback_rate * booking_hours'
+      : 'base_rate * booking_hours';
+
+  if (config.conditionType !== 'always' && config.fallbackType === 'custom') {
+    const fallbackRateValue = parsePositiveNumberOrFallback(
+      config.fallbackRate,
+      baseRateValue
+    );
+    variables.push({
+      key: 'fallback_rate',
+      label: 'fallback rate',
+      type: 'number',
+      initialValue: formatNumberValue(fallbackRateValue),
+      userInput: false,
+    } as PriceRuleVariable);
+  }
+
+  if (config.conditionType === 'weekend') {
+    const weekendMultiplierValue = parsePositiveNumberOrFallback(
+      config.weekendMultiplier,
+      1.2
+    );
+    variables.push({
+      key: 'weekend_multiplier',
+      label: 'weekend multiplier',
+      type: 'number',
+      initialValue: formatNumberValue(weekendMultiplierValue),
+      userInput: false,
+    } as PriceRuleVariable);
+    return {
+      variables,
+      conditions: [
+        {
+          id: randomId(),
+          comparator: '>=',
+          left: {
+            kind: 'variable',
+            key: 'day_of_week',
+          },
+          right: {
+            kind: 'literal',
+            value: '6',
+            valueType: 'number',
+          },
+        }
+      ],
+      formula: `base_rate * booking_hours * weekend_multiplier ELSE ${fallbackExpression}`,
+    };
+  }
+
+  if (config.conditionType === 'long-stay') {
+    const threshold = parsePositiveNumberOrFallback(config.longStayHours, 24);
+    const discountPercent = clampPercent(config.longStayDiscountPercent, 10);
+    const multiplier = Math.max(0.05, (100 - discountPercent) / 100);
+    variables.push({
+      key: 'long_stay_multiplier',
+      label: 'long stay multiplier',
+      type: 'number',
+      initialValue: formatNumberValue(multiplier),
+      userInput: false,
+    } as PriceRuleVariable);
+    return {
+      variables,
+      conditions: [
+        {
+          id: randomId(),
+          comparator: '>=',
+          left: {
+            kind: 'variable',
+            key: 'booking_hours',
+          },
+          right: {
+            kind: 'literal',
+            value: formatNumberValue(threshold, 0),
+            valueType: 'number',
+          },
+        }
+      ],
+      formula: `base_rate * booking_hours * long_stay_multiplier ELSE ${fallbackExpression}`,
+    };
+  }
+
+  return {
+    variables,
+    conditions: [],
+    formula: 'base_rate * booking_hours',
+  };
+};
+
+const deriveGuidedConfigFromDefinition = (
+  definition: PriceRuleDefinition
+): GuidedPriceRuleConfig => {
+  const config = createDefaultGuidedConfig();
+  const baseRateVariable = definition.variables.find(
+    (variable) => variable.key === 'base_rate'
+  );
+  if (baseRateVariable?.initialValue) {
+    config.baseRate = baseRateVariable.initialValue;
+  }
+
+  const fallbackRateVariable = definition.variables.find(
+    (variable) => variable.key === 'fallback_rate'
+  );
+  if (
+    fallbackRateVariable?.initialValue &&
+    definition.formula.includes('fallback_rate')
+  ) {
+    config.fallbackType = 'custom';
+    config.fallbackRate = fallbackRateVariable.initialValue;
+  }
+
+  if (!definition.conditions.length) {
+    return config;
+  }
+
+  const [condition] = definition.conditions;
+  if (
+    condition.left.kind === 'variable' &&
+    condition.left.key === 'day_of_week' &&
+    condition.comparator === '>=' &&
+    condition.right.kind === 'literal' &&
+    condition.right.value === '6'
+  ) {
+    const weekendVariable = definition.variables.find(
+      (variable) => variable.key === 'weekend_multiplier'
+    );
+    if (weekendVariable?.initialValue) {
+      config.conditionType = 'weekend';
+      config.weekendMultiplier = weekendVariable.initialValue;
+    }
+    return config;
+  }
+
+  if (
+    condition.left.kind === 'variable' &&
+    condition.left.key === 'booking_hours' &&
+    condition.comparator === '>=' &&
+    condition.right.kind === 'literal'
+  ) {
+    config.conditionType = 'long-stay';
+    config.longStayHours = condition.right.value;
+    const multiplierVariable = definition.variables.find(
+      (variable) => variable.key === 'long_stay_multiplier'
+    );
+    if (multiplierVariable?.initialValue) {
+      const multiplier = Number(multiplierVariable.initialValue);
+      if (Number.isFinite(multiplier)) {
+        const percent = Math.max(0, Math.min(100, 100 - multiplier * 100));
+        config.longStayDiscountPercent = Number(percent.toFixed(0)).toString();
+      }
+    }
+    return config;
+  }
+
+  return config;
+};
+
+const definitionSupportsGuidedBuilder = (
+  definition: PriceRuleDefinition
+) => {
+  const derivedConfig = deriveGuidedConfigFromDefinition(definition);
+  const rebuiltDefinition = buildDefinitionFromGuidedConfig(derivedConfig);
+  return definitionsAreEquivalent(definition, rebuiltDefinition);
+};
+
 const pricingRuleTemplates: Array<{
   key: string;
   name: string;
@@ -1651,6 +1940,11 @@ export type PriceRuleFormState = {
   setValues: Dispatch<SetStateAction<PriceRuleFormValues>>;
   errorMessage: string | null;
   setErrorMessage: Dispatch<SetStateAction<string | null>>;
+  builderMode: 'guided' | 'advanced';
+  setBuilderMode: Dispatch<SetStateAction<'guided' | 'advanced'>>;
+  canUseGuidedBuilder: boolean;
+  guidedConfig: GuidedPriceRuleConfig;
+  updateGuidedConfig: (updater: GuidedConfigUpdater) => void;
   newVariableLabel: string;
   setNewVariableLabel: Dispatch<SetStateAction<string>>;
   newVariableType: 'text' | 'number' | 'date' | 'time';
@@ -1689,6 +1983,15 @@ export function usePriceRuleFormState(
   const [newVariableUserInput, setNewVariableUserInput] = useState(false);
   const [conditionExpression, setConditionExpression] = useState('');
   const [conditionError, setConditionError] = useState<string | null>(null);
+  const [builderMode, setBuilderModeState] =
+    useState<'guided' | 'advanced'>('guided');
+  const [canUseGuidedBuilder, setCanUseGuidedBuilder] = useState(true);
+  const [guidedConfig, setGuidedConfig] =
+    useState<GuidedPriceRuleConfig>(createDefaultGuidedConfig);
+  const guidedConfigRef = useRef(guidedConfig);
+  useEffect(() => {
+    guidedConfigRef.current = guidedConfig;
+  }, [guidedConfig]);
   const resetTransientState = useCallback(() => {
     setErrorMessage(null);
     setNewVariableLabel('');
@@ -1697,6 +2000,47 @@ export function usePriceRuleFormState(
     setNewVariableUserInput(false);
     setConditionError(null);
   }, []);
+  const replaceDefinition = useCallback(
+    (definition: PriceRuleDefinition) => {
+      setValues((prev) => ({
+        ...prev,
+        definition,
+      }));
+      setConditionExpression(
+        buildConditionExpressionFromDefinition(definition)
+      );
+      setConditionError(null);
+    },
+    [setValues, setConditionExpression, setConditionError]
+  );
+  const applyGuidedDefinition = useCallback(
+    (config: GuidedPriceRuleConfig) => {
+      replaceDefinition(buildDefinitionFromGuidedConfig(config));
+    },
+    [replaceDefinition]
+  );
+  const updateGuidedConfig = useCallback(
+    (updater: GuidedConfigUpdater) => {
+      setGuidedConfig((prev) => {
+        const next =
+          typeof updater === 'function'
+            ? (
+                updater as (
+                  value: GuidedPriceRuleConfig
+                ) => GuidedPriceRuleConfig
+              )(prev)
+            : {
+                ...prev,
+                ...updater,
+              };
+        if (builderMode === 'guided') {
+          applyGuidedDefinition(next);
+        }
+        return next;
+      });
+    },
+    [applyGuidedDefinition, builderMode]
+  );
   const applyInitialValues = useCallback(
     (nextInitialValues?: PriceRuleFormValues) => {
       if (nextInitialValues) {
@@ -1708,9 +2052,27 @@ export function usePriceRuleFormState(
         setConditionExpression(
           buildConditionExpressionFromDefinition(clonedDefinition)
         );
+        const derivedConfig =
+          deriveGuidedConfigFromDefinition(clonedDefinition);
+        setGuidedConfig(derivedConfig);
+        guidedConfigRef.current = derivedConfig;
+        const supportsGuided = definitionSupportsGuidedBuilder(clonedDefinition);
+        setCanUseGuidedBuilder(supportsGuided);
+        setBuilderModeState(supportsGuided ? 'guided' : 'advanced');
       } else {
-        setValues(createDefaultRule());
-        setConditionExpression('');
+        const defaultConfig = createDefaultGuidedConfig();
+        const defaultDefinition = buildDefinitionFromGuidedConfig(defaultConfig);
+        setValues({
+          ...createDefaultRule(),
+          definition: defaultDefinition,
+        });
+        setConditionExpression(
+          buildConditionExpressionFromDefinition(defaultDefinition)
+        );
+        setBuilderModeState('guided');
+        setGuidedConfig(defaultConfig);
+        guidedConfigRef.current = defaultConfig;
+        setCanUseGuidedBuilder(true);
       }
       resetTransientState();
     },
@@ -1723,6 +2085,27 @@ export function usePriceRuleFormState(
     }
     applyInitialValues(initialValues);
   }, [applyInitialValues, initialValues, resetTrigger]);
+
+  useEffect(() => {
+    if (builderMode === 'guided') {
+      setCanUseGuidedBuilder(true);
+      return;
+    }
+    const derived = deriveGuidedConfigFromDefinition(values.definition);
+    setGuidedConfig(derived);
+    guidedConfigRef.current = derived;
+    const supports = definitionsAreEquivalent(
+      values.definition,
+      buildDefinitionFromGuidedConfig(derived)
+    );
+    setCanUseGuidedBuilder(supports);
+  }, [builderMode, values.definition]);
+
+  useEffect(() => {
+    if (builderMode === 'guided') {
+      applyGuidedDefinition(guidedConfigRef.current);
+    }
+  }, [applyGuidedDefinition, builderMode]);
 
   const updateDefinition = (
     updater: (definition: PriceRuleDefinition) => PriceRuleDefinition
@@ -1922,6 +2305,11 @@ export function usePriceRuleFormState(
     setValues,
     errorMessage,
     setErrorMessage,
+    builderMode,
+    setBuilderMode: setBuilderModeState,
+    canUseGuidedBuilder,
+    guidedConfig,
+    updateGuidedConfig,
     newVariableLabel,
     setNewVariableLabel,
     newVariableType,
@@ -3270,6 +3658,365 @@ function RuleLanguageEditor({
   );
 }
 
+const pesoPreviewFormatter = new Intl.NumberFormat('en-PH', {
+  currency: 'PHP',
+  style: 'currency',
+  minimumFractionDigits: 2,
+});
+
+type GuidedPriceRuleBuilderProps = {
+  config: GuidedPriceRuleConfig;
+  onChange: (updates: GuidedConfigUpdater) => void;
+};
+
+function GuidedPriceRuleBuilder({
+  config,
+  onChange,
+}: GuidedPriceRuleBuilderProps) {
+  const baseRateValue = useMemo(
+    () => parsePositiveNumberOrFallback(config.baseRate, 500),
+    [config.baseRate]
+  );
+  const longStayDiscountPercentValue = useMemo(
+    () => clampPercent(config.longStayDiscountPercent, 10),
+    [config.longStayDiscountPercent]
+  );
+  const longStayDiscountedRate = useMemo(() => {
+    const multiplier = Math.max(
+      0.05,
+      (100 - longStayDiscountPercentValue) / 100
+    );
+    return baseRateValue * multiplier;
+  }, [baseRateValue, longStayDiscountPercentValue]);
+
+  const conditionOptions: Array<{
+    value: GuidedPriceRuleConditionType;
+    title: string;
+    description: string;
+  }> = [
+    {
+      value: 'always',
+      title: 'All bookings',
+      description: 'Use one hourly rate for every request.',
+    },
+    {
+      value: 'weekend',
+      title: 'Weekend uplift',
+      description: 'Add a multiplier when the booking lands on Sat/Sun.',
+    },
+    {
+      value: 'long-stay',
+      title: 'Long-stay discount',
+      description: 'Reward bookings that last beyond a set hour threshold.',
+    }
+  ];
+
+  const fallbackOptions = [
+    {
+      value: 'base',
+      title: 'Keep base rate',
+      description: 'Unmatched bookings fall back to the base hourly rate.',
+    },
+    {
+      value: 'custom',
+      title: 'Custom fallback',
+      description: 'Use a different hourly rate when the condition fails.',
+    }
+  ] as const;
+
+  const handleConditionChange = (value: GuidedPriceRuleConditionType) => {
+    onChange({
+      conditionType: value,
+      ...(value === 'always' ? { fallbackType: 'base', } : {}),
+    });
+  };
+
+  return (
+    <section className="space-y-4 rounded-xl border border-border/80 bg-background p-4 min-w-0">
+      <div className="space-y-1">
+        <h3 className="text-sm font-semibold">Guided pricing flow</h3>
+        <p className="text-xs text-muted-foreground break-words">
+          Answer a few prompts and we’ll assemble the pricing rule for you. You
+          can still switch to Advanced for full control.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="guided-base-rate">Base hourly rate</Label>
+        <div className="flex items-center gap-2">
+          <span className="rounded-md border border-border/80 bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+            ₱
+          </span>
+          <Input
+            id="guided-base-rate"
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="50"
+            className="bg-white"
+            value={ config.baseRate }
+            onChange={ (event) => onChange({ baseRate: event.target.value || '0', }) }
+            placeholder="500"
+            aria-label="Base hourly rate"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>When should this price change apply?</Label>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          { conditionOptions.map((option) => {
+            const isActive = config.conditionType === option.value;
+            return (
+              <Button
+                key={ option.value }
+                type="button"
+                variant={ isActive ? 'default' : 'outline' }
+                className="h-auto w-full flex-1 flex-col items-start gap-1 rounded-lg border border-border/70 p-3 text-left hover:text-white"
+                onClick={ () => handleConditionChange(option.value) }
+              >
+                <span className="text-sm font-semibold">{ option.title }</span>
+                <span className="w-full text-left text-[11px] text-muted-foreground leading-snug break-words whitespace-normal">
+                  { option.description }
+                </span>
+              </Button>
+            );
+          }) }
+        </div>
+      </div>
+
+      { config.conditionType === 'weekend' && (
+        <div className="space-y-2">
+          <Label htmlFor="guided-weekend-multiplier">Weekend multiplier</Label>
+          <p className="text-xs text-muted-foreground">
+            Example: 1.2 means a 20% uplift on Saturdays and Sundays.
+          </p>
+          <Input
+            id="guided-weekend-multiplier"
+            type="number"
+            inputMode="decimal"
+            step="0.1"
+            min="0"
+            className="bg-white"
+            value={ config.weekendMultiplier }
+            onChange={ (event) =>
+              onChange({ weekendMultiplier: event.target.value || '1', })
+            }
+            aria-label="Weekend multiplier"
+          />
+        </div>
+      ) }
+
+      { config.conditionType === 'long-stay' && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="guided-duration-hours">Minimum hours</Label>
+            <p className="text-xs text-muted-foreground">
+              Discount kicks in once a booking meets this duration.
+            </p>
+            <Input
+              id="guided-duration-hours"
+              type="number"
+              min="1"
+              step="1"
+              className="bg-white"
+              value={ config.longStayHours }
+              onChange={ (event) => onChange({ longStayHours: event.target.value || '1', }) }
+              aria-label="Minimum hours"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="guided-discount-percent">Discount (%)</Label>
+            <p className="text-xs text-muted-foreground">
+              10% = guests pay 90% of the base hourly rate when matched.
+            </p>
+            <Input
+              id="guided-discount-percent"
+              type="number"
+              min="0"
+              max="90"
+              step="1"
+              className="bg-white"
+              value={ config.longStayDiscountPercent }
+              onChange={ (event) => onChange({ longStayDiscountPercent: event.target.value || '0', }) }
+              aria-label="Discount percentage"
+            />
+            <p className="text-xs text-muted-foreground break-words">
+              Guests pay{ ' ' }
+              <strong>
+                { pesoPreviewFormatter.format(longStayDiscountedRate) }
+              </strong>{ ' ' }
+              per hour ({ longStayDiscountPercentValue }% off from{ ' ' }
+              { pesoPreviewFormatter.format(baseRateValue) }).
+            </p>
+          </div>
+        </div>
+      ) }
+
+      { config.conditionType !== 'always' && (
+        <div className="space-y-3">
+          <Label>Fallback for unmatched bookings</Label>
+          <div className="grid gap-2 sm:grid-cols-2">
+            { fallbackOptions.map((option) => {
+              const isActive = config.fallbackType === option.value;
+              return (
+                <Button
+                  key={ option.value }
+                  type="button"
+                  variant={ isActive ? 'default' : 'outline' }
+                  className="h-auto w-full flex-1 flex-col items-start gap-1 rounded-lg border border-border/70 p-3 text-left hover:text-white"
+                  onClick={ () => onChange({ fallbackType: option.value, }) }
+                >
+                  <span className="text-sm font-semibold">
+                    { option.title }
+                  </span>
+                  <span className="w-full text-left text-[11px] text-muted-foreground leading-snug break-words whitespace-normal">
+                    { option.description }
+                  </span>
+                </Button>
+              );
+            }) }
+          </div>
+          { config.fallbackType === 'custom' && (
+            <div className="space-y-2">
+              <Label htmlFor="guided-fallback-rate">Fallback hourly rate</Label>
+              <Input
+                id="guided-fallback-rate"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="50"
+                className="bg-white"
+                value={ config.fallbackRate }
+                onChange={ (event) => onChange({ fallbackRate: event.target.value || '0', }) }
+                aria-label="Fallback hourly rate"
+              />
+            </div>
+          ) }
+        </div>
+      ) }
+    </section>
+  );
+}
+
+type PriceRulePreviewCardProps = {
+  definition: PriceRuleDefinition,
+};
+
+function PriceRulePreviewCard({ definition, }: PriceRulePreviewCardProps) {
+  const [bookingHours, setBookingHours] = useState('2');
+  const [guestCount, setGuestCount] = useState('1');
+  const [startAt, setStartAt] = useState('');
+
+  const previewDate = useMemo(() => {
+    if (!startAt) {
+      return undefined;
+    }
+    const parsed = new Date(startAt);
+    if (Number.isNaN(parsed.getTime())) {
+      return undefined;
+    }
+    return parsed;
+  }, [startAt]);
+
+  const evaluation = useMemo<PriceRuleEvaluationResult | null>(() => {
+    try {
+      const hours = parsePositiveNumberOrFallback(bookingHours, 1);
+      const guests = parsePositiveNumberOrFallback(guestCount, 1);
+      return evaluatePriceRule(definition, {
+        bookingHours: hours,
+        now: previewDate,
+        variableOverrides: { guest_count: guests, },
+      });
+    } catch {
+      return null;
+    }
+  }, [bookingHours, definition, guestCount, previewDate]);
+
+  const previewLabel =
+    evaluation && evaluation.price !== null
+      ? pesoPreviewFormatter.format(evaluation.price)
+      : 'Unable to compute a price.';
+
+  const branchLabel = (() => {
+    if (!evaluation) {
+      return 'Rule is incomplete.';
+    }
+    switch (evaluation.branch) {
+      case 'then':
+        return 'Condition matched';
+      case 'else':
+        return 'Fallback price';
+      case 'unconditional':
+        return 'Always applied';
+      default:
+        return 'Condition not satisfied';
+    }
+  })();
+
+  return (
+    <section className="rounded-xl border border-border/80 bg-background/80 p-4 shadow-sm">
+      <div className="space-y-1">
+        <h3 className="text-sm font-semibold">Live price preview</h3>
+        <p className="text-xs text-muted-foreground">
+          Test the rule inline by adjusting sample booking details. Values stay
+          local and never affect your real bookings.
+        </p>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        <div className="space-y-1">
+          <Label htmlFor="preview-hours">Booking hours</Label>
+          <Input
+            id="preview-hours"
+            type="number"
+            min="1"
+            step="1"
+            value={ bookingHours }
+            onChange={ (event) => setBookingHours(event.target.value) }
+            aria-label="Preview booking hours"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="preview-guests">Guest count</Label>
+          <Input
+            id="preview-guests"
+            type="number"
+            min="1"
+            step="1"
+            value={ guestCount }
+            onChange={ (event) => setGuestCount(event.target.value) }
+            aria-label="Preview guest count"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="preview-start-at">Booking start</Label>
+          <Input
+            id="preview-start-at"
+            type="datetime-local"
+            value={ startAt }
+            onChange={ (event) => setStartAt(event.target.value) }
+            aria-label="Preview start date"
+          />
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-lg border border-border/80 bg-muted/20 p-3">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+          Estimated price
+        </p>
+        <p className="text-2xl font-semibold">{ previewLabel }</p>
+        <p className="text-xs text-muted-foreground">{ branchLabel }</p>
+        { evaluation?.appliedExpression && (
+          <p className="mt-2 text-[11px] font-mono text-muted-foreground">
+            { evaluation.appliedExpression }
+          </p>
+        ) }
+      </div>
+    </section>
+  );
+}
+
 type PriceRuleFormShellProps = PriceRuleFormState & {
   mode?: 'create' | 'edit';
   isSubmitting?: boolean;
@@ -3286,6 +4033,11 @@ export function PriceRuleFormShell({
   setValues,
   errorMessage,
   setErrorMessage,
+  builderMode,
+  setBuilderMode,
+  canUseGuidedBuilder,
+  guidedConfig,
+  updateGuidedConfig,
   newVariableLabel,
   setNewVariableLabel,
   newVariableType,
@@ -3332,82 +4084,154 @@ export function PriceRuleFormShell({
         <p className="text-sm text-destructive">{ errorMessage }</p>
       ) : null }
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-foreground">
-            Quick templates
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            Start simple, switch to Advanced anytime.
-          </p>
-        </div>
-        <div className="grid gap-2 sm:grid-cols-3">
-          { pricingRuleTemplates.map((template) => (
+      <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">Builder mode</p>
+            <p className="text-xs text-muted-foreground break-words">
+              Guided keeps things point-and-click. Advanced exposes the full
+              rule language editor.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
             <Button
-              key={ template.key }
               type="button"
-              variant="outline"
-              size="sm"
-              className="my-2 flex h-full flex-col items-start gap-1 bg-muted/30 text-left hover:bg-primary hover:text-white hover:[&_span.text-muted-foreground]:text-white"
-              onClick={ () => applyTemplate(template.key) }
+              variant={ builderMode === 'guided' ? 'default' : 'outline' }
+              onClick={ () => {
+                if (!canUseGuidedBuilder || builderMode === 'guided') {
+                  return;
+                }
+                setBuilderMode('guided');
+              } }
+              disabled={ !canUseGuidedBuilder }
+              aria-pressed={ builderMode === 'guided' }
             >
-              <span className="text-sm font-semibold">{ template.name }</span>
-              <span className="text-[11px] text-muted-foreground leading-tight">
-                { template.summary }
-              </span>
+              Guided flow
             </Button>
-          )) }
+            <Button
+              type="button"
+              variant={ builderMode === 'advanced' ? 'default' : 'outline' }
+              onClick={ () => builderMode !== 'advanced' && setBuilderMode('advanced') }
+              aria-pressed={ builderMode === 'advanced' }
+            >
+              Advanced
+            </Button>
+          </div>
+        </div>
+        { builderMode === 'guided' ? (
+          <p className="mt-2 text-[11px] text-muted-foreground break-words">
+            Switching back to Advanced keeps your answers intact but lets you
+            fine-tune the generated expression.
+          </p>
+        ) : canUseGuidedBuilder ? (
+          <p className="mt-2 text-[11px] text-muted-foreground break-words">
+            Need a simpler experience? Switch to Guided to rebuild this rule
+            with a streamlined flow.
+          </p>
+        ) : (
+          <p className="mt-2 text-[11px] text-muted-foreground break-words">
+            Guided flow currently supports simple hourly, weekend uplift, or
+            long-stay discount rules. This rule uses advanced logic, so continue
+            editing here or rebuild the pricing strategy from Guided.
+          </p>
+        ) }
+      </div>
+
+      <div className="flex flex-col gap-6 lg:flex-row">
+        <div className="flex-1 space-y-6 min-w-0">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="rule-name">Rule name</Label>
+              <Input
+                id="rule-name"
+                placeholder="Weekend uplift"
+                value={ values.name }
+                onChange={ (event) =>
+                  setValues((prev) => ({
+                    ...prev,
+                    name: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rule-description">Description</Label>
+              <Input
+                id="rule-description"
+                placeholder="Apply higher rates on Saturdays and Sundays."
+                value={ values.description ?? '' }
+                onChange={ (event) =>
+                  setValues((prev) => ({
+                    ...prev,
+                    description: event.target.value,
+                  }))
+                }
+              />
+            </div>
+          </div>
+
+          { builderMode === 'guided' ? (
+            <GuidedPriceRuleBuilder
+              config={ guidedConfig }
+              onChange={ updateGuidedConfig }
+            />
+          ) : (
+            <>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Quick templates
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Start simple, switch to Advanced anytime.
+                  </p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  { pricingRuleTemplates.map((template) => (
+                    <Button
+                      key={ template.key }
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="my-2 flex h-full flex-col items-start gap-1 bg-muted/30 text-left hover:bg-primary hover:text-white hover:[&_span.text-muted-foreground]:text-white"
+                      onClick={ () => applyTemplate(template.key) }
+                    >
+                      <span className="text-sm font-semibold">
+                        { template.name }
+                      </span>
+                      <span className="text-[11px] text-muted-foreground leading-tight">
+                        { template.summary }
+                      </span>
+                    </Button>
+                  )) }
+                </div>
+              </div>
+
+              <RuleLanguageEditor
+                definition={ values.definition }
+                newVariableLabel={ newVariableLabel }
+                setNewVariableLabel={ setNewVariableLabel }
+                newVariableType={ newVariableType }
+                setNewVariableType={ setNewVariableType }
+                newVariableValue={ newVariableValue }
+                setNewVariableValue={ setNewVariableValue }
+                newVariableUserInput={ newVariableUserInput }
+                setNewVariableUserInput={ setNewVariableUserInput }
+                handleAddVariable={ handleAddVariable }
+                removeVariable={ removeVariable }
+                usedVariables={ usedVariables }
+                conditionExpression={ conditionExpression }
+                conditionError={ conditionError }
+                handleConditionExpressionChange={ handleConditionExpressionChange }
+              />
+            </>
+          ) }
+        </div>
+        <div className="lg:w-80 w-full shrink-0">
+          <PriceRulePreviewCard definition={ values.definition } />
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="rule-name">Rule name</Label>
-          <Input
-            id="rule-name"
-            placeholder="Weekend uplift"
-            value={ values.name }
-            onChange={ (event) =>
-              setValues((prev) => ({
-                ...prev,
-                name: event.target.value,
-              }))
-            }
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="rule-description">Description</Label>
-          <Input
-            id="rule-description"
-            placeholder="Apply higher rates on Saturdays and Sundays."
-            value={ values.description ?? '' }
-            onChange={ (event) =>
-              setValues((prev) => ({
-                ...prev,
-                description: event.target.value,
-              }))
-            }
-          />
-        </div>
-      </div>
-
-      <RuleLanguageEditor
-        definition={ values.definition }
-        newVariableLabel={ newVariableLabel }
-        setNewVariableLabel={ setNewVariableLabel }
-        newVariableType={ newVariableType }
-        setNewVariableType={ setNewVariableType }
-        newVariableValue={ newVariableValue }
-        setNewVariableValue={ setNewVariableValue }
-        newVariableUserInput={ newVariableUserInput }
-        setNewVariableUserInput={ setNewVariableUserInput }
-        handleAddVariable={ handleAddVariable }
-        removeVariable={ removeVariable }
-        usedVariables={ usedVariables }
-        conditionExpression={ conditionExpression }
-        conditionError={ conditionError }
-        handleConditionExpressionChange={ handleConditionExpressionChange }
-      />
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-end px-0 pb-0 pt-2">
         { onCancel && (
           <Button
