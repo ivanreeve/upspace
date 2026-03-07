@@ -9,6 +9,7 @@ useState,
 type ReactNode
 } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { clearSpaceFormDraft } from '@/hooks/useSpaceFormPersistence';
@@ -29,6 +30,7 @@ const SessionContext = createContext<SessionContextValue>({
 export function SessionProvider({ children, }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     let mounted = true;
@@ -51,6 +53,7 @@ export function SessionProvider({ children, }: { children: ReactNode }) {
       setIsLoading(false);
 
       if (event === 'SIGNED_OUT') {
+        queryClient.clear();
         clearSpaceFormDraft();
         clearStoredPhotoState();
       }
@@ -60,7 +63,7 @@ export function SessionProvider({ children, }: { children: ReactNode }) {
       mounted = false;
       subscription?.unsubscribe();
     };
-  }, []);
+  }, [queryClient]);
 
   const value = useMemo(
     () => ({

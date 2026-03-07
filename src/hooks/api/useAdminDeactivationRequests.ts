@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
+import { parseErrorMessage } from '@/lib/api/parse-error-message';
 import { useSession } from '@/components/auth/SessionProvider';
 import { type DeactivationReasonCategory } from '@/lib/deactivation-requests';
 
@@ -34,21 +35,6 @@ export const adminDeactivationRequestKeys = {
   all: ['admin-deactivation-requests'] as const,
   list: (status?: string, limit?: number, cursor?: string | null) =>
     ['admin-deactivation-requests', 'list', status ?? 'pending', limit ?? 20, cursor ?? null] as const,
-};
-
-const parseErrorMessage = async (response: Response) => {
-  try {
-    const body = await response.json();
-    if (typeof body?.error === 'string') {
-      return body.error;
-    }
-    if (typeof body?.message === 'string') {
-      return body.message;
-    }
-  } catch {
-    // ignore
-  }
-  return 'Something went wrong. Please try again.';
 };
 
 export function useAdminDeactivationRequestsQuery({
@@ -94,7 +80,7 @@ export function useAdminDeactivationRequestsQuery({
         nextCursor: payload.nextCursor ?? null,
       };
     },
-    staleTime: 30_000,
+    staleTime: 60_000,
     refetchInterval: REFRESH_INTERVAL_MS,
     refetchIntervalInBackground: false,
   });
@@ -117,7 +103,7 @@ export function useApproveDeactivationRequestMutation() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminDeactivationRequestKeys.list(), });
+      queryClient.invalidateQueries({ queryKey: adminDeactivationRequestKeys.all, });
     },
   });
 }
@@ -145,7 +131,7 @@ export function useRejectDeactivationRequestMutation() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminDeactivationRequestKeys.list(), });
+      queryClient.invalidateQueries({ queryKey: adminDeactivationRequestKeys.all, });
     },
   });
 }

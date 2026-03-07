@@ -33,8 +33,8 @@ import {
   TableRow
 } from '@/components/ui/table';
 import { CANCELLABLE_BOOKING_STATUSES } from '@/lib/bookings/constants';
-import type { BookingStatus } from '@/lib/bookings/types';
-import { useCustomerBookingsQuery } from '@/hooks/api/useCustomerBookings';
+import type { BookingRecord, BookingStatus } from '@/lib/bookings/types';
+import { useUserBookingsQuery } from '@/hooks/api/useBookings';
 import { useCustomerCancelBookingMutation } from '@/hooks/api/useCustomerCancelBooking';
 
 const STATUS_CATEGORY_MAP: Record<BookingStatus, 'successful' | 'pending' | 'cancelled'> = {
@@ -130,10 +130,10 @@ const formatBookingPrice = (price: number | null) =>
     ? BOOKING_PRICE_FORMATTER.format(price)
     : '—';
 
-export function CustomerBookingsPanel() {
+export function CustomerBookingsPanel({ initialBookings, }: { initialBookings?: BookingRecord[] } = {}) {
   const {
- data: bookings, isLoading, isError, 
-} = useCustomerBookingsQuery();
+ data: bookings, isLoading, isError,
+} = useUserBookingsQuery(initialBookings ? { initialData: initialBookings, } : undefined);
   const cancelMutation = useCustomerCancelBookingMutation();
   const bookingRecords = bookings ?? [];
   const sortedBookings = bookingRecords.slice().sort((left, right) =>

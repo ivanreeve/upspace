@@ -4,21 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { ChatReportReason, ChatReportStatus } from '@/lib/chat/reporting';
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
-
-const parseErrorMessage = async (response: Response) => {
-  try {
-    const body = await response.json();
-    if (typeof body?.error === 'string') {
-      return body.error;
-    }
-    if (typeof body?.message === 'string') {
-      return body.message;
-    }
-  } catch {
-    // ignore
-  }
-  return 'Something went wrong. Please try again.';
-};
+import { parseErrorMessage } from '@/lib/api/parse-error-message';
 
 export type AdminChatReport = {
   id: string;

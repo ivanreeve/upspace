@@ -50,8 +50,8 @@ export default function RootLayout({ children, }: Readonly<{
   return (
     <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <body>
-        <SessionProvider>
-          <QueryProvider>
+        <QueryProvider>
+          <SessionProvider>
             <ThemeProvider
               attribute="class"
               defaultTheme="light"
@@ -64,8 +64,8 @@ export default function RootLayout({ children, }: Readonly<{
               <Toaster />
               <ServiceWorkerRegistration />
             </ThemeProvider>
-          </QueryProvider>
-        </SessionProvider>
+          </SessionProvider>
+        </QueryProvider>
       </body>
     </html>
   );

@@ -3,6 +3,7 @@
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
 
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
+import { parseErrorMessage } from '@/lib/api/parse-error-message';
 
 export type AdminDashboardBooking = {
   id: string;
@@ -119,21 +120,6 @@ type AdminDashboardQueryOptions = Omit<
   'queryKey' | 'queryFn'
 >;
 
-const parseErrorMessage = async (response: Response) => {
-  try {
-    const body = await response.json();
-    if (typeof body?.error === 'string') {
-      return body.error;
-    }
-    if (typeof body?.message === 'string') {
-      return body.message;
-    }
-  } catch {
-    // ignore
-  }
-  return 'Unable to load dashboard data.';
-};
-
 export function useAdminDashboardQuery(options?: AdminDashboardQueryOptions) {
   const authFetch = useAuthenticatedFetch();
 
@@ -142,12 +128,12 @@ export function useAdminDashboardQuery(options?: AdminDashboardQueryOptions) {
     queryFn: async () => {
       const response = await authFetch('/api/v1/admin/dashboard');
       if (!response.ok) {
-        throw new Error(await parseErrorMessage(response));
+        throw new Error(await parseErrorMessage(response, 'Unable to load dashboard data.'));
       }
       const payload = await response.json();
       return payload.data;
     },
-    staleTime: 30_000,
+    staleTime: 60_000,
     ...options,
   });
 }

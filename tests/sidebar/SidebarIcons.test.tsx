@@ -69,8 +69,18 @@ describe('Sidebar Icons Improvement', () => {
       </QueryClientProvider>
     );
     // Check for some text to ensure it rendered
-    expect(screen.getByText('Home')).toBeInTheDocument();
+    expect(screen.getByText('Marketplace')).toBeInTheDocument();
     expect(screen.getByText('Search')).toBeInTheDocument();
+
+    const collapseMenuItem = screen
+      .getByRole('button', { name: 'Collapse sidebar', })
+      .closest('li');
+    const marketplaceMenuItem = screen.getByText('Marketplace').closest('li');
+    const searchMenuItem = screen.getByText('Search').closest('li');
+
+    expect(collapseMenuItem).toHaveClass('pr-2');
+    expect(marketplaceMenuItem).toHaveClass('pr-2');
+    expect(searchMenuItem).toHaveClass('pr-2');
   });
 
   it('renders AdminChrome with updated icons without crashing', () => {

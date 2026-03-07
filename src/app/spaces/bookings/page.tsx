@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { SpacesBookingsPage } from '@/components/pages/Spaces/SpacesBookingsPage';
 import { SpacesChrome } from '@/components/pages/Spaces/SpacesChrome';
 import { prisma } from '@/lib/prisma';
+import { getPartnerBookings, getPartnerStuckBookingsSummary } from '@/lib/queries/booking';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
 import { createSupabaseReadOnlyServerClient } from '@/lib/supabase/server';
 
@@ -30,13 +31,18 @@ export default async function SpacesBookingsRoute() {
     redirect('/');
   }
 
+  const [initialBookings, initialStuckData] = await Promise.all([
+    getPartnerBookings(authData.user.id).catch(() => []),
+    getPartnerStuckBookingsSummary(authData.user.id).catch(() => ({ pendingPaid: 0, }))
+  ]);
+
   const cookieStore = await cookies();
   const sidebarCookie = cookieStore.get(SIDEBAR_STATE_COOKIE)?.value;
   const initialSidebarOpen = parseSidebarState(sidebarCookie);
 
   return (
     <SpacesChrome initialSidebarOpen={ initialSidebarOpen }>
-      <SpacesBookingsPage />
+      <SpacesBookingsPage initialBookings={ initialBookings } initialStuckData={ initialStuckData } />
     </SpacesChrome>
   );
 }

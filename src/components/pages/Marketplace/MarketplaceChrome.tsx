@@ -107,6 +107,8 @@ const marketplaceSearchDialogClassName =
 const marketplaceSearchActionItemClassName =
   'text-muted-foreground hover:!bg-[oklch(0.955_0.02_204.6929)] dark:hover:!bg-[oklch(0.24_0.02_204.6929)] hover:!text-primary hover:[&_svg]:!text-primary data-[selected=true]:!bg-[oklch(0.955_0.02_204.6929)] dark:data-[selected=true]:!bg-[oklch(0.24_0.02_204.6929)] data-[selected=true]:!text-foreground';
 
+const sidebarMenuItemRightInsetClassName = 'pr-2';
+
 type SidebarFooterContentProps = {
   avatarUrl: string | null;
   avatarFallback: string;
@@ -223,7 +225,9 @@ function SidebarToggleMenuItem() {
     <SidebarMenuItem
       className={ cn(
         'flex items-center gap-2',
-        isExpanded ? 'justify-between pr-2 pl-1' : 'justify-center pr-1'
+        isExpanded
+          ? `justify-between pl-1 ${sidebarMenuItemRightInsetClassName}`
+          : 'justify-center pr-1'
       ) }
     >
       { isExpanded && (
@@ -482,7 +486,7 @@ function SidebarLoadingSkeleton() {
       { Array.from({ length: 5, }).map((_, index) => (
         <SidebarMenuItem
           key={ `sidebar-skeleton-${index}` }
-          className="pointer-events-none"
+          className={ cn('pointer-events-none', sidebarMenuItemRightInsetClassName) }
         >
           <SidebarMenuButton
             type="button"
@@ -578,7 +582,7 @@ function SidebarLinkItem({
 } = iconProps ?? {};
 
   return (
-    <SidebarMenuItem>
+    <SidebarMenuItem className={ sidebarMenuItemRightInsetClassName }>
       <SidebarMenuButton
         asChild
         tooltip={ tooltip }
@@ -1340,7 +1344,7 @@ export function MarketplaceChrome({
     if (isAdminRole) {
       return [
         {
-          label: 'Home',
+          label: 'Marketplace',
           href: '/marketplace',
           icon: Home,
         },
@@ -1390,7 +1394,7 @@ export function MarketplaceChrome({
     const actions: MobileBottomNavAction[] = [];
 
     actions.push({
-      label: 'Home',
+      label: 'Marketplace',
       href: '/marketplace',
       icon: Home,
     });
@@ -1598,13 +1602,13 @@ export function MarketplaceChrome({
                 <>
                   <SidebarLinkItem
                     href="/marketplace"
-                    label="Home"
+                    label="Marketplace"
                     icon={ SidebarHomeIcon }
-                    tooltip="Home"
+                    tooltip="Marketplace"
                     iconProps={ { className: 'size-[18px]', } }
                     isActive={ isSidebarPathActive(pathname, '/marketplace') }
                   />
-                  <SidebarMenuItem>
+                  <SidebarMenuItem className={ sidebarMenuItemRightInsetClassName }>
                     <SidebarMenuButton
                       tooltip="Search"
                       className="justify-start gap-2 group-data-[collapsible=icon]:justify-center"

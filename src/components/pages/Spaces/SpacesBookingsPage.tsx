@@ -22,8 +22,8 @@ import { toast } from 'sonner';
 import { SpacesBreadcrumbs } from './SpacesBreadcrumbs';
 
 import { useBulkUpdateBookingStatusMutation, usePartnerBookingsQuery } from '@/hooks/api/useBookings';
-import { usePartnerStuckBookingsQuery } from '@/hooks/api/usePartnerStuckBookings';
-import type { BookingStatus } from '@/lib/bookings/types';
+import { usePartnerStuckBookingsQuery, type StuckBookingsSummary } from '@/hooks/api/usePartnerStuckBookings';
+import type { BookingRecord, BookingStatus } from '@/lib/bookings/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -121,17 +121,23 @@ const statusVariantMap: Record<
   noshow: 'destructive',
 };
 
-export function SpacesBookingsPage() {
+export function SpacesBookingsPage({
+  initialBookings,
+  initialStuckData,
+}: {
+  initialBookings?: BookingRecord[];
+  initialStuckData?: StuckBookingsSummary;
+} = {}) {
   const {
     data: bookings = [],
     isLoading,
     isError,
     error,
-  } = usePartnerBookingsQuery();
+  } = usePartnerBookingsQuery(initialBookings ? { initialData: initialBookings, } : undefined);
   const {
     data: stuckData,
     isLoading: isStuckLoading,
-  } = usePartnerStuckBookingsQuery();
+  } = usePartnerStuckBookingsQuery(initialStuckData ? { initialData: initialStuckData, } : undefined);
   const bulkUpdate = useBulkUpdateBookingStatusMutation();
   const headingId = useId();
   const descriptionId = useId();

@@ -26,16 +26,17 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCreatePriceRuleMutation, usePartnerSpacesQuery } from '@/hooks/api/usePartnerSpaces';
+import type { SpaceRecord } from '@/data/spaces';
 import type { PriceRuleFormValues } from '@/lib/pricing-rules';
 
-export function PriceRuleCreationPage() {
+export function PriceRuleCreationPage({ initialSpaces, }: { initialSpaces?: SpaceRecord[] } = {}) {
   const router = useRouter();
   const {
     data: spaces,
     isLoading,
     isError,
     error,
-  } = usePartnerSpacesQuery();
+  } = usePartnerSpacesQuery(initialSpaces ? { initialData: initialSpaces, } : undefined);
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const formState = usePriceRuleFormState();
   const createPriceRuleMutation = useCreatePriceRuleMutation(selectedSpaceId ?? '');

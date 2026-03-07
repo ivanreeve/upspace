@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { NotificationsPage } from '@/components/pages/Notifications/NotificationsPage';
 import { MarketplaceChrome } from '@/components/pages/Marketplace/MarketplaceChrome';
 import { prisma } from '@/lib/prisma';
+import { getNotificationsFirstPage } from '@/lib/queries/notification';
 import { parseSidebarState, SIDEBAR_STATE_COOKIE } from '@/lib/sidebar-state';
 import { createSupabaseReadOnlyServerClient } from '@/lib/supabase/server';
 
@@ -34,13 +35,19 @@ export default async function NotificationsRoute() {
     redirect('/partner/notifications');
   }
 
+  const firstPage = await getNotificationsFirstPage(authData.user.id).catch(() => null);
+  const initialData = firstPage ? {
+ pages: [firstPage],
+pageParams: [undefined], 
+} : undefined;
+
   const cookieStore = await cookies();
   const sidebarCookie = cookieStore.get(SIDEBAR_STATE_COOKIE)?.value;
   const initialSidebarOpen = parseSidebarState(sidebarCookie);
 
   return (
     <MarketplaceChrome initialSidebarOpen={ initialSidebarOpen }>
-      <NotificationsPage />
+      <NotificationsPage initialData={ initialData } />
     </MarketplaceChrome>
   );
 }

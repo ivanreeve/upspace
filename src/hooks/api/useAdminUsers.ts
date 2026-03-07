@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
+import { parseErrorMessage } from '@/lib/api/parse-error-message';
 
 export type AdminUser = {
   id: string;
@@ -24,22 +25,6 @@ export const adminUserKeys = {
     ['admin-users', 'list', search ?? null, limit ?? 20, cursor ?? null] as const,
 };
 
-const parseErrorMessage = async (response: Response) => {
-  try {
-    const body = await response.json();
-    if (typeof body?.error === 'string') {
-      return body.error;
-    }
-    if (typeof body?.message === 'string') {
-      return body.message;
-    }
-  } catch {
-    // ignore
-  }
-
-  return 'Something went wrong. Please try again.';
-};
-
 export function useAdminUsersQuery({
   search,
   limit = 20,
@@ -55,7 +40,7 @@ export function useAdminUsersQuery({
 
   return useQuery<AdminUsersPage>({
     queryKey: adminUserKeys.list(normalizedSearch, limit, cursor),
-    staleTime: 30_000,
+    staleTime: 60_000,
     queryFn: async () => {
       const params = new URLSearchParams({ limit: String(limit), });
       if (normalizedSearch) {
@@ -108,7 +93,7 @@ export function useAdminDisableUserMutation() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminUserKeys.list(), });
+      queryClient.invalidateQueries({ queryKey: adminUserKeys.all, });
     },
   });
 }
@@ -138,7 +123,7 @@ export function useAdminEnableUserMutation() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminUserKeys.list(), });
+      queryClient.invalidateQueries({ queryKey: adminUserKeys.all, });
     },
   });
 }
