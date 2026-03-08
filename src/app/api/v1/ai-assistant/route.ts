@@ -54,14 +54,15 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 
-const messageSchema = z.object({
-  role: z.enum(['user', 'assistant']),
-  content: z
-    .string()
-    .trim()
-    .min(1, 'Please enter a question.')
-    .max(2000, 'Keep each message under 2,000 characters.'),
-});
+const messageSchema = z
+  .object({
+    role: z.enum(['user', 'assistant']),
+    content: z.string().trim().min(1, 'Please enter a question.'),
+  })
+  .refine(
+    (msg) => msg.role === 'assistant' || msg.content.length <= 2000,
+    'Keep your question under 2,000 characters.'
+  );
 
 const coordinateSchema = z.object({
   lat: z.coerce.number().min(-90).max(90),
