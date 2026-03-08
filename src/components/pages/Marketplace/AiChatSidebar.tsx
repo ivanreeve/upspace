@@ -276,9 +276,9 @@ title,
         <PopoverTrigger asChild>
           <Button
             type="button"
-            variant="default"
+            variant="ghost"
             size="sm"
-            className="rounded-full gap-2 px-4"
+            className="rounded-full gap-2 px-4 bg-muted/20 dark:bg-muted/70 hover:bg-muted/40 dark:hover:bg-muted"
             aria-label={ open ? 'Close chat history' : 'Open chat history' }
           >
             <FiMenu className="size-4" aria-hidden="true" />
