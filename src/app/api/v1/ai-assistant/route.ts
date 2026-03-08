@@ -830,7 +830,7 @@ const getUserLocationFunctionDefinition: AiFunctionDefinition = {
   },
 };
 
-const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL ?? 'z-ai/glm-5';
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL ?? 'anthropic/claude-haiku-4.5';
 
 const TOOL_DEFINITIONS: ToolDefinitionJson[] = [
   getUserLocationFunctionDefinition,
