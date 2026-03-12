@@ -39,40 +39,54 @@ export async function GET(req: NextRequest) {
             { id: 'desc' as const, }
           ];
 
-    const payoutRequests = await prisma.wallet_transaction.findMany({
-      where: {
-        type: 'payout',
-        status,
-      },
-      take: limit + 1,
-      skip: cursor ? 1 : 0,
-      ...(cursor ? { cursor: { id: cursor, }, } : {}),
-      orderBy,
-      include: {
-        wallet: {
-          select: {
-            id: true,
-            balance_minor: true,
-            user: {
-              select: {
-                user_id: true,
-                first_name: true,
-                last_name: true,
-                handle: true,
-                role: true,
+    const [payoutRequests, totalCount, pendingCount] = await Promise.all([
+      prisma.wallet_transaction.findMany({
+        where: {
+          type: 'payout',
+          status,
+        },
+        take: limit + 1,
+        skip: cursor ? 1 : 0,
+        ...(cursor ? { cursor: { id: cursor, }, } : {}),
+        orderBy,
+        include: {
+          wallet: {
+            select: {
+              id: true,
+              balance_minor: true,
+              user: {
+                select: {
+                  user_id: true,
+                  first_name: true,
+                  last_name: true,
+                  handle: true,
+                  role: true,
+                },
               },
             },
           },
-        },
-        processed_by: {
-          select: {
-            first_name: true,
-            last_name: true,
-            handle: true,
+          processed_by: {
+            select: {
+              first_name: true,
+              last_name: true,
+              handle: true,
+            },
           },
         },
-      },
-    });
+      }),
+      prisma.wallet_transaction.count({
+        where: {
+          type: 'payout',
+          status,
+        },
+      }),
+      prisma.wallet_transaction.count({
+        where: {
+          type: 'payout',
+          status: 'pending',
+        },
+      })
+    ]);
 
     const hasNext = payoutRequests.length > limit;
     const items = hasNext ? payoutRequests.slice(0, limit) : payoutRequests;
@@ -113,6 +127,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       data: payload,
       nextCursor,
+      totalCount,
+      pendingCount,
     });
   } catch (error) {
     if (error instanceof AdminSessionError) {

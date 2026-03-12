@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
     if (type) transactionWhere.type = type;
     if (status) transactionWhere.status = status;
 
-    const [transactions, chargeAgg, refundAgg, filteredCount] = await Promise.all([
+    const [transactions, chargeAgg, refundAgg, pendingPayoutAgg, paidOutAgg, filteredCount] = await Promise.all([
       prisma.wallet_transaction.findMany({
         where: transactionWhere,
         orderBy: { created_at: 'desc', },
@@ -102,8 +102,24 @@ status: 'succeeded',
         where: {
  wallet_id: walletRow.id,
 type: 'refund',
-status: 'succeeded', 
+status: 'succeeded',
 },
+        _sum: { amount_minor: true, },
+      }),
+      prisma.wallet_transaction.aggregate({
+        where: {
+          wallet_id: walletRow.id,
+          type: 'payout',
+          status: 'pending',
+        },
+        _sum: { amount_minor: true, },
+      }),
+      prisma.wallet_transaction.aggregate({
+        where: {
+          wallet_id: walletRow.id,
+          type: 'payout',
+          status: 'succeeded',
+        },
         _sum: { amount_minor: true, },
       }),
       prisma.wallet_transaction.count({ where: transactionWhere, })
@@ -154,6 +170,8 @@ nextCursor,
       stats: {
         totalEarnedMinor: (chargeAgg._sum.amount_minor ?? BigInt(0)).toString(),
         totalRefundedMinor: (refundAgg._sum.amount_minor ?? BigInt(0)).toString(),
+        pendingPayoutMinor: (pendingPayoutAgg._sum.amount_minor ?? BigInt(0)).toString(),
+        totalPaidOutMinor: (paidOutAgg._sum.amount_minor ?? BigInt(0)).toString(),
         transactionCount: filteredCount,
       },
     });

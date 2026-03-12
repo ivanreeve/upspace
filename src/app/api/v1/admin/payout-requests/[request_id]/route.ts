@@ -186,6 +186,16 @@ export async function PATCH(
       );
     }
 
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2034'
+    ) {
+      return NextResponse.json(
+        { error: 'A conflict occurred. Please try again.', },
+        { status: 409, }
+      );
+    }
+
     console.error('Failed to process payout request', error);
     return NextResponse.json(
       { error: 'Unable to process the payout request.', },

@@ -14,6 +14,7 @@ import {
   FiArrowDownLeft,
   FiArrowUpRight,
   FiBarChart2,
+  FiClock,
   FiDollarSign,
   FiInbox,
   FiLoader,
@@ -71,7 +72,7 @@ import {
 } from '@/hooks/use-wallet';
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
 import { useUserProfile } from '@/hooks/use-user-profile';
-import { formatCurrencyMinor } from '@/lib/wallet';
+import { formatCurrencyMinor, formatMinorToDisplay, parseDisplayAmountToMinor } from '@/lib/wallet';
 
 const TRANSACTION_TYPE_LABELS: Record<WalletTransactionType, string> = {
   cash_in: 'Top-up',
@@ -504,18 +505,31 @@ function WalletWithdrawalsCard({
   const [payoutDialogOpen, setPayoutDialogOpen] = useState(false);
   const [payoutAmount, setPayoutAmount] = useState('');
   const [isPayoutPending, setIsPayoutPending] = useState(false);
+  const [confirmStep, setConfirmStep] = useState(false);
 
   const balanceNum = Number(balanceMinor ?? '0');
   const canPayout = balanceNum >= 10000;
+  const resolvedCurrency = currency ?? 'PHP';
 
-  const handleRequestPayout = useCallback(async () => {
-    const amountMinor = Math.round(Number(payoutAmount) * 100);
-    if (!Number.isFinite(amountMinor) || amountMinor < 10000) {
+  const parsedAmountMinor = useMemo(
+    () => parseDisplayAmountToMinor(payoutAmount),
+    [payoutAmount]
+  );
+
+  const handleReviewRequest = useCallback(() => {
+    if (parsedAmountMinor === null || parsedAmountMinor < 10000) {
       toast.error('Minimum payout is ₱100.');
       return;
     }
-    if (amountMinor > balanceNum) {
+    if (parsedAmountMinor > balanceNum) {
       toast.error('Payout amount exceeds available balance.');
+      return;
+    }
+    setConfirmStep(true);
+  }, [parsedAmountMinor, balanceNum]);
+
+  const handleConfirmPayout = useCallback(async () => {
+    if (parsedAmountMinor === null || parsedAmountMinor < 10000) {
       return;
     }
 
@@ -524,7 +538,7 @@ function WalletWithdrawalsCard({
       const response = await authFetch('/api/v1/wallet/payout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', },
-        body: JSON.stringify({ amountMinor, }),
+        body: JSON.stringify({ amountMinor: parsedAmountMinor, }),
       });
       const payload = await response.json();
       if (!response.ok) {
@@ -533,13 +547,22 @@ function WalletWithdrawalsCard({
       toast.success('Payout request submitted.');
       setPayoutDialogOpen(false);
       setPayoutAmount('');
+      setConfirmStep(false);
       onPayoutSuccess?.();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to request payout.');
     } finally {
       setIsPayoutPending(false);
     }
-  }, [authFetch, balanceNum, onPayoutSuccess, payoutAmount]);
+  }, [authFetch, onPayoutSuccess, parsedAmountMinor]);
+
+  const handleDialogOpenChange = useCallback((open: boolean) => {
+    setPayoutDialogOpen(open);
+    if (!open) {
+      setPayoutAmount('');
+      setConfirmStep(false);
+    }
+  }, []);
 
   return (
     <>
@@ -582,48 +605,100 @@ function WalletWithdrawalsCard({
         </CardHeader>
       </Card>
 
-      <Dialog open={ payoutDialogOpen } onOpenChange={ setPayoutDialogOpen }>
+      <Dialog open={ payoutDialogOpen } onOpenChange={ handleDialogOpenChange }>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Request payout</DialogTitle>
-            <DialogDescription>
-              Available balance: { formatCurrencyMinor(balanceMinor ?? '0', currency ?? 'PHP') }
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="payout-amount">Amount (PHP)</Label>
-              <Input
-                id="payout-amount"
-                type="number"
-                min={ 100 }
-                step={ 1 }
-                placeholder="100"
-                value={ payoutAmount }
-                onChange={ (e) => setPayoutAmount(e.target.value) }
-                aria-label="Payout amount in PHP"
-              />
-              <p className="text-xs text-muted-foreground">Minimum payout: ₱100</p>
-            </div>
-          </div>
-          <DialogFooter className="flex-col gap-2 sm:flex-row">
-            <Button variant="outline" onClick={ () => setPayoutDialogOpen(false) }>
-              Cancel
-            </Button>
-            <Button
-              variant="default"
-              className="hover:text-white"
-              onClick={ handleRequestPayout }
-              disabled={ isPayoutPending || !payoutAmount }
-            >
-              { isPayoutPending ? (
-                <FiLoader className="mr-2 size-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <FiSend className="mr-2 size-4" aria-hidden="true" />
-              ) }
-              Submit request
-            </Button>
-          </DialogFooter>
+          { confirmStep && parsedAmountMinor !== null ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Confirm payout request</DialogTitle>
+                <DialogDescription>
+                  Please review the details before submitting.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="rounded-md border border-border/70 bg-muted/20 p-4 space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Payout amount</span>
+                    <span className="font-semibold text-foreground">
+                      { formatCurrencyMinor(String(parsedAmountMinor), resolvedCurrency) }
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Balance after withdrawal</span>
+                    <span className="font-semibold text-foreground">
+                      { formatCurrencyMinor(String(balanceNum - parsedAmountMinor), resolvedCurrency) }
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter className="flex-col gap-2 sm:flex-row">
+                <Button variant="outline" onClick={ () => setConfirmStep(false) } disabled={ isPayoutPending }>
+                  Go back
+                </Button>
+                <Button
+                  variant="default"
+                  className="hover:text-white"
+                  onClick={ () => { void handleConfirmPayout(); } }
+                  disabled={ isPayoutPending }
+                >
+                  { isPayoutPending ? (
+                    <FiLoader className="mr-2 size-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <FiSend className="mr-2 size-4" aria-hidden="true" />
+                  ) }
+                  Confirm and submit
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Request payout</DialogTitle>
+                <DialogDescription>
+                  Available balance: { formatCurrencyMinor(balanceMinor ?? '0', resolvedCurrency) }
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="payout-amount">Amount (PHP)</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={ () => setPayoutAmount(formatMinorToDisplay(balanceNum)) }
+                    >
+                      Max
+                    </Button>
+                  </div>
+                  <Input
+                    id="payout-amount"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="100.00"
+                    value={ payoutAmount }
+                    onChange={ (e) => setPayoutAmount(e.target.value) }
+                    aria-label="Payout amount in PHP"
+                  />
+                  <p className="text-xs text-muted-foreground">Minimum payout: ₱100</p>
+                </div>
+              </div>
+              <DialogFooter className="flex-col gap-2 sm:flex-row">
+                <Button variant="outline" onClick={ () => setPayoutDialogOpen(false) }>
+                  Cancel
+                </Button>
+                <Button
+                  variant="default"
+                  className="hover:text-white"
+                  onClick={ handleReviewRequest }
+                  disabled={ !payoutAmount }
+                >
+                  Review request
+                </Button>
+              </DialogFooter>
+            </>
+          ) }
         </DialogContent>
       </Dialog>
     </>
@@ -635,11 +710,15 @@ function WalletSummaryCards({
   availableBalance,
   totalEarned,
   totalRefunded,
+  pendingPayout,
+  totalPaidOut,
 }: {
   walletCardClassName: string;
   availableBalance: string;
   totalEarned: string;
   totalRefunded: string;
+  pendingPayout: string | null;
+  totalPaidOut: string | null;
 }) {
   return (
     <div className="grid gap-4 md:grid-cols-3">
@@ -661,6 +740,27 @@ function WalletSummaryCards({
           </CardDescription>
         </CardHeader>
       </Card>
+
+      { pendingPayout && (
+        <Card className={ walletCardClassName }>
+          <CardHeader className="space-y-1 px-5 py-2.5">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                Pending payout
+              </p>
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-1.5 text-amber-600 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400">
+                <FiClock className="size-4" aria-hidden="true" />
+              </div>
+            </div>
+            <CardTitle className="text-3xl font-bold tracking-tight">
+              { pendingPayout }
+            </CardTitle>
+            <CardDescription className="text-xs font-medium text-muted-foreground">
+              Awaiting admin review
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) }
 
       <Card className={ walletCardClassName }>
         <CardHeader className="space-y-1 px-5 py-2.5">
@@ -699,6 +799,27 @@ function WalletSummaryCards({
           </CardDescription>
         </CardHeader>
       </Card>
+
+      { totalPaidOut && (
+        <Card className={ walletCardClassName }>
+          <CardHeader className="space-y-1 px-5 py-2.5">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Total paid out
+              </p>
+              <div className="rounded-md border bg-muted/30 p-1.5 text-muted-foreground">
+                <FiSend className="size-4" aria-hidden="true" />
+              </div>
+            </div>
+            <CardTitle className="text-3xl font-bold tracking-tight">
+              { totalPaidOut }
+            </CardTitle>
+            <CardDescription className="text-xs font-medium text-muted-foreground">
+              Lifetime completed payouts
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) }
     </div>
   );
 }
@@ -1125,15 +1246,24 @@ export default function WalletPage() {
     );
   }
 
+  const walletCurrency = wallet?.currency ?? 'PHP';
   const availableBalance = wallet
     ? formatCurrencyMinor(wallet.balanceMinor, wallet.currency)
     : '₱0.00';
   const totalEarned = stats
-    ? formatCurrencyMinor(stats.totalEarnedMinor, wallet?.currency ?? 'PHP')
+    ? formatCurrencyMinor(stats.totalEarnedMinor, walletCurrency)
     : '₱0.00';
   const totalRefunded = stats
-    ? formatCurrencyMinor(stats.totalRefundedMinor, wallet?.currency ?? 'PHP')
+    ? formatCurrencyMinor(stats.totalRefundedMinor, walletCurrency)
     : '₱0.00';
+  const pendingPayoutMinor = Number(stats?.pendingPayoutMinor ?? '0');
+  const pendingPayout = pendingPayoutMinor > 0
+    ? formatCurrencyMinor(String(pendingPayoutMinor), walletCurrency)
+    : null;
+  const totalPaidOutMinor = Number(stats?.totalPaidOutMinor ?? '0');
+  const totalPaidOut = totalPaidOutMinor > 0
+    ? formatCurrencyMinor(String(totalPaidOutMinor), walletCurrency)
+    : null;
   const walletCardClassName = 'rounded-md bg-sidebar dark:bg-card';
 
   return (
@@ -1156,6 +1286,8 @@ export default function WalletPage() {
         availableBalance={ availableBalance }
         totalEarned={ totalEarned }
         totalRefunded={ totalRefunded }
+        pendingPayout={ pendingPayout }
+        totalPaidOut={ totalPaidOut }
       />
 
       <WalletAnalyticsSection

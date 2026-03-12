@@ -7,6 +7,7 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiClock,
+  FiLoader,
   FiXCircle
 } from 'react-icons/fi';
 import { toast } from 'sonner';
@@ -137,7 +138,7 @@ export function AdminPayoutRequestsPage() {
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(PAGE_SIZE_OPTIONS[1]);
   const [pageIndex, setPageIndex] = useState(0);
   const [pageCursors, setPageCursors] = useState<(string | null)[]>([null]);
-  const [selectedRequest, setSelectedRequest] = useState<AdminPayoutRequest | null>(null);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [resolutionNote, setResolutionNote] = useState('');
   const cursor = pageCursors[pageIndex] ?? null;
 
@@ -157,7 +158,13 @@ export function AdminPayoutRequestsPage() {
   const completeMutation = useCompleteAdminPayoutRequestMutation();
   const rejectMutation = useRejectAdminPayoutRequestMutation();
   const requests = useMemo(() => page?.data ?? [], [page?.data]);
+  const selectedRequest = useMemo(
+    () => requests.find((r) => r.id === selectedRequestId) ?? null,
+    [requests, selectedRequestId]
+  );
   const nextCursor = page?.nextCursor ?? null;
+  const totalCount = page?.totalCount ?? 0;
+  const pendingCount = page?.pendingCount ?? 0;
   const currentTabInfo = REQUEST_TABS.find((tab) => tab.value === activeTab);
   const isSubmittingAction =
     completeMutation.isPending || rejectMutation.isPending;
@@ -180,6 +187,15 @@ export function AdminPayoutRequestsPage() {
       return next;
     });
   }, [page, pageIndex]);
+
+  useEffect(() => {
+    if (!selectedRequestId || selectedRequest || isFetching) {
+      return;
+    }
+
+    setSelectedRequestId(null);
+    setResolutionNote('');
+  }, [isFetching, selectedRequest, selectedRequestId]);
 
   const handleTabChange = (value: string) => {
     const nextTab = value as RequestTabValue;
@@ -230,7 +246,7 @@ export function AdminPayoutRequestsPage() {
   };
 
   const openRequestDialog = (request: AdminPayoutRequest) => {
-    setSelectedRequest(request);
+    setSelectedRequestId(request.id);
     setResolutionNote(request.resolutionNote ?? '');
   };
 
@@ -239,7 +255,7 @@ export function AdminPayoutRequestsPage() {
       return;
     }
 
-    setSelectedRequest(null);
+    setSelectedRequestId(null);
     setResolutionNote('');
   };
 
@@ -436,6 +452,11 @@ export function AdminPayoutRequestsPage() {
                               <FiXCircle className="mr-1 size-3.5" aria-hidden="true" />
                             ) }
                             { tab.label }
+                            { tab.value === 'pending' && pendingCount > 0 && (
+                              <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[10px] font-bold">
+                                { pendingCount }
+                              </Badge>
+                            ) }
                           </TabsTrigger>
                         )) }
                       </TabsList>
@@ -486,7 +507,7 @@ export function AdminPayoutRequestsPage() {
 
                 <div className="flex items-center justify-between gap-4">
                   <p className="text-sm text-muted-foreground">
-                    Page { pageIndex + 1 }
+                    Page { pageIndex + 1 } · { totalCount } total
                   </p>
                   <div className="flex items-center gap-2">
                     <Button
@@ -644,6 +665,9 @@ export function AdminPayoutRequestsPage() {
                   } }
                   disabled={ isSubmittingAction }
                 >
+                  { rejectMutation.isPending && (
+                    <FiLoader className="mr-2 size-4 animate-spin" aria-hidden="true" />
+                  ) }
                   Reject request
                 </Button>
                 <Button
@@ -653,6 +677,9 @@ export function AdminPayoutRequestsPage() {
                   } }
                   disabled={ isSubmittingAction }
                 >
+                  { completeMutation.isPending && (
+                    <FiLoader className="mr-2 size-4 animate-spin" aria-hidden="true" />
+                  ) }
                   Mark completed
                 </Button>
               </div>

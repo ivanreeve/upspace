@@ -32,6 +32,8 @@ export type AdminPayoutRequest = {
 export type AdminPayoutRequestsPage = {
   data: AdminPayoutRequest[];
   nextCursor: string | null;
+  totalCount: number;
+  pendingCount: number;
 };
 
 export const adminPayoutRequestKeys = {
@@ -83,11 +85,15 @@ export function useAdminPayoutRequestsQuery({
       const payload = (await response.json()) as {
         data: AdminPayoutRequest[];
         nextCursor: string | null;
+        totalCount: number;
+        pendingCount: number;
       };
 
       return {
         data: payload.data,
         nextCursor: payload.nextCursor ?? null,
+        totalCount: payload.totalCount ?? 0,
+        pendingCount: payload.pendingCount ?? 0,
       };
     },
     staleTime: 60_000,

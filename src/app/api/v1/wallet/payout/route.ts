@@ -1,9 +1,11 @@
 import { randomUUID } from 'crypto';
 
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
+import { enforceRateLimit, RateLimitExceededError } from '@/lib/rate-limit';
 import { ensureWalletRow, resolveAuthenticatedUserForWallet } from '@/lib/wallet-server';
 
 const payoutSchema = z.object({ amountMinor: z.number().int().min(10000, 'Minimum payout is ₱100.'), });
@@ -25,6 +27,11 @@ export async function POST(req: NextRequest) {
     if (auth.response) {
       return auth.response;
     }
+
+    await enforceRateLimit({
+      scope: 'payout-request',
+      identity: auth.dbUser!.auth_user_id,
+    });
 
     const body = await req.json().catch(() => null);
     const parsed = payoutSchema.safeParse(body);
@@ -118,6 +125,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: error.message, },
         { status: error.status, }
+      );
+    }
+
+    if (error instanceof RateLimitExceededError) {
+      return NextResponse.json(
+        { error: error.message, },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(error.retryAfter), },
+        }
+      );
+    }
+
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2034'
+    ) {
+      return NextResponse.json(
+        { error: 'A conflict occurred. Please try again.', },
+        { status: 409, }
       );
     }
 

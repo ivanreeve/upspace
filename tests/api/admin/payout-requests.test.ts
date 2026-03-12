@@ -1,4 +1,5 @@
 import type { NextRequest } from 'next/server';
+import { Prisma } from '@prisma/client';
 import {
   afterEach,
   describe,
@@ -42,6 +43,11 @@ describe('admin payout requests api', () => {
       authUserId: 'admin-auth-id',
       userId: 99n,
     });
+
+    const count = vi
+      .fn()
+      .mockResolvedValueOnce(2)
+      .mockResolvedValueOnce(2);
 
     vi.spyOn(prismaModule, 'prisma', 'get').mockReturnValue({
       wallet_transaction: {
@@ -91,6 +97,7 @@ describe('admin payout requests api', () => {
             processed_by: null,
           }
         ]),
+        count,
       },
     } as unknown as typeof prismaModule.prisma);
 
@@ -101,6 +108,8 @@ describe('admin payout requests api', () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.nextCursor).toBe(requestId);
+    expect(body.totalCount).toBe(2);
+    expect(body.pendingCount).toBe(2);
     expect(body.data).toEqual([
       {
         id: requestId,
@@ -122,6 +131,18 @@ describe('admin payout requests api', () => {
         processedBy: null,
       }
     ]);
+    expect(count).toHaveBeenNthCalledWith(1, {
+      where: {
+        type: 'payout',
+        status: 'pending',
+      },
+    });
+    expect(count).toHaveBeenNthCalledWith(2, {
+      where: {
+        type: 'payout',
+        status: 'pending',
+      },
+    });
   });
 
   it('marks a payout request as completed without restoring wallet balance', async () => {
@@ -253,5 +274,36 @@ describe('admin payout requests api', () => {
         }),
       })
     );
+  });
+
+  it('returns 409 when processing hits a serialization conflict', async () => {
+    vi.spyOn(adminSessionModule, 'requireAdminSession').mockResolvedValue({
+      authUserId: 'admin-auth-id',
+      userId: 99n,
+    });
+
+    vi.spyOn(prismaModule, 'prisma', 'get').mockReturnValue({
+      $transaction: vi.fn().mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('serialization conflict', {
+          code: 'P2034',
+          clientVersion: 'test',
+        })
+      ),
+    } as unknown as typeof prismaModule.prisma);
+
+    const response = await updatePayoutRequestHandler(
+      makeRequest({
+        url: `http://localhost/api/v1/admin/payout-requests/${requestId}`,
+        method: 'PATCH',
+        body: {
+          action: 'complete',
+          resolution_note: 'Settled through our payout rail.',
+        },
+      }),
+      { params: Promise.resolve({ request_id: requestId, }), }
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({ error: 'A conflict occurred. Please try again.', });
   });
 });

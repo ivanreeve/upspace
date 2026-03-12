@@ -43,6 +43,8 @@ export type WalletPagination = {
 export type WalletStats = {
   totalEarnedMinor: string;
   totalRefundedMinor: string;
+  pendingPayoutMinor: string;
+  totalPaidOutMinor: string;
   transactionCount: number;
 };
 
