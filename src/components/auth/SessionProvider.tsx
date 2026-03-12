@@ -37,22 +37,19 @@ export function SessionProvider({ children, }: { children: ReactNode }) {
     const supabase = getSupabaseBrowserClient();
 
     setIsLoading(true);
-    supabase.auth.getSession()
-      .then(({ data, }) => {
-        if (!mounted) return;
-        setSession(data.session ?? null);
-      })
-      .finally(() => {
-        if (!mounted) return;
-        setIsLoading(false);
-      });
 
     const { data: { subscription, }, } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mounted) return;
       setSession(newSession);
-      setIsLoading(false);
+
+      if (event === 'INITIAL_SESSION') {
+        setIsLoading(false);
+        clearTimeout(fallbackTimeout);
+        return;
+      }
 
       if (event === 'SIGNED_OUT') {
+        setIsLoading(false);
         queryClient.clear();
         clearSpaceFormDraft();
         clearStoredPhotoState();
@@ -71,6 +68,7 @@ export function SessionProvider({ children, }: { children: ReactNode }) {
       // cancelled — avoiding the perpetual-skeleton bug for customers while
       // still ensuring the profile resolves for all roles.
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        setIsLoading(false);
         queryClient.invalidateQueries(
           { queryKey: ['user-profile'], },
           { cancelRefetch: false, }
@@ -78,8 +76,15 @@ export function SessionProvider({ children, }: { children: ReactNode }) {
       }
     });
 
+    // Safety net: if INITIAL_SESSION never fires, stop loading after 3s
+    const fallbackTimeout = setTimeout(() => {
+      if (!mounted) return;
+      setIsLoading(false);
+    }, 3000);
+
     return () => {
       mounted = false;
+      clearTimeout(fallbackTimeout);
       subscription?.unsubscribe();
     };
   }, [queryClient]);
