@@ -362,6 +362,11 @@ export class XenditFinancialProvider implements FinancialProvider {
     });
 
     const invoice = parseXenditPayload(payload, parseXenditInvoicePayload, 'invoice');
+    const checkoutUrl = invoice.invoice_url;
+
+    if (!checkoutUrl) {
+      throw new ProviderValidationError('Xendit did not return an invoice URL.', 502);
+    }
 
     return {
       paymentId: invoice.id,
@@ -369,7 +374,7 @@ export class XenditFinancialProvider implements FinancialProvider {
       referenceId: invoice.external_id,
       amountMinor: amountToMinorUnits(invoice.amount, invoice.currency),
       currency: invoice.currency,
-      checkoutUrl: invoice.invoice_url,
+      checkoutUrl,
       status: this.mapInvoiceStatus(invoice.status),
       expiresAt: invoice.expiry_date ?? null,
       isLive: isXenditLiveMode(),

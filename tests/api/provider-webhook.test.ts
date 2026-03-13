@@ -263,6 +263,107 @@ describe('provider webhook api', () => {
     });
   });
 
+  it('accepts paid invoice webhook payloads without invoice_url', async () => {
+    process.env.XENDIT_WEBHOOK_VERIFICATION_TOKEN = 'test-callback-token';
+
+    vi.spyOn(bookingFinalizationModule, 'finalizeSuccessfulBookingPayment').mockResolvedValue();
+    vi.spyOn(walletSnapshotsModule, 'recordPartnerWalletSnapshot').mockResolvedValue({
+      snapshot: { id: 'snapshot-1', },
+      pendingReserveMinor: 0n,
+      derivedWalletBalanceMinor: 150000n,
+    } as never);
+    vi.spyOn(walletServerModule, 'ensureWalletRow').mockResolvedValue({
+      id: 'wallet-1',
+      user_id: 42n,
+      balance_minor: 0n,
+      currency: 'PHP',
+      created_at: new Date('2026-03-13T09:00:00.000Z'),
+      updated_at: new Date('2026-03-13T09:00:00.000Z'),
+    });
+
+    const getPartnerBalance = vi.fn().mockResolvedValue({
+      availableMinor: 150000n,
+      currency: 'PHP',
+      fetchedAt: new Date('2026-03-13T11:05:00.000Z'),
+      raw: {},
+    });
+
+    vi.spyOn(providerRegistryModule, 'getFinancialProvider').mockReturnValue({ getPartnerBalance, } as unknown as ReturnType<typeof providerRegistryModule.getFinancialProvider>);
+
+    vi.spyOn(prismaModule, 'prisma', 'get').mockReturnValue({
+      payment_event: {
+        create: vi.fn().mockResolvedValue({ id: 'payment-event-1', }),
+        update: vi.fn().mockResolvedValue({ id: 'payment-event-1', }),
+      },
+      booking: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'booking-1',
+          space_id: 'space-1',
+          space_name: 'Space One',
+          area_id: 'area-1',
+          area_name: 'Open Desk',
+          booking_hours: 2n,
+          price_minor: 150000n,
+          currency: 'PHP',
+          status: 'pending',
+          created_at: new Date('2026-03-13T09:00:00.000Z'),
+          user_auth_id: 'customer-auth-id',
+          partner_auth_id: 'partner-auth-id',
+          area_max_capacity: 10n,
+          guest_count: 1,
+          start_at: new Date('2026-03-14T09:00:00.000Z'),
+          expires_at: new Date('2026-03-14T11:00:00.000Z'),
+        }),
+      },
+      payment_transaction: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'payment-tx-1',
+          raw_gateway_json: { partner_provider_account_id: 'provider-record-1', },
+        }),
+        upsert: vi.fn().mockResolvedValue({ id: 'payment-tx-1', }),
+      },
+      wallet_transaction: { create: vi.fn().mockResolvedValue({ id: 'wallet-tx-1', }), },
+      partner_provider_account: {
+        findUnique: vi.fn().mockResolvedValue({ provider_account_id: 'acct-remote-1', }),
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'provider-record-1',
+          partner_user_id: 42n,
+        }),
+      },
+    } as unknown as typeof prismaModule.prisma);
+
+    const response = await xenditWebhookHandler(
+      makeRequest({
+        id: 'inv-1',
+        external_id: 'booking-1',
+        status: 'PAID',
+        amount: 1500,
+        currency: 'PHP',
+        paid_at: '2026-03-13T11:00:00.000Z',
+        metadata: {
+          booking_id: 'booking-1',
+          requires_host_approval: 'false',
+          partner_internal_user_id: '42',
+          partner_provider_account_id: 'provider-record-1',
+        },
+      })
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ received: true, });
+    expect(bookingFinalizationModule.finalizeSuccessfulBookingPayment).toHaveBeenCalledWith(
+      expect.objectContaining({ requiresHostApproval: false, })
+    );
+    expect(getPartnerBalance).toHaveBeenCalledWith('acct-remote-1');
+    expect(walletSnapshotsModule.recordPartnerWalletSnapshot).toHaveBeenCalledWith({
+      partnerUserId: 42n,
+      partnerProviderAccountId: 'provider-record-1',
+      availableBalanceMinor: 150000n,
+      currency: 'PHP',
+      fetchedAt: new Date('2026-03-13T11:05:00.000Z'),
+    });
+  });
+
   it('marks refunds as succeeded from Xendit callbacks and syncs the provider balance', async () => {
     process.env.XENDIT_WEBHOOK_VERIFICATION_TOKEN = 'test-callback-token';
 

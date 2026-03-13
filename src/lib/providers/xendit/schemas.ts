@@ -59,7 +59,7 @@ const xenditRawInvoiceSchema = z.object({
   amount: decimalLikeSchema,
   currency: z.string().min(1),
   description: z.string().nullish(),
-  invoice_url: z.string().url(),
+  invoice_url: z.string().url().nullish(),
   expiry_date: z.string().nullish(),
   success_redirect_url: z.string().url().nullish(),
   failure_redirect_url: z.string().url().nullish(),

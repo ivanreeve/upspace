@@ -745,7 +745,9 @@ export async function POST(req: NextRequest) {
       typeof payload === 'object' &&
       payload !== null &&
       'external_id' in payload &&
-      'invoice_url' in payload
+      'status' in payload &&
+      'amount' in payload &&
+      'currency' in payload
     ) {
       await handleXenditInvoiceWebhook(parseXenditInvoicePayload(payload));
       return NextResponse.json({ received: true, }, { status: 200, });
