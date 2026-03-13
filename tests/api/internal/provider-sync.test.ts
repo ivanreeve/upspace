@@ -54,4 +54,30 @@ describe('provider sync cron api', () => {
       },
     });
   });
+
+  it('accepts bearer authorization for scheduled runs', async () => {
+    process.env.CRON_SECRET = 'cron-secret';
+    vi.spyOn(reconciliationModule, 'runProviderReconciliation').mockResolvedValue({
+      checkedAccounts: 1,
+      syncedAccounts: 1,
+      failedAccounts: 0,
+      reconciledPayouts: 0,
+      staleAccountsBeforeRun: 0,
+    });
+
+    const response = await providerSyncHandler(
+      makeRequest({ authorization: 'Bearer cron-secret', })
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      data: {
+        checkedAccounts: 1,
+        syncedAccounts: 1,
+        failedAccounts: 0,
+        reconciledPayouts: 0,
+        staleAccountsBeforeRun: 0,
+      },
+    });
+  });
 });

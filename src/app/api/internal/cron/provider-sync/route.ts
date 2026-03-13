@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { hasValidCronSecret } from '@/lib/cron-auth';
 import { runProviderReconciliation } from '@/lib/financial/reconciliation';
 
 const unauthorizedResponse = NextResponse.json(
@@ -10,11 +11,8 @@ const unauthorizedResponse = NextResponse.json(
 export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
 
-  if (cronSecret) {
-    const provided = request.headers.get('x-cron-secret');
-    if (provided !== cronSecret) {
-      return unauthorizedResponse;
-    }
+  if (!hasValidCronSecret(request, cronSecret)) {
+    return unauthorizedResponse;
   }
 
   try {
