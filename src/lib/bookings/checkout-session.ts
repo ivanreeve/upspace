@@ -16,7 +16,7 @@ const APP_URL = (process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_
   ? process.env.NEXT_PUBLIC_APP_URL
   : DEFAULT_APP_URL).replace(/\/+$/, '');
 const BOOKING_ID_PLACEHOLDER = '__BOOKING_ID__';
-const PAYMONGO_ALLOWED_REDIRECT_ORIGINS = process.env.PAYMONGO_ALLOWED_REDIRECT_ORIGINS ?? '';
+const CHECKOUT_ALLOWED_REDIRECT_ORIGINS = process.env.CHECKOUT_ALLOWED_REDIRECT_ORIGINS ?? '';
 
 function resolveAllowedRedirectOrigins() {
   const origins = new Set<string>();
@@ -27,7 +27,7 @@ function resolveAllowedRedirectOrigins() {
     // APP_URL fallback should never block checkout creation.
   }
 
-  for (const entry of PAYMONGO_ALLOWED_REDIRECT_ORIGINS.split(',')) {
+  for (const entry of CHECKOUT_ALLOWED_REDIRECT_ORIGINS.split(',')) {
     const candidate = entry.trim();
     if (!candidate) {
       continue;

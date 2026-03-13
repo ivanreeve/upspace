@@ -1,7 +1,0 @@
-import type { NextRequest } from 'next/server';
-
-import { handleCreateBookingCheckout } from '@/app/api/v1/financial/checkout/handler';
-
-export async function POST(req: NextRequest) {
-  return handleCreateBookingCheckout(req);
-}

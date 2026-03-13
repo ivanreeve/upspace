@@ -48,7 +48,7 @@ conditions: [],
   },
 });
 
-describe('checkout pricing guards', () => {
+describe('financial checkout pricing guards', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });

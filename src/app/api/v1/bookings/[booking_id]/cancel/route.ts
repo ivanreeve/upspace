@@ -5,8 +5,6 @@ import { BOOKING_PRICE_MINOR_FACTOR, mapBookingsWithProfiles, normalizeNumeric }
 import { sendBookingCancellationEmail } from '@/lib/email';
 import { submitXenditRefund } from '@/lib/financial/xendit-refunds';
 import { notifyBookingEvent } from '@/lib/notifications/booking';
-import { createPaymongoRefund } from '@/lib/paymongo';
-import { resolveLatestPaidPaymongoPaymentIdForBooking } from '@/lib/paymongo-payment-events';
 import { prisma } from '@/lib/prisma';
 import { enforceRateLimit, RateLimitExceededError } from '@/lib/rate-limit';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -196,12 +194,16 @@ error: emailError,
 
     if (partnerUser?.user_id && settledPayment) {
       const walletRow = await ensureWalletRow(partnerUser.user_id);
-      const paymentId = settledPayment.provider === 'paymongo'
-        ? await resolveLatestPaidPaymongoPaymentIdForBooking(booking.id)
-        : (settledPayment.provider_object_id || null);
+      const paymentId = settledPayment.provider_object_id || null;
 
       if (!paymentId) {
         console.warn('Unable to resolve payment id for cancelled booking refund', { bookingId: booking.id, });
+      } else if (settledPayment.provider !== 'xendit') {
+        console.error('Cancelled booking is linked to an unsupported legacy payment provider', {
+          bookingId: booking.id,
+          provider: settledPayment.provider,
+          paymentTransactionId: settledPayment.id,
+        });
       } else {
         const existingRefund = await prisma.wallet_transaction.findFirst({
           where: {
@@ -264,71 +266,29 @@ error: emailError,
           if (refundRecord) {
             const refundRecordId = refundRecord.id;
             try {
-              if (settledPayment.provider === 'xendit') {
-                await submitXenditRefund({
-                  walletTransactionId: refundRecordId,
-                  partnerUserId: partnerUser.user_id,
-                  bookingId: booking.id,
-                  paymentTransaction: {
-                    id: settledPayment.id,
-                    provider_object_id: settledPayment.provider_object_id,
-                    amount_minor: settledPayment.amount_minor,
-                    currency_iso3: settledPayment.currency_iso3,
-                    raw_gateway_json: settledPayment.raw_gateway_json,
-                  },
-                  amountMinor: BigInt(refundAmountMinor),
-                  reason: 'cancellation',
-                  requestedByAuthUserId: booking.user_auth_id,
-                  metadata: {
-                    booking_id: booking.id,
-                    user_auth_id: booking.user_auth_id,
-                  },
-                  providedPaymentReference: paymentId,
-                });
-              } else {
-                const refundPayload = await createPaymongoRefund({
-                  paymentId,
-                  amountMinor: refundAmountMinor,
-                  reason: 'requested_by_customer',
-                  metadata: {
-                    booking_id: booking.id,
-                    user_auth_id: booking.user_auth_id,
-                  },
-                });
-
-                await prisma.$transaction(async (tx) => {
-                  await tx.wallet_transaction.update({
-                    where: { id: refundRecordId, },
-                    data: {
-                      status: refundPayload.data.attributes.status,
-                      external_reference: refundPayload.data.id,
-                      metadata: {
-                        paymongo_refund_id: refundPayload.data.id,
-                        payment_id: paymentId,
-                        payment_transaction_id: settledPayment.id,
-                        payment_provider_object_id: settledPayment.provider_object_id,
-                        booking_id: booking.id,
-                        user_auth_id: booking.user_auth_id,
-                      },
-                    },
-                  });
-
-                  if (refundPayload.data.attributes.status === 'succeeded') {
-                    await tx.wallet.update({
-                      where: { id: walletRow.id, },
-                      data: {
-                        balance_minor: { decrement: BigInt(refundPayload.data.attributes.amount), },
-                        updated_at: new Date(),
-                      },
-                    });
-                  }
-                });
-              }
+              await submitXenditRefund({
+                walletTransactionId: refundRecordId,
+                partnerUserId: partnerUser.user_id,
+                bookingId: booking.id,
+                paymentTransaction: {
+                  id: settledPayment.id,
+                  provider_object_id: settledPayment.provider_object_id,
+                  amount_minor: settledPayment.amount_minor,
+                  currency_iso3: settledPayment.currency_iso3,
+                  raw_gateway_json: settledPayment.raw_gateway_json,
+                },
+                amountMinor: BigInt(refundAmountMinor),
+                reason: 'cancellation',
+                requestedByAuthUserId: booking.user_auth_id,
+                metadata: {
+                  booking_id: booking.id,
+                  user_auth_id: booking.user_auth_id,
+                },
+                providedPaymentReference: paymentId,
+              });
             } catch (refundError) {
               console.error(
-                settledPayment.provider === 'xendit'
-                  ? 'Failed to create Xendit refund for cancelled booking'
-                  : 'Failed to create PayMongo refund for cancelled booking',
+                'Failed to create Xendit refund for cancelled booking',
                 {
                   bookingId: booking.id,
                   refundRecordId,

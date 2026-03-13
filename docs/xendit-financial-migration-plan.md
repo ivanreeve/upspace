@@ -5,7 +5,7 @@
 - Author: Codex
 - Date: 2026-03-12
 - Scope: Capstone-ready provider-backed financial architecture
-- Goal: Replace the current `PayMongo + mutable internal wallet + admin-manual payout completion` model with a `Xendit-backed partner balance + provider-managed withdrawal` model without breaking the app mid-migration
+- Goal: Replace the legacy mutable-wallet + admin-manual payout completion model with a `Xendit-backed partner balance + provider-managed withdrawal` model without breaking the app mid-migration
 
 ## Executive Summary
 
@@ -49,8 +49,8 @@ These are out of scope for the capstone implementation:
 
 Current implementation highlights:
 
-- Customer payments are created through PayMongo checkout in `src/lib/paymongo.ts` and `src/lib/bookings/checkout-session.ts`.
-- PayMongo webhooks update local financial records in `src/app/api/paymongo/webhook/handlers.ts`.
+- Customer payments are created through the booking checkout flow in `src/lib/bookings/checkout-session.ts`.
+- Provider webhooks update local financial records in `src/app/api/provider/webhook/route.ts`.
 - Partner wallet balance is currently derived from local wallet tables in `wallet` and `wallet_transaction`.
 - Partner payout requests are created and then completed or rejected by admins through the admin payout queue.
 
@@ -219,9 +219,9 @@ Add:
 Modify:
 
 - `src/lib/bookings/checkout-session.ts`
-- `src/app/api/v1/paymongo/checkout/route.ts`
-- `src/app/api/paymongo/webhook/handlers.ts`
-- `src/lib/paymongo.ts`
+- `src/app/api/v1/financial/checkout/route.ts`
+- `src/app/api/provider/webhook/route.ts`
+- `src/lib/providers/xendit/client.ts`
 
 ### Interface Draft
 
@@ -384,7 +384,7 @@ export class ProviderTransientError extends Error {
 
 ### Acceptance
 
-- `createBookingCheckoutSession` no longer imports PayMongo functions directly
+- `createBookingCheckoutSession` no longer imports legacy gateway functions directly
 - provider-specific logic is isolated to `src/lib/providers/xendit/*`
 
 ## Phase 2: Database Schema Draft

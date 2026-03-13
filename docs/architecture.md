@@ -52,4 +52,4 @@ The database is built on PostgreSQL with several extensions enabled for advanced
 
 *   **Supabase**: Provides the PostgreSQL database and potential Auth/Storage services.
 *   **Google Maps**: Used for address autocomplete (`useGoogleMapsPlaces.ts`) and displaying maps.
-*   **PayMongo**: Payment gateway for handling transactions (`src/lib/paymongo.ts`).
+*   **Xendit**: Payment and payout provider for checkout, refunds, payouts, and partner balance sync.

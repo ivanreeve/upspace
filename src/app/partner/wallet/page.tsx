@@ -9,7 +9,7 @@ import { createSupabaseReadOnlyServerClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
   title: 'Wallet | UpSpace',
-  description: 'Manage your PayMongo wallet balance, top-ups, and recent transactions.',
+  description: 'Manage your provider-backed wallet balance, payouts, and recent transactions.',
 };
 
 export default async function WalletRoutePage() {

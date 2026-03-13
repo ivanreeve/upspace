@@ -722,7 +722,6 @@ enum deactivation_request_type {
 }
 
 enum gateway {
-  paymongo
   xendit
 }
 

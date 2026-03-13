@@ -67,10 +67,7 @@ const LOCALE_OPTIONS = {
 const formatDateTime = (value: string) =>
   new Date(value).toLocaleString('en-PH', LOCALE_OPTIONS);
 
-const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  paymongo: 'PayMongo',
-  xendit: 'Xendit',
-};
+const PAYMENT_METHOD_LABELS: Record<string, string> = { xendit: 'Xendit', };
 
 const safeBigInt = (value: string | null | undefined) => {
   if (!value) {
