@@ -11,6 +11,14 @@ type RecordPartnerWalletSnapshotInput = {
   fetchedAt: Date;
 };
 
+type RecordPartnerWalletSnapshotFailureInput = {
+  partnerUserId: bigint;
+  partnerProviderAccountId: string;
+  currency: string;
+  failureReason: string;
+  fetchedAt: Date;
+};
+
 function clampToZero(value: bigint) {
   return value >= 0n ? value : 0n;
 }
@@ -100,5 +108,47 @@ export async function recordPartnerWalletSnapshot(
       pendingReserveMinor,
       derivedWalletBalanceMinor,
     };
+  }, { isolationLevel: 'Serializable', });
+}
+
+export async function recordPartnerWalletSnapshotFailure(
+  input: RecordPartnerWalletSnapshotFailureInput
+) {
+  return prisma.$transaction(async (tx) => {
+    const snapshot = await tx.partner_wallet_snapshot.create({
+      data: {
+        partner_user_id: input.partnerUserId,
+        partner_provider_account_id: input.partnerProviderAccountId,
+        available_balance_minor: BigInt(0),
+        currency: input.currency,
+        sync_status: 'failed',
+        failure_reason: input.failureReason,
+        fetched_at: input.fetchedAt,
+      },
+    });
+
+    const existingMetadata = await tx.partner_provider_account.findUnique({
+      where: { id: input.partnerProviderAccountId, },
+      select: { metadata: true, },
+    });
+
+    await tx.partner_provider_account.update({
+      where: { id: input.partnerProviderAccountId, },
+      data: {
+        last_synced_at: input.fetchedAt,
+        metadata: mergeMetadata(
+          existingMetadata?.metadata,
+          {
+            last_balance_snapshot_failure: {
+              failure_reason: input.failureReason,
+              fetched_at: input.fetchedAt.toISOString(),
+            },
+          }
+        ),
+        updated_at: new Date(),
+      },
+    });
+
+    return snapshot;
   }, { isolationLevel: 'Serializable', });
 }

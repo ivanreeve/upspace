@@ -266,6 +266,7 @@ export function AdminReportsPage() {
   };
 
   const queueHealth = data?.queueHealth ?? [];
+  const providerHealth = data?.providerHealth;
   const topCancellationSpaces = data?.risk.topCancellationSpaces ?? [];
 
   return (
@@ -333,6 +334,40 @@ export function AdminReportsPage() {
               { summaryCards.map((card) => (
                 <MetricCard key={ card.title } { ...card } />
               )) }
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <MetricCard
+                title="Provider Accounts"
+                description="Connected Xendit partner accounts and live readiness."
+                value={
+                  isLoadingData
+                    ? '-'
+                    : `${formatCount(providerHealth?.liveAccounts ?? 0)} / ${formatCount(providerHealth?.configuredAccounts ?? 0)} live`
+                }
+                previousLabel={ `Stale: ${formatCount(providerHealth?.staleAccounts ?? 0)}` }
+                changePct={ null }
+                footnote={ `Failed snapshots: ${formatCount(providerHealth?.failedSnapshotCount ?? 0)}` }
+                isLoading={ isLoadingData }
+              />
+              <MetricCard
+                title="Provider Payout Sync"
+                description="Payouts submitted to Xendit that still need final settlement locally."
+                value={ formatCount(providerHealth?.pendingProviderPayouts ?? 0) }
+                previousLabel="Webhook-backed status tracking"
+                changePct={ null }
+                footnote="Use the reconciliation view for account-level drift."
+                isLoading={ isLoadingData }
+              />
+              <MetricCard
+                title="Pending Refunds"
+                description="Refunds still waiting on final provider status."
+                value={ formatCount(providerHealth?.pendingRefunds ?? 0) }
+                previousLabel="Open refund workload"
+                changePct={ null }
+                footnote="Pending refunds will remain until a terminal provider outcome arrives."
+                isLoading={ isLoadingData }
+              />
             </div>
 
             <Separator />

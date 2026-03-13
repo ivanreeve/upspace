@@ -6,6 +6,7 @@ import { AdminSessionError, requireAdminSession } from '@/lib/auth/require-admin
 import { adminReportQuerySchema } from '@/lib/validations/admin';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
+const PROVIDER_RECONCILIATION_STALE_MS = 15 * 60 * 1000;
 const CANCELLATION_STATUSES = new Set(['cancelled', 'noshow']);
 
 type ResolutionItem = {
@@ -78,6 +79,7 @@ lt: rangeEnd,
  gte: previousStart,
 lt: rangeStart, 
 };
+    const providerStaleCutoff = new Date(rangeEnd.getTime() - PROVIDER_RECONCILIATION_STALE_MS);
 
     const bookingStatusCurrentPromise = prisma.booking.groupBy({
       by: ['status'],
@@ -235,6 +237,51 @@ created_at: previousRange,
         processed_at: true,
       },
     });
+    const providerConfiguredCountPromise = prisma.partner_provider_account.count({
+      where: {
+        provider: 'xendit',
+        provider_account_id: { not: null, },
+      },
+    });
+    const providerLiveCountPromise = prisma.partner_provider_account.count({
+      where: {
+        provider: 'xendit',
+        status: 'live',
+        provider_account_id: { not: null, },
+      },
+    });
+    const providerStaleCountPromise = prisma.partner_provider_account.count({
+      where: {
+        provider: 'xendit',
+        provider_account_id: { not: null, },
+        OR: [
+          { last_synced_at: null, },
+          { last_synced_at: { lt: providerStaleCutoff, }, }
+        ],
+      },
+    });
+    const failedWalletSnapshotsPromise = prisma.partner_wallet_snapshot.count({
+      where: {
+        sync_status: 'failed',
+        fetched_at: currentRange,
+      },
+    });
+    const pendingProviderPayoutsPromise = prisma.wallet_transaction.count({
+      where: {
+        type: 'payout',
+        status: 'pending',
+        metadata: {
+          path: ['workflow_stage'],
+          equals: 'submitted_to_provider',
+        },
+      },
+    });
+    const pendingRefundsPromise = prisma.wallet_transaction.count({
+      where: {
+        type: 'refund',
+        status: 'pending',
+      },
+    });
 
     const [
       bookingStatusCurrent,
@@ -260,7 +307,13 @@ created_at: previousRange,
       chatResolved,
       payoutPendingCount,
       payoutOldest,
-      payoutResolved
+      payoutResolved,
+      providerConfiguredCount,
+      providerLiveCount,
+      providerStaleCount,
+      failedWalletSnapshots,
+      pendingProviderPayouts,
+      pendingRefunds
     ] = await Promise.all([
       bookingStatusCurrentPromise,
       bookingStatusPreviousPromise,
@@ -285,7 +338,13 @@ created_at: previousRange,
       chatResolvedPromise,
       payoutPendingCountPromise,
       payoutOldestPromise,
-      payoutResolvedPromise
+      payoutResolvedPromise,
+      providerConfiguredCountPromise,
+      providerLiveCountPromise,
+      providerStaleCountPromise,
+      failedWalletSnapshotsPromise,
+      pendingProviderPayoutsPromise,
+      pendingRefundsPromise
     ]);
 
     const bookingTotalCurrent = bookingStatusCurrent.reduce(
@@ -531,6 +590,14 @@ region: true,
         },
       },
       queueHealth,
+      providerHealth: {
+        configuredAccounts: providerConfiguredCount,
+        liveAccounts: providerLiveCount,
+        staleAccounts: providerStaleCount,
+        failedSnapshotCount: failedWalletSnapshots,
+        pendingProviderPayouts,
+        pendingRefunds,
+      },
       risk: {
         topCancellationSpaces: topCancellationCandidates.map((entry) => {
           const space = topSpaceLookup.get(entry.spaceId);

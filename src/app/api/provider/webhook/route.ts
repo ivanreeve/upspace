@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 
 import { finalizeSuccessfulBookingPayment } from '@/lib/bookings/payment-finalization';
 import { sendRefundNotificationEmail } from '@/lib/email';
-import { recordPartnerWalletSnapshot } from '@/lib/financial/wallet-snapshots';
+import { applyXenditPayoutStatus, syncPartnerWalletFromRemoteAccountId } from '@/lib/financial/xendit-payouts';
 import { notifyBookingEvent } from '@/lib/notifications/booking';
 import { getFinancialProvider } from '@/lib/providers/provider-registry';
 import { parseXenditInvoicePayload, parseXenditPayoutPayload, parseXenditRefundWebhookPayload } from '@/lib/providers/xendit/schemas';
@@ -12,39 +12,10 @@ import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { ensureWalletRow } from '@/lib/wallet-server';
 import { formatCurrencyMinor } from '@/lib/wallet';
 
-type PayoutWorkflowStage = 'submitted_to_provider' | 'succeeded' | 'failed';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? '';
 
 function isJsonObject(value: Prisma.JsonValue | null | unknown): value is Prisma.JsonObject {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-function buildProviderWebhookMetadata(
-  metadata: Prisma.JsonValue | null,
-  details: {
-    workflowStage: PayoutWorkflowStage;
-    providerStatus: string;
-    estimatedArrivalTime: string | null;
-    failureCode: string | null;
-  }
-): Prisma.InputJsonValue {
-  const base = isJsonObject(metadata) ? metadata : {};
-  const previousProvider =
-    base.payout_provider && typeof base.payout_provider === 'object' && !Array.isArray(base.payout_provider)
-      ? (base.payout_provider as Prisma.JsonObject)
-      : {};
-
-  return {
-    ...base,
-    workflow_stage: details.workflowStage,
-    payout_provider: {
-      ...previousProvider,
-      status: details.providerStatus,
-      estimated_arrival_time: details.estimatedArrivalTime,
-      failure_code: details.failureCode,
-      updated_at: new Date().toISOString(),
-    },
-  };
 }
 
 function buildRefundWebhookMetadata(
@@ -286,38 +257,6 @@ async function recordProviderBackedBookingCharge(input: {
   }
 }
 
-async function syncPartnerWalletFromRemoteAccountId(remoteAccountId: string | null) {
-  if (!remoteAccountId) {
-    return;
-  }
-
-  const localAccount = await prisma.partner_provider_account.findFirst({
-    where: {
-      provider: 'xendit',
-      provider_account_id: remoteAccountId,
-    },
-    select: {
-      id: true,
-      partner_user_id: true,
-    },
-  });
-
-  if (!localAccount) {
-    return;
-  }
-
-  const provider = getFinancialProvider();
-  const balance = await provider.getPartnerBalance(remoteAccountId);
-
-  await recordPartnerWalletSnapshot({
-    partnerUserId: localAccount.partner_user_id,
-    partnerProviderAccountId: localAccount.id,
-    availableBalanceMinor: balance.availableMinor,
-    currency: balance.currency,
-    fetchedAt: balance.fetchedAt,
-  });
-}
-
 async function notifyRefundOutcome(input: {
   bookingId: string | null;
   amountMinor: bigint;
@@ -398,141 +337,21 @@ async function notifyRefundOutcome(input: {
 async function handleXenditPayoutWebhook(
   payout: ReturnType<typeof parseXenditPayoutPayload>
 ) {
-  let providerAccountIdToSync: string | null = null;
+  const result = await applyXenditPayoutStatus({
+    payoutId: payout.id,
+    referenceId: payout.reference_id,
+    status: payout.status,
+    estimatedArrivalTime: payout.estimated_arrival_time ?? null,
+    failureCode: payout.failure_code ?? null,
+  });
 
-  await prisma.$transaction(async (tx) => {
-    const payoutRequest = await tx.wallet_transaction.findUnique({
-      where: { id: payout.reference_id, },
-      select: {
-        id: true,
-        wallet_id: true,
-        type: true,
-        status: true,
-        amount_minor: true,
-        currency: true,
-        metadata: true,
-        wallet: { select: { user: { select: { auth_user_id: true, }, }, }, },
-      },
-    });
-
-    if (!payoutRequest || payoutRequest.type !== 'payout') {
-      return;
-    }
-
-    const metadata = isJsonObject(payoutRequest.metadata) ? payoutRequest.metadata : null;
-    const providerSnapshot =
-      metadata?.provider_account_snapshot && isJsonObject(metadata.provider_account_snapshot)
-        ? metadata.provider_account_snapshot
-        : null;
-    providerAccountIdToSync =
-      providerSnapshot && typeof providerSnapshot.provider_account_id === 'string'
-        ? providerSnapshot.provider_account_id
-        : null;
-
-    if (payout.status === 'SUCCEEDED') {
-      if (payoutRequest.status === 'succeeded') {
-        return;
-      }
-
-      await tx.wallet_transaction.update({
-        where: { id: payoutRequest.id, },
-        data: {
-          status: 'succeeded',
-          metadata: buildProviderWebhookMetadata(payoutRequest.metadata, {
-            workflowStage: 'succeeded',
-            providerStatus: payout.status,
-            estimatedArrivalTime: payout.estimated_arrival_time ?? null,
-            failureCode: payout.failure_code ?? null,
-          }),
-          updated_at: new Date(),
-        },
-      });
-
-      const amountLabel = formatCurrencyMinor(
-        payoutRequest.amount_minor.toString(),
-        payoutRequest.currency
-      );
-      await tx.app_notification.create({
-        data: {
-          user_auth_id: payoutRequest.wallet.user.auth_user_id,
-          title: 'Payout completed',
-          body: `Your payout request for ${amountLabel} has been completed by Xendit.`,
-          href: '/partner/wallet',
-          type: 'system',
-        },
-      });
-      return;
-    }
-
-    if (
-      payout.status === 'FAILED' ||
-      payout.status === 'CANCELLED' ||
-      payout.status === 'REVERSED'
-    ) {
-      if (payoutRequest.status === 'failed') {
-        return;
-      }
-
-      await tx.wallet_transaction.update({
-        where: { id: payoutRequest.id, },
-        data: {
-          status: 'failed',
-          metadata: buildProviderWebhookMetadata(payoutRequest.metadata, {
-            workflowStage: 'failed',
-            providerStatus: payout.status,
-            estimatedArrivalTime: payout.estimated_arrival_time ?? null,
-            failureCode: payout.failure_code ?? null,
-          }),
-          updated_at: new Date(),
-        },
-      });
-
-      await tx.wallet.update({
-        where: { id: payoutRequest.wallet_id, },
-        data: {
-          balance_minor: { increment: payoutRequest.amount_minor, },
-          updated_at: new Date(),
-        },
-      });
-
-      const amountLabel = formatCurrencyMinor(
-        payoutRequest.amount_minor.toString(),
-        payoutRequest.currency
-      );
-      const failureSuffix = payout.failure_code ? ` Code: ${payout.failure_code}.` : '';
-      await tx.app_notification.create({
-        data: {
-          user_auth_id: payoutRequest.wallet.user.auth_user_id,
-          title: 'Payout failed',
-          body: `Your payout request for ${amountLabel} could not be completed by Xendit. The funds are available in your wallet again.${failureSuffix}`,
-          href: '/partner/wallet',
-          type: 'system',
-        },
-      });
-      return;
-    }
-
-    await tx.wallet_transaction.update({
-      where: { id: payoutRequest.id, },
-      data: {
-        metadata: buildProviderWebhookMetadata(payoutRequest.metadata, {
-          workflowStage: 'submitted_to_provider',
-          providerStatus: payout.status,
-          estimatedArrivalTime: payout.estimated_arrival_time ?? null,
-          failureCode: payout.failure_code ?? null,
-        }),
-        updated_at: new Date(),
-      },
-    });
-  }, { isolationLevel: 'Serializable', });
-
-  if (providerAccountIdToSync) {
+  if (result?.providerAccountIdToSync) {
     try {
-      await syncPartnerWalletFromRemoteAccountId(providerAccountIdToSync);
+      await syncPartnerWalletFromRemoteAccountId(result.providerAccountIdToSync);
     } catch (error) {
       console.error('Failed to sync partner wallet after payout webhook', {
         payoutId: payout.id,
-        providerAccountId: providerAccountIdToSync,
+        providerAccountId: result.providerAccountIdToSync,
         error,
       });
     }
