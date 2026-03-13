@@ -336,7 +336,7 @@ export class XenditFinancialProvider implements FinancialProvider {
 
     return {
       availableMinor: cashBalance.balance,
-      currency: cashBalance.currency,
+      currency: cashBalance.currency ?? 'PHP',
       fetchedAt: new Date(),
       raw: cashBalance,
     };

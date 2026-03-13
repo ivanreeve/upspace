@@ -21,7 +21,7 @@ const xenditRawAccountSchema = z.object({
 
 const xenditRawBalanceSchema = z.object({
   balance: bigintLikeSchema,
-  currency: z.string().min(1),
+  currency: z.string().min(1).optional(),
   type: z.string().min(1).optional(),
   account_type: z.string().min(1).optional(),
 }).passthrough();
@@ -124,7 +124,17 @@ export function parseXenditBalancePayload(payload: unknown): XenditBalanceEntry[
     return direct.data;
   }
 
-  return z.object({ data: z.array(xenditRawBalanceSchema), }).parse(payload).data;
+  const wrapped = z.object({ data: z.array(xenditRawBalanceSchema), }).safeParse(payload);
+  if (wrapped.success) {
+    return wrapped.data.data;
+  }
+
+  const single = xenditRawBalanceSchema.safeParse(payload);
+  if (single.success) {
+    return [single.data];
+  }
+
+  return [z.object({ data: xenditRawBalanceSchema, }).parse(payload).data];
 }
 
 export function parseXenditPayoutChannelsPayload(payload: unknown): XenditPayoutChannel[] {
