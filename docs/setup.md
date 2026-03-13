@@ -65,6 +65,34 @@ https://<your-domain>/api/provider/webhook
 
 If you need the rest of the optional integrations, use [`.env.example`](/home/ivanreeve/projects/upspace/.env.example).
 
+### Vercel cron jobs
+
+The repository already includes [vercel.json](/home/ivanreeve/projects/upspace/vercel.json) with both scheduled routes configured:
+
+- `/api/internal/cron/provider-sync` at `0 3 * * *`
+- `/api/internal/cron/bookings` at `*/15 * * * *`
+
+To make them work:
+
+1. Set `CRON_SECRET` in your Vercel project environment variables.
+2. Deploy to `production`.
+3. Keep the route paths unchanged unless you also update `vercel.json`.
+
+Important note:
+
+- `provider-sync` daily works fine on Vercel Hobby.
+- `bookings` every 15 minutes requires a plan that supports sub-daily cron schedules. If you stay on Hobby, use an external scheduler to call `/api/internal/cron/bookings` with `Authorization: Bearer <CRON_SECRET>`.
+
+Local/manual verification:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  http://localhost:3000/api/internal/cron/provider-sync
+
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  http://localhost:3000/api/internal/cron/bookings
+```
+
 
 ### Redis-backed features
 
