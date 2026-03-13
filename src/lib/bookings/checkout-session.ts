@@ -3,10 +3,10 @@ import { randomUUID } from 'crypto';
 import { BOOKING_PRICE_MINOR_FACTOR, mapBookingRowToRecord, normalizeNumeric } from '@/lib/bookings/serializer';
 import { countActiveBookingsOverlap, resolveBookingDecision } from '@/lib/bookings/occupancy';
 import { sendBookingNotificationEmail } from '@/lib/email';
-import { createPaymongoCheckoutSession } from '@/lib/paymongo';
 import { prisma } from '@/lib/prisma';
 import { evaluatePriceRule } from '@/lib/pricing-rules-evaluator';
 import type { PriceRuleRecord } from '@/lib/pricing-rules';
+import { getFinancialProvider } from '@/lib/providers/provider-registry';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { isTestingModeEnabled } from '@/lib/testing-mode';
 import { recordTestModeBookingWalletCharge } from '@/lib/wallet-server';
@@ -120,6 +120,21 @@ export type CreateBookingCheckoutSessionResult = {
   startAt: string;
   testingMode: boolean;
 };
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function getExistingProviderCheckoutUrl(rawGatewayJson: unknown) {
+  if (!isJsonObject(rawGatewayJson)) {
+    return null;
+  }
+
+  const invoiceUrl = rawGatewayJson.invoice_url;
+  return typeof invoiceUrl === 'string' && invoiceUrl.length > 0
+    ? invoiceUrl
+    : null;
+}
 
 export async function createBookingCheckoutSession(
   options: CreateBookingCheckoutSessionOptions
@@ -253,13 +268,31 @@ export async function createBookingCheckoutSession(
       start_at: startAt,
       status: 'pending',
       user_auth_id: customer.auth_user_id,
-      payment_transaction: { none: {}, },
     },
     orderBy: { created_at: 'desc', },
+    include: {
+      payment_transaction: {
+        orderBy: { created_at: 'desc', },
+        take: 1,
+        select: {
+          id: true,
+          provider: true,
+          provider_object_id: true,
+          status: true,
+          raw_gateway_json: true,
+          amount_minor: true,
+          currency_iso3: true,
+          is_live: true,
+          occurred_at: true,
+          created_at: true,
+        },
+      },
+    },
   });
 
   const bookingResult = existingPendingBooking
     ? await (async () => {
+        const existingPaymentTransaction = existingPendingBooking.payment_transaction[0] ?? null;
         const activeCount = await countActiveBookingsOverlap(
           prisma,
           area.id,
@@ -281,6 +314,7 @@ export async function createBookingCheckoutSession(
 
         return {
           bookingRow: existingPendingBooking,
+          existingPaymentTransaction,
           requiresHostApproval: approval.status === 'pending',
         };
       })()
@@ -334,6 +368,7 @@ export async function createBookingCheckoutSession(
 
             return {
               bookingRow: created,
+              existingPaymentTransaction: null,
               requiresHostApproval,
             };
           },
@@ -352,6 +387,7 @@ export async function createBookingCheckoutSession(
 
   const {
     bookingRow,
+    existingPaymentTransaction,
     requiresHostApproval,
   } = bookingResult;
 
@@ -369,10 +405,23 @@ export async function createBookingCheckoutSession(
   const partnerWalletOwner = partnerAuthId
     ? await prisma.user.findUnique({
         where: { auth_user_id: partnerAuthId, },
-        select: { user_id: true, },
+        select: {
+          user_id: true,
+          provider_accounts: {
+            where: { provider: 'xendit', },
+            select: {
+              id: true,
+              provider_account_id: true,
+              status: true,
+              currency: true,
+            },
+            take: 1,
+          },
+        },
       })
     : null;
   const partnerInternalUserId = partnerWalletOwner?.user_id?.toString() ?? null;
+  const partnerProviderAccount = partnerWalletOwner?.provider_accounts[0] ?? null;
 
   const metadata = {
     booking_id: bookingRow.id,
@@ -494,24 +543,91 @@ export async function createBookingCheckoutSession(
     };
   }
 
-  const checkoutSession = await createPaymongoCheckoutSession({
-    amountMinor: priceMinor,
+  if (
+    existingPaymentTransaction?.provider === 'xendit' &&
+    existingPaymentTransaction.status === 'pending'
+  ) {
+    const existingCheckoutUrl = getExistingProviderCheckoutUrl(
+      existingPaymentTransaction.raw_gateway_json
+    );
+
+    if (existingCheckoutUrl) {
+      return {
+        areaId: area.id,
+        areaName: area.name,
+        bookingHours,
+        bookingId: bookingRow.id,
+        checkoutUrl: existingCheckoutUrl,
+        guestCount,
+        price: priceMinor / BOOKING_PRICE_MINOR_FACTOR,
+        priceCurrency: 'PHP',
+        requiresHostApproval,
+        spaceId: area.space.id,
+        spaceName: area.space.name,
+        startAt: startAt.toISOString(),
+        testingMode: false,
+      };
+    }
+  }
+
+  if (!partnerProviderAccount?.provider_account_id || partnerProviderAccount.status !== 'live') {
+    throw new BookingCheckoutError(
+      409,
+      'This space is temporarily unavailable because the partner payout account is not ready.'
+    );
+  }
+
+  const provider = getFinancialProvider();
+  const checkoutSession = await provider.createBookingPayment({
+    partnerProviderAccountId: partnerProviderAccount.provider_account_id,
+    referenceId: bookingRow.id,
+    amountMinor: BigInt(priceMinor),
     currency: bookingRow.currency,
     description: `${area.space.name} · ${area.name}`,
-    lineItemName: area.name,
     successUrl: resolvedSuccessUrl,
     cancelUrl: resolvedCancelUrl,
-    metadata,
-    lineItems: [
-      {
-        quantity: 1,
-        price_data: {
-          currency: bookingRow.currency,
-          unit_amount: priceMinor,
-          product_data: { name: `${area.space.name} · ${area.name}`, },
-        },
-      }
-    ],
+    metadata: {
+      ...metadata,
+      partner_provider_account_id: partnerProviderAccount.id,
+    },
+  });
+
+  await prisma.payment_transaction.upsert({
+    where: {
+      provider_provider_object_id: {
+        provider: 'xendit',
+        provider_object_id: checkoutSession.paymentId,
+      },
+    },
+    create: {
+      booking_id: bookingRow.id,
+      provider: 'xendit',
+      provider_object_id: checkoutSession.paymentId,
+      status: 'pending',
+      amount_minor: BigInt(priceMinor),
+      currency_iso3: bookingRow.currency,
+      payment_method_type: 'xendit_invoice',
+      is_live: checkoutSession.isLive,
+      raw_gateway_json: {
+        ...(checkoutSession.raw ?? {}),
+        invoice_url: checkoutSession.checkoutUrl,
+        partner_provider_account_id: partnerProviderAccount.id,
+      },
+    },
+    update: {
+      booking_id: bookingRow.id,
+      status: 'pending',
+      amount_minor: BigInt(priceMinor),
+      currency_iso3: bookingRow.currency,
+      payment_method_type: 'xendit_invoice',
+      is_live: checkoutSession.isLive,
+      raw_gateway_json: {
+        ...(checkoutSession.raw ?? {}),
+        invoice_url: checkoutSession.checkoutUrl,
+        partner_provider_account_id: partnerProviderAccount.id,
+      },
+      updated_at: new Date(),
+    },
   });
 
   return {
@@ -519,7 +635,7 @@ export async function createBookingCheckoutSession(
     areaName: area.name,
     bookingHours,
     bookingId: bookingRow.id,
-    checkoutUrl: checkoutSession.data.attributes.checkout_url,
+    checkoutUrl: checkoutSession.checkoutUrl,
     guestCount,
     price: priceMinor / BOOKING_PRICE_MINOR_FACTOR,
     priceCurrency: 'PHP',

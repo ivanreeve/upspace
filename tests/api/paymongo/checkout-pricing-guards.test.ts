@@ -8,11 +8,11 @@ import {
 } from 'vitest';
 
 import * as pricingRules from '@/lib/pricing-rules-evaluator';
-import * as paymongo from '@/lib/paymongo';
 import * as prismaModule from '@/lib/prisma';
+import * as providerRegistry from '@/lib/providers/provider-registry';
 import * as rateLimit from '@/lib/rate-limit';
 import * as walletServer from '@/lib/wallet-server';
-import { POST as createCheckoutHandler } from '@/app/api/v1/paymongo/checkout/route';
+import { POST as createCheckoutHandler } from '@/app/api/v1/financial/checkout/route';
 
 const mockSpaceId = '11111111-1111-4111-8111-111111111111';
 const mockAreaId = '22222222-2222-4222-8222-222222222222';
@@ -69,7 +69,8 @@ describe('checkout pricing guards', () => {
       throw new Error('bad rule');
     });
     vi.spyOn(rateLimit, 'enforceRateLimit').mockResolvedValue();
-    const checkoutSpy = vi.spyOn(paymongo, 'createPaymongoCheckoutSession');
+    const createBookingPayment = vi.fn();
+    vi.spyOn(providerRegistry, 'getFinancialProvider').mockReturnValue({ createBookingPayment, } as unknown as ReturnType<typeof providerRegistry.getFinancialProvider>);
 
     const response = await createCheckoutHandler(
       makeRequest({
@@ -84,7 +85,7 @@ describe('checkout pricing guards', () => {
     expect(response.status).toBe(400);
     const body = await response.json();
     expect(body.error).toBe('Unable to compute a price for this booking.');
-    expect(checkoutSpy).not.toHaveBeenCalled();
+    expect(createBookingPayment).not.toHaveBeenCalled();
   });
 
   it('returns 400 when computed price is zero or negative', async () => {
@@ -107,7 +108,8 @@ describe('checkout pricing guards', () => {
       usedVariables: [],
     });
     vi.spyOn(rateLimit, 'enforceRateLimit').mockResolvedValue();
-    const checkoutSpy = vi.spyOn(paymongo, 'createPaymongoCheckoutSession');
+    const createBookingPayment = vi.fn();
+    vi.spyOn(providerRegistry, 'getFinancialProvider').mockReturnValue({ createBookingPayment, } as unknown as ReturnType<typeof providerRegistry.getFinancialProvider>);
 
     const response = await createCheckoutHandler(
       makeRequest({
@@ -122,6 +124,6 @@ describe('checkout pricing guards', () => {
     expect(response.status).toBe(400);
     const body = await response.json();
     expect(body.error).toBe('Unable to compute a valid price for this booking.');
-    expect(checkoutSpy).not.toHaveBeenCalled();
+    expect(createBookingPayment).not.toHaveBeenCalled();
   });
 });

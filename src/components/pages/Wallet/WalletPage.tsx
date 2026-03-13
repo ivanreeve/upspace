@@ -70,8 +70,10 @@ import {
   useWallet,
   useWalletTransactions
 } from '@/hooks/use-wallet';
+import { usePayoutChannelsQuery } from '@/hooks/api/usePayoutChannels';
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
 import { useUserProfile } from '@/hooks/use-user-profile';
+import type { PartnerProviderAccountView } from '@/lib/financial/provider-account-view';
 import { formatCurrencyMinor, formatMinorToDisplay, parseDisplayAmountToMinor } from '@/lib/wallet';
 
 const TRANSACTION_TYPE_LABELS: Record<WalletTransactionType, string> = {
@@ -116,12 +118,45 @@ const LOCALE_OPTIONS = {
 const formatDateTime = (value: string) =>
   new Date(value).toLocaleString('en-PH', LOCALE_OPTIONS);
 
+const maskDestinationAccountNumber = (value: string) => {
+  const normalized = value.trim();
+  if (normalized.length <= 4) {
+    return normalized;
+  }
+
+  return `${'*'.repeat(Math.max(0, normalized.length - 4))}${normalized.slice(-4)}`;
+};
+
 const getPayoutStatusSummary = (transaction: WalletTransactionRecord) => {
   if (transaction.type !== 'payout') {
     return null;
   }
 
+  const workflowStage =
+    transaction.metadata &&
+    typeof transaction.metadata === 'object' &&
+    'workflow_stage' in transaction.metadata &&
+    typeof transaction.metadata.workflow_stage === 'string'
+      ? transaction.metadata.workflow_stage
+      : null;
+  const payoutProviderStatus =
+    transaction.metadata &&
+    typeof transaction.metadata === 'object' &&
+    'payout_provider' in transaction.metadata &&
+    transaction.metadata.payout_provider &&
+    typeof transaction.metadata.payout_provider === 'object' &&
+    'status' in transaction.metadata.payout_provider &&
+    typeof transaction.metadata.payout_provider.status === 'string'
+      ? transaction.metadata.payout_provider.status
+      : null;
+
   if (transaction.status === 'pending') {
+    if (workflowStage === 'submitted_to_provider' || workflowStage === 'submitting_to_provider') {
+      return payoutProviderStatus
+        ? `Submitted to Xendit. Provider status: ${payoutProviderStatus}.`
+        : 'Submitted to Xendit and awaiting the provider outcome.';
+    }
+
     return 'Awaiting admin review.';
   }
 
@@ -484,9 +519,92 @@ function WalletHeader() {
         Wallet
       </h2>
       <p className="text-sm text-muted-foreground md:text-base">
-        Track your earnings, refunds, and payouts from UpSpace bookings.
+        Track your earnings, refunds, payout requests, and provider-backed balance sync from UpSpace bookings.
       </p>
     </div>
+  );
+}
+
+function WalletProviderStatusCard({
+  walletCardClassName,
+  providerAccount,
+}: {
+  walletCardClassName: string;
+  providerAccount: PartnerProviderAccountView | null;
+}) {
+  const isReady = providerAccount?.setupState === 'ready';
+  const badgeClassName = !providerAccount
+    ? 'border-border/70 bg-background text-muted-foreground'
+    : providerAccount.setupState === 'ready'
+      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700'
+      : providerAccount.setupState === 'creating'
+        ? 'border-primary/20 bg-primary/10 text-primary'
+        : providerAccount.setupState === 'error'
+          ? 'border-destructive/30 bg-destructive/10 text-destructive'
+          : 'border-amber-500/30 bg-amber-500/10 text-amber-700';
+
+  const syncedBalance = providerAccount?.availableBalanceMinor && providerAccount.currency
+    ? formatCurrencyMinor(providerAccount.availableBalanceMinor, providerAccount.currency)
+    : 'Unavailable';
+  const syncedAt = providerAccount?.lastSyncedAt
+    ? formatDateTime(providerAccount.lastSyncedAt)
+    : 'Not synced yet';
+
+  return (
+    <Card className={ walletCardClassName }>
+      <CardHeader className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              <FiActivity className="size-4" aria-hidden="true" />
+              Xendit payout rail
+            </div>
+            <CardTitle className="text-base">Provider account status</CardTitle>
+            <CardDescription className="max-w-2xl">
+              { providerAccount?.statusMessage ?? 'Enable payouts in Partner Settings to create your Xendit payout account and start syncing provider-backed balances.' }
+            </CardDescription>
+          </div>
+          <Badge variant="outline" className={ badgeClassName }>
+            { providerAccount?.statusLabel ?? 'Not enabled' }
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-md border border-border/60 bg-background px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Provider balance
+          </p>
+          <p className="mt-1 text-sm font-semibold text-foreground">{ syncedBalance }</p>
+        </div>
+        <div className="rounded-md border border-border/60 bg-background px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Account reference
+          </p>
+          <p className="mt-1 text-sm font-semibold text-foreground">
+            { providerAccount?.providerAccountReference ?? 'Not created yet' }
+          </p>
+        </div>
+        <div className="rounded-md border border-border/60 bg-background px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Last synced
+          </p>
+          <p className="mt-1 text-sm font-semibold text-foreground">{ syncedAt }</p>
+        </div>
+        { providerAccount?.syncWarning ? (
+          <div className="sm:col-span-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800">
+            Latest provider sync warning: { providerAccount.syncWarning }
+          </div>
+        ) : null }
+        <div className="sm:col-span-3 flex flex-wrap gap-2">
+          <Button asChild variant={ isReady ? 'outline' : 'default' }>
+            <Link href="/partner/settings">
+              { isReady ? 'Manage payout setup' : 'Enable payouts in settings' }
+              <FiArrowUpRight className="size-4" aria-hidden="true" />
+            </Link>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -494,27 +612,44 @@ function WalletWithdrawalsCard({
   walletCardClassName,
   balanceMinor,
   currency,
+  providerAccount,
   onPayoutSuccess,
 }: {
   walletCardClassName: string;
   balanceMinor?: string;
   currency?: string;
+  providerAccount: PartnerProviderAccountView | null;
   onPayoutSuccess?: () => void;
 }) {
   const authFetch = useAuthenticatedFetch();
   const [payoutDialogOpen, setPayoutDialogOpen] = useState(false);
   const [payoutAmount, setPayoutAmount] = useState('');
+  const [payoutChannelCode, setPayoutChannelCode] = useState('');
+  const [payoutAccountNumber, setPayoutAccountNumber] = useState('');
+  const [payoutAccountHolderName, setPayoutAccountHolderName] = useState('');
   const [isPayoutPending, setIsPayoutPending] = useState(false);
   const [confirmStep, setConfirmStep] = useState(false);
-
   const balanceNum = Number(balanceMinor ?? '0');
   const canPayout = balanceNum >= 10000;
+  const isProviderReady = providerAccount?.setupState === 'ready';
   const resolvedCurrency = currency ?? 'PHP';
+  const {
+    data: payoutChannels = [],
+    isLoading: isPayoutChannelsLoading,
+    error: payoutChannelsError,
+  } = usePayoutChannelsQuery({ enabled: payoutDialogOpen && isProviderReady, });
 
   const parsedAmountMinor = useMemo(
     () => parseDisplayAmountToMinor(payoutAmount),
     [payoutAmount]
   );
+  const selectedPayoutChannel = useMemo(
+    () => payoutChannels.find((channel) => channel.channelCode === payoutChannelCode) ?? null,
+    [payoutChannelCode, payoutChannels]
+  );
+  const payoutDestinationSummary = selectedPayoutChannel
+    ? `${selectedPayoutChannel.channelName} · ${maskDestinationAccountNumber(payoutAccountNumber)}`
+    : null;
 
   const handleReviewRequest = useCallback(() => {
     if (parsedAmountMinor === null || parsedAmountMinor < 10000) {
@@ -525,11 +660,23 @@ function WalletWithdrawalsCard({
       toast.error('Payout amount exceeds available balance.');
       return;
     }
+    if (!selectedPayoutChannel) {
+      toast.error('Select a payout destination.');
+      return;
+    }
+    if (!payoutAccountNumber.trim()) {
+      toast.error('Account number is required.');
+      return;
+    }
+    if (!payoutAccountHolderName.trim()) {
+      toast.error('Account holder name is required.');
+      return;
+    }
     setConfirmStep(true);
-  }, [parsedAmountMinor, balanceNum]);
+  }, [balanceNum, parsedAmountMinor, payoutAccountHolderName, payoutAccountNumber, selectedPayoutChannel]);
 
   const handleConfirmPayout = useCallback(async () => {
-    if (parsedAmountMinor === null || parsedAmountMinor < 10000) {
+    if (parsedAmountMinor === null || parsedAmountMinor < 10000 || !selectedPayoutChannel) {
       return;
     }
 
@@ -538,7 +685,14 @@ function WalletWithdrawalsCard({
       const response = await authFetch('/api/v1/wallet/payout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', },
-        body: JSON.stringify({ amountMinor: parsedAmountMinor, }),
+        body: JSON.stringify({
+          amountMinor: parsedAmountMinor,
+          destination: {
+            channelCode: selectedPayoutChannel.channelCode,
+            accountNumber: payoutAccountNumber.trim(),
+            accountHolderName: payoutAccountHolderName.trim(),
+          },
+        }),
       });
       const payload = await response.json();
       if (!response.ok) {
@@ -547,6 +701,9 @@ function WalletWithdrawalsCard({
       toast.success('Payout request submitted.');
       setPayoutDialogOpen(false);
       setPayoutAmount('');
+      setPayoutChannelCode('');
+      setPayoutAccountNumber('');
+      setPayoutAccountHolderName('');
       setConfirmStep(false);
       onPayoutSuccess?.();
     } catch (error) {
@@ -554,12 +711,22 @@ function WalletWithdrawalsCard({
     } finally {
       setIsPayoutPending(false);
     }
-  }, [authFetch, onPayoutSuccess, parsedAmountMinor]);
+  }, [
+    authFetch,
+    onPayoutSuccess,
+    parsedAmountMinor,
+    payoutAccountHolderName,
+    payoutAccountNumber,
+    selectedPayoutChannel
+  ]);
 
   const handleDialogOpenChange = useCallback((open: boolean) => {
     setPayoutDialogOpen(open);
     if (!open) {
       setPayoutAmount('');
+      setPayoutChannelCode('');
+      setPayoutAccountNumber('');
+      setPayoutAccountHolderName('');
       setConfirmStep(false);
     }
   }, []);
@@ -571,35 +738,29 @@ function WalletWithdrawalsCard({
           <div className="space-y-1">
             <div className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground">
               <FiDollarSign className="size-4" aria-hidden="true" />
-              PayMongo withdrawals
+              Withdrawal requests
             </div>
             <CardTitle className="text-base">Withdrawals</CardTitle>
             <CardDescription className="max-w-2xl">
-              Payouts are managed through PayMongo. This balance represents funds collected
-              from bookings that PayMongo released to you.
+              { providerAccount?.setupState === 'ready'
+                ? 'Provider-backed balance sync is active. Submit a destination with each payout request, and the admin queue will review it before provider submission.'
+                : 'Submit payout requests from your current UpSpace wallet balance. Enable payouts in Partner Settings to prepare for provider-backed withdrawals.' }
             </CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               onClick={ () => setPayoutDialogOpen(true) }
-              disabled={ !canPayout }
+              disabled={ !canPayout || !isProviderReady }
             >
               <FiSend className="mr-2 size-4" aria-hidden="true" />
               Request payout
             </Button>
-            <Button
-              asChild
-              className="dark:border dark:border-input dark:bg-background dark:text-foreground dark:hover:bg-input/50"
-            >
-              <a
-                href="https://dashboard.paymongo.com"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Open PayMongo dashboard
+            <Button asChild className="dark:border dark:border-input dark:bg-background dark:text-foreground dark:hover:bg-input/50">
+              <Link href="/partner/settings">
+                Payout settings
                 <FiArrowUpRight className="size-4" aria-hidden="true" />
-              </a>
+              </Link>
             </Button>
           </div>
         </CardHeader>
@@ -627,6 +788,18 @@ function WalletWithdrawalsCard({
                     <span className="text-muted-foreground">Balance after withdrawal</span>
                     <span className="font-semibold text-foreground">
                       { formatCurrencyMinor(String(balanceNum - parsedAmountMinor), resolvedCurrency) }
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Destination</span>
+                    <span className="text-right font-semibold text-foreground">
+                      { payoutDestinationSummary ?? '—' }
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Account holder</span>
+                    <span className="text-right font-semibold text-foreground">
+                      { payoutAccountHolderName.trim() || '—' }
                     </span>
                   </div>
                 </div>
@@ -681,7 +854,66 @@ function WalletWithdrawalsCard({
                     onChange={ (e) => setPayoutAmount(e.target.value) }
                     aria-label="Payout amount in PHP"
                   />
-                  <p className="text-xs text-muted-foreground">Minimum payout: ₱100</p>
+                  <p className="text-xs text-muted-foreground">
+                    Minimum payout: ₱100
+                    { !isProviderReady ? ' · Enable payouts in settings first.' : '' }
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="payout-destination">Destination</Label>
+                  <Select value={ payoutChannelCode } onValueChange={ setPayoutChannelCode }>
+                    <SelectTrigger
+                      id="payout-destination"
+                      aria-label="Payout destination"
+                      disabled={ isPayoutChannelsLoading || Boolean(payoutChannelsError) }
+                    >
+                      <SelectValue
+                        placeholder={
+                          isPayoutChannelsLoading
+                            ? 'Loading destinations...'
+                            : 'Select a bank or e-wallet'
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      { payoutChannels.map((channel) => (
+                        <SelectItem key={ channel.channelCode } value={ channel.channelCode }>
+                          { channel.channelName } ({ channel.category === 'EWALLET' ? 'E-wallet' : 'Bank' })
+                        </SelectItem>
+                      )) }
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Choose where Xendit should send the payout after admin review.
+                  </p>
+                  { payoutChannelsError instanceof Error ? (
+                    <p className="text-xs text-destructive">{ payoutChannelsError.message }</p>
+                  ) : null }
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="payout-account-number">
+                    { selectedPayoutChannel?.category === 'EWALLET' ? 'Mobile number' : 'Account number' }
+                  </Label>
+                  <Input
+                    id="payout-account-number"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder={ selectedPayoutChannel?.category === 'EWALLET' ? '09171234567' : 'Enter destination account number' }
+                    value={ payoutAccountNumber }
+                    onChange={ (event) => setPayoutAccountNumber(event.target.value) }
+                    aria-label="Payout destination account number"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="payout-account-holder-name">Account holder name</Label>
+                  <Input
+                    id="payout-account-holder-name"
+                    type="text"
+                    placeholder="Juan Dela Cruz"
+                    value={ payoutAccountHolderName }
+                    onChange={ (event) => setPayoutAccountHolderName(event.target.value) }
+                    aria-label="Payout destination account holder name"
+                  />
                 </div>
               </div>
               <DialogFooter className="flex-col gap-2 sm:flex-row">
@@ -692,7 +924,14 @@ function WalletWithdrawalsCard({
                   variant="default"
                   className="hover:text-white"
                   onClick={ handleReviewRequest }
-                  disabled={ !payoutAmount }
+                  disabled={
+                    !payoutAmount ||
+                    !payoutChannelCode ||
+                    !payoutAccountNumber.trim() ||
+                    !payoutAccountHolderName.trim() ||
+                    isPayoutChannelsLoading ||
+                    Boolean(payoutChannelsError)
+                  }
                 >
                   Review request
                 </Button>
@@ -736,7 +975,7 @@ function WalletSummaryCards({
             { availableBalance }
           </CardTitle>
           <CardDescription className="text-xs font-medium text-muted-foreground">
-            Settled from bookings
+            Current in-app withdrawable balance
           </CardDescription>
         </CardHeader>
       </Card>
@@ -1218,6 +1457,7 @@ export default function WalletPage() {
   );
 
   const wallet = walletSummary?.wallet;
+  const providerAccount = walletSummary?.providerAccount ?? null;
   const stats = walletSummary?.stats;
   const isLoading = isSummaryLoading || isTxLoading;
   const isError = isSummaryError || isTxError;
@@ -1271,10 +1511,16 @@ export default function WalletPage() {
       <WalletBreadcrumbs />
       <WalletHeader />
 
+      <WalletProviderStatusCard
+        walletCardClassName={ walletCardClassName }
+        providerAccount={ providerAccount }
+      />
+
       <WalletWithdrawalsCard
         walletCardClassName={ walletCardClassName }
         balanceMinor={ wallet?.balanceMinor }
         currency={ wallet?.currency }
+        providerAccount={ providerAccount }
         onPayoutSuccess={ () => {
           void refetchSummary();
           void refetchTx();

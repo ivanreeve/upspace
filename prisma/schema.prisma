@@ -476,6 +476,8 @@ model user {
   unpublish_request_unpublish_request_user_idTouser                    unpublish_request[]    @relation("unpublish_request_user_idTouser")
   verification                                                         verification[]
   wallet                                                               wallet?
+  provider_accounts                                                    partner_provider_account[]
+  wallet_snapshots                                                     partner_wallet_snapshot[]
   processed_wallet_transactions                                        wallet_transaction[]   @relation("wallet_transaction_processed_by")
   ai_conversation                                                      ai_conversation[]
 
@@ -557,6 +559,44 @@ model wallet_transaction {
   @@index([wallet_id, type, status], map: "idx_wallet_transaction_wallet_type_status")
   @@index([processed_by_user_id], map: "idx_wallet_transaction_processed_by")
   @@index([type, status, created_at(sort: Desc)], map: "idx_wallet_transaction_type_status_created")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model partner_provider_account {
+  id                    String                          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  partner_user_id       BigInt
+  provider              financial_provider
+  provider_account_id   String?                         @unique
+  provider_account_type provider_account_type
+  status                partner_provider_account_status @default(creating)
+  currency              String                          @default("PHP") @db.Char(3)
+  metadata              Json?
+  created_at            DateTime                        @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime                        @default(now()) @db.Timestamptz(6)
+  last_synced_at        DateTime?                       @db.Timestamptz(6)
+  partner               user                            @relation(fields: [partner_user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+  wallet_snapshots      partner_wallet_snapshot[]
+
+  @@unique([partner_user_id, provider], map: "uq_partner_provider_account_partner_provider")
+  @@index([partner_user_id, status], map: "idx_partner_provider_account_partner_status")
+  @@index([provider, status], map: "idx_partner_provider_account_provider_status")
+}
+
+model partner_wallet_snapshot {
+  id                          String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  partner_user_id             BigInt
+  partner_provider_account_id String                         @db.Uuid
+  available_balance_minor     BigInt
+  currency                    String                         @default("PHP") @db.Char(3)
+  sync_status                 partner_wallet_snapshot_status @default(synced)
+  failure_reason              String?
+  fetched_at                  DateTime                       @db.Timestamptz(6)
+  created_at                  DateTime                       @default(now()) @db.Timestamptz(6)
+  partner                     user                           @relation(fields: [partner_user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+  provider_account            partner_provider_account       @relation(fields: [partner_provider_account_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([partner_user_id, fetched_at(sort: Desc)], map: "idx_partner_wallet_snapshot_partner_fetched")
+  @@index([partner_provider_account_id, fetched_at(sort: Desc)], map: "idx_partner_wallet_snapshot_account_fetched")
 }
 
 enum amenity_category {
@@ -683,6 +723,7 @@ enum deactivation_request_type {
 
 enum gateway {
   paymongo
+  xendit
 }
 
 enum payment_event_status {
@@ -768,6 +809,31 @@ enum wallet_transaction_type {
   charge
   refund
   payout
+}
+
+enum financial_provider {
+  xendit
+}
+
+enum provider_account_type {
+  owned
+  managed
+}
+
+enum partner_provider_account_status {
+  creating
+  invited
+  registered
+  awaiting_docs
+  pending_verification
+  live
+  suspended
+  error
+}
+
+enum partner_wallet_snapshot_status {
+  synced
+  failed
 }
 
 enum ai_message_role {

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CANCELLABLE_BOOKING_STATUSES } from '@/lib/bookings/constants';
 import { BOOKING_PRICE_MINOR_FACTOR, mapBookingsWithProfiles, normalizeNumeric } from '@/lib/bookings/serializer';
 import { sendBookingCancellationEmail } from '@/lib/email';
+import { submitXenditRefund } from '@/lib/financial/xendit-refunds';
 import { notifyBookingEvent } from '@/lib/notifications/booking';
 import { createPaymongoRefund } from '@/lib/paymongo';
 import { resolveLatestPaidPaymongoPaymentIdForBooking } from '@/lib/paymongo-payment-events';
@@ -103,6 +104,22 @@ headers: { 'Retry-After': error.retryAfter.toString(), },
     return invalidStatusResponse('This booking cannot be cancelled at this time.');
   }
 
+  const settledPayment = await prisma.payment_transaction.findFirst({
+    where: {
+      booking_id: booking.id,
+      status: 'succeeded',
+    },
+    orderBy: { created_at: 'desc', },
+    select: {
+      id: true,
+      provider: true,
+      provider_object_id: true,
+      amount_minor: true,
+      currency_iso3: true,
+      raw_gateway_json: true,
+    },
+  });
+
   // Atomically mark as cancelled to prevent double-cancel race conditions.
   // updateMany with a status filter ensures only one concurrent request succeeds.
   const cancelResult = await prisma.booking.updateMany({
@@ -172,46 +189,47 @@ error: emailError,
   }
 
   if (booking.partner_auth_id) {
-    const paymentId = await resolveLatestPaidPaymongoPaymentIdForBooking(booking.id);
-    if (!paymentId) {
-      console.warn('Unable to resolve payment id for cancelled booking refund', { bookingId: booking.id, });
-    } else {
-      const partnerUser = await prisma.user.findFirst({
-        where: { auth_user_id: booking.partner_auth_id, },
-        select: { user_id: true, },
-      });
+    const partnerUser = await prisma.user.findFirst({
+      where: { auth_user_id: booking.partner_auth_id, },
+      select: { user_id: true, },
+    });
 
-      if (partnerUser?.user_id) {
-        const walletRow = await ensureWalletRow(partnerUser.user_id);
+    if (partnerUser?.user_id && settledPayment) {
+      const walletRow = await ensureWalletRow(partnerUser.user_id);
+      const paymentId = settledPayment.provider === 'paymongo'
+        ? await resolveLatestPaidPaymongoPaymentIdForBooking(booking.id)
+        : (settledPayment.provider_object_id || null);
+
+      if (!paymentId) {
+        console.warn('Unable to resolve payment id for cancelled booking refund', { bookingId: booking.id, });
+      } else {
         const existingRefund = await prisma.wallet_transaction.findFirst({
           where: {
             wallet_id: walletRow.id,
             booking_id: booking.id,
             type: 'refund',
             status: { in: ['pending', 'succeeded'], },
-            metadata: {
-              path: ['payment_id'],
-              equals: paymentId,
-            },
+            OR: [
+              {
+                metadata: {
+                  path: ['payment_transaction_id'],
+                  equals: settledPayment.id,
+                },
+              },
+              {
+                metadata: {
+                  path: ['payment_id'],
+                  equals: paymentId,
+                },
+              }
+            ],
           },
           select: { id: true, },
         });
 
         if (!existingRefund) {
-          const settledPayment = await prisma.payment_transaction.findFirst({
-            where: {
-              booking_id: booking.id,
-              provider: 'paymongo',
-              status: 'succeeded',
-            },
-            orderBy: { created_at: 'desc', },
-            select: {
-              amount_minor: true,
-              currency_iso3: true,
-            },
-          });
           const refundAmountMinor = Number(
-            settledPayment?.amount_minor ?? booking.price_minor ?? 0
+            settledPayment.amount_minor ?? booking.price_minor ?? 0
           );
 
           let refundRecord: { id: string } | null = null;
@@ -223,11 +241,13 @@ error: emailError,
                 status: 'pending',
                 amount_minor: BigInt(refundAmountMinor),
                 net_amount_minor: BigInt(refundAmountMinor),
-                currency: settledPayment?.currency_iso3 ?? booking.currency,
+                currency: settledPayment.currency_iso3 ?? booking.currency,
                 description: `Cancellation refund · ${booking.area_name} · ${booking.space_name}`,
                 booking_id: booking.id,
                 metadata: {
                   payment_id: paymentId,
+                  payment_transaction_id: settledPayment.id,
+                  payment_provider_object_id: settledPayment.provider_object_id,
                   booking_id: booking.id,
                   user_auth_id: booking.user_auth_id,
                 },
@@ -244,47 +264,77 @@ error: emailError,
           if (refundRecord) {
             const refundRecordId = refundRecord.id;
             try {
-              const refundPayload = await createPaymongoRefund({
-                paymentId,
-                amountMinor: refundAmountMinor,
-                reason: 'requested_by_customer',
-                metadata: {
-                  booking_id: booking.id,
-                  user_auth_id: booking.user_auth_id,
-                },
-              });
-
-              await prisma.$transaction(async (tx) => {
-                await tx.wallet_transaction.update({
-                  where: { id: refundRecordId, },
-                  data: {
-                    status: refundPayload.data.attributes.status,
-                    external_reference: refundPayload.data.id,
-                    metadata: {
-                      paymongo_refund_id: refundPayload.data.id,
-                      payment_id: paymentId,
-                      booking_id: booking.id,
-                      user_auth_id: booking.user_auth_id,
-                    },
+              if (settledPayment.provider === 'xendit') {
+                await submitXenditRefund({
+                  walletTransactionId: refundRecordId,
+                  partnerUserId: partnerUser.user_id,
+                  bookingId: booking.id,
+                  paymentTransaction: {
+                    id: settledPayment.id,
+                    provider_object_id: settledPayment.provider_object_id,
+                    amount_minor: settledPayment.amount_minor,
+                    currency_iso3: settledPayment.currency_iso3,
+                    raw_gateway_json: settledPayment.raw_gateway_json,
+                  },
+                  amountMinor: BigInt(refundAmountMinor),
+                  reason: 'cancellation',
+                  requestedByAuthUserId: booking.user_auth_id,
+                  metadata: {
+                    booking_id: booking.id,
+                    user_auth_id: booking.user_auth_id,
+                  },
+                  providedPaymentReference: paymentId,
+                });
+              } else {
+                const refundPayload = await createPaymongoRefund({
+                  paymentId,
+                  amountMinor: refundAmountMinor,
+                  reason: 'requested_by_customer',
+                  metadata: {
+                    booking_id: booking.id,
+                    user_auth_id: booking.user_auth_id,
                   },
                 });
 
-                if (refundPayload.data.attributes.status === 'succeeded') {
-                  await tx.wallet.update({
-                    where: { id: walletRow.id, },
+                await prisma.$transaction(async (tx) => {
+                  await tx.wallet_transaction.update({
+                    where: { id: refundRecordId, },
                     data: {
-                      balance_minor: { decrement: BigInt(refundPayload.data.attributes.amount), },
-                      updated_at: new Date(),
+                      status: refundPayload.data.attributes.status,
+                      external_reference: refundPayload.data.id,
+                      metadata: {
+                        paymongo_refund_id: refundPayload.data.id,
+                        payment_id: paymentId,
+                        payment_transaction_id: settledPayment.id,
+                        payment_provider_object_id: settledPayment.provider_object_id,
+                        booking_id: booking.id,
+                        user_auth_id: booking.user_auth_id,
+                      },
                     },
                   });
-                }
-              });
+
+                  if (refundPayload.data.attributes.status === 'succeeded') {
+                    await tx.wallet.update({
+                      where: { id: walletRow.id, },
+                      data: {
+                        balance_minor: { decrement: BigInt(refundPayload.data.attributes.amount), },
+                        updated_at: new Date(),
+                      },
+                    });
+                  }
+                });
+              }
             } catch (refundError) {
-              console.error('Failed to create PayMongo refund for cancelled booking', {
-                bookingId: booking.id,
-                refundRecordId,
-                error: refundError,
-              });
+              console.error(
+                settledPayment.provider === 'xendit'
+                  ? 'Failed to create Xendit refund for cancelled booking'
+                  : 'Failed to create PayMongo refund for cancelled booking',
+                {
+                  bookingId: booking.id,
+                  refundRecordId,
+                  error: refundError,
+                }
+              );
 
               await prisma.wallet_transaction.update({
                 where: { id: refundRecordId, },

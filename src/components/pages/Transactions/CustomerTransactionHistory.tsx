@@ -67,6 +67,11 @@ const LOCALE_OPTIONS = {
 const formatDateTime = (value: string) =>
   new Date(value).toLocaleString('en-PH', LOCALE_OPTIONS);
 
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  paymongo: 'PayMongo',
+  xendit: 'Xendit',
+};
+
 const safeBigInt = (value: string | null | undefined) => {
   if (!value) {
     return 0n;
@@ -122,6 +127,7 @@ function buildCustomerLedgerRows(
     const reference = transaction.id.slice(0, 8).toUpperCase();
     const workspaceLabel = `${transaction.spaceName} - ${transaction.areaName}`;
     const cumulativeMinor = cumulativeByTransactionId.get(transaction.id) ?? null;
+    const paymentLabel = PAYMENT_METHOD_LABELS[transaction.paymentMethod] ?? transaction.paymentMethod;
 
     const debitRow: CustomerLedgerRow = {
       id: `${transaction.id}-expense`,
@@ -130,7 +136,7 @@ function buildCustomerLedgerRows(
       reference,
       bookingStatus: transaction.bookingStatus,
       account: 'Booking Expense',
-      details: `${workspaceLabel} | ${transaction.paymentMethod}`,
+      details: `${workspaceLabel} | ${paymentLabel}`,
       debitMinor: amountMinor,
       creditMinor: null,
       cumulativeSpendMinor: cumulativeMinor,

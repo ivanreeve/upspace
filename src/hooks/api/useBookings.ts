@@ -135,7 +135,7 @@ export function useCreateCheckoutSessionMutation() {
 
   return useMutation<CreateCheckoutSessionResponse, Error, CreateCheckoutSessionInput>({
     mutationFn: async (payload) => {
-      const response = await authFetch('/api/v1/paymongo/checkout', {
+      const response = await authFetch('/api/v1/financial/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', },
         body: JSON.stringify({

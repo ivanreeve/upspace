@@ -53,7 +53,10 @@ const BOOKING_STATUS_VARIANTS: Record<BookingStatus, 'success' | 'secondary' | '
   noshow: 'destructive',
 };
 
-const PAYMENT_METHOD_LABELS: Record<string, string> = { paymongo: 'PayMongo', };
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  paymongo: 'PayMongo',
+  xendit: 'Xendit',
+};
 
 const LOCALE_OPTIONS = {
   month: 'short',
