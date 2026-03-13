@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import {
   parseXenditInvoicePayload,
   parseXenditAccountPayload,
@@ -156,6 +158,25 @@ function isXenditLiveMode() {
   return (XENDIT_SECRET_KEY ?? '').trim().startsWith('xnd_production_');
 }
 
+function parseXenditPayload<T>(
+  payload: unknown,
+  parser: (value: unknown) => T,
+  context: string
+): T {
+  try {
+    return parser(payload);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new ProviderValidationError(
+        `Xendit returned an invalid ${context} payload.`,
+        502
+      );
+    }
+
+    throw error;
+  }
+}
+
 async function xenditFetch<T>(path: string, init: XenditRequestInit = {}) {
   ensureXenditSecretKey();
 
@@ -274,7 +295,7 @@ export class XenditFinancialProvider implements FinancialProvider {
       }),
     });
 
-    const account = parseXenditAccountPayload(payload);
+    const account = parseXenditPayload(payload, parseXenditAccountPayload, 'account');
 
     return {
       provider: this.name,
@@ -288,7 +309,7 @@ export class XenditFinancialProvider implements FinancialProvider {
 
   async getPartnerAccountStatus(accountId: string): Promise<PartnerProviderAccountStatusResult> {
     const payload = await xenditFetch<unknown>(`/v2/accounts/${accountId}`, { method: 'GET', });
-    const account = parseXenditAccountPayload(payload);
+    const account = parseXenditPayload(payload, parseXenditAccountPayload, 'account');
 
     return {
       providerAccountId: account.id,
@@ -304,7 +325,7 @@ export class XenditFinancialProvider implements FinancialProvider {
       method: 'GET',
       accountId,
     });
-    const balances = parseXenditBalancePayload(payload);
+    const balances = parseXenditPayload(payload, parseXenditBalancePayload, 'balance');
     const cashBalance =
       balances.find((entry) => entry.type?.toUpperCase() === 'CASH') ??
       balances[0];
@@ -340,7 +361,7 @@ export class XenditFinancialProvider implements FinancialProvider {
       }),
     });
 
-    const invoice = parseXenditInvoicePayload(payload);
+    const invoice = parseXenditPayload(payload, parseXenditInvoicePayload, 'invoice');
 
     return {
       paymentId: invoice.id,
@@ -369,7 +390,7 @@ export class XenditFinancialProvider implements FinancialProvider {
       }
     );
 
-    const payment = parseXenditPaymentPayload(payload);
+    const payment = parseXenditPayload(payload, parseXenditPaymentPayload, 'payment');
 
     return {
       paymentId: payment.id,
@@ -389,7 +410,11 @@ export class XenditFinancialProvider implements FinancialProvider {
       `/available_disbursements_channels?currency=${encodeURIComponent(currency)}`,
       { method: 'GET', }
     );
-    const channels = parseXenditPayoutChannelsPayload(payload);
+    const channels = parseXenditPayload(
+      payload,
+      parseXenditPayoutChannelsPayload,
+      'payout channels'
+    );
 
     return channels.map((channel) => ({
       channelCode: channel.channel_code,
@@ -426,7 +451,7 @@ export class XenditFinancialProvider implements FinancialProvider {
       }),
     });
 
-    const refund = parseXenditRefundPayload(payload);
+    const refund = parseXenditPayload(payload, parseXenditRefundPayload, 'refund');
 
     return {
       refundId: refund.id,
@@ -463,7 +488,9 @@ export class XenditFinancialProvider implements FinancialProvider {
       }),
     });
 
-    return this.mapPayoutResult(parseXenditPayoutPayload(payload));
+    const payout = parseXenditPayload(payload, parseXenditPayoutPayload, 'payout');
+
+    return this.mapPayoutResult(payout);
   }
 
   async getPayout(payoutId: string, partnerProviderAccountId: string): Promise<ProviderPayoutResult> {
@@ -475,7 +502,9 @@ export class XenditFinancialProvider implements FinancialProvider {
       }
     );
 
-    return this.mapPayoutResult(parseXenditPayoutPayload(payload));
+    const payout = parseXenditPayload(payload, parseXenditPayoutPayload, 'payout');
+
+    return this.mapPayoutResult(payout);
   }
 
   async getPayoutsByReferenceId(
@@ -490,6 +519,8 @@ export class XenditFinancialProvider implements FinancialProvider {
       }
     );
 
-    return parseXenditPayoutListPayload(payload).map((entry) => this.mapPayoutResult(entry));
+    const payouts = parseXenditPayload(payload, parseXenditPayoutListPayload, 'payout list');
+
+    return payouts.map((entry) => this.mapPayoutResult(entry));
   }
 }
