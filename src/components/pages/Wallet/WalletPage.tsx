@@ -14,7 +14,6 @@ import {
   FiArrowDownLeft,
   FiArrowUpRight,
   FiBarChart2,
-  FiDollarSign,
   FiInbox,
   FiLoader,
   FiPieChart,
@@ -22,6 +21,7 @@ import {
   FiSend,
   FiTrendingUp
 } from 'react-icons/fi';
+import { FaPesoSign } from 'react-icons/fa6';
 import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
@@ -74,10 +74,17 @@ import { useUserProfile } from '@/hooks/use-user-profile';
 import { formatCurrencyMinor } from '@/lib/wallet';
 
 const TRANSACTION_TYPE_LABELS: Record<WalletTransactionType, string> = {
-  cash_in: 'Top-up',
+  cash_in: 'Wallet credit',
   charge: 'Booking charge',
   refund: 'Refund',
-  payout: 'Payout',
+  payout: 'Payout request',
+};
+
+const TRANSACTION_TYPE_DESCRIPTIONS: Record<WalletTransactionType, string> = {
+  cash_in: 'A manual or provider-side wallet credit.',
+  charge: 'Earnings credited from a customer booking payment.',
+  refund: 'Funds returned to the customer for a booking.',
+  payout: 'Your request to withdraw available wallet earnings.',
 };
 
 const TRANSACTION_TYPE_ICONS: Record<WalletTransactionType, ComponentType<{ className?: string }>> = {
@@ -134,6 +141,13 @@ type WalletAnalytics = {
   maxMonthMagnitude: number;
 };
 
+type WalletQuickNote = {
+  badge: string;
+  value: string;
+  description: string;
+  accentClassName: string;
+};
+
 const EMPTY_ANALYTICS: WalletAnalytics = {
   total: 0,
   typeCounts: {
@@ -148,7 +162,7 @@ const EMPTY_ANALYTICS: WalletAnalytics = {
     failed: 0,
   },
   successfulRate: 0,
-  topType: 'None',
+  topType: 'No activity yet',
   averageCharge: '₱0.00',
   monthSeries: [],
   maxMonthMagnitude: 1,
@@ -275,8 +289,10 @@ function useWalletAnalytics(
     const successfulRate = total > 0
       ? Math.round((statusCounts.succeeded / total) * 100)
       : 0;
-    const topType = (Object.entries(typeCounts) as Array<[WalletTransactionType, number]>)
-      .sort((a, b) => b[1] - a[1])[0];
+    const topType = total > 0
+      ? (Object.entries(typeCounts) as Array<[WalletTransactionType, number]>)
+        .sort((a, b) => b[1] - a[1])[0]
+      : null;
     const averageChargeMinor = chargeAmountsMinor.length > 0
       ? Math.round(chargeAmountsMinor.reduce((sum, value) => sum + value, 0) / chargeAmountsMinor.length)
       : 0;
@@ -286,7 +302,7 @@ function useWalletAnalytics(
       typeCounts,
       statusCounts,
       successfulRate,
-      topType: topType ? TRANSACTION_TYPE_LABELS[topType[0]] : 'None',
+      topType: topType ? TRANSACTION_TYPE_LABELS[topType[0]] : 'No activity yet',
       averageCharge: formatCurrencyMinor(String(averageChargeMinor), currency),
       monthSeries,
       maxMonthMagnitude,
@@ -296,7 +312,7 @@ function useWalletAnalytics(
 
 function WalletPageFrame({ children, }: { children: ReactNode }) {
   return (
-    <div className="w-full px-4 pb-8 sm:px-6 lg:px-10">
+    <div className="w-full bg-[radial-gradient(circle_at_top_left,rgba(210,167,103,0.14),transparent_30%),radial-gradient(circle_at_top_right,rgba(13,148,136,0.08),transparent_28%)] px-4 pb-10 sm:px-6 lg:px-10">
       <section className="space-y-6 py-8 md:space-y-8 md:py-12">
         { children }
       </section>
@@ -307,20 +323,26 @@ function WalletPageFrame({ children, }: { children: ReactNode }) {
 function TransactionArticle({ transaction, }: { transaction: WalletTransactionRecord }) {
   const Icon = TRANSACTION_TYPE_ICONS[transaction.type] ?? FiArrowUpRight;
   const label = TRANSACTION_TYPE_LABELS[transaction.type] ?? 'Transaction';
+  const description = TRANSACTION_TYPE_DESCRIPTIONS[transaction.type] ?? null;
   const badgeVariant = STATUS_BADGE_VARIANTS[transaction.status] ?? 'secondary';
   const amountLabel = formatCurrencyMinor(transaction.amountMinor, transaction.currency);
   const isCredit = transaction.type === 'charge' || transaction.type === 'cash_in';
 
   return (
-    <article className="group relative flex items-center justify-between gap-4 rounded-md border bg-sidebar px-4 py-3 transition-colors hover:bg-accent/20 dark:bg-card">
+    <article className="group relative flex items-center justify-between gap-4 rounded-md border border-border/60 bg-background/95 px-4 py-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-border hover:bg-accent/20 hover:shadow-md dark:bg-card">
       <div className="min-w-0 flex items-center gap-4">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-md border bg-muted/30 text-muted-foreground transition-colors group-hover:text-foreground">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/40 text-muted-foreground transition-colors group-hover:text-foreground">
           <Icon className="size-4" aria-hidden="true" />
         </div>
         <div className="min-w-0 flex flex-col gap-0.5">
           <p className="truncate text-sm font-semibold text-foreground">
             { label }
           </p>
+          { description && (
+            <p className="truncate text-xs text-muted-foreground">
+              { description }
+            </p>
+          ) }
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span>{ formatDateTime(transaction.createdAt) }</span>
             { transaction.bookingId && (
@@ -389,12 +411,11 @@ function WalletPageSkeleton() {
 function PartnerOnlyState() {
   return (
     <WalletPageFrame>
-      <Card className="rounded-md border-dashed">
+      <Card className="rounded-md border-dashed border-amber-300/60 bg-background/90 shadow-sm">
         <CardHeader className="p-8 text-center">
-          <CardTitle className="text-xl">Partner wallet only</CardTitle>
+          <CardTitle className="text-xl">Wallet unavailable</CardTitle>
           <CardDescription className="mx-auto max-w-md pt-2 text-balance">
-            Wallets are reserved for partners. Customers pay through the booking
-            checkout, and funds are credited directly to the partner&apos;s wallet.
+            This account does not have access to the earnings wallet view. Sign in with your partner account to review booking earnings, refunds, and payout requests.
           </CardDescription>
           <div className="pt-6">
             <Button asChild>
@@ -410,11 +431,11 @@ function PartnerOnlyState() {
 function WalletErrorState({ onRetry, }: { onRetry: () => void }) {
   return (
     <WalletPageFrame>
-      <Card className="rounded-md border-destructive/20 bg-destructive/5">
+      <Card className="rounded-md border-destructive/20 bg-destructive/5 shadow-sm">
         <CardHeader className="p-8 text-center">
           <CardTitle>Unable to load wallet</CardTitle>
           <CardDescription className="pt-2">
-            Something went wrong while loading your wallet data.
+            Something went wrong while loading your partner wallet. Try again to refresh earnings, refunds, and payout requests.
           </CardDescription>
           <div className="pt-6">
             <Button variant="outline" onClick={ onRetry }>
@@ -447,13 +468,52 @@ function WalletBreadcrumbs() {
 
 function WalletHeader() {
   return (
-    <div className="space-y-1">
-      <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
-        Wallet
-      </h2>
-      <p className="text-sm text-muted-foreground md:text-base">
-        Track your earnings, refunds, and payouts from UpSpace bookings.
-      </p>
+    <div className="overflow-hidden rounded-md border border-border/60 bg-[linear-gradient(135deg,rgba(255,248,235,0.95),rgba(255,255,255,0.98))] shadow-sm dark:bg-[linear-gradient(135deg,rgba(39,39,42,0.92),rgba(24,24,27,0.98))]">
+      <div className="flex flex-col gap-4 px-6 py-6 md:flex-row md:items-end md:justify-between md:px-8">
+        <div className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-700/80 dark:text-amber-300/80">
+            Partner earnings wallet
+          </p>
+          <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
+            Wallet
+          </h2>
+          <p className="max-w-2xl text-sm text-muted-foreground md:text-base">
+            Track booking earnings, customer refunds, and payout requests from one partner-only ledger.
+          </p>
+        </div>
+        <div className="rounded-md border border-amber-200/70 bg-background/80 px-4 py-3 text-sm text-muted-foreground shadow-sm dark:border-amber-900/50 dark:bg-background/30">
+          Customers pay through checkout. Your wallet records the earnings side of those bookings.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WalletQuickNotes({ notes, }: {
+  notes: WalletQuickNote[];
+}) {
+  return (
+    <div className="grid gap-3 md:grid-cols-3">
+      { notes.map((note) => (
+        <Card
+          key={ note.badge }
+          className="rounded-md border border-border/60 bg-background/80 shadow-sm backdrop-blur"
+        >
+          <CardHeader className="space-y-1 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <Badge
+                variant="secondary"
+                className="rounded-md px-2 py-0.5 text-[10px] uppercase tracking-wide"
+              >
+                { note.badge }
+              </Badge>
+              <div className={ `h-2 w-2 rounded-full ${note.accentClassName}` } />
+            </div>
+            <CardTitle className="text-xl font-semibold tracking-tight">{ note.value }</CardTitle>
+            <CardDescription className="text-xs leading-5">{ note.description }</CardDescription>
+          </CardHeader>
+        </Card>
+      )) }
     </div>
   );
 }
@@ -516,18 +576,18 @@ function WalletWithdrawalsCard({
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <div className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground">
-              <FiDollarSign className="size-4" aria-hidden="true" />
-              PayMongo withdrawals
+              <FaPesoSign className="size-4" aria-hidden="true" />
+              Partner withdrawals
             </div>
-            <CardTitle className="text-base">Withdrawals</CardTitle>
+            <CardTitle className="text-base">Payout requests</CardTitle>
             <CardDescription className="max-w-2xl">
-              Payouts are managed through PayMongo. This balance represents funds collected
-              from bookings that PayMongo released to you.
+              Request a payout from your available wallet earnings. A request is recorded first and may remain pending until it is processed.
             </CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
+              className="border-amber-300/70 bg-amber-50/70 hover:bg-amber-100/80 dark:border-amber-900/50 dark:bg-amber-950/20"
               onClick={ () => setPayoutDialogOpen(true) }
               disabled={ !canPayout }
             >
@@ -543,7 +603,7 @@ function WalletWithdrawalsCard({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Open PayMongo dashboard
+                Open PayMongo
                 <FiArrowUpRight className="size-4" aria-hidden="true" />
               </a>
             </Button>
@@ -556,7 +616,7 @@ function WalletWithdrawalsCard({
           <DialogHeader>
             <DialogTitle>Request payout</DialogTitle>
             <DialogDescription>
-              Available balance: { formatCurrencyMinor(balanceMinor ?? '0', currency ?? 'PHP') }
+              Available balance: { formatCurrencyMinor(balanceMinor ?? '0', currency ?? 'PHP') }. Submitting this creates a payout request for your partner wallet.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -572,7 +632,9 @@ function WalletWithdrawalsCard({
                 onChange={ (e) => setPayoutAmount(e.target.value) }
                 aria-label="Payout amount in PHP"
               />
-              <p className="text-xs text-muted-foreground">Minimum payout: ₱100</p>
+              <p className="text-xs text-muted-foreground">
+                Minimum payout: ₱100. If another payout request is already pending, you will need to wait for it to be processed first.
+              </p>
             </div>
           </div>
           <DialogFooter className="flex-col gap-2 sm:flex-row">
@@ -613,31 +675,31 @@ function WalletSummaryCards({
   return (
     <div className="grid gap-4 md:grid-cols-3">
       <Card className={ walletCardClassName }>
-        <CardHeader className="space-y-1 px-5 py-2.5">
+        <CardHeader className="space-y-1 px-5 py-4">
           <div className="flex items-center justify-between">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               Available balance
             </p>
-            <div className="rounded-md border bg-muted/30 p-1.5 text-muted-foreground">
-              <FiDollarSign className="size-4" aria-hidden="true" />
+            <div className="rounded-md border border-emerald-200/70 bg-emerald-50/80 p-1.5 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300">
+              <FaPesoSign className="size-4" aria-hidden="true" />
             </div>
           </div>
           <CardTitle className="text-3xl font-bold tracking-tight">
             { availableBalance }
           </CardTitle>
           <CardDescription className="text-xs font-medium text-muted-foreground">
-            Settled from bookings
+            Current partner wallet balance
           </CardDescription>
         </CardHeader>
       </Card>
 
       <Card className={ walletCardClassName }>
-        <CardHeader className="space-y-1 px-5 py-2.5">
+        <CardHeader className="space-y-1 px-5 py-4">
           <div className="flex items-center justify-between">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               Total earned
             </p>
-            <div className="rounded-md border bg-muted/30 p-1.5 text-muted-foreground">
+            <div className="rounded-md border border-sky-200/70 bg-sky-50/80 p-1.5 text-sky-700 dark:border-sky-900/50 dark:bg-sky-950/30 dark:text-sky-300">
               <FiTrendingUp className="size-4" aria-hidden="true" />
             </div>
           </div>
@@ -645,18 +707,18 @@ function WalletSummaryCards({
             { totalEarned }
           </CardTitle>
           <CardDescription className="text-xs font-medium text-muted-foreground">
-            Lifetime booking charges
+            Lifetime booking earnings credited
           </CardDescription>
         </CardHeader>
       </Card>
 
       <Card className={ walletCardClassName }>
-        <CardHeader className="space-y-1 px-5 py-2.5">
+        <CardHeader className="space-y-1 px-5 py-4">
           <div className="flex items-center justify-between">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               Total refunded
             </p>
-            <div className="rounded-md border bg-muted/30 p-1.5 text-muted-foreground">
+            <div className="rounded-md border border-rose-200/70 bg-rose-50/80 p-1.5 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300">
               <FiRotateCcw className="size-4" aria-hidden="true" />
             </div>
           </div>
@@ -664,7 +726,7 @@ function WalletSummaryCards({
             { totalRefunded }
           </CardTitle>
           <CardDescription className="text-xs font-medium text-muted-foreground">
-            Lifetime refunds issued
+            Lifetime refunds returned to customers
           </CardDescription>
         </CardHeader>
       </Card>
@@ -682,7 +744,10 @@ function WalletAnalyticsHighlights({
   return (
     <div className="grid gap-4 md:grid-cols-3">
       <Card className={ walletCardClassName }>
-        <CardHeader className="space-y-1 px-5 py-2.5">
+        <CardHeader className="space-y-1 px-5 py-4">
+          <Badge variant="secondary" className="w-fit rounded-md px-2 py-0.5 text-[10px] uppercase tracking-wide">
+            Reliability
+          </Badge>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Success rate
           </p>
@@ -691,13 +756,16 @@ function WalletAnalyticsHighlights({
             { analytics.successfulRate }%
           </CardTitle>
           <CardDescription className="text-xs font-medium text-muted-foreground">
-            Succeeded transaction ratio
+            Share of loaded wallet activity with a succeeded status
           </CardDescription>
         </CardHeader>
       </Card>
 
       <Card className={ walletCardClassName }>
-        <CardHeader className="space-y-1 px-5 py-2.5">
+        <CardHeader className="space-y-1 px-5 py-4">
+          <Badge variant="secondary" className="w-fit rounded-md px-2 py-0.5 text-[10px] uppercase tracking-wide">
+            Pattern
+          </Badge>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Most common type
           </p>
@@ -706,13 +774,16 @@ function WalletAnalyticsHighlights({
             { analytics.topType }
           </CardTitle>
           <CardDescription className="text-xs font-medium text-muted-foreground">
-            Highest count in current activity list
+            The transaction type that appears most in the loaded activity list
           </CardDescription>
         </CardHeader>
       </Card>
 
       <Card className={ walletCardClassName }>
-        <CardHeader className="space-y-1 px-5 py-2.5">
+        <CardHeader className="space-y-1 px-5 py-4">
+          <Badge variant="secondary" className="w-fit rounded-md px-2 py-0.5 text-[10px] uppercase tracking-wide">
+            Benchmark
+          </Badge>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Avg booking charge
           </p>
@@ -721,7 +792,7 @@ function WalletAnalyticsHighlights({
             { analytics.averageCharge }
           </CardTitle>
           <CardDescription className="text-xs font-medium text-muted-foreground">
-            Mean amount from charge transactions
+            Mean amount across loaded booking charge transactions
           </CardDescription>
         </CardHeader>
       </Card>
@@ -738,11 +809,16 @@ function StatusDistributionCard({
 }) {
   return (
     <Card className={ walletCardClassName }>
-      <CardHeader className="px-5 py-2.5">
+      <CardHeader className="px-5 py-4">
         <CardTitle className="text-sm font-semibold">Status distribution</CardTitle>
-        <CardDescription className="text-xs">How your transactions are resolving.</CardDescription>
+        <CardDescription className="text-xs">How loaded wallet transactions are resolving.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 px-5 pb-4 pt-0">
+        { analytics.total === 0 && (
+          <p className="text-xs text-muted-foreground">
+            No activity yet. Status insights will appear after bookings, refunds, or payout requests are recorded.
+          </p>
+        ) }
         { (Object.entries(analytics.statusCounts) as Array<[WalletTransactionStatus, number]>).map(([status, count]) => {
           const percent = analytics.total > 0 ? Math.round((count / analytics.total) * 100) : 0;
           return (
@@ -774,11 +850,16 @@ function TransactionMixCard({
 }) {
   return (
     <Card className={ walletCardClassName }>
-      <CardHeader className="px-5 py-2.5">
+      <CardHeader className="px-5 py-4">
         <CardTitle className="text-sm font-semibold">Transaction mix</CardTitle>
-        <CardDescription className="text-xs">Share by wallet transaction type.</CardDescription>
+        <CardDescription className="text-xs">Share of loaded activity by partner wallet transaction type.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 px-5 pb-4 pt-0">
+        { analytics.total === 0 && (
+          <p className="text-xs text-muted-foreground">
+            Booking earnings, refunds, and payout requests will be broken down here once activity starts coming in.
+          </p>
+        ) }
         { (Object.entries(analytics.typeCounts) as Array<[WalletTransactionType, number]>).map(([type, count]) => {
           const percent = analytics.total > 0 ? Math.round((count / analytics.total) * 100) : 0;
           return (
@@ -810,9 +891,9 @@ function NetFlowTrendCard({
 }) {
   return (
     <Card className={ walletCardClassName }>
-      <CardHeader className="px-5 py-2.5">
+      <CardHeader className="px-5 py-4">
         <CardTitle className="text-sm font-semibold">Net flow trend (last 6 months)</CardTitle>
-        <CardDescription className="text-xs">Charges/top-ups minus payouts/refunds.</CardDescription>
+        <CardDescription className="text-xs">Booking earnings and wallet credits minus refunds and payout requests.</CardDescription>
       </CardHeader>
       <CardContent className="grid grid-cols-2 gap-3 px-5 pb-4 pt-0 sm:grid-cols-3 lg:grid-cols-6">
         { analytics.monthSeries.map((month) => {
@@ -851,11 +932,14 @@ function WalletAnalyticsSection({
   analytics: WalletAnalytics;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 rounded-md border border-border/60 bg-background/50 p-4 shadow-sm backdrop-blur-sm md:p-5">
       <div className="flex flex-col gap-1">
+        <Badge variant="secondary" className="w-fit rounded-md px-2 py-0.5 text-[10px] uppercase tracking-wide">
+          Analytics
+        </Badge>
         <h3 className="text-lg font-semibold tracking-tight">Wallet analytics</h3>
         <p className="text-xs text-muted-foreground">
-          Based on currently loaded activity ({ analytics.total } transaction{ analytics.total === 1 ? '' : 's' }).
+          Based on currently loaded activity ({ analytics.total } transaction{ analytics.total === 1 ? '' : 's' }). These cards reflect the visible list below, not the entire lifetime ledger.
         </p>
       </div>
 
@@ -893,8 +977,8 @@ function WalletActivityFilters({
           <SelectItem value="all">All types</SelectItem>
           <SelectItem value="charge">Booking charge</SelectItem>
           <SelectItem value="refund">Refund</SelectItem>
-          <SelectItem value="payout">Payout</SelectItem>
-          <SelectItem value="cash_in">Top-up</SelectItem>
+          <SelectItem value="payout">Payout request</SelectItem>
+          <SelectItem value="cash_in">Wallet credit</SelectItem>
         </SelectContent>
       </Select>
 
@@ -934,15 +1018,15 @@ function WalletTransactionsCard({
       <CardContent className="p-0">
         { transactions.length === 0 ? (
           <div className="flex flex-col items-center gap-3 px-6 py-20 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-muted/30 text-muted-foreground/50">
+            <div className="flex size-12 items-center justify-center rounded-full border border-border/60 bg-muted/30 text-muted-foreground/50">
               <FiInbox className="size-6" aria-hidden="true" />
             </div>
             <div className="space-y-1">
               <p className="text-sm font-semibold text-foreground">
-                No wallet activity yet
+                No partner wallet activity yet
               </p>
-              <p className="max-w-[240px] text-xs text-muted-foreground">
-                Transactions will appear here once bookings start generating revenue.
+              <p className="max-w-[280px] text-xs text-muted-foreground">
+                Booking earnings, customer refunds, and payout requests will appear here once your listings start generating wallet activity.
               </p>
             </div>
           </div>
@@ -982,7 +1066,7 @@ function WalletTransactionsCard({
       { transactions.length > 0 && (
         <div className="border-t border-border/40 bg-muted/10 px-6 py-1">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Showing { transactions.length } { transactions.length === 1 ? 'entry' : 'entries' } • Synced with PayMongo
+            Showing { transactions.length } { transactions.length === 1 ? 'entry' : 'entries' } from the loaded partner wallet ledger
           </p>
         </div>
       ) }
@@ -1010,9 +1094,14 @@ function WalletActivitySection({
   onLoadMore: () => void;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 rounded-md border border-border/60 bg-background/50 p-4 shadow-sm backdrop-blur-sm md:p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-lg font-semibold tracking-tight">Activity</h3>
+        <div className="space-y-1">
+          <Badge variant="secondary" className="w-fit rounded-md px-2 py-0.5 text-[10px] uppercase tracking-wide">
+            Activity
+          </Badge>
+          <h3 className="text-lg font-semibold tracking-tight">Ledger activity</h3>
+        </div>
         <WalletActivityFilters
           filters={ filters }
           onTypeChange={ onTypeChange }
@@ -1103,12 +1192,33 @@ export default function WalletPage() {
   const totalRefunded = stats
     ? formatCurrencyMinor(stats.totalRefundedMinor, wallet?.currency ?? 'PHP')
     : '₱0.00';
-  const walletCardClassName = 'rounded-md bg-sidebar dark:bg-card';
+  const walletCardClassName = 'rounded-md border border-border/60 bg-background/95 shadow-sm dark:bg-card';
+  const quickNotes: WalletQuickNote[] = [
+    {
+      badge: 'Access',
+      value: 'Partner only',
+      description: 'This wallet reflects the earnings side of bookings for partners, not customer stored value.',
+      accentClassName: 'bg-amber-500',
+    },
+    {
+      badge: 'Money in',
+      value: 'Booking charges',
+      description: 'Customer booking payments become earnings entries when they are credited into the wallet ledger.',
+      accentClassName: 'bg-sky-500',
+    },
+    {
+      badge: 'Money out',
+      value: 'Refunds + payout requests',
+      description: 'Refunds send money back to customers, while payout requests begin the partner cash-out flow.',
+      accentClassName: 'bg-rose-500',
+    }
+  ];
 
   return (
     <WalletPageFrame>
       <WalletBreadcrumbs />
       <WalletHeader />
+      <WalletQuickNotes notes={ quickNotes } />
 
       <WalletWithdrawalsCard
         walletCardClassName={ walletCardClassName }
