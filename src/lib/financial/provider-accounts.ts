@@ -139,6 +139,18 @@ export async function getPartnerProviderAccountRecord(partnerUserId: bigint) {
   });
 }
 
+async function getLatestSyncedWalletSnapshot(partnerProviderAccountId: string) {
+  return prisma.partner_wallet_snapshot.findFirst({
+    where: {
+      partner_provider_account_id: partnerProviderAccountId,
+      sync_status: 'synced',
+    },
+    orderBy: {
+      fetched_at: 'desc',
+    },
+  });
+}
+
 async function refreshPartnerAccountRecord(account: partner_provider_account) {
   if (!account.provider_account_id) {
     return {
@@ -336,6 +348,10 @@ export async function getPartnerProviderAccountView(input: {
     return serializePartnerProviderAccountView(null);
   }
 
+  const latestSnapshot = account
+    ? await getLatestSyncedWalletSnapshot(account.id)
+    : null;
+
   const shouldRefresh = Boolean(
     input.forceRefresh ||
       (account.provider_account_id &&
@@ -344,14 +360,17 @@ export async function getPartnerProviderAccountView(input: {
   );
 
   if (!shouldRefresh || !account.provider_account_id) {
-    return serializePartnerProviderAccountView(account);
+    return serializePartnerProviderAccountView(account, {
+      availableBalanceMinor: latestSnapshot?.available_balance_minor ?? null,
+    });
   }
 
   try {
     const refreshed = await refreshPartnerAccountRecord(account);
 
     return serializePartnerProviderAccountView(refreshed.account, {
-      availableBalanceMinor: refreshed.availableBalanceMinor,
+      availableBalanceMinor:
+        refreshed.availableBalanceMinor ?? latestSnapshot?.available_balance_minor ?? null,
       syncWarning: refreshed.syncWarning,
     });
   } catch (error) {
@@ -359,6 +378,9 @@ export async function getPartnerProviderAccountView(input: {
       throw error;
     }
 
-    return serializePartnerProviderAccountView(account, { syncWarning: error.message, });
+    return serializePartnerProviderAccountView(account, {
+      availableBalanceMinor: latestSnapshot?.available_balance_minor ?? null,
+      syncWarning: error.message,
+    });
   }
 }
