@@ -213,6 +213,7 @@ describe('provider webhook api', () => {
           expires_at: new Date('2026-03-14T11:00:00.000Z'),
         }),
       },
+      user: { findUnique: vi.fn().mockResolvedValue({ user_id: 42n, }), },
       payment_transaction: {
         findFirst: vi.fn().mockResolvedValue({
           id: 'payment-tx-1',
@@ -222,10 +223,15 @@ describe('provider webhook api', () => {
       },
       wallet_transaction: { create: vi.fn().mockResolvedValue({ id: 'wallet-tx-1', }), },
       partner_provider_account: {
-        findUnique: vi.fn().mockResolvedValue({ provider_account_id: 'acct-remote-1', }),
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'provider-record-1',
+          partner_user_id: 42n,
+          provider_account_id: 'acct-remote-1',
+        }),
         findFirst: vi.fn().mockResolvedValue({
           id: 'provider-record-1',
           partner_user_id: 42n,
+          provider_account_id: 'acct-remote-1',
         }),
       },
     } as unknown as typeof prismaModule.prisma);
@@ -242,7 +248,6 @@ describe('provider webhook api', () => {
         metadata: {
           booking_id: 'booking-1',
           requires_host_approval: 'false',
-          partner_internal_user_id: '42',
           partner_provider_account_id: 'provider-record-1',
         },
       })
@@ -324,10 +329,15 @@ describe('provider webhook api', () => {
       },
       wallet_transaction: { create: vi.fn().mockResolvedValue({ id: 'wallet-tx-1', }), },
       partner_provider_account: {
-        findUnique: vi.fn().mockResolvedValue({ provider_account_id: 'acct-remote-1', }),
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'provider-record-1',
+          partner_user_id: 42n,
+          provider_account_id: 'acct-remote-1',
+        }),
         findFirst: vi.fn().mockResolvedValue({
           id: 'provider-record-1',
           partner_user_id: 42n,
+          provider_account_id: 'acct-remote-1',
         }),
       },
     } as unknown as typeof prismaModule.prisma);

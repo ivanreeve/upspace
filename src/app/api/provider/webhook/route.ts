@@ -104,6 +104,42 @@ function resolvePartnerProviderAccountId(
   return typeof rawValue === 'string' && rawValue.length > 0 ? rawValue : null;
 }
 
+async function resolvePartnerProviderAccountRecord(input: {
+  providerAccountRecordId: string | null;
+  partnerUserId: bigint | null;
+}) {
+  if (input.providerAccountRecordId) {
+    const byId = await prisma.partner_provider_account.findUnique({
+      where: { id: input.providerAccountRecordId, },
+      select: {
+        id: true,
+        partner_user_id: true,
+        provider_account_id: true,
+      },
+    });
+
+    if (byId) {
+      return byId;
+    }
+  }
+
+  if (input.partnerUserId === null) {
+    return null;
+  }
+
+  return prisma.partner_provider_account.findFirst({
+    where: {
+      partner_user_id: input.partnerUserId,
+      provider: 'xendit',
+    },
+    select: {
+      id: true,
+      partner_user_id: true,
+      provider_account_id: true,
+    },
+  });
+}
+
 function readMetadataString(metadata: Prisma.JsonValue | null, key: string) {
   if (!isJsonObject(metadata)) {
     return null;
@@ -637,14 +673,34 @@ async function handleXenditInvoiceWebhook(
   }
 
   const requiresHostApproval = invoice.metadata?.requires_host_approval === 'true';
-  const partnerInternalUserId =
+  let partnerInternalUserId =
     invoice.metadata?.partner_internal_user_id && /^\d+$/.test(invoice.metadata.partner_internal_user_id)
       ? BigInt(invoice.metadata.partner_internal_user_id)
       : null;
-  const providerAccountRecordId = resolvePartnerProviderAccountId(
+  let providerAccountRecordId = resolvePartnerProviderAccountId(
     existingPayment?.raw_gateway_json ?? null,
     invoice.metadata
   );
+
+  if (partnerInternalUserId === null && bookingRow.partner_auth_id) {
+    const partnerUser = await prisma.user.findUnique({
+      where: { auth_user_id: bookingRow.partner_auth_id, },
+      select: { user_id: true, },
+    });
+    partnerInternalUserId = partnerUser?.user_id ?? null;
+  }
+
+  const providerAccountRecord = await resolvePartnerProviderAccountRecord({
+    providerAccountRecordId,
+    partnerUserId: partnerInternalUserId,
+  });
+
+  if (providerAccountRecord) {
+    providerAccountRecordId = providerAccountRecord.id;
+    if (partnerInternalUserId === null) {
+      partnerInternalUserId = providerAccountRecord.partner_user_id;
+    }
+  }
 
   if (partnerInternalUserId !== null) {
     await recordProviderBackedBookingCharge({
@@ -673,14 +729,7 @@ async function handleXenditInvoiceWebhook(
     status: 'processed',
   });
 
-  let remoteProviderAccountId: string | null = null;
-  if (providerAccountRecordId) {
-    const providerAccount = await prisma.partner_provider_account.findUnique({
-      where: { id: providerAccountRecordId, },
-      select: { provider_account_id: true, },
-    });
-    remoteProviderAccountId = providerAccount?.provider_account_id ?? null;
-  }
+  const remoteProviderAccountId = providerAccountRecord?.provider_account_id ?? null;
 
   if (remoteProviderAccountId) {
     try {
