@@ -363,7 +363,10 @@ export default function ReviewsSection({
                   Write a review
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-lg">
+              <DialogContent
+                className="max-w-lg"
+                dismissible={ !createReviewMutation.isPending }
+              >
                 <DialogHeader>
                   <DialogTitle>Write a review</DialogTitle>
                   <DialogDescription>
@@ -422,9 +425,11 @@ export default function ReviewsSection({
                     <Button
                       type="submit"
                       disabled={ createReviewMutation.isPending }
+                      loading={ createReviewMutation.isPending }
+                      loadingText="Submitting..."
                       aria-label="Submit review"
                     >
-                      { createReviewMutation.isPending ? 'Submitting...' : 'Submit review' }
+                      Submit review
                     </Button>
                   </DialogFooter>
                 </form>

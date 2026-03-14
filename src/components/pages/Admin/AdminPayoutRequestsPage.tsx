@@ -559,7 +559,10 @@ export function AdminPayoutRequestsPage() {
       </div>
 
       <Dialog open={ Boolean(selectedRequest) } onOpenChange={ (open) => !open && closeRequestDialog() }>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent
+          className="sm:max-w-2xl"
+          dismissible={ !isSubmittingAction }
+        >
           <DialogHeader>
             <DialogTitle>
               { selectedRequest?.status === 'pending'
@@ -761,10 +764,8 @@ export function AdminPayoutRequestsPage() {
                     void handleReject();
                   } }
                   disabled={ isSubmittingAction }
+                  loading={ rejectMutation.isPending }
                 >
-                  { rejectMutation.isPending && (
-                    <FiLoader className="mr-2 size-4 animate-spin" aria-hidden="true" />
-                  ) }
                   Reject request
                 </Button>
                 <Button
@@ -773,10 +774,8 @@ export function AdminPayoutRequestsPage() {
                     void handleComplete();
                   } }
                   disabled={ isSubmittingAction }
+                  loading={ completeMutation.isPending }
                 >
-                  { completeMutation.isPending && (
-                    <FiLoader className="mr-2 size-4 animate-spin" aria-hidden="true" />
-                  ) }
                   Mark completed
                 </Button>
               </div>

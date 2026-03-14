@@ -79,6 +79,13 @@ export default function AccountPage() {
     setIsDialogOpen(open);
   };
 
+  const handleDeleteDialogOpenChange = (open: boolean) => {
+    if (isDeleting) {
+      return;
+    }
+    setIsDeleteDialogOpen(open);
+  };
+
   const handleSubmitDeactivationRequest = async () => {
     if (!selectedReason) {
       toast.error('Please select a reason before submitting.');
@@ -494,7 +501,7 @@ export default function AccountPage() {
       </main>
 
       <Dialog open={ isDialogOpen } onOpenChange={ handleDialogOpenChange }>
-        <DialogContent fullWidth>
+        <DialogContent fullWidth dismissible={ !isDeactivating }>
           <DialogHeader>
             <DialogTitle>Request account deactivation</DialogTitle>
             <DialogDescription>
@@ -552,15 +559,17 @@ export default function AccountPage() {
               variant="destructive"
               onClick={ handleSubmitDeactivationRequest }
               disabled={ isDeactivating }
+              loading={ isDeactivating }
+              loadingText="Submitting..."
             >
-              { isDeactivating ? 'Submitting...' : 'Submit deactivation request' }
+              Submit deactivation request
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={ isDeleteDialogOpen } onOpenChange={ setIsDeleteDialogOpen }>
-        <DialogContent fullWidth>
+      <Dialog open={ isDeleteDialogOpen } onOpenChange={ handleDeleteDialogOpenChange }>
+        <DialogContent fullWidth dismissible={ !isDeleting }>
           <DialogHeader>
             <DialogTitle>Delete account</DialogTitle>
             <DialogDescription>
@@ -617,8 +626,10 @@ export default function AccountPage() {
               variant="destructive"
               onClick={ handleSubmitDeletionRequest }
               disabled={ isDeleting }
+              loading={ isDeleting }
+              loadingText="Submitting..."
             >
-              { isDeleting ? 'Submitting...' : 'Request deletion' }
+              Request deletion
             </Button>
           </DialogFooter>
         </DialogContent>

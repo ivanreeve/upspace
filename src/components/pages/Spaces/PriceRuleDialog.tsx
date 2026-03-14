@@ -4299,16 +4299,13 @@ export function PriceRuleFormShell({
             Boolean(conditionError) ||
             !conditionExpression.trim()
           }
+          loading={ isSubmitting }
+          loadingText="Saving…"
           className="inline-flex items-center justify-center gap-2"
         >
-          { isSubmitting && (
-            <CgSpinner className="size-4 animate-spin" aria-hidden="true" />
-          ) }
-          { isSubmitting
-            ? 'Saving…'
-            : mode === 'create'
-              ? 'Save rule'
-              : 'Update rule' }
+          { mode === 'create'
+            ? 'Save rule'
+            : 'Update rule' }
         </Button>
       </div>
     </div>
@@ -4336,7 +4333,10 @@ export function PriceRuleDialog({
 
   return (
     <Dialog open={ open } onOpenChange={ onOpenChange }>
-      <DialogContent className="h-screen w-screen max-w-none p-0 sm:max-w-none">
+      <DialogContent
+        className="h-screen w-screen max-w-none p-0 sm:max-w-none"
+        dismissible={ !isSubmitting }
+      >
         <div className="flex h-full flex-col">
           <DialogHeader className="px-6 pt-6">
             <DialogTitle>

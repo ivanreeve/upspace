@@ -98,7 +98,10 @@ export function ChatReportDialog({
       </Button>
 
       <Dialog open={ isOpen } onOpenChange={ handleOpenChange }>
-        <DialogContent className="sm:max-w-[520px]">
+        <DialogContent
+          className="sm:max-w-[520px]"
+          dismissible={ !submitReportMutation.isPending }
+        >
           <DialogHeader>
             <DialogTitle>Report conversation</DialogTitle>
             <DialogDescription className="mb-2">
@@ -155,6 +158,7 @@ export function ChatReportDialog({
                 variant="outline"
                 onClick={ () => handleOpenChange(false) }
                 className="rounded-md"
+                disabled={ submitReportMutation.isPending }
               >
                 Cancel
               </Button>
@@ -162,8 +166,10 @@ export function ChatReportDialog({
                 type="submit"
                 className="rounded-md"
                 disabled={ submitReportMutation.isPending }
+                loading={ submitReportMutation.isPending }
+                loadingText="Submitting…"
               >
-                { submitReportMutation.isPending ? 'Submitting…' : 'Submit report' }
+                Submit report
               </Button>
             </DialogFooter>
           </form>

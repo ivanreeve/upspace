@@ -104,7 +104,10 @@ export function ComplaintDialog({
       ) }
 
       <Dialog open={ isOpen } onOpenChange={ handleOpenChange }>
-        <DialogContent className="sm:max-w-[520px]">
+        <DialogContent
+          className="sm:max-w-[520px]"
+          dismissible={ !submitMutation.isPending }
+        >
           <DialogHeader>
             <DialogTitle>File a complaint</DialogTitle>
             <DialogDescription className="mb-2">
@@ -161,6 +164,7 @@ export function ComplaintDialog({
                 variant="outline"
                 onClick={ () => handleOpenChange(false) }
                 className="rounded-md"
+                disabled={ submitMutation.isPending }
               >
                 Cancel
               </Button>
@@ -168,8 +172,10 @@ export function ComplaintDialog({
                 type="submit"
                 className="rounded-md"
                 disabled={ submitMutation.isPending }
+                loading={ submitMutation.isPending }
+                loadingText="Submitting…"
               >
-                { submitMutation.isPending ? 'Submitting…' : 'Submit complaint' }
+                Submit complaint
               </Button>
             </DialogFooter>
           </form>

@@ -128,6 +128,7 @@ export function AdminUnpublishRequestsPage() {
   const rejectMutation = useRejectUnpublishRequestMutation();
   const visibilityMutation = useAdminSpaceVisibilityMutation();
   const [republishingSpaceId, setRepublishingSpaceId] = useState<string | null>(null);
+  const isRejectingRequest = rejectMutation.isPending;
 
   const tableRows = useMemo(
     () =>
@@ -607,12 +608,15 @@ export function AdminUnpublishRequestsPage() {
         open={ Boolean(rejectingRequest) }
         onOpenChange={ (open) => {
           if (!open) {
+            if (isRejectingRequest) {
+              return;
+            }
             setRejectingRequest(null);
             setRejectionReason('');
           }
         } }
       >
-        <DialogContent>
+        <DialogContent dismissible={ !isRejectingRequest }>
           <DialogHeader>
             <DialogTitle>Reject request</DialogTitle>
             <DialogDescription>
@@ -631,16 +635,18 @@ export function AdminUnpublishRequestsPage() {
               variant="ghost"
               className="hover:bg-sidebar"
               onClick={ () => setRejectingRequest(null) }
-              disabled={ rejectMutation.isPending }
+              disabled={ isRejectingRequest }
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={ handleConfirmReject }
-              disabled={ rejectMutation.isPending }
+              disabled={ isRejectingRequest }
+              loading={ isRejectingRequest }
+              loadingText="Sending…"
             >
-              { rejectMutation.isPending ? 'Sending…' : 'Reject request' }
+              Reject request
             </Button>
           </DialogFooter>
         </DialogContent>

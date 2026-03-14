@@ -125,7 +125,6 @@ export function PartnerComplaintsPage() {
   const cursor = pageCursors[pageIndex] ?? null;
   const [escalatingComplaint, setEscalatingComplaint] = useState<PartnerComplaint | null>(null);
   const [escalationNote, setEscalationNote] = useState('');
-  const [isSubmittingEscalation, setIsSubmittingEscalation] = useState(false);
 
   const {
     data: page,
@@ -142,6 +141,7 @@ export function PartnerComplaintsPage() {
 
   const resolveMutation = useResolveComplaintMutation();
   const escalateMutation = useEscalateComplaintMutation();
+  const isSubmittingEscalation = escalateMutation.isPending;
 
   const complaints = useMemo(() => page?.data ?? [], [page?.data]);
   const nextCursor = page?.nextCursor ?? null;
@@ -217,7 +217,6 @@ export function PartnerComplaintsPage() {
       return;
     }
 
-    setIsSubmittingEscalation(true);
     try {
       await escalateMutation.mutateAsync({
         complaintId: escalatingComplaint.id,
@@ -232,8 +231,6 @@ export function PartnerComplaintsPage() {
           ? mutationError.message
           : 'Unable to escalate complaint.'
       );
-    } finally {
-      setIsSubmittingEscalation(false);
     }
   };
 
@@ -489,12 +486,18 @@ export function PartnerComplaintsPage() {
         open={ Boolean(escalatingComplaint) }
         onOpenChange={ (open) => {
           if (!open) {
+            if (isSubmittingEscalation) {
+              return;
+            }
             setEscalatingComplaint(null);
             setEscalationNote('');
           }
         } }
       >
-        <DialogContent className="sm:max-w-[520px]">
+        <DialogContent
+          className="sm:max-w-[520px]"
+          dismissible={ !isSubmittingEscalation }
+        >
           <DialogHeader>
             <DialogTitle>Escalate complaint</DialogTitle>
             <DialogDescription>
@@ -534,8 +537,10 @@ export function PartnerComplaintsPage() {
               className="rounded-md"
               onClick={ handleConfirmEscalate }
               disabled={ isSubmittingEscalation }
+              loading={ isSubmittingEscalation }
+              loadingText="Escalating…"
             >
-              { isSubmittingEscalation ? 'Escalating…' : 'Escalate complaint' }
+              Escalate complaint
             </Button>
           </DialogFooter>
         </DialogContent>

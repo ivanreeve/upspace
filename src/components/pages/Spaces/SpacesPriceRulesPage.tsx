@@ -673,7 +673,10 @@ export function SpacesPriceRulesPage() {
           if (!open) setTestingRule(null);
         } }
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent
+          className="sm:max-w-md"
+          dismissible={ !isTestingLoading }
+        >
           <DialogHeader>
             <DialogTitle>Test pricing rule</DialogTitle>
             <DialogDescription>
@@ -760,6 +763,7 @@ export function SpacesPriceRulesPage() {
               type="button"
               variant="outline"
               onClick={ () => setTestingRule(null) }
+              disabled={ isTestingLoading }
             >
               Close
             </Button>
@@ -769,12 +773,10 @@ export function SpacesPriceRulesPage() {
               className="hover:text-white"
               onClick={ handleTestRule }
               disabled={ isTestingLoading }
+              loading={ isTestingLoading }
+              loadingText="Evaluating…"
             >
-              { isTestingLoading ? (
-                <FiLoader className="mr-2 size-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <FiPlay className="mr-2 size-4" aria-hidden="true" />
-              ) }
+              <FiPlay className="mr-2 size-4" aria-hidden="true" />
               Evaluate
             </Button>
           </DialogFooter>
@@ -789,7 +791,7 @@ export function SpacesPriceRulesPage() {
           }
         } }
       >
-        <DialogContent>
+        <DialogContent dismissible={ !isAnyDeletePending }>
           <DialogHeader>
             <DialogTitle>Delete selected pricing rules</DialogTitle>
             <DialogDescription>
@@ -830,8 +832,10 @@ export function SpacesPriceRulesPage() {
               variant="destructive"
               onClick={ handleBulkDeletePriceRules }
               disabled={ isAnyDeletePending || selectedCount === 0 }
+              loading={ isAnyDeletePending }
+              loadingText="Deleting..."
             >
-              { isAnyDeletePending ? 'Deleting...' : 'Delete selected' }
+              Delete selected
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -767,7 +767,10 @@ function WalletWithdrawalsCard({
       </Card>
 
       <Dialog open={ payoutDialogOpen } onOpenChange={ handleDialogOpenChange }>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent
+          className="sm:max-w-md"
+          dismissible={ !isPayoutPending }
+        >
           { confirmStep && parsedAmountMinor !== null ? (
             <>
               <DialogHeader>
@@ -813,12 +816,10 @@ function WalletWithdrawalsCard({
                   className="hover:text-white"
                   onClick={ () => { void handleConfirmPayout(); } }
                   disabled={ isPayoutPending }
+                  loading={ isPayoutPending }
+                  loadingText="Confirm and submit"
                 >
-                  { isPayoutPending ? (
-                    <FiLoader className="mr-2 size-4 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <FiSend className="mr-2 size-4" aria-hidden="true" />
-                  ) }
+                  <FiSend className="mr-2 size-4" aria-hidden="true" />
                   Confirm and submit
                 </Button>
               </DialogFooter>

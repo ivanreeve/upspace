@@ -927,9 +927,14 @@ function AreaDialogsSection({
 
       <Dialog
         open={ Boolean(areaPendingDelete) }
-        onOpenChange={ onDeleteDialogOpenChange }
+        onOpenChange={ (open) => {
+          if (!open && isDeletingArea) {
+            return;
+          }
+          onDeleteDialogOpenChange(open);
+        } }
       >
-        <DialogContent>
+        <DialogContent dismissible={ !isDeletingArea }>
           <DialogHeader>
             <DialogTitle>Delete area</DialogTitle>
             <DialogDescription>
@@ -954,8 +959,10 @@ function AreaDialogsSection({
               variant="destructive"
               onClick={ onConfirmAreaDelete }
               disabled={ isDeletingArea }
+              loading={ isDeletingArea }
+              loadingText="Deleting..."
             >
-              { isDeletingArea ? 'Deleting...' : 'Delete area' }
+              Delete area
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1246,9 +1253,17 @@ function UnpublishDialogsSection({
 
       <Dialog
         open={ unpublishDialogOpen }
-        onOpenChange={ onUnpublishDialogOpenChange }
+        onOpenChange={ (open) => {
+          if (!open && isRequestUnpublishPending) {
+            return;
+          }
+          onUnpublishDialogOpenChange(open);
+        } }
       >
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent
+          className="sm:max-w-lg"
+          dismissible={ !isRequestUnpublishPending }
+        >
           <DialogHeader>
             <DialogTitle>Request to unpublish</DialogTitle>
             <DialogDescription>
@@ -1282,8 +1297,10 @@ function UnpublishDialogsSection({
               type="button"
               onClick={ onSubmitUnpublish }
               disabled={ isRequestUnpublishPending }
+              loading={ isRequestUnpublishPending }
+              loadingText="Sending…"
             >
-              { isRequestUnpublishPending ? 'Sending…' : 'Send request' }
+              Send request
             </Button>
           </DialogFooter>
         </DialogContent>

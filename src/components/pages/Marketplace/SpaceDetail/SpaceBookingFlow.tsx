@@ -525,15 +525,23 @@ function BookingReservationOverlay({
   isCheckoutPending,
   primaryActionLabel,
 }: BookingReservationOverlayProps) {
+  const handleOpenChange = (open: boolean) => {
+    if (!open && isCheckoutPending) {
+      return;
+    }
+    setIsBookingOpen(open);
+  };
+
   return (
     <>
       <Dialog
         open={ isDesktopViewport && isBookingOpen }
-        onOpenChange={ setIsBookingOpen }
+        onOpenChange={ handleOpenChange }
       >
         <DialogContent
           showCloseButton={ false }
           fullWidth
+          dismissible={ !isCheckoutPending }
           className="max-h-[90vh] overflow-y-auto lg:max-w-[1024px]"
         >
           <DialogHeader>
@@ -550,10 +558,9 @@ function BookingReservationOverlay({
               className="w-full lg:w-auto"
               onClick={ onConfirmBooking }
               disabled={ !canConfirmBooking }
+              loading={ isCheckoutPending }
+              loadingText="Booking..."
             >
-              { isCheckoutPending && (
-                <CgSpinner className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) }
               { primaryActionLabel }
             </Button>
             <Button
@@ -561,6 +568,7 @@ function BookingReservationOverlay({
               variant="outline"
               className="w-full lg:w-auto hover:text-white"
               onClick={ onCloseBooking }
+              disabled={ isCheckoutPending }
             >
               Cancel
             </Button>
@@ -569,10 +577,11 @@ function BookingReservationOverlay({
       </Dialog>
       <Sheet
         open={ !isDesktopViewport && isBookingOpen }
-        onOpenChange={ setIsBookingOpen }
+        onOpenChange={ handleOpenChange }
       >
         <SheetContent
           side="bottom"
+          dismissible={ !isCheckoutPending }
           className="max-h-[90vh] gap-4 overflow-y-auto rounded-t-2xl"
         >
           <SheetHeader>
@@ -585,10 +594,9 @@ function BookingReservationOverlay({
               className="w-full"
               onClick={ onConfirmBooking }
               disabled={ !canConfirmBooking }
+              loading={ isCheckoutPending }
+              loadingText="Booking..."
             >
-              { isCheckoutPending && (
-                <CgSpinner className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) }
               { primaryActionLabel }
             </Button>
             <Button
@@ -596,6 +604,7 @@ function BookingReservationOverlay({
               variant="outline"
               className="w-full hover:text-white"
               onClick={ onCloseBooking }
+              disabled={ isCheckoutPending }
             >
               Cancel
             </Button>
@@ -913,9 +922,6 @@ scheduledDate: event.target.value,
   const primaryActionLabel = (() => {
     if (!selectedAreaId) {
       return 'Select an area';
-    }
-    if (createCheckoutSession.isPending) {
-      return 'Booking...';
     }
     if (isPricingLoading) {
       return 'Computing price...';

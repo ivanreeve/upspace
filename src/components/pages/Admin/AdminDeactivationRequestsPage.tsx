@@ -112,7 +112,6 @@ export function AdminDeactivationRequestsPage() {
   const [rejectingRequest, setRejectingRequest] = useState<DeactivationRequest | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
-  const [isRejecting, setIsRejecting] = useState(false);
 
   const {
     data: page,
@@ -133,6 +132,7 @@ export function AdminDeactivationRequestsPage() {
   const currentTabInfo = REQUEST_TABS.find((tab) => tab.value === activeTab);
   const approveMutation = useApproveDeactivationRequestMutation();
   const rejectMutation = useRejectDeactivationRequestMutation();
+  const isRejecting = rejectMutation.isPending;
 
   useEffect(() => {
     if (!page) {
@@ -173,7 +173,6 @@ export function AdminDeactivationRequestsPage() {
       return;
     }
 
-    setIsRejecting(true);
     try {
       await rejectMutation.mutateAsync({
         requestId: rejectingRequest.id,
@@ -185,8 +184,6 @@ export function AdminDeactivationRequestsPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to reject request.';
       toast.error(message);
-    } finally {
-      setIsRejecting(false);
     }
   };
 
@@ -562,7 +559,7 @@ export function AdminDeactivationRequestsPage() {
           }
         } }
       >
-        <DialogContent>
+        <DialogContent dismissible={ !isRejecting }>
           <DialogHeader>
             <DialogTitle>Reject request</DialogTitle>
             <DialogDescription>
@@ -585,8 +582,14 @@ export function AdminDeactivationRequestsPage() {
             >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={ handleConfirmReject } disabled={ isRejecting }>
-              { isRejecting ? 'Rejecting…' : 'Send rejection' }
+            <Button
+              variant="destructive"
+              onClick={ handleConfirmReject }
+              disabled={ isRejecting }
+              loading={ isRejecting }
+              loadingText="Rejecting…"
+            >
+              Send rejection
             </Button>
           </DialogFooter>
         </DialogContent>
