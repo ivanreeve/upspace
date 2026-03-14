@@ -145,9 +145,7 @@ async function getLatestSyncedWalletSnapshot(partnerProviderAccountId: string) {
       partner_provider_account_id: partnerProviderAccountId,
       sync_status: 'synced',
     },
-    orderBy: {
-      fetched_at: 'desc',
-    },
+    orderBy: { fetched_at: 'desc', },
   });
 }
 
@@ -360,9 +358,7 @@ export async function getPartnerProviderAccountView(input: {
   );
 
   if (!shouldRefresh || !account.provider_account_id) {
-    return serializePartnerProviderAccountView(account, {
-      availableBalanceMinor: latestSnapshot?.available_balance_minor ?? null,
-    });
+    return serializePartnerProviderAccountView(account, { availableBalanceMinor: latestSnapshot?.available_balance_minor ?? null, });
   }
 
   try {
