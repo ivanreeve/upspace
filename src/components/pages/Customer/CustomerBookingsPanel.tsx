@@ -1,12 +1,27 @@
 'use client';
 
+import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-import { FiAlertCircle, FiCheckCircle, FiClock } from 'react-icons/fi';
+import {
+  FiAlertCircle,
+  FiCheckCircle,
+  FiClock,
+  FiExternalLink,
+  FiMoreHorizontal,
+  FiXCircle
+} from 'react-icons/fi';
 import type { IconType } from 'react-icons';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -132,6 +147,82 @@ const formatBookingPrice = (price: number | null) =>
   typeof price === 'number' && Number.isFinite(price)
     ? BOOKING_PRICE_FORMATTER.format(price)
     : '—';
+
+type BookingRowActionsProps = {
+  booking: BookingRecord;
+  isCancelable: boolean;
+  isComplaintable: boolean;
+  isMutating: boolean;
+  onCancel: (bookingId: string) => void;
+};
+
+function BookingRowActions({
+  booking,
+  isCancelable,
+  isComplaintable,
+  isMutating,
+  onCancel,
+}: BookingRowActionsProps) {
+  const [isComplaintDialogOpen, setIsComplaintDialogOpen] = useState(false);
+  const bookingHref = `/customer/bookings/${booking.id}`;
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="size-8 rounded-md border-border/70 bg-background shadow-none"
+            aria-label={ `Open actions for booking ${booking.id.slice(0, 8)}` }
+          >
+            <FiMoreHorizontal className="size-4" aria-hidden="true" />
+            <span className="sr-only">Open booking actions</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          sideOffset={ 6 }
+          className="min-w-[190px] rounded-md bg-popover px-1 py-1 shadow-lg"
+        >
+          <DropdownMenuItem asChild>
+            <Link href={ bookingHref }>
+              <FiExternalLink className="size-4" aria-hidden="true" />
+              View booking
+            </Link>
+          </DropdownMenuItem>
+          { (isComplaintable || isCancelable) && <DropdownMenuSeparator /> }
+          { isComplaintable && (
+            <DropdownMenuItem onSelect={ () => setIsComplaintDialogOpen(true) }>
+              <FiAlertCircle className="size-4" aria-hidden="true" />
+              File complaint
+            </DropdownMenuItem>
+          ) }
+          { isCancelable && (
+            <DropdownMenuItem
+              disabled={ isMutating }
+              onSelect={ () => onCancel(booking.id) }
+              className="text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive focus-visible:[&_svg]:text-destructive data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive"
+            >
+              <FiXCircle className="size-4 text-destructive" aria-hidden="true" />
+              Cancel booking
+            </DropdownMenuItem>
+          ) }
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      { isComplaintable && (
+        <ComplaintDialog
+          bookingId={ booking.id }
+          open={ isComplaintDialogOpen }
+          onOpenChange={ setIsComplaintDialogOpen }
+          hideTrigger
+        />
+      ) }
+    </>
+  );
+}
 
 export function CustomerBookingsPanel({ initialBookings, }: { initialBookings?: BookingRecord[] } = {}) {
   const {
@@ -259,7 +350,7 @@ export function CustomerBookingsPanel({ initialBookings, }: { initialBookings?: 
                     <TableHead>Guests</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Requested</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="w-[84px] text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -313,30 +404,15 @@ export function CustomerBookingsPanel({ initialBookings, }: { initialBookings?: 
                             </p>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              asChild
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 px-3 text-[13px] hover:bg-primary/90 hover:text-primary-foreground dark:hover:bg-accent/50 dark:hover:text-accent-foreground"
-                            >
-                              <Link href={ `/customer/bookings/${booking.id}` }>View</Link>
-                            </Button>
-                            { isComplaintable && (
-                              <ComplaintDialog bookingId={ booking.id } />
-                            ) }
-                            { isCancelable && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 px-3 text-[13px] font-semibold leading-none border-destructive/60 bg-background text-destructive transition hover:border-destructive hover:bg-destructive/10 hover:!text-destructive focus-visible:border-destructive focus-visible:!text-destructive focus-visible:ring-2 focus-visible:ring-destructive/50"
-                                disabled={ cancelMutation.isPending }
-                                onClick={ () => cancelMutation.mutate({ bookingId: booking.id, }) }
-                              >
-                                Cancel
-                              </Button>
-                            ) }
+                        <TableCell className="w-[84px] text-right">
+                          <div className="flex items-center justify-end">
+                            <BookingRowActions
+                              booking={ booking }
+                              isCancelable={ isCancelable }
+                              isComplaintable={ isComplaintable }
+                              isMutating={ cancelMutation.isPending }
+                              onCancel={ (bookingId) => cancelMutation.mutate({ bookingId, }) }
+                            />
                           </div>
                         </TableCell>
                       </TableRow>

@@ -27,15 +27,25 @@ import { useSubmitComplaintMutation } from '@/hooks/api/useComplaints';
 
 type ComplaintDialogProps = {
   bookingId: string;
+  hideTrigger?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  open?: boolean;
 };
 
 const DEFAULT_CATEGORY = COMPLAINT_CATEGORY_VALUES[0];
 
-export function ComplaintDialog({ bookingId, }: ComplaintDialogProps) {
+export function ComplaintDialog({
+  bookingId,
+  hideTrigger = false,
+  onOpenChange,
+  open,
+}: ComplaintDialogProps) {
   const submitMutation = useSubmitComplaintMutation();
-  const [isOpen, setIsOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const [category, setCategory] = useState<ComplaintCategory>(DEFAULT_CATEGORY);
   const [description, setDescription] = useState('');
+  const isControlled = typeof open === 'boolean';
+  const isOpen = isControlled ? open : uncontrolledOpen;
 
   const resetForm = () => {
     setCategory(DEFAULT_CATEGORY);
@@ -43,7 +53,11 @@ export function ComplaintDialog({ bookingId, }: ComplaintDialogProps) {
   };
 
   const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
+    if (!isControlled) {
+      setUncontrolledOpen(open);
+    }
+    onOpenChange?.(open);
+
     if (!open) {
       resetForm();
     }
@@ -66,8 +80,7 @@ export function ComplaintDialog({ bookingId, }: ComplaintDialogProps) {
       });
 
       toast.success(result.message);
-      setIsOpen(false);
-      resetForm();
+      handleOpenChange(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to submit complaint.');
     }
@@ -75,18 +88,20 @@ export function ComplaintDialog({ bookingId, }: ComplaintDialogProps) {
 
   return (
     <>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="h-8 px-3 text-[13px] gap-1.5 rounded-md"
-        aria-label="File a complaint"
-        onClick={ () => setIsOpen(true) }
-        disabled={ submitMutation.isPending }
-      >
-        <FiAlertCircle className="size-3.5" aria-hidden="true" />
-        Complaint
-      </Button>
+      { !hideTrigger && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 gap-1.5 rounded-md px-3 text-[13px]"
+          aria-label="File a complaint"
+          onClick={ () => handleOpenChange(true) }
+          disabled={ submitMutation.isPending }
+        >
+          <FiAlertCircle className="size-3.5" aria-hidden="true" />
+          Complaint
+        </Button>
+      ) }
 
       <Dialog open={ isOpen } onOpenChange={ handleOpenChange }>
         <DialogContent className="sm:max-w-[520px]">
