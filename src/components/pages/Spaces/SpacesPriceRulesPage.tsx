@@ -761,7 +761,7 @@ export function SpacesPriceRulesPage() {
                   const inputId = `test-custom-var-${variable.key}`;
                   return (
                     <div key={ variable.key } className="space-y-2">
-                      <Label htmlFor={ inputId }>{ variable.label || variable.key }</Label>
+                      <Label htmlFor={ inputId }>{ variable.displayName || variable.label || variable.key }</Label>
                       <Input
                         id={ inputId }
                         type={ inputType }
@@ -770,7 +770,7 @@ export function SpacesPriceRulesPage() {
                           ...prev,
                           [variable.key]: e.target.value,
                         })) }
-                        aria-label={ variable.label || variable.key }
+                        aria-label={ variable.displayName || variable.label || variable.key }
                       />
                     </div>
                   );

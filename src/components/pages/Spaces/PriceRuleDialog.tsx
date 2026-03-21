@@ -1956,6 +1956,8 @@ export type PriceRuleFormState = {
   setNewVariableValue: Dispatch<SetStateAction<string>>;
   newVariableUserInput: boolean;
   setNewVariableUserInput: Dispatch<SetStateAction<boolean>>;
+  newVariableDisplayName: string;
+  setNewVariableDisplayName: Dispatch<SetStateAction<string>>;
   handleAddVariable: () => void;
   removeVariable: (key: string) => void;
   usedVariables: Set<string>;
@@ -1982,6 +1984,7 @@ export function usePriceRuleFormState(
   >('text');
   const [newVariableValue, setNewVariableValue] = useState('');
   const [newVariableUserInput, setNewVariableUserInput] = useState(false);
+  const [newVariableDisplayName, setNewVariableDisplayName] = useState('');
   const [conditionExpression, setConditionExpression] = useState('');
   const [conditionError, setConditionError] = useState<string | null>(null);
   const [builderMode, setBuilderModeState] =
@@ -1999,6 +2002,7 @@ export function usePriceRuleFormState(
     setNewVariableType('text');
     setNewVariableValue('');
     setNewVariableUserInput(false);
+    setNewVariableDisplayName('');
     setConditionError(null);
   }, []);
   const replaceDefinition = useCallback(
@@ -2144,6 +2148,9 @@ export function usePriceRuleFormState(
             ? undefined
             : newVariableValue || undefined,
           userInput: userInputAllowed || undefined,
+          displayName: userInputAllowed && newVariableDisplayName.trim()
+            ? newVariableDisplayName.trim()
+            : undefined,
         }
       ],
     }));
@@ -2152,6 +2159,7 @@ export function usePriceRuleFormState(
     setNewVariableType('text');
     setNewVariableValue('');
     setNewVariableUserInput(false);
+    setNewVariableDisplayName('');
   };
 
   const usedVariables = useMemo(() => {
@@ -2319,6 +2327,8 @@ export function usePriceRuleFormState(
     setNewVariableValue,
     newVariableUserInput,
     setNewVariableUserInput,
+    newVariableDisplayName,
+    setNewVariableDisplayName,
     handleAddVariable,
     usedVariables,
     removeVariable,
@@ -2339,6 +2349,8 @@ type RuleLanguageEditorProps = {
   setNewVariableValue: Dispatch<SetStateAction<string>>;
   newVariableUserInput: boolean;
   setNewVariableUserInput: Dispatch<SetStateAction<boolean>>;
+  newVariableDisplayName: string;
+  setNewVariableDisplayName: Dispatch<SetStateAction<string>>;
   handleAddVariable: () => void;
   usedVariables: Set<string>;
   removeVariable: (key: string) => void;
@@ -3099,6 +3111,8 @@ type RuleLanguageVariablesSectionProps = Pick<
   | 'setNewVariableValue'
   | 'newVariableUserInput'
   | 'setNewVariableUserInput'
+  | 'newVariableDisplayName'
+  | 'setNewVariableDisplayName'
   | 'handleAddVariable'
   | 'usedVariables'
   | 'removeVariable'
@@ -3114,6 +3128,8 @@ function RuleLanguageVariablesSection({
   setNewVariableValue,
   newVariableUserInput,
   setNewVariableUserInput,
+  newVariableDisplayName,
+  setNewVariableDisplayName,
   handleAddVariable,
   usedVariables,
   removeVariable,
@@ -3140,6 +3156,11 @@ function RuleLanguageVariablesSection({
                 <span className="text-xs">
                   { variable.label.toLowerCase() }
                 </span>
+                { variable.displayName ? (
+                  <span className="text-[9px] text-muted-foreground">
+                    — { variable.displayName }
+                  </span>
+                ) : null }
               </div>
               { variable.userInput ? (
                 <span className="text-[9px] font-semibold text-muted-foreground">
@@ -3326,6 +3347,20 @@ function RuleLanguageVariablesSection({
               : '' }
           </label>
         </div>
+        { newVariableUserInput &&
+          newVariableType !== 'date' &&
+          newVariableType !== 'time' && (
+          <div className="flex items-center gap-2 whitespace-nowrap">
+            <Input
+              id="variable-display-name"
+              placeholder="Display name"
+              value={ newVariableDisplayName }
+              onChange={ (e) => setNewVariableDisplayName(e.target.value) }
+              className="h-7 text-xs"
+              aria-label="Variable display name"
+            />
+          </div>
+        ) }
       </div>
     </div>
   );
@@ -3588,6 +3623,8 @@ function RuleLanguageEditor({
   setNewVariableValue,
   newVariableUserInput,
   setNewVariableUserInput,
+  newVariableDisplayName,
+  setNewVariableDisplayName,
   handleAddVariable,
   usedVariables,
   removeVariable,
@@ -3628,6 +3665,8 @@ function RuleLanguageEditor({
           setNewVariableValue={ setNewVariableValue }
           newVariableUserInput={ newVariableUserInput }
           setNewVariableUserInput={ setNewVariableUserInput }
+          newVariableDisplayName={ newVariableDisplayName }
+          setNewVariableDisplayName={ setNewVariableDisplayName }
           handleAddVariable={ handleAddVariable }
           usedVariables={ usedVariables }
           removeVariable={ removeVariable }
@@ -4081,6 +4120,8 @@ export function PriceRuleFormShell({
   setNewVariableValue,
   newVariableUserInput,
   setNewVariableUserInput,
+  newVariableDisplayName,
+  setNewVariableDisplayName,
   handleAddVariable,
   removeVariable,
   usedVariables,
@@ -4266,6 +4307,8 @@ export function PriceRuleFormShell({
                 setNewVariableValue={ setNewVariableValue }
                 newVariableUserInput={ newVariableUserInput }
                 setNewVariableUserInput={ setNewVariableUserInput }
+                newVariableDisplayName={ newVariableDisplayName }
+                setNewVariableDisplayName={ setNewVariableDisplayName }
                 handleAddVariable={ handleAddVariable }
                 removeVariable={ removeVariable }
                 usedVariables={ usedVariables }

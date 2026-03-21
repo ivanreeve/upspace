@@ -32,6 +32,7 @@ export type PriceRuleVariable = {
   type: PriceRuleVariableType;
   initialValue?: string;
   userInput?: boolean;
+  displayName?: string;
 };
 
 export type PriceRuleDefinition = {

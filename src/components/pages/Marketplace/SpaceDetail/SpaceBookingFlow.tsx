@@ -486,7 +486,7 @@ function BookingDurationForm({
                     htmlFor={ `custom-var-${variable.key}` }
                     className="text-xs font-medium text-muted-foreground"
                   >
-                    { variable.label }
+                    { variable.displayName || variable.label }
                   </Label>
                   <Input
                     id={ `custom-var-${variable.key}` }
@@ -499,7 +499,7 @@ function BookingDurationForm({
                         variable.type === 'number' ? (raw === '' ? '' : Number(raw)) : raw
                       );
                     } }
-                    aria-label={ variable.label }
+                    aria-label={ variable.displayName || variable.label }
                   />
                 </div>
               )) }
