@@ -19,6 +19,7 @@ import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { evaluatePriceRule } from '@/lib/pricing-rules-evaluator';
 import type { PriceRuleRecord } from '@/lib/pricing-rules';
+import { BUILT_IN_VARIABLE_KEYS } from '@/lib/pricing-rules';
 import { isTestingModeEnabled } from '@/lib/testing-mode';
 
 const createBookingSchema = z.object({
@@ -27,6 +28,16 @@ const createBookingSchema = z.object({
   bookingHours: z.number().int().min(MIN_BOOKING_HOURS).max(MAX_BOOKING_HOURS),
   startAt: z.string().datetime().optional(),
   guestCount: z.number().int().min(1).max(999).optional(),
+  variableOverrides: z
+    .record(z.string(), z.union([z.string(), z.number()]))
+    .optional()
+    .refine(
+      (overrides) => {
+        if (!overrides) return true;
+        return Object.keys(overrides).every((key) => !BUILT_IN_VARIABLE_KEYS.has(key));
+      },
+      { message: 'Cannot override built-in variable keys.', }
+    ),
 });
 
 const BOOKING_CANCELLATION_REASON_MIN_LENGTH = 5;
@@ -603,7 +614,11 @@ export async function POST(req: NextRequest) {
       return evaluatePriceRule(priceRule.definition, {
         bookingHours: parsed.data.bookingHours,
         now: bookingStartAt,
-        variableOverrides: { guest_count: guestCount, },
+        variableOverrides: {
+          ...(parsed.data.variableOverrides ?? {}),
+          guest_count: guestCount,
+          ...(areaMaxCapacity !== null ? { area_max_capacity: areaMaxCapacity, } : {}),
+        },
       });
     } catch (error) {
       console.error('Invalid price rule definition', {
@@ -681,6 +696,9 @@ export async function POST(req: NextRequest) {
             price_rule_snapshot: priceRule.definition,
             price_rule_branch: priceEvaluation.branch ?? null,
             price_rule_expression: priceEvaluation.appliedExpression ?? null,
+            ...(parsed.data.variableOverrides && Object.keys(parsed.data.variableOverrides).length > 0
+              ? { price_rule_overrides: parsed.data.variableOverrides, }
+              : {}),
           },
         });
 

@@ -71,6 +71,7 @@ export async function PATCH(
         area_max_capacity: true,
         price_rule_id: true,
         price_rule_snapshot: true,
+        price_rule_overrides: true,
       },
     });
 
@@ -92,10 +93,20 @@ export async function PATCH(
     if (booking.price_rule_snapshot) {
       const ruleDefinition = booking.price_rule_snapshot as PriceRuleRecord['definition'];
       try {
+        const storedOverrides = (
+          booking.price_rule_overrides !== null
+          && typeof booking.price_rule_overrides === 'object'
+          && !Array.isArray(booking.price_rule_overrides)
+        ) ? booking.price_rule_overrides as Record<string, string | number> : {};
+
         const priceEvaluation = evaluatePriceRule(ruleDefinition, {
           bookingHours: parsed.data.bookingHours,
           now: newStartAt,
-          variableOverrides: { guest_count: booking.guest_count, },
+          variableOverrides: {
+            ...storedOverrides,
+            guest_count: booking.guest_count,
+            ...(booking.area_max_capacity !== null ? { area_max_capacity: Number(booking.area_max_capacity), } : {}),
+          },
         });
 
         if (priceEvaluation.price !== null) {

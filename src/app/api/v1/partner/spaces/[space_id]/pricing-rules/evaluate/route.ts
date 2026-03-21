@@ -14,6 +14,7 @@ const evaluateRequestSchema = z.object({
   bookingHours: z.number().min(0.5).max(8760),
   guestCount: z.number().int().min(1).max(999).optional(),
   startAt: z.string().datetime().optional(),
+  variableOverrides: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
 });
 
 type RouteParams = {
@@ -57,7 +58,10 @@ export async function POST(req: NextRequest, { params, }: RouteParams) {
     const result = evaluatePriceRule(parsed.data.definition, {
       bookingHours: parsed.data.bookingHours,
       now,
-      variableOverrides: { guest_count: guestCount, },
+      variableOverrides: {
+        ...(parsed.data.variableOverrides ?? {}),
+        guest_count: guestCount,
+      },
     });
 
     const formulaAlreadyHandlesGuests = result.usedVariables.includes('guest_count');

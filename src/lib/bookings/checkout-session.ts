@@ -233,8 +233,9 @@ export async function createBookingCheckoutSession(
         bookingHours,
         now: startAt,
         variableOverrides: {
-          guest_count: guestCount,
           ...customVariableOverrides,
+          guest_count: guestCount,
+          ...(areaMaxCapacity !== null ? { area_max_capacity: areaMaxCapacity, } : {}),
         },
       });
     } catch (error) {
@@ -368,6 +369,9 @@ export async function createBookingCheckoutSession(
                 price_rule_snapshot: priceRule.definition,
                 price_rule_branch: priceEvaluation.branch ?? null,
                 price_rule_expression: priceEvaluation.appliedExpression ?? null,
+                ...(customVariableOverrides && Object.keys(customVariableOverrides).length > 0
+                  ? { price_rule_overrides: customVariableOverrides, }
+                  : {}),
               },
             });
 

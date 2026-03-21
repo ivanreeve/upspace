@@ -452,8 +452,8 @@ const buildConditionExpressionFromDefinition = (
     return conditionText;
   }
 
-  const elseSeparator = ' ELSE ';
-  const elseIndex = trimmedFormula.indexOf(elseSeparator);
+  const elseSeparatorLength = 6; // ' else '.length
+  const elseIndex = trimmedFormula.toLowerCase().indexOf(' else ');
 
   if (elseIndex === -1) {
     return `IF ${conditionText} THEN ${trimmedFormula}`;
@@ -461,7 +461,7 @@ const buildConditionExpressionFromDefinition = (
 
   const thenFormula = trimmedFormula.slice(0, elseIndex).trim();
   const elseFormula = trimmedFormula
-    .slice(elseIndex + elseSeparator.length)
+    .slice(elseIndex + elseSeparatorLength)
     .trim();
 
   if (!thenFormula) {

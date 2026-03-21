@@ -62,6 +62,7 @@ import {
 } from '@/hooks/api/usePartnerSpaces';
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
 import type { PriceRuleFormValues, PriceRuleRecord } from '@/lib/pricing-rules';
+import { BUILT_IN_VARIABLE_KEYS } from '@/lib/pricing-rules';
 
 const priceRuleDateFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -82,13 +83,13 @@ export function SpacesPriceRulesPage() {
 
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [priceRuleDialogOpen, setPriceRuleDialogOpen] = useState(false);
-  const [editingPriceRule, setEditingPriceRule] =
-    useState<PriceRuleRecord | null>(null);
+  const [editingPriceRuleId, setEditingPriceRuleId] =
+    useState<string | null>(null);
   const [selectedRuleIds, setSelectedRuleIds] = useState<Set<string>>(new Set());
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
-  const [testingRule, setTestingRule] = useState<PriceRuleRecord | null>(null);
+  const [testingRuleId, setTestingRuleId] = useState<string | null>(null);
   const [testBookingHours, setTestBookingHours] = useState('1');
   const [testGuestCount, setTestGuestCount] = useState('1');
   const [testStartAt, setTestStartAt] = useState('');
@@ -103,6 +104,7 @@ export function SpacesPriceRulesPage() {
   const [isTestingLoading, setIsTestingLoading] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
   const authFetch = useAuthenticatedFetch();
+  const [customVarValues, setCustomVarValues] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!selectedSpaceId && spaces?.length) {
@@ -119,6 +121,21 @@ export function SpacesPriceRulesPage() {
     () => selectedSpace?.pricing_rules ?? [],
     [selectedSpace]
   );
+
+  const editingPriceRule = useMemo(
+    () => rules.find((r) => r.id === editingPriceRuleId) ?? null,
+    [rules, editingPriceRuleId]
+  );
+
+  const testingRule = useMemo(
+    () => rules.find((r) => r.id === testingRuleId) ?? null,
+    [rules, testingRuleId]
+  );
+
+  const customVariables = useMemo(() => {
+    if (!testingRule) return [];
+    return testingRule.definition.variables.filter(v => !BUILT_IN_VARIABLE_KEYS.has(v.key));
+  }, [testingRule]);
 
   const deletableRuleIds = useMemo(
     () =>
@@ -157,13 +174,13 @@ export function SpacesPriceRulesPage() {
   );
 
   const handlePriceRuleDialogOpen = useCallback((rule?: PriceRuleRecord) => {
-    setEditingPriceRule(rule ?? null);
+    setEditingPriceRuleId(rule?.id ?? null);
     setPriceRuleDialogOpen(true);
   }, []);
 
   const handlePriceRuleDialogOpenChange = useCallback((open: boolean) => {
     if (!open) {
-      setEditingPriceRule(null);
+      setEditingPriceRuleId(null);
     }
     setPriceRuleDialogOpen(open);
   }, []);
@@ -219,6 +236,19 @@ export function SpacesPriceRulesPage() {
       if (guestCountNum > 0) body.guestCount = guestCountNum;
       if (testStartAt) body.startAt = new Date(testStartAt).toISOString();
 
+      if (customVariables.length > 0) {
+        const overrides: Record<string, string | number> = {};
+        for (const v of customVariables) {
+          const raw = customVarValues[v.key] ?? v.initialValue ?? '';
+          if (raw !== '') {
+            overrides[v.key] = v.type === 'number' ? Number(raw) : raw;
+          }
+        }
+        if (Object.keys(overrides).length > 0) {
+          body.variableOverrides = overrides;
+        }
+      }
+
       const response = await authFetch(
         `/api/v1/partner/spaces/${selectedSpaceId}/pricing-rules/evaluate`,
         {
@@ -241,15 +271,16 @@ export function SpacesPriceRulesPage() {
     } finally {
       setIsTestingLoading(false);
     }
-  }, [authFetch, selectedSpaceId, testBookingHours, testGuestCount, testStartAt, testingRule]);
+  }, [authFetch, customVarValues, customVariables, selectedSpaceId, testBookingHours, testGuestCount, testStartAt, testingRule]);
 
   const handleOpenTestDialog = useCallback((rule: PriceRuleRecord) => {
-    setTestingRule(rule);
+    setTestingRuleId(rule.id);
     setTestBookingHours('1');
     setTestGuestCount('1');
     setTestStartAt('');
     setTestResult(null);
     setTestError(null);
+    setCustomVarValues({});
   }, []);
 
   const selectedCount = rules.filter(
@@ -670,7 +701,7 @@ export function SpacesPriceRulesPage() {
       <Dialog
         open={ testingRule !== null }
         onOpenChange={ (open) => {
-          if (!open) setTestingRule(null);
+          if (!open) setTestingRuleId(null);
         } }
       >
         <DialogContent
@@ -719,6 +750,34 @@ export function SpacesPriceRulesPage() {
               />
             </div>
 
+            { customVariables.length > 0 ? (
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-muted-foreground">Custom variables</p>
+                { customVariables.map((variable) => {
+                  const inputType = variable.type === 'number' ? 'number'
+                    : variable.type === 'date' ? 'date'
+                    : variable.type === 'time' ? 'time'
+                    : 'text';
+                  const inputId = `test-custom-var-${variable.key}`;
+                  return (
+                    <div key={ variable.key } className="space-y-2">
+                      <Label htmlFor={ inputId }>{ variable.label || variable.key }</Label>
+                      <Input
+                        id={ inputId }
+                        type={ inputType }
+                        value={ customVarValues[variable.key] ?? variable.initialValue ?? '' }
+                        onChange={ (e) => setCustomVarValues((prev) => ({
+                          ...prev,
+                          [variable.key]: e.target.value,
+                        })) }
+                        aria-label={ variable.label || variable.key }
+                      />
+                    </div>
+                  );
+                }) }
+              </div>
+            ) : null }
+
             { testError ? (
               <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
                 { testError }
@@ -762,7 +821,7 @@ export function SpacesPriceRulesPage() {
             <Button
               type="button"
               variant="outline"
-              onClick={ () => setTestingRule(null) }
+              onClick={ () => setTestingRuleId(null) }
               disabled={ isTestingLoading }
             >
               Close

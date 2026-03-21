@@ -119,6 +119,7 @@ model booking {
   price_rule_snapshot      Json?
   price_rule_branch        String?
   price_rule_expression    String?
+  price_rule_overrides     Json?
   app_notification    app_notification[]
   area                area                 @relation(fields: [area_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "booking_area_fk")
   space               space                @relation(fields: [space_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "booking_space_fk")

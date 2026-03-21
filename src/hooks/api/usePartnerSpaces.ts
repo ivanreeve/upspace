@@ -213,6 +213,7 @@ export function useCreatePriceRuleMutation(spaceId: string) {
       return data.data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
       queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.pricingRules(spaceId), });
       queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), });
     },
@@ -245,6 +246,7 @@ export function useUpdatePriceRuleMutation(spaceId: string) {
       return data.data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
       queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.pricingRules(spaceId), });
       queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), });
     },
@@ -277,6 +279,7 @@ export function useTogglePriceRuleActiveMutation(spaceId: string) {
       return data.data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
       queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.pricingRules(spaceId), });
       queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), });
     },
@@ -298,6 +301,7 @@ export function useDeletePriceRuleMutation(spaceId: string) {
       return priceRuleId;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
       queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.pricingRules(spaceId), });
       queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), });
     },
