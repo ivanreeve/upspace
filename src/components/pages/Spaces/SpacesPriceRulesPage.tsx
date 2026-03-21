@@ -134,7 +134,7 @@ export function SpacesPriceRulesPage() {
 
   const customVariables = useMemo(() => {
     if (!testingRule) return [];
-    return testingRule.definition.variables.filter(v => !BUILT_IN_VARIABLE_KEYS.has(v.key));
+    return testingRule.definition.variables.filter(v => !BUILT_IN_VARIABLE_KEYS.has(v.key) && v.userInput);
   }, [testingRule]);
 
   const deletableRuleIds = useMemo(
@@ -204,6 +204,7 @@ export function SpacesPriceRulesPage() {
           toast.success('Pricing rule saved.');
         }
         setPriceRuleDialogOpen(false);
+        setEditingPriceRuleId(null);
       } catch (mutationError) {
         toast.error(
           mutationError instanceof Error

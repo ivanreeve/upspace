@@ -3356,7 +3356,7 @@ function RuleLanguageVariablesSection({
               placeholder="Display name"
               value={ newVariableDisplayName }
               onChange={ (e) => setNewVariableDisplayName(e.target.value) }
-              className="h-7 text-xs"
+              className="h-7 text-xs bg-white"
               aria-label="Variable display name"
             />
           </div>

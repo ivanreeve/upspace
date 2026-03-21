@@ -245,10 +245,12 @@ export function useUpdatePriceRuleMutation(spaceId: string) {
       const data = (await response.json()) as { data: PriceRuleRecord };
       return data.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), });
-      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.pricingRules(spaceId), });
-      queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.list(), }),
+        queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.pricingRules(spaceId), }),
+        queryClient.invalidateQueries({ queryKey: partnerSpacesKeys.detail(spaceId), })
+      ]);
     },
   });
 }
