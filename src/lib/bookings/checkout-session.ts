@@ -103,6 +103,7 @@ export type CreateBookingCheckoutSessionOptions = {
   spaceId: string;
   startAt: Date;
   successUrl?: string;
+  variableOverrides?: Record<string, string | number>;
 };
 
 export type CreateBookingCheckoutSessionResult = {
@@ -148,6 +149,7 @@ export async function createBookingCheckoutSession(
     spaceId,
     startAt,
     successUrl,
+    variableOverrides: customVariableOverrides,
   } = options;
 
   if (!Number.isFinite(startAt.getTime())) {
@@ -230,7 +232,10 @@ export async function createBookingCheckoutSession(
       return evaluatePriceRule(priceRule.definition, {
         bookingHours,
         now: startAt,
-        variableOverrides: { guest_count: guestCount, },
+        variableOverrides: {
+          guest_count: guestCount,
+          ...customVariableOverrides,
+        },
       });
     } catch (error) {
       console.error('Invalid price rule definition', {

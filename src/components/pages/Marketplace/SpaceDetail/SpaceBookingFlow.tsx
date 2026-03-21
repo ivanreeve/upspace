@@ -22,6 +22,7 @@ import { useSearchParams } from 'next/navigation';
 import { BookingCard } from './BookingCard';
 
 import type { MarketplaceSpaceDetail } from '@/lib/queries/space';
+import type { PriceRuleVariable } from '@/lib/pricing-rules';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -85,6 +86,7 @@ type BookingFormState = {
   isPricingLoading: boolean;
   guestCount: number;
   scheduledDate: string;
+  customVariables: Record<string, string | number>;
 };
 
 type BookingFormAction =
@@ -98,7 +100,8 @@ type BookingFormAction =
   | { type: 'set-booking-hours'; bookingHours: number }
   | { type: 'set-pricing-loading'; isPricingLoading: boolean }
   | { type: 'set-guest-count'; guestCount: number }
-  | { type: 'set-scheduled-date'; scheduledDate: string };
+  | { type: 'set-scheduled-date'; scheduledDate: string }
+  | { type: 'set-custom-variable'; key: string; value: string | number };
 
 function createInitialBookingFormState(
   earliestScheduleDate: string
@@ -109,6 +112,7 @@ function createInitialBookingFormState(
     isPricingLoading: false,
     guestCount: MIN_GUEST_COUNT,
     scheduledDate: earliestScheduleDate,
+    customVariables: {},
   };
 }
 
@@ -123,6 +127,7 @@ function bookingFormReducer(
         bookingHours: DEFAULT_BOOKING_HOURS,
         selectedAreaId: action.defaultAreaId,
         isPricingLoading: Boolean(action.defaultAreaId),
+        customVariables: {},
       };
     case 'reset':
       return {
@@ -131,6 +136,7 @@ function bookingFormReducer(
         isPricingLoading: Boolean(action.defaultAreaId),
         guestCount: MIN_GUEST_COUNT,
         scheduledDate: action.earliestScheduleDate,
+        customVariables: {},
       };
     case 'select-area':
       return {
@@ -138,6 +144,7 @@ function bookingFormReducer(
         selectedAreaId: action.areaId,
         bookingHours: DEFAULT_BOOKING_HOURS,
         isPricingLoading: true,
+        customVariables: {},
       };
     case 'set-booking-hours':
       return {
@@ -158,6 +165,14 @@ function bookingFormReducer(
       return {
         ...state,
         scheduledDate: action.scheduledDate,
+      };
+    case 'set-custom-variable':
+      return {
+        ...state,
+        customVariables: {
+          ...state.customVariables,
+          [action.key]: action.value,
+        },
       };
     default: {
       const exhaustiveCheck: never = action;
@@ -234,6 +249,9 @@ type BookingDurationFormProps = {
   priceEvaluation: PriceRuleEvaluationResult | null;
   isBookingFormPristine: boolean;
   onResetBookingForm: () => void;
+  userInputVariables: PriceRuleVariable[];
+  customVariables: Record<string, string | number>;
+  onCustomVariableChange: (key: string, value: string | number) => void;
 };
 
 function priceBranchLabel(branch: PriceRuleEvaluationResult['branch']) {
@@ -272,6 +290,9 @@ function BookingDurationForm({
   priceEvaluation,
   isBookingFormPristine,
   onResetBookingForm,
+  userInputVariables,
+  customVariables,
+  onCustomVariableChange,
 }: BookingDurationFormProps) {
   return (
     <div className="space-y-4">
@@ -453,6 +474,38 @@ function BookingDurationForm({
             </p>
           </div>
         </div>
+        { userInputVariables.length > 0 && (
+          <div className="mt-4 space-y-3">
+            <Label className="text-sm font-semibold text-foreground">
+              Additional details
+            </Label>
+            <div className="grid gap-3 md:grid-cols-2">
+              { userInputVariables.map((variable) => (
+                <div key={ variable.key } className="space-y-1">
+                  <Label
+                    htmlFor={ `custom-var-${variable.key}` }
+                    className="text-xs font-medium text-muted-foreground"
+                  >
+                    { variable.label }
+                  </Label>
+                  <Input
+                    id={ `custom-var-${variable.key}` }
+                    type={ variable.type === 'number' ? 'number' : 'text' }
+                    value={ customVariables[variable.key] ?? '' }
+                    onChange={ (e) => {
+                      const raw = e.target.value;
+                      onCustomVariableChange(
+                        variable.key,
+                        variable.type === 'number' ? (raw === '' ? '' : Number(raw)) : raw
+                      );
+                    } }
+                    aria-label={ variable.label }
+                  />
+                </div>
+              )) }
+            </div>
+          </div>
+        ) }
       </div>
       <div className="rounded-2xl border border-border/70 bg-background/80 p-4 shadow-sm">
         <div className="flex items-center justify-between">
@@ -696,6 +749,7 @@ export const SpaceBookingFlow = forwardRef<
     isPricingLoading,
     guestCount,
     scheduledDate,
+    customVariables,
   } = bookingState;
 
   const bookingStartAtIso = useMemo(() => {
@@ -811,6 +865,26 @@ scheduledDate: event.target.value,
     [activePriceRule]
   );
 
+  const userInputVariables = useMemo<PriceRuleVariable[]>(() => {
+    if (!activePriceRule) {
+      return [];
+    }
+    return activePriceRule.definition.variables.filter(
+      (variable) => variable.userInput === true
+    );
+  }, [activePriceRule]);
+
+  const handleCustomVariableChange = useCallback(
+    (key: string, value: string | number) => {
+      dispatchBookingAction({
+ type: 'set-custom-variable',
+key,
+value, 
+});
+    },
+    []
+  );
+
   const defaultPricedAreaId = findFirstPricedAreaId();
   const isBookingFormPristine =
     selectedAreaId === defaultPricedAreaId &&
@@ -819,7 +893,7 @@ scheduledDate: event.target.value,
     scheduledDate === earliestScheduleDate;
 
   const variableOverrides = useMemo(() => {
-    const overrides: Record<string, number> = { guest_count: guestCount, };
+    const overrides: Record<string, string | number> = { guest_count: guestCount, };
 
     if (selectedArea) {
       if (typeof selectedArea.maxCapacity === 'number') {
@@ -830,8 +904,14 @@ scheduledDate: event.target.value,
       }
     }
 
+    for (const [key, value] of Object.entries(customVariables)) {
+      if (value !== '') {
+        overrides[key] = value;
+      }
+    }
+
     return overrides;
-  }, [guestCount, selectedArea]);
+  }, [customVariables, guestCount, selectedArea]);
 
   const priceEvaluation = useMemo(() => {
     if (!activePriceRule) {
@@ -935,6 +1015,13 @@ scheduledDate: event.target.value,
     return PRICE_FORMATTER.format(totalPrice);
   })();
 
+  const hasAllCustomVariables = userInputVariables.every((variable) => {
+    const value = customVariables[variable.key];
+    if (value === undefined || value === '') return false;
+    if (variable.type === 'number' && typeof value === 'number' && !Number.isFinite(value)) return false;
+    return true;
+  });
+
   const canConfirmBooking = Boolean(
     selectedAreaId &&
       !isPricingLoading &&
@@ -942,7 +1029,8 @@ scheduledDate: event.target.value,
       totalPrice !== null &&
       canBook &&
       !createCheckoutSession.isPending &&
-      !isOverCapacity
+      !isOverCapacity &&
+      hasAllCustomVariables
   );
 
   const handleConfirmBooking = useCallback(async () => {
@@ -951,12 +1039,23 @@ scheduledDate: event.target.value,
     }
 
     try {
+      const checkoutOverrides: Record<string, string | number> = {};
+      for (const variable of userInputVariables) {
+        const value = customVariables[variable.key];
+        if (value !== undefined && value !== '') {
+          checkoutOverrides[variable.key] = value;
+        }
+      }
+
       const result = await createCheckoutSession.mutateAsync({
         spaceId: space.id,
         areaId: selectedArea.id,
         bookingHours,
         startAt: bookingStartAtIso,
         guestCount,
+        ...(Object.keys(checkoutOverrides).length > 0
+          ? { variableOverrides: checkoutOverrides, }
+          : {}),
       });
       resetBookingState();
       setIsBookingOpen(false);
@@ -971,11 +1070,13 @@ scheduledDate: event.target.value,
     bookingStartAtIso,
     canConfirmBooking,
     createCheckoutSession,
+    customVariables,
     guestCount,
     resetBookingState,
     selectedArea,
     session,
-    space.id
+    space.id,
+    userInputVariables
   ]);
 
   // Expose openBooking to the parent via ref
@@ -1024,6 +1125,9 @@ scheduledDate: event.target.value,
       priceEvaluation={ priceEvaluation }
       isBookingFormPristine={ isBookingFormPristine }
       onResetBookingForm={ handleResetBookingForm }
+      userInputVariables={ userInputVariables }
+      customVariables={ customVariables }
+      onCustomVariableChange={ handleCustomVariableChange }
     />
   );
 

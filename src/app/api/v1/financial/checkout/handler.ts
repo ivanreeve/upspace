@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { MAX_BOOKING_HOURS, MIN_BOOKING_HOURS } from '@/lib/bookings/constants';
 import { BookingCheckoutError, createBookingCheckoutSession } from '@/lib/bookings/checkout-session';
+import { BUILT_IN_VARIABLE_KEYS } from '@/lib/pricing-rules';
 import { FinancialProviderError } from '@/lib/providers/errors';
 import { enforceRateLimit, RateLimitExceededError } from '@/lib/rate-limit';
 import { resolveAuthenticatedUserForWallet } from '@/lib/wallet-server';
@@ -15,6 +16,16 @@ const checkoutPayloadSchema = z.object({
   guestCount: z.number().int().min(1).max(999).optional(),
   successUrl: z.string().url().optional(),
   cancelUrl: z.string().url().optional(),
+  variableOverrides: z
+    .record(z.string(), z.union([z.string(), z.number()]))
+    .optional()
+    .refine(
+      (overrides) => {
+        if (!overrides) return true;
+        return Object.keys(overrides).every((key) => !BUILT_IN_VARIABLE_KEYS.has(key));
+      },
+      { message: 'Cannot override built-in variable keys.', }
+    ),
 });
 
 const unauthorizedResponse = NextResponse.json(
@@ -86,6 +97,7 @@ export async function handleCreateBookingCheckout(req: NextRequest) {
       spaceId: parsed.data.spaceId,
       startAt: new Date(parsed.data.startAt),
       successUrl: parsed.data.successUrl,
+      variableOverrides: parsed.data.variableOverrides,
     });
 
     return NextResponse.json(

@@ -157,6 +157,16 @@ export const FORMULA_ALLOWED_BUILTIN_KEYS = [
   'guest_count'
 ] as const;
 
+export const BUILT_IN_VARIABLE_KEYS = new Set([
+  ...BOOKING_DURATION_VARIABLE_KEYS,
+  'guest_count',
+  'date',
+  'time',
+  'day_of_week',
+  'area_max_capacity',
+  'area_min_capacity'
+]);
+
 export const BOOKING_DURATION_VARIABLE_REFERENCE_TEXT =
   'booking_hours, booking_days, booking_weeks, booking_months, or guest_count';
 

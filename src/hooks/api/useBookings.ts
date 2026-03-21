@@ -123,6 +123,7 @@ type CreateCheckoutSessionInput = {
   bookingHours: number;
   startAt: string;
   guestCount: number;
+  variableOverrides?: Record<string, string | number>;
 };
 
 type CreateCheckoutSessionResponse = {
@@ -144,6 +145,9 @@ export function useCreateCheckoutSessionMutation() {
           bookingHours: payload.bookingHours,
           startAt: payload.startAt,
           guestCount: payload.guestCount,
+          ...(payload.variableOverrides && Object.keys(payload.variableOverrides).length > 0
+            ? { variableOverrides: payload.variableOverrides, }
+            : {}),
         }),
       });
 
