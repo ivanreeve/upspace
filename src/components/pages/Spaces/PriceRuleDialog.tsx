@@ -3425,7 +3425,7 @@ function RuleLanguageConditionsSection({
           <div className="relative">
             <div
               aria-hidden="true"
-              className={ `pointer-events-none absolute inset-0 z-0 flex items-center overflow-hidden rounded-md px-3 py-1 text-foreground/70 ${CONDITION_FIELD_TEXT_STYLES}` }
+              className={ `pointer-events-none absolute inset-0 z-0 flex items-center overflow-hidden rounded-md bg-white dark:bg-transparent px-3 py-1 text-foreground/70 ${CONDITION_FIELD_TEXT_STYLES}` }
             >
               { isConditionFieldEmpty ? (
                 <span className="m-0 w-full whitespace-pre text-muted-foreground">
