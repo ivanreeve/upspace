@@ -758,7 +758,7 @@ export function SpacesPriceRulesPage() {
               </div>
             ) : null }
           </div>
-          <DialogFooter className="flex-col gap-2 sm:flex-row">
+          <DialogFooter className="mt-4 flex-col gap-2 sm:flex-row">
             <Button
               type="button"
               variant="outline"
