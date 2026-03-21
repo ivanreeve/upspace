@@ -3639,7 +3639,7 @@ function RuleLanguageEditor({
   });
 
   return (
-    <section className="space-y-4 rounded-xl border border-border bg-background p-4">
+    <section className="space-y-4 rounded-xl border border-border/80 bg-muted/20 p-4">
       <div className="flex flex-col gap-2">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
