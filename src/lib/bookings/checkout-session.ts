@@ -5,7 +5,7 @@ import { countActiveBookingsOverlap, resolveBookingDecision } from '@/lib/bookin
 import { sendBookingNotificationEmail } from '@/lib/email';
 import { prisma } from '@/lib/prisma';
 import { evaluatePriceRule } from '@/lib/pricing-rules-evaluator';
-import type { PriceRuleRecord } from '@/lib/pricing-rules';
+import { BUILT_IN_VARIABLE_KEYS, type PriceRuleRecord } from '@/lib/pricing-rules';
 import { getFinancialProvider } from '@/lib/providers/provider-registry';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { isTestingModeEnabled } from '@/lib/testing-mode';
@@ -227,6 +227,28 @@ export async function createBookingCheckoutSession(
     throw new BookingCheckoutError(400, 'The pricing rule for this area is currently inactive.');
   }
 
+  // Validate that customer-provided overrides only target variables declared
+  // with userInput: true. This prevents customers from overriding internal
+  // variables the partner intended to be fixed.
+  if (customVariableOverrides && Object.keys(customVariableOverrides).length > 0) {
+    const allowedOverrideKeys = new Set(
+      priceRule.definition.variables
+        .filter((v) => v.userInput === true)
+        .map((v) => v.key)
+    );
+
+    const invalidKeys = Object.keys(customVariableOverrides).filter(
+      (key) => !allowedOverrideKeys.has(key) && !BUILT_IN_VARIABLE_KEYS.has(key)
+    );
+
+    if (invalidKeys.length > 0) {
+      throw new BookingCheckoutError(
+        400,
+        `Invalid variable overrides: ${invalidKeys.join(', ')}`
+      );
+    }
+  }
+
   const priceEvaluation = (() => {
     try {
       return evaluatePriceRule(priceRule.definition, {
@@ -239,9 +261,14 @@ export async function createBookingCheckoutSession(
         },
       });
     } catch (error) {
-      console.error('Invalid price rule definition', {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Price rule evaluation failed', {
         areaId: area.id,
-        error,
+        priceRuleId: priceRule.id,
+        priceRuleName: priceRule.name,
+        bookingHours,
+        guestCount,
+        error: errorMessage,
       });
       return {
         price: null,
@@ -257,7 +284,29 @@ export async function createBookingCheckoutSession(
     throw new BookingCheckoutError(400, 'Unable to compute a price for this booking.');
   }
 
-  const formulaAlreadyHandlesGuests = priceEvaluation.usedVariables.includes('guest_count');
+  // Check if the formula *meaningfully* uses guest_count by evaluating again
+  // with guest_count = 1. A formula like `100 + guest_count * 0` technically
+  // references the variable but doesn't change the output — in that case we
+  // still need to apply the automatic guest multiplier.
+  const formulaAlreadyHandlesGuests = (() => {
+    if (!priceEvaluation.usedVariables.includes('guest_count') || guestCount <= 1) {
+      return false;
+    }
+    try {
+      const singleGuestEval = evaluatePriceRule(priceRule.definition, {
+        bookingHours,
+        now: startAt,
+        variableOverrides: {
+          ...customVariableOverrides,
+          guest_count: 1,
+          ...(areaMaxCapacity !== null ? { area_max_capacity: areaMaxCapacity, } : {}),
+        },
+      });
+      return singleGuestEval.price !== priceEvaluation.price;
+    } catch {
+      return false;
+    }
+  })();
   const guestMultiplier = formulaAlreadyHandlesGuests ? 1 : guestCount;
   const priceMinor = Math.round(priceEvaluation.price * guestMultiplier * BOOKING_PRICE_MINOR_FACTOR);
 
@@ -561,6 +610,13 @@ export async function createBookingCheckoutSession(
     );
 
     if (existingCheckoutUrl) {
+      // Use the amount from the existing payment transaction to ensure the
+      // displayed price matches what the customer will actually be charged.
+      const chargedAmountMinor = Number(existingPaymentTransaction.amount_minor);
+      const displayPrice = Number.isFinite(chargedAmountMinor) && chargedAmountMinor > 0
+        ? chargedAmountMinor / BOOKING_PRICE_MINOR_FACTOR
+        : priceMinor / BOOKING_PRICE_MINOR_FACTOR;
+
       return {
         areaId: area.id,
         areaName: area.name,
@@ -568,7 +624,7 @@ export async function createBookingCheckoutSession(
         bookingId: bookingRow.id,
         checkoutUrl: existingCheckoutUrl,
         guestCount,
-        price: priceMinor / BOOKING_PRICE_MINOR_FACTOR,
+        price: displayPrice,
         priceCurrency: 'PHP',
         requiresHostApproval,
         spaceId: area.space.id,
