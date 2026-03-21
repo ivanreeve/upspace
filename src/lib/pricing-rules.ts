@@ -86,6 +86,7 @@ export const priceRuleDefinitionSchema = z.object({
       type: z.enum(['text', 'number', 'date', 'time']),
       initialValue: z.string().optional(),
       userInput: z.boolean().optional(),
+      displayName: z.string().optional(),
     })
   ),
   conditions: z.array(priceRuleConditionSchema).max(FORMULA_MAX_CONDITIONS, `A rule can have at most ${FORMULA_MAX_CONDITIONS} conditions.`),
