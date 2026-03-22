@@ -55,6 +55,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import {
   BOOKING_DURATION_VARIABLE_REFERENCE_TEXT,
+  BUILT_IN_VARIABLE_KEYS,
   FORMULA_ALLOWED_BUILTIN_KEYS,
   PRICE_RULE_COMPARATORS,
   PRICE_RULE_CONNECTORS,
@@ -4009,6 +4010,14 @@ function PriceRulePreviewCard({ definition, }: PriceRulePreviewCardProps) {
   const [bookingHours, setBookingHours] = useState('2');
   const [guestCount, setGuestCount] = useState('1');
   const [startAt, setStartAt] = useState('');
+  const [customVarValues, setCustomVarValues] = useState<Record<string, string>>({});
+
+  const customVariables = useMemo(
+    () => definition.variables.filter(
+      (v) => !BUILT_IN_VARIABLE_KEYS.has(v.key) && v.userInput
+    ),
+    [definition.variables]
+  );
 
   const previewDate = useMemo(() => {
     if (!startAt) {
@@ -4025,15 +4034,22 @@ function PriceRulePreviewCard({ definition, }: PriceRulePreviewCardProps) {
     try {
       const hours = parsePositiveNumberOrFallback(bookingHours, 1);
       const guests = parsePositiveNumberOrFallback(guestCount, 1);
+      const overrides: Record<string, string | number> = { guest_count: guests, };
+      for (const v of customVariables) {
+        const raw = customVarValues[v.key] ?? v.initialValue ?? '';
+        if (raw !== '') {
+          overrides[v.key] = v.type === 'number' ? Number(raw) : raw;
+        }
+      }
       return evaluatePriceRule(definition, {
         bookingHours: hours,
         now: previewDate,
-        variableOverrides: { guest_count: guests, },
+        variableOverrides: overrides,
       });
     } catch {
       return null;
     }
-  }, [bookingHours, definition, guestCount, previewDate]);
+  }, [bookingHours, customVarValues, customVariables, definition, guestCount, previewDate]);
 
   const previewLabel =
     evaluation && evaluation.price !== null
@@ -4101,6 +4117,28 @@ function PriceRulePreviewCard({ definition, }: PriceRulePreviewCardProps) {
             aria-label="Preview start date"
           />
         </div>
+        { customVariables.map((variable) => {
+          const inputType = variable.type === 'number' ? 'number'
+            : variable.type === 'date' ? 'date'
+            : variable.type === 'time' ? 'time'
+            : 'text';
+          const inputId = `preview-custom-var-${variable.key}`;
+          return (
+            <div key={ variable.key } className="space-y-1">
+              <Label htmlFor={ inputId }>{ variable.displayName || variable.label || variable.key }</Label>
+              <Input
+                id={ inputId }
+                type={ inputType }
+                value={ customVarValues[variable.key] ?? variable.initialValue ?? '' }
+                onChange={ (event) => setCustomVarValues((prev) => ({
+                  ...prev,
+                  [variable.key]: event.target.value,
+                })) }
+                aria-label={ variable.displayName || variable.label || variable.key }
+              />
+            </div>
+          );
+        }) }
       </div>
 
       <div className="mt-4 rounded-lg border border-border/80 bg-muted/20 p-3">
