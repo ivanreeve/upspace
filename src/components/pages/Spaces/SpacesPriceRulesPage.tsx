@@ -95,11 +95,9 @@ export function SpacesPriceRulesPage() {
   const [testStartAt, setTestStartAt] = useState('');
   const [testResult, setTestResult] = useState<{
     price: number | null;
-    unitPrice: number | null;
     branch: string | null;
     appliedExpression: string | null;
     conditionsSatisfied: boolean;
-    guestMultiplierApplied: boolean;
   } | null>(null);
   const [isTestingLoading, setIsTestingLoading] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
@@ -656,7 +654,7 @@ export function SpacesPriceRulesPage() {
                               </Button>
                               <Button
                                 type="button"
-                                variant="outline"
+                                variant="default"
                                 size="sm"
                                 className="hover:text-white"
                                 onClick={ () => handlePriceRuleDialogOpen(rule) }
@@ -793,12 +791,6 @@ export function SpacesPriceRulesPage() {
                     { testResult.price !== null ? `₱${testResult.price.toLocaleString()}` : '—' }
                   </span>
                 </div>
-                { testResult.unitPrice !== null && testResult.guestMultiplierApplied ? (
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Unit price (per guest)</span>
-                    <span className="text-sm text-foreground">₱{ testResult.unitPrice.toLocaleString() }</span>
-                  </div>
-                ) : null }
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Branch</span>
                   <Badge variant="outline" className="text-xs">{ testResult.branch ?? 'unconditional' }</Badge>

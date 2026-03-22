@@ -251,7 +251,7 @@ function DatePickerInput({
     : 'Pick a date';
 
   return (
-    <Popover modal={ false }>
+    <Popover modal>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -275,7 +275,7 @@ function DatePickerInput({
           />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
+      <PopoverContent className="z-[70] w-auto p-0">
         <Calendar
           mode="single"
           selected={ selectedDate }
@@ -1885,7 +1885,7 @@ const pricingRuleTemplates: Array<{
             },
           }
         ],
-        formula: 'base_rate * weekend_multiplier ELSE base_rate',
+        formula: 'base_rate * booking_hours * weekend_multiplier ELSE base_rate * booking_hours',
       },
     }),
   },
@@ -2979,34 +2979,62 @@ function useRuleLanguageEditorController({
       });
       return;
     }
-    try {
-      const condition = splitConditionAndFormula(trimmed).condition;
-      const parsedConditions = parseConditionExpression(condition, definition);
-      const simulatedConditions = [
-        ...definition.conditions,
-        ...parsedConditions
-      ];
-      const collisionError = detectConditionCollisions(
-        simulatedConditions,
-        definition
-      );
-      if (collisionError) {
+    const lower = trimmed.toLowerCase();
+    if (!lower.startsWith('if ')) {
+      try {
+        const variableMap = createVariableValueMap(definition);
+        validatePriceExpression(trimmed, 'Formula', variableMap, definition);
+      } catch (error) {
         dispatchEditor({
           type: 'setExpressionError',
-          value: collisionError,
+          value: error instanceof Error ? error.message : 'Invalid formula.',
         });
         return;
       }
-    } catch (error) {
-      dispatchEditor({
-        type: 'setExpressionError',
-        value: error instanceof Error ? error.message : 'Invalid condition.',
-      });
-      return;
+      handleConditionExpressionChange(trimmed);
+    } else {
+      try {
+        const {
+ condition, thenFormula, elseFormula, 
+} = splitConditionAndFormula(trimmed);
+        if (!condition) {
+          throw new Error('Condition is missing operands.');
+        }
+        if (!thenFormula) {
+          throw new Error('Add a price expression after THEN.');
+        }
+        const variableMap = createVariableValueMap(definition);
+        validatePriceExpression(thenFormula, 'THEN', variableMap, definition);
+        if (elseFormula) {
+          validatePriceExpression(elseFormula, 'ELSE', variableMap, definition);
+        }
+        const parsedConditions = parseConditionExpression(condition, definition);
+        const simulatedConditions = [
+          ...definition.conditions,
+          ...parsedConditions
+        ];
+        const collisionError = detectConditionCollisions(
+          simulatedConditions,
+          definition
+        );
+        if (collisionError) {
+          dispatchEditor({
+            type: 'setExpressionError',
+            value: collisionError,
+          });
+          return;
+        }
+      } catch (error) {
+        dispatchEditor({
+          type: 'setExpressionError',
+          value: error instanceof Error ? error.message : 'Invalid condition.',
+        });
+        return;
+      }
+      const baseExpression = conditionExpression.trim();
+      const separator = baseExpression ? ' AND ' : '';
+      handleConditionExpressionChange(`${baseExpression}${separator}${trimmed}`);
     }
-    const baseExpression = conditionExpression.trim();
-    const separator = baseExpression ? ' AND ' : '';
-    handleConditionExpressionChange(`${baseExpression}${separator}${trimmed}`);
     dispatchEditor({ type: 'resetComposer', });
   }, [
     conditionExpression,
@@ -3216,25 +3244,25 @@ function RuleLanguageVariablesSection({
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="text">
+            <SelectItem value="text" className="data-[highlighted]:!bg-[oklch(0.955_0.02_204.6929)] data-[highlighted]:!text-primary data-[highlighted]:[&_svg]:!text-primary dark:data-[highlighted]:!bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:!text-secondary dark:data-[highlighted]:[&_svg]:!text-secondary">
               <div className="flex items-center gap-2">
                 <TypeIcon type="text" />
                 Text
               </div>
             </SelectItem>
-            <SelectItem value="number">
+            <SelectItem value="number" className="data-[highlighted]:!bg-[oklch(0.955_0.02_204.6929)] data-[highlighted]:!text-primary data-[highlighted]:[&_svg]:!text-primary dark:data-[highlighted]:!bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:!text-secondary dark:data-[highlighted]:[&_svg]:!text-secondary">
               <div className="flex items-center gap-2">
                 <TypeIcon type="number" />
                 Number
               </div>
             </SelectItem>
-            <SelectItem value="date">
+            <SelectItem value="date" className="data-[highlighted]:!bg-[oklch(0.955_0.02_204.6929)] data-[highlighted]:!text-primary data-[highlighted]:[&_svg]:!text-primary dark:data-[highlighted]:!bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:!text-secondary dark:data-[highlighted]:[&_svg]:!text-secondary">
               <div className="flex items-center gap-2">
                 <TypeIcon type="date" />
                 Date
               </div>
             </SelectItem>
-            <SelectItem value="time">
+            <SelectItem value="time" className="data-[highlighted]:!bg-[oklch(0.955_0.02_204.6929)] data-[highlighted]:!text-primary data-[highlighted]:[&_svg]:!text-primary dark:data-[highlighted]:!bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:!text-secondary dark:data-[highlighted]:[&_svg]:!text-secondary">
               <div className="flex items-center gap-2">
                 <TypeIcon type="time" />
                 Time

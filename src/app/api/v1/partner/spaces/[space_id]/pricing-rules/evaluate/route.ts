@@ -64,21 +64,13 @@ export async function POST(req: NextRequest, { params, }: RouteParams) {
       },
     });
 
-    const formulaAlreadyHandlesGuests = result.usedVariables.includes('guest_count');
-    const guestMultiplier = formulaAlreadyHandlesGuests ? 1 : guestCount;
-    const totalPrice = result.price !== null
-      ? result.price * guestMultiplier
-      : null;
-
     return NextResponse.json({
       data: {
-        price: totalPrice,
-        unitPrice: result.price,
+        price: result.price,
         branch: result.branch,
         appliedExpression: result.appliedExpression,
         conditionsSatisfied: result.conditionsSatisfied,
         usedVariables: result.usedVariables,
-        guestMultiplierApplied: !formulaAlreadyHandlesGuests,
       },
     });
   } catch (error) {
@@ -90,12 +82,10 @@ export async function POST(req: NextRequest, { params, }: RouteParams) {
         error: error.message,
         data: {
           price: null,
-          unitPrice: null,
           branch: null,
           appliedExpression: null,
           conditionsSatisfied: false,
           usedVariables: [],
-          guestMultiplierApplied: false,
         },
       }, { status: 400, });
     }
