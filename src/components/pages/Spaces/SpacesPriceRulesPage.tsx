@@ -18,6 +18,7 @@ FiTrash2
 import { GoArrowUpRight } from 'react-icons/go';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { SpacesBreadcrumbs } from './SpacesBreadcrumbs';
 
@@ -55,12 +56,14 @@ import {
   TableRow
 } from '@/components/ui/table';
 import {
+  partnerSpacesKeys,
   useCreatePriceRuleMutation,
   useDeletePriceRuleMutation,
   usePartnerSpacesQuery,
   useUpdatePriceRuleMutation
 } from '@/hooks/api/usePartnerSpaces';
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
+import type { SpaceRecord } from '@/data/spaces';
 import type { PriceRuleFormValues, PriceRuleRecord } from '@/lib/pricing-rules';
 import { BUILT_IN_VARIABLE_KEYS } from '@/lib/pricing-rules';
 
@@ -71,6 +74,7 @@ const priceRuleDateFormatter = new Intl.DateTimeFormat('en-US', {
 });
 
 export function SpacesPriceRulesPage() {
+  const queryClient = useQueryClient();
   const {
     data: spaces,
     isError,
@@ -192,13 +196,39 @@ export function SpacesPriceRulesPage() {
 
       try {
         if (editingPriceRule) {
-          await updatePriceRuleMutation.mutateAsync({
+          const updatedRule = await updatePriceRuleMutation.mutateAsync({
             priceRuleId: editingPriceRule.id,
             payload: values,
           });
+          queryClient.setQueryData<SpaceRecord[]>(
+            partnerSpacesKeys.list(),
+            (prev) =>
+              prev?.map((space) =>
+                space.id === selectedSpaceId
+                  ? {
+                      ...space,
+                      pricing_rules: space.pricing_rules.map((rule) =>
+                        rule.id === editingPriceRule.id ? updatedRule : rule
+                      ),
+                    }
+                  : space
+              )
+          );
           toast.success('Pricing rule updated.');
         } else {
-          await createPriceRuleMutation.mutateAsync(values);
+          const createdRule = await createPriceRuleMutation.mutateAsync(values);
+          queryClient.setQueryData<SpaceRecord[]>(
+            partnerSpacesKeys.list(),
+            (prev) =>
+              prev?.map((space) =>
+                space.id === selectedSpaceId
+                  ? {
+                      ...space,
+                      pricing_rules: [...space.pricing_rules, createdRule],
+                    }
+                  : space
+              )
+          );
           toast.success('Pricing rule saved.');
         }
         setPriceRuleDialogOpen(false);
@@ -214,6 +244,7 @@ export function SpacesPriceRulesPage() {
     [
       createPriceRuleMutation,
       editingPriceRule,
+      queryClient,
       selectedSpaceId,
       updatePriceRuleMutation
     ]
