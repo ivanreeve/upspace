@@ -675,6 +675,7 @@ export function SpacesPriceRulesPage() {
                                 type="button"
                                 variant="outline"
                                 size="sm"
+                                className="hover:bg-[oklch(0.955_0.02_204.6929)] hover:text-primary hover:[&_svg]:text-primary"
                                 onClick={ () => handleOpenTestDialog(rule) }
                                 disabled={ isAnyDeletePending }
                               >

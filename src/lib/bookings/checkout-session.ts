@@ -205,11 +205,17 @@ export async function createBookingCheckoutSession(
     throw new BookingCheckoutError(400, `This area allows up to ${areaMaxCapacity} guests.`);
   }
 
-  if (area.advance_booking_enabled) {
-    const leadMs = resolveLeadTimeMs(area.advance_booking_value, area.advance_booking_unit);
-    const minStart = new Date(now.getTime() + leadMs);
-    if (startAt.getTime() < minStart.getTime()) {
-      throw new BookingCheckoutError(400, 'Please book further in advance for this area.');
+  const maxLeadMs = area.advance_booking_enabled
+    ? resolveLeadTimeMs(area.advance_booking_value, area.advance_booking_unit)
+    : 24 * 60 * 60 * 1000;
+
+  if (maxLeadMs > 0) {
+    const maxStart = new Date(now.getTime() + maxLeadMs);
+    if (startAt.getTime() > maxStart.getTime()) {
+      throw new BookingCheckoutError(
+        400,
+        `This area only allows bookings up to ${area.advance_booking_enabled ? `${area.advance_booking_value} ${area.advance_booking_unit}` : '24 hours'} in advance.`
+      );
     }
   }
 

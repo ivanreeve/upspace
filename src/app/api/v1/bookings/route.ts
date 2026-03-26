@@ -568,23 +568,33 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (area.advance_booking_enabled && area.advance_booking_value && area.advance_booking_unit) {
-    const leadMs = (() => {
-      switch (area.advance_booking_unit) {
-        case 'days':
-          return area.advance_booking_value * 24 * 60 * 60 * 1000;
-        case 'weeks':
-          return area.advance_booking_value * 7 * 24 * 60 * 60 * 1000;
-        case 'months':
-          return area.advance_booking_value * 30 * 24 * 60 * 60 * 1000;
-        default:
-          return 0;
-      }
-    })();
-    const minStart = new Date(now.getTime() + leadMs);
-    if (bookingStartAt.getTime() < minStart.getTime()) {
+  const leadMs = area.advance_booking_enabled
+    ? (() => {
+        const val = area.advance_booking_value ?? 0;
+        switch (area.advance_booking_unit) {
+          case 'days':
+            return val * 24 * 60 * 60 * 1000;
+          case 'weeks':
+            return val * 7 * 24 * 60 * 60 * 1000;
+          case 'months':
+            return val * 30 * 24 * 60 * 60 * 1000;
+          default:
+            return 0;
+        }
+      })()
+    : 24 * 60 * 60 * 1000;
+
+  if (leadMs > 0) {
+    const maxStart = new Date(now.getTime() + leadMs);
+    if (bookingStartAt.getTime() > maxStart.getTime()) {
       return NextResponse.json(
-        { error: 'Please book further in advance for this area.', },
+        {
+          error: `This area only allows bookings up to ${
+            area.advance_booking_enabled
+              ? `${area.advance_booking_value} ${area.advance_booking_unit}`
+              : '24 hours'
+          } in advance.`,
+        },
         { status: 400, }
       );
     }
