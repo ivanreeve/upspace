@@ -17,12 +17,10 @@ FiTrash2
 } from 'react-icons/fi';
 import { GoArrowUpRight } from 'react-icons/go';
 import { toast } from 'sonner';
-import dynamic from 'next/dynamic';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { SpacesBreadcrumbs } from './SpacesBreadcrumbs';
-
-const PriceRuleDialog = dynamic(() => import('./PriceRuleDialog'), { ssr: false, });
+import { PriceRuleDialog } from './PriceRuleDialog';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

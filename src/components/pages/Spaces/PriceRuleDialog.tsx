@@ -1973,11 +1973,41 @@ export type PriceRuleFormState = {
   ) => void;
 };
 
+function computeInitialFormState(initialValues?: PriceRuleFormValues) {
+  if (initialValues) {
+    const clonedDefinition = cloneDefinition(initialValues.definition);
+    const derivedConfig = deriveGuidedConfigFromDefinition(clonedDefinition);
+    const supportsGuided = definitionSupportsGuidedBuilder(clonedDefinition);
+    return {
+      values: {
+        ...initialValues,
+        definition: clonedDefinition,
+      } as PriceRuleFormValues,
+      conditionExpression: buildConditionExpressionFromDefinition(clonedDefinition),
+      guidedConfig: derivedConfig,
+      canUseGuidedBuilder: supportsGuided,
+      builderMode: (supportsGuided ? 'guided' : 'advanced') as 'guided' | 'advanced',
+    };
+  }
+  const defaultConfig = createDefaultGuidedConfig();
+  const defaultDefinition = buildDefinitionFromGuidedConfig(defaultConfig);
+  return {
+    values: {
+      ...createDefaultRule(),
+      definition: defaultDefinition,
+    } as PriceRuleFormValues,
+    conditionExpression: buildConditionExpressionFromDefinition(defaultDefinition),
+    guidedConfig: defaultConfig,
+    canUseGuidedBuilder: true,
+    builderMode: 'guided' as const,
+  };
+}
+
 export function usePriceRuleFormState(
   initialValues?: PriceRuleFormValues,
   resetTrigger?: unknown
 ): PriceRuleFormState {
-  const [values, setValues] = useState<PriceRuleFormValues>(createDefaultRule);
+  const [values, setValues] = useState<PriceRuleFormValues>(() => computeInitialFormState(initialValues).values);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [newVariableLabel, setNewVariableLabel] = useState('');
   const [newVariableType, setNewVariableType] = useState<
@@ -1986,13 +2016,17 @@ export function usePriceRuleFormState(
   const [newVariableValue, setNewVariableValue] = useState('');
   const [newVariableUserInput, setNewVariableUserInput] = useState(false);
   const [newVariableDisplayName, setNewVariableDisplayName] = useState('');
-  const [conditionExpression, setConditionExpression] = useState('');
+  const [conditionExpression, setConditionExpression] = useState(
+    () => computeInitialFormState(initialValues).conditionExpression
+  );
   const [conditionError, setConditionError] = useState<string | null>(null);
   const [builderMode, setBuilderModeState] =
-    useState<'guided' | 'advanced'>('guided');
-  const [canUseGuidedBuilder, setCanUseGuidedBuilder] = useState(true);
+    useState<'guided' | 'advanced'>(() => computeInitialFormState(initialValues).builderMode);
+  const [canUseGuidedBuilder, setCanUseGuidedBuilder] = useState(
+    () => computeInitialFormState(initialValues).canUseGuidedBuilder
+  );
   const [guidedConfig, setGuidedConfig] =
-    useState<GuidedPriceRuleConfig>(createDefaultGuidedConfig);
+    useState<GuidedPriceRuleConfig>(() => computeInitialFormState(initialValues).guidedConfig);
   const guidedConfigRef = useRef(guidedConfig);
   useEffect(() => {
     guidedConfigRef.current = guidedConfig;
