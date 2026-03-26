@@ -1,19 +1,27 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import crypto from 'crypto';
+
+import {
+describe,
+it,
+expect,
+vi,
+beforeEach
+} from 'vitest';
+import { NextRequest } from 'next/server';
+
 import { prisma } from '@/lib/prisma';
 import { POST as createBookingHandler } from '@/app/api/v1/bookings/route';
-import { NextRequest } from 'next/server';
 
 vi.mock('@/lib/supabase/server', () => ({
   createSupabaseServerClient: vi.fn().mockResolvedValue({
     auth: {
       getUser: vi.fn().mockResolvedValue({
-        data: { user: { id: 'user-1' } },
+        data: { user: { id: 'user-1', }, },
         error: null,
       }),
       admin: {
         getUserById: vi.fn().mockResolvedValue({
-          data: { user: { email: 'partner@example.com' } },
+          data: { user: { email: 'partner@example.com', }, },
           error: null,
         }),
       },
@@ -21,36 +29,30 @@ vi.mock('@/lib/supabase/server', () => ({
   }),
 }));
 
-vi.mock('@/lib/testing-mode', () => ({
-  isTestingModeEnabled: vi.fn().mockReturnValue(true),
-}));
+vi.mock('@/lib/testing-mode', () => ({ isTestingModeEnabled: vi.fn().mockReturnValue(true), }));
 
 vi.mock('@/lib/prisma', () => {
   const mockPrisma = {
-    area: {
-      findUnique: vi.fn(),
-    },
+    area: { findUnique: vi.fn(), },
     user: {
       findFirst: vi.fn().mockResolvedValue({
         role: 'customer',
         handle: 'customer',
         first_name: 'C',
-        last_name: 'U'
+        last_name: 'U',
       }),
     },
-    app_notification: {
-      create: vi.fn().mockResolvedValue({ id: 'notification-1' }),
-    },
+    app_notification: { create: vi.fn().mockResolvedValue({ id: 'notification-1', }), },
     booking: {
       create: vi.fn(),
       findFirst: vi.fn(),
       findUnique: vi.fn(),
       count: vi.fn(),
-      aggregate: vi.fn().mockResolvedValue({ _sum: { guest_count: 0 } }),
+      aggregate: vi.fn().mockResolvedValue({ _sum: { guest_count: 0, }, }),
     },
     $transaction: vi.fn((cb) => cb(mockPrisma)),
   };
-  return { prisma: mockPrisma };
+  return { prisma: mockPrisma, };
 });
 
 vi.mock('@/lib/email', () => ({
@@ -58,9 +60,7 @@ vi.mock('@/lib/email', () => ({
   sendBookingRejectionEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('@/lib/notifications/booking', () => ({
-  notifyBookingEvent: vi.fn().mockResolvedValue(undefined),
-}));
+vi.mock('@/lib/notifications/booking', () => ({ notifyBookingEvent: vi.fn().mockResolvedValue(undefined), }));
 
 describe('Advance Booking Logic', () => {
   beforeEach(() => {
@@ -84,7 +84,11 @@ describe('Advance Booking Logic', () => {
       max_capacity: 10,
       price_rule: {
         id: ruleId,
-        definition: { formula: '100', variables: [], conditions: [] },
+        definition: {
+ formula: '100',
+variables: [],
+conditions: [], 
+},
         is_active: true,
       },
       space: {
@@ -94,7 +98,7 @@ describe('Advance Booking Logic', () => {
           auth_user_id: 'partner-1',
           first_name: 'P',
           last_name: 'U',
-          handle: 'partner'
+          handle: 'partner',
         },
       },
     };
@@ -115,8 +119,8 @@ describe('Advance Booking Logic', () => {
       user: {
         first_name: 'C',
         last_name: 'U',
-        email: 'customer@example.com'
-      }
+        email: 'customer@example.com',
+      },
     });
 
     const payload = {
@@ -151,13 +155,17 @@ describe('Advance Booking Logic', () => {
       max_capacity: 10,
       price_rule: {
         id: crypto.randomUUID(),
-        definition: { formula: '100', variables: [], conditions: [] },
+        definition: {
+ formula: '100',
+variables: [],
+conditions: [], 
+},
         is_active: true,
       },
       space: {
         id: spaceId,
         is_published: true,
-        user: { auth_user_id: 'partner-1' },
+        user: { auth_user_id: 'partner-1', },
       },
     };
 
@@ -198,13 +206,17 @@ describe('Advance Booking Logic', () => {
       max_capacity: 10,
       price_rule: {
         id: crypto.randomUUID(),
-        definition: { formula: '100', variables: [], conditions: [] },
+        definition: {
+ formula: '100',
+variables: [],
+conditions: [], 
+},
         is_active: true,
       },
       space: {
         id: spaceId,
         is_published: true,
-        user: { auth_user_id: 'partner-1' },
+        user: { auth_user_id: 'partner-1', },
       },
     };
 
