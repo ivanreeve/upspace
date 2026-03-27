@@ -62,9 +62,15 @@ export default function OnboardingExperience() {
 
     const trimmedFirst = formState.firstName.trim();
     const trimmedLast = formState.lastName.trim();
+    const namePattern = /^[a-zA-Z0-9\s.\-]+$/;
 
     if (!trimmedFirst || !trimmedLast) {
       toast.error('Please provide both your first and last names so we can address you properly.');
+      return;
+    }
+
+    if (!namePattern.test(trimmedFirst) || !namePattern.test(trimmedLast)) {
+      toast.error('Names can only contain letters, numbers, spaces, dots, and hyphens.');
       return;
     }
 

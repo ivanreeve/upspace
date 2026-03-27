@@ -300,10 +300,16 @@ name,
     });
   }, [sortedBookings]);
 
-  const areaBookingCounts = useMemo(() => {
+  const areaGuestCounts = useMemo(() => {
     const counts = new Map<string, number>();
+    const now = Date.now();
     sortedBookings.forEach((booking) => {
-      counts.set(booking.areaId, (counts.get(booking.areaId) ?? 0) + 1);
+      const startMs = new Date(booking.startAt).getTime();
+      const endMs = startMs + booking.bookingHours * 60 * 60 * 1000;
+      if (startMs <= now && endMs > now) {
+        const guests = booking.guestCount ?? 1;
+        counts.set(booking.areaId, (counts.get(booking.areaId) ?? 0) + guests);
+      }
     });
     return counts;
   }, [sortedBookings]);
@@ -422,7 +428,7 @@ name,
   };
 
   const renderCapacity = (booking: (typeof bookings)[number]) => {
-    const used = areaBookingCounts.get(booking.areaId) ?? 0;
+    const used = areaGuestCounts.get(booking.areaId) ?? 0;
     const maxCap = booking.areaMaxCapacity ?? null;
     const remaining =
       typeof maxCap === 'number' ? Math.max(maxCap - used, 0) : null;
@@ -436,7 +442,7 @@ name,
       status,
       label:
         maxCap === null
-          ? `${used} booking${used === 1 ? '' : 's'}`
+          ? `${used} guest${used === 1 ? '' : 's'}`
           : `${used}/${maxCap}`,
       helper:
         maxCap === null
@@ -563,7 +569,12 @@ name,
           const userHandle =
             booking.customerHandle ?? booking.customerAuthId.slice(0, 8);
           const statusMeta = bookingStatusMeta[booking.status];
-          const primaryAction = bookingPrimaryActionMap[booking.status] ?? null;
+          const rawPrimaryAction = bookingPrimaryActionMap[booking.status] ?? null;
+          const isCheckinAction = booking.status === 'confirmed';
+          const bookingDate = booking.startAt.slice(0, 10);
+          const todayDate = new Date().toISOString().slice(0, 10);
+          const isCheckinDisabled = isCheckinAction && bookingDate !== todayDate;
+          const primaryAction = rawPrimaryAction;
           const canCancel = ACTIVE_BOOKING_STATUSES.has(booking.status);
 
           return (
@@ -635,7 +646,8 @@ name,
                           status: primaryAction.nextStatus,
                         })
                       }
-                      disabled={ bulkUpdate.isPending }
+                      disabled={ bulkUpdate.isPending || isCheckinDisabled }
+                      title={ isCheckinDisabled ? `Check-in available on ${bookingDate}` : undefined }
                       aria-label={ `${primaryAction.label} ${userDisplayName}` }
                     >
                       <primaryAction.icon className="size-3.5" aria-hidden="true" />

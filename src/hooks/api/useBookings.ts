@@ -17,6 +17,8 @@ export const bookingKeys = {
   base: ['bookings'] as const,
   user: () => ['bookings', 'user'] as const,
   partner: () => ['bookings', 'partner'] as const,
+  occupancy: (spaceId: string, areaId: string, startAt: string, hours: number) =>
+    ['bookings', 'occupancy', spaceId, areaId, startAt, hours] as const,
 };
 
 const mergeUpdatedBookings = (
@@ -158,6 +160,44 @@ export function useCreateCheckoutSessionMutation() {
       const data = await response.json();
       return data as CreateCheckoutSessionResponse;
     },
+  });
+}
+
+export type AreaOccupancy = {
+  activeGuests: number;
+  maxCapacity: number | null;
+  remaining: number | null;
+};
+
+export function useAreaOccupancyQuery(input: {
+  spaceId: string | null;
+  areaId: string | null;
+  startAt: string | null;
+  hours: number;
+}) {
+  const {
+ spaceId, areaId, startAt, hours, 
+} = input;
+  const enabled = Boolean(spaceId && areaId && startAt);
+
+  return useQuery<AreaOccupancy>({
+    queryKey: bookingKeys.occupancy(spaceId ?? '', areaId ?? '', startAt ?? '', hours),
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        startAt: startAt!,
+        hours: String(hours),
+      });
+      const response = await fetch(
+        `/api/v1/spaces/${spaceId}/areas/${areaId}/occupancy?${params}`,
+        { cache: 'no-store', }
+      );
+      if (!response.ok) {
+        throw new Error(await parseErrorMessage(response));
+      }
+      return response.json() as Promise<AreaOccupancy>;
+    },
+    enabled,
+    staleTime: 30_000,
   });
 }
 

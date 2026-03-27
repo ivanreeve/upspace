@@ -60,7 +60,7 @@ import { cn } from '@/lib/utils';
 import { MAX_BOOKING_HOURS, MIN_BOOKING_HOURS } from '@/lib/bookings/constants';
 import { BOOKING_DURATION_VARIABLE_KEYS, type PriceRuleOperand, type PriceRuleRecord } from '@/lib/pricing-rules';
 import { evaluatePriceRule, type PriceRuleEvaluationResult } from '@/lib/pricing-rules-evaluator';
-import { useCreateCheckoutSessionMutation } from '@/hooks/api/useBookings';
+import { useAreaOccupancyQuery, useCreateCheckoutSessionMutation } from '@/hooks/api/useBookings';
 
 const PRICE_FORMATTER = new Intl.NumberFormat('en-PH', {
   style: 'currency',
@@ -967,17 +967,28 @@ value,
   }, [activePriceRule, bookingHours, bookingStartAtIso, variableOverrides]);
 
   const selectedAreaMaxCapacity = selectedArea?.maxCapacity ?? null;
+  const { data: occupancy, } = useAreaOccupancyQuery({
+    spaceId: selectedArea ? space.id : null,
+    areaId: selectedAreaId,
+    startAt: bookingStartAtIso,
+    hours: bookingHours,
+  });
+  const liveRemaining = occupancy?.remaining ?? null;
   const remainingCapacity =
-    selectedAreaMaxCapacity !== null
-      ? Math.max(selectedAreaMaxCapacity - guestCount, 0)
-      : null;
+    liveRemaining !== null
+      ? Math.max(liveRemaining - guestCount, 0)
+      : selectedAreaMaxCapacity !== null
+        ? Math.max(selectedAreaMaxCapacity - guestCount, 0)
+        : null;
   const isOverCapacity =
-    selectedAreaMaxCapacity !== null && guestCount > selectedAreaMaxCapacity;
+    liveRemaining !== null
+      ? guestCount > liveRemaining
+      : selectedAreaMaxCapacity !== null && guestCount > selectedAreaMaxCapacity;
   const capacityHelperText = selectedArea
     ? selectedAreaMaxCapacity === null
       ? 'This area does not have a capacity limit.'
       : isOverCapacity
-        ? `Over the ${selectedAreaMaxCapacity}-guest limit`
+        ? `Over capacity (${occupancy?.activeGuests ?? 0} guests already booked)`
         : `${remainingCapacity} slot${remainingCapacity === 1 ? '' : 's'} remaining`
     : 'Select an area to view capacity limits.';
 
