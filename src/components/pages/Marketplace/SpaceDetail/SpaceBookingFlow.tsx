@@ -210,7 +210,10 @@ function bookingFormReducer(
         guestCount: action.guestCount,
       };
     case 'set-check-in-date': {
-      const next = { ...state, checkInDate: action.value };
+      const next = {
+ ...state,
+checkInDate: action.value, 
+};
       // If check-out date is before the new check-in date, advance it
       if (next.checkOutDate < next.checkInDate) {
         next.checkOutDate = next.checkInDate;
@@ -218,11 +221,20 @@ function bookingFormReducer(
       return next;
     }
     case 'set-check-in-time':
-      return { ...state, checkInTime: action.value };
+      return {
+ ...state,
+checkInTime: action.value, 
+};
     case 'set-check-out-date':
-      return { ...state, checkOutDate: action.value };
+      return {
+ ...state,
+checkOutDate: action.value, 
+};
     case 'set-check-out-time':
-      return { ...state, checkOutTime: action.value };
+      return {
+ ...state,
+checkOutTime: action.value, 
+};
     case 'set-custom-variable':
       return {
         ...state,
@@ -886,28 +898,40 @@ areaId,
 
   const handleCheckInDateChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      dispatchBookingAction({ type: 'set-check-in-date', value: event.target.value });
+      dispatchBookingAction({
+ type: 'set-check-in-date',
+value: event.target.value, 
+});
     },
     []
   );
 
   const handleCheckInTimeChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      dispatchBookingAction({ type: 'set-check-in-time', value: event.target.value });
+      dispatchBookingAction({
+ type: 'set-check-in-time',
+value: event.target.value, 
+});
     },
     []
   );
 
   const handleCheckOutDateChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      dispatchBookingAction({ type: 'set-check-out-date', value: event.target.value });
+      dispatchBookingAction({
+ type: 'set-check-out-date',
+value: event.target.value, 
+});
     },
     []
   );
 
   const handleCheckOutTimeChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      dispatchBookingAction({ type: 'set-check-out-time', value: event.target.value });
+      dispatchBookingAction({
+ type: 'set-check-out-time',
+value: event.target.value, 
+});
     },
     []
   );
