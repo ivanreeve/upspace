@@ -2012,7 +2012,10 @@ export function SpaceDialog({
 
   return (
     <Dialog open={ open } onOpenChange={ onOpenChange }>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent
+        className="sm:max-w-3xl"
+        dismissible={ !isSubmitting }
+      >
         <DialogHeader>
           <DialogTitle>{ mode === 'create' ? 'Add a new space' : 'Edit space' }</DialogTitle>
           <DialogDescription>
@@ -2026,8 +2029,13 @@ export function SpaceDialog({
               <Button type="button" variant="outline" onClick={ close } disabled={ isSubmitting }>
                 Cancel
               </Button>
-              <Button type="submit" disabled={ isSubmitting }>
-                { isSubmitting ? 'Saving…' : mode === 'create' ? 'Save space' : 'Update space' }
+              <Button
+                type="submit"
+                disabled={ isSubmitting }
+                loading={ isSubmitting }
+                loadingText="Saving…"
+              >
+                { mode === 'create' ? 'Save space' : 'Update space' }
               </Button>
             </DialogFooter>
           </form>
@@ -2131,6 +2139,7 @@ export function AreaDialog({
       <DialogContent
         mobileFullScreen
         position="top"
+        dismissible={ !isSubmitting }
         className="h-screen w-screen max-w-none overflow-y-auto sm:h-screen sm:w-screen sm:max-w-none"
       >
         <DialogHeader className="mb-6">
@@ -2429,8 +2438,13 @@ export function AreaDialog({
           <Button type="button" variant="outline" onClick={ close } disabled={ isSubmitting }>
             Cancel
           </Button>
-          <Button type="submit" disabled={ disableSaveButton }>
-            { isSubmitting ? 'Saving…' : mode === 'edit' ? 'Update area' : 'Save area' }
+          <Button
+            type="submit"
+            disabled={ disableSaveButton }
+            loading={ isSubmitting }
+            loadingText="Saving…"
+          >
+            { mode === 'edit' ? 'Update area' : 'Save area' }
           </Button>
         </DialogFooter>
           </form>

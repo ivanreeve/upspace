@@ -409,12 +409,16 @@ function DocumentsSection({ documents, }: { documents: VerificationDocument[] })
 function ReviewDialogFooter({
   isProcessing,
   approveLabel,
+  approveLoadingLabel,
+  isApproving,
   onCancel,
   onReject,
   onApprove,
 }: {
   isProcessing: boolean;
   approveLabel: string;
+  approveLoadingLabel: string;
+  isApproving: boolean;
   onCancel: () => void;
   onReject: () => void;
   onApprove: () => void;
@@ -436,7 +440,12 @@ function ReviewDialogFooter({
           <FiX className="size-4" aria-hidden="true" />
           Reject
         </Button>
-        <Button onClick={ onApprove } disabled={ isProcessing }>
+        <Button
+          onClick={ onApprove }
+          disabled={ isProcessing }
+          loading={ isApproving }
+          loadingText={ approveLoadingLabel }
+        >
           <FiCheck className="size-4" aria-hidden="true" />
           { approveLabel }
         </Button>
@@ -466,7 +475,10 @@ function RejectionReasonDialog({
 }) {
   return (
     <Dialog open={ open } onOpenChange={ onOpenChange }>
-      <DialogContent className="w-full max-w-lg transition-all duration-200">
+      <DialogContent
+        className="w-full max-w-lg transition-all duration-200"
+        dismissible={ !isProcessing }
+      >
         <DialogHeader>
           <DialogTitle>Reject verification request</DialogTitle>
           <DialogDescription className="mb-4">
@@ -498,8 +510,10 @@ function RejectionReasonDialog({
             variant="destructive"
             onClick={ onConfirm }
             disabled={ isProcessing || !rejectionReason.trim() }
+            loading={ isRejectPending }
+            loadingText="Rejecting..."
           >
-            { isRejectPending ? 'Rejecting...' : 'Confirm rejection' }
+            Confirm rejection
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -536,7 +550,10 @@ function ValidityDialog({
 }) {
   return (
     <Dialog open={ open } onOpenChange={ onOpenChange }>
-      <DialogContent className="w-full max-w-6xl transition-all duration-200">
+      <DialogContent
+        className="w-full max-w-6xl transition-all duration-200"
+        dismissible={ !isProcessing }
+      >
         <DialogHeader>
           <DialogTitle>Select validity end date</DialogTitle>
           <DialogDescription>
@@ -589,8 +606,13 @@ function ValidityDialog({
           >
             Cancel
           </Button>
-          <Button onClick={ onConfirm } disabled={ isProcessing || (!isIndefinite && !draftValidUntil) }>
-            { isProcessing ? 'Renewing...' : 'Renew' }
+          <Button
+            onClick={ onConfirm }
+            disabled={ isProcessing || (!isIndefinite && !draftValidUntil) }
+            loading={ isProcessing }
+            loadingText="Renewing..."
+          >
+            Renew
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -713,6 +735,10 @@ payload: state.draftValidUntil,
   };
 
   const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen && isProcessing) {
+      return;
+    }
+
     dispatch({
  type: 'SET_REVIEW_OPEN',
 payload: isOpen, 
@@ -766,18 +792,16 @@ payload: isOpen,
     ? 'Space appears in search, discovery, and booking flows.'
     : `Hidden ${unpublishedByAdmin ? 'by an admin' : 'per partner request'}${unpublishedAtLabel ? ` since ${unpublishedAtLabel}` : ''}.`;
 
-  const approveLabel = approveMutation.isPending
-    ? isRenewal
-      ? 'Renewing...'
-      : 'Approving...'
-    : isRenewal
-      ? 'Renew'
-      : 'Approve';
+  const approveLabel = isRenewal ? 'Renew' : 'Approve';
+  const approveLoadingLabel = isRenewal ? 'Renewing...' : 'Approving...';
 
   return (
     <>
       <Dialog open={ isReviewDialogOpen } onOpenChange={ handleOpenChange }>
-        <DialogContent className="max-h-[calc(100vh-3rem)] w-full max-w-6xl overflow-hidden transition-all duration-200">
+        <DialogContent
+          className="max-h-[calc(100vh-3rem)] w-full max-w-6xl overflow-hidden transition-all duration-200"
+          dismissible={ !isProcessing }
+        >
           <DialogHeader>
             <DialogTitle>Review Verification</DialogTitle>
             <DialogDescription>
@@ -815,6 +839,8 @@ payload: isOpen,
           <ReviewDialogFooter
             isProcessing={ isProcessing }
             approveLabel={ approveLabel }
+            approveLoadingLabel={ approveLoadingLabel }
+            isApproving={ approveMutation.isPending }
             onCancel={ () => {
               dispatch({
  type: 'SET_REVIEW_OPEN',
@@ -836,6 +862,9 @@ payload: false,
         isRejectPending={ rejectMutation.isPending }
         onOpenChange={ (isOpen) => {
           if (!isOpen) {
+            if (isProcessing) {
+              return;
+            }
             dispatch({ type: 'CLOSE_REJECTION_MODAL_AND_RETURN_TO_REVIEW', });
             return;
           }
@@ -861,6 +890,9 @@ payload: value,
         toYear={ calendarYearRange.toYear }
         onOpenChange={ (isOpen) => {
           if (!isOpen) {
+            if (isProcessing) {
+              return;
+            }
             dispatch({ type: 'CLOSE_VALIDITY_MODAL_AND_RETURN_TO_REVIEW', });
             transitioningRef.current = false;
           }

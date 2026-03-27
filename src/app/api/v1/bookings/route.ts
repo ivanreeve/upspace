@@ -19,6 +19,7 @@ import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { evaluatePriceRule } from '@/lib/pricing-rules-evaluator';
 import type { PriceRuleRecord } from '@/lib/pricing-rules';
+import { BUILT_IN_VARIABLE_KEYS } from '@/lib/pricing-rules';
 import { isTestingModeEnabled } from '@/lib/testing-mode';
 
 const createBookingSchema = z.object({
@@ -27,6 +28,16 @@ const createBookingSchema = z.object({
   bookingHours: z.number().int().min(MIN_BOOKING_HOURS).max(MAX_BOOKING_HOURS),
   startAt: z.string().datetime().optional(),
   guestCount: z.number().int().min(1).max(999).optional(),
+  variableOverrides: z
+    .record(z.string(), z.union([z.string(), z.number()]))
+    .optional()
+    .refine(
+      (overrides) => {
+        if (!overrides) return true;
+        return Object.keys(overrides).every((key) => !BUILT_IN_VARIABLE_KEYS.has(key));
+      },
+      { message: 'Cannot override built-in variable keys.', }
+    ),
 });
 
 const BOOKING_CANCELLATION_REASON_MIN_LENGTH = 5;
@@ -557,23 +568,33 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (area.advance_booking_enabled && area.advance_booking_value && area.advance_booking_unit) {
-    const leadMs = (() => {
-      switch (area.advance_booking_unit) {
-        case 'days':
-          return area.advance_booking_value * 24 * 60 * 60 * 1000;
-        case 'weeks':
-          return area.advance_booking_value * 7 * 24 * 60 * 60 * 1000;
-        case 'months':
-          return area.advance_booking_value * 30 * 24 * 60 * 60 * 1000;
-        default:
-          return 0;
-      }
-    })();
-    const minStart = new Date(now.getTime() + leadMs);
-    if (bookingStartAt.getTime() < minStart.getTime()) {
+  const leadMs = area.advance_booking_enabled
+    ? (() => {
+        const val = area.advance_booking_value ?? 0;
+        switch (area.advance_booking_unit) {
+          case 'days':
+            return val * 24 * 60 * 60 * 1000;
+          case 'weeks':
+            return val * 7 * 24 * 60 * 60 * 1000;
+          case 'months':
+            return val * 30 * 24 * 60 * 60 * 1000;
+          default:
+            return 0;
+        }
+      })()
+    : 24 * 60 * 60 * 1000;
+
+  if (leadMs > 0) {
+    const maxStart = new Date(now.getTime() + leadMs);
+    if (bookingStartAt.getTime() > maxStart.getTime()) {
       return NextResponse.json(
-        { error: 'Please book further in advance for this area.', },
+        {
+          error: `This area only allows bookings up to ${
+            area.advance_booking_enabled
+              ? `${area.advance_booking_value} ${area.advance_booking_unit}`
+              : '24 hours'
+          } in advance.`,
+        },
         { status: 400, }
       );
     }
@@ -603,7 +624,11 @@ export async function POST(req: NextRequest) {
       return evaluatePriceRule(priceRule.definition, {
         bookingHours: parsed.data.bookingHours,
         now: bookingStartAt,
-        variableOverrides: { guest_count: guestCount, },
+        variableOverrides: {
+          ...(parsed.data.variableOverrides ?? {}),
+          guest_count: guestCount,
+          ...(areaMaxCapacity !== null ? { area_max_capacity: areaMaxCapacity, } : {}),
+        },
       });
     } catch (error) {
       console.error('Invalid price rule definition', {
@@ -681,6 +706,9 @@ export async function POST(req: NextRequest) {
             price_rule_snapshot: priceRule.definition,
             price_rule_branch: priceEvaluation.branch ?? null,
             price_rule_expression: priceEvaluation.appliedExpression ?? null,
+            ...(parsed.data.variableOverrides && Object.keys(parsed.data.variableOverrides).length > 0
+              ? { price_rule_overrides: parsed.data.variableOverrides, }
+              : {}),
           },
         });
 

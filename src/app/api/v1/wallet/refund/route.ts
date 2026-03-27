@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { createPaymongoRefund } from '@/lib/paymongo';
-import { isPaymongoPaymentLinkedToBooking } from '@/lib/paymongo-payment-events';
+import { submitXenditRefund } from '@/lib/financial/xendit-refunds';
 import { prisma } from '@/lib/prisma';
+import { FinancialProviderError } from '@/lib/providers/errors';
 import { ensureWalletRow, resolveAuthenticatedUserForWallet } from '@/lib/wallet-server';
 
 const refundRequestSchema = z.object({
@@ -89,13 +89,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const linkedPayment = await isPaymongoPaymentLinkedToBooking(
-      parsed.data.paymentId,
-      booking.id
-    );
-    if (!linkedPayment) {
+    const paymentTx = await prisma.payment_transaction.findFirst({
+      where: {
+        booking_id: booking.id,
+        status: 'succeeded',
+      },
+      orderBy: { created_at: 'desc', },
+      select: {
+        id: true,
+        provider: true,
+        provider_object_id: true,
+        amount_minor: true,
+        currency_iso3: true,
+        raw_gateway_json: true,
+      },
+    });
+
+    if (!paymentTx) {
       return NextResponse.json(
-        { message: 'Payment reference is not linked to this booking.', },
+        { message: 'No settled payment was found for this booking.', },
         { status: 400, }
       );
     }
@@ -106,10 +118,20 @@ export async function POST(req: NextRequest) {
         booking_id: booking.id,
         type: 'refund',
         status: { in: ['pending', 'succeeded'], },
-        metadata: {
-          path: ['payment_id'],
-          equals: parsed.data.paymentId,
-        },
+        OR: [
+          {
+            metadata: {
+              path: ['payment_transaction_id'],
+              equals: paymentTx.id,
+            },
+          },
+          {
+            metadata: {
+              path: ['payment_id'],
+              equals: parsed.data.paymentId,
+            },
+          }
+        ],
       },
       orderBy: { created_at: 'desc', },
     });
@@ -126,19 +148,6 @@ export async function POST(req: NextRequest) {
         refundId: existing.external_reference,
       });
     }
-
-    const paymentTx = await prisma.payment_transaction.findFirst({
-      where: {
-        booking_id: booking.id,
-        provider: 'paymongo',
-        status: 'succeeded',
-      },
-      orderBy: { created_at: 'desc', },
-      select: {
-        amount_minor: true,
-        currency_iso3: true,
-      },
-    });
 
     const maxRefundableMinor = paymentTx
       ? toSafeMinor(paymentTx.amount_minor)
@@ -165,80 +174,83 @@ export async function POST(req: NextRequest) {
         metadata: {
           ...(metadata ?? {}),
           payment_id: parsed.data.paymentId,
+          payment_transaction_id: paymentTx.id,
+          payment_provider_object_id: paymentTx.provider_object_id,
           booking_id: booking.id,
           requested_by: auth.dbUser!.auth_user_id,
         },
       },
     });
 
-    try {
-      const refundPayload = await createPaymongoRefund({
-        paymentId: parsed.data.paymentId,
-        amountMinor,
-        reason: parsed.data.reason,
-        notes: parsed.data.notes,
-        metadata: {
-          internal_user_id: auth.dbUser!.user_id.toString(),
-          booking_id: booking.id,
-          ...(metadata ?? {}),
-        },
-      });
-
-      const refundAttributes = refundPayload.data.attributes;
-      const updatedTransaction = await prisma.$transaction(async (tx) => {
-        const updated = await tx.wallet_transaction.update({
-          where: { id: createdIntent.id, },
-          data: {
-            status: refundAttributes.status,
-            external_reference: refundPayload.data.id,
-            currency: refundAttributes.currency,
-            amount_minor: BigInt(refundAttributes.amount),
-            net_amount_minor: BigInt(refundAttributes.amount),
-            metadata: {
-              ...(metadata ?? {}),
-              paymongo_refund_id: refundPayload.data.id,
-              payment_id: parsed.data.paymentId,
-              booking_id: booking.id,
-              requested_by: auth.dbUser!.auth_user_id,
-            },
-            updated_at: new Date(),
+    if (paymentTx.provider === 'xendit') {
+      try {
+        const refund = await submitXenditRefund({
+          walletTransactionId: createdIntent.id,
+          partnerUserId: auth.dbUser!.user_id,
+          bookingId: booking.id,
+          paymentTransaction: {
+            id: paymentTx.id,
+            provider_object_id: paymentTx.provider_object_id,
+            amount_minor: paymentTx.amount_minor,
+            currency_iso3: paymentTx.currency_iso3,
+            raw_gateway_json: paymentTx.raw_gateway_json,
           },
+          amountMinor: BigInt(amountMinor),
+          reason: parsed.data.reason ?? 'other',
+          requestedByAuthUserId: auth.dbUser!.auth_user_id,
+          metadata: {
+            internal_user_id: auth.dbUser!.user_id.toString(),
+            ...(metadata ?? {}),
+          },
+          providedPaymentReference: parsed.data.paymentId,
         });
 
-        if (refundAttributes.status === 'succeeded') {
-          await tx.wallet.update({
-            where: { id: walletRow.id, },
-            data: {
-              balance_minor: { decrement: BigInt(refundAttributes.amount), },
-              updated_at: new Date(),
-            },
-          });
+        return NextResponse.json({
+          transaction: {
+            id: refund.transaction.id,
+            type: refund.transaction.type,
+            status: refund.transaction.status,
+            amountMinor: refund.transaction.amount_minor.toString(),
+            currency: refund.transaction.currency,
+          },
+          refundId: refund.providerRefund?.refundId ?? refund.transaction.external_reference,
+        });
+      } catch (refundError) {
+        if (refundError instanceof FinancialProviderError) {
+          return NextResponse.json(
+            { message: refundError.message, },
+            { status: refundError.status, }
+          );
         }
 
-        return updated;
-      });
-
-      return NextResponse.json({
-        transaction: {
-          id: updatedTransaction.id,
-          type: updatedTransaction.type,
-          status: updatedTransaction.status,
-          amountMinor: updatedTransaction.amount_minor.toString(),
-          currency: updatedTransaction.currency,
-        },
-        refundId: refundPayload.data.id,
-      });
-    } catch (refundError) {
-      await prisma.wallet_transaction.update({
-        where: { id: createdIntent.id, },
-        data: {
-          status: 'failed',
-          updated_at: new Date(),
-        },
-      });
-      throw refundError;
+        console.error('Xendit refund request failed', refundError);
+        return NextResponse.json(
+          { message: 'Unable to process refund right now.', },
+          { status: 500, }
+        );
+      }
     }
+
+    await prisma.wallet_transaction.update({
+      where: { id: createdIntent.id, },
+      data: {
+        status: 'failed',
+        updated_at: new Date(),
+      },
+    });
+
+    return NextResponse.json(
+      { message: 'This booking was paid through an unsupported legacy provider and cannot be refunded here.', },
+      { status: 409, }
+    );
   } catch (error) {
+    if (error instanceof FinancialProviderError) {
+      return NextResponse.json(
+        { message: error.message, },
+        { status: error.status, }
+      );
+    }
+
     console.error('Refund request failed', error);
     return NextResponse.json(
       { message: 'Unable to process refund right now.', },

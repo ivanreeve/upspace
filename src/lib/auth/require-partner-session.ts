@@ -14,6 +14,7 @@ export class PartnerSessionError extends Error {
 export type PartnerSession = {
   authUserId: string;
   userId: bigint;
+  email: string | null;
 };
 
 export async function requirePartnerSession(): Promise<PartnerSession> {
@@ -51,5 +52,6 @@ export async function requirePartnerSession(): Promise<PartnerSession> {
   return {
     authUserId: authData.user.id,
     userId: dbUser.user_id,
+    email: authData.user.email ?? null,
   };
 }

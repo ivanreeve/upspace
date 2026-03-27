@@ -46,12 +46,17 @@ function DialogContent({
   style,
   mobileFullScreen = false,
   fullWidth = false,
+  dismissible = true,
+  onEscapeKeyDown,
+  onInteractOutside,
+  onPointerDownOutside,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
   position?: 'center' | 'top',
   mobileFullScreen?: boolean,
   fullWidth?: boolean,
+  dismissible?: boolean,
 }) {
   const isTopPosition = position === 'top';
   const topPositionPadding: React.CSSProperties | undefined = mobileFullScreen
@@ -98,11 +103,29 @@ function DialogContent({
             mobileFullScreen && 'h-full max-h-full w-full max-w-full rounded-none border-0 shadow-none',
             className
           ) }
+          onEscapeKeyDown={ (event) => {
+            if (!dismissible) {
+              event.preventDefault();
+            }
+            onEscapeKeyDown?.(event);
+          } }
+          onInteractOutside={ (event) => {
+            if (!dismissible) {
+              event.preventDefault();
+            }
+            onInteractOutside?.(event);
+          } }
+          onPointerDownOutside={ (event) => {
+            if (!dismissible) {
+              event.preventDefault();
+            }
+            onPointerDownOutside?.(event);
+          } }
           style={ style }
           { ...props }
         >
           { children }
-          { showCloseButton && (
+          { showCloseButton && dismissible && (
             <DialogPrimitive.Close
               data-slot="dialog-close"
               className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"

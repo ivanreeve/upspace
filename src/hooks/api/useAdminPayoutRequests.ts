@@ -24,6 +24,54 @@ export type AdminPayoutRequest = {
     name: string;
     currentBalanceMinor: string;
   };
+  workflowStage:
+    | 'awaiting_review'
+    | 'submitting_to_provider'
+    | 'submitted_to_provider'
+    | 'succeeded'
+    | 'failed';
+  payoutDestination: {
+    channelCode: string | null;
+    channelName: string | null;
+    channelCategory: 'BANK' | 'EWALLET' | 'OTC' | null;
+    currency: string | null;
+    accountHolderName: string | null;
+    accountNumberMasked: string | null;
+  } | null;
+  providerPayout: {
+    payoutId: string | null;
+    referenceId: string | null;
+    providerStatus: string | null;
+    channelCode: string | null;
+    estimatedArrivalTime: string | null;
+    failureCode: string | null;
+    submittedAt: string | null;
+  } | null;
+  partnerProviderAccount: {
+    provider: 'xendit';
+    accountReference: string | null;
+    accountType: 'owned' | 'managed';
+    status:
+      | 'creating'
+      | 'invited'
+      | 'registered'
+      | 'awaiting_docs'
+      | 'pending_verification'
+      | 'live'
+      | 'suspended'
+      | 'error';
+    currency: string;
+    lastSyncedAt: string | null;
+  } | null;
+  providerSnapshot: {
+    provider: 'xendit';
+    accountReference: string | null;
+    accountType: 'owned' | 'managed' | null;
+    status: string | null;
+    setupState: string | null;
+    availableBalanceMinor: string | null;
+    lastSyncedAt: string | null;
+  } | null;
   processedBy: {
     name: string;
   } | null;
@@ -32,6 +80,8 @@ export type AdminPayoutRequest = {
 export type AdminPayoutRequestsPage = {
   data: AdminPayoutRequest[];
   nextCursor: string | null;
+  totalCount: number;
+  pendingCount: number;
 };
 
 export const adminPayoutRequestKeys = {
@@ -83,11 +133,15 @@ export function useAdminPayoutRequestsQuery({
       const payload = (await response.json()) as {
         data: AdminPayoutRequest[];
         nextCursor: string | null;
+        totalCount: number;
+        pendingCount: number;
       };
 
       return {
         data: payload.data,
         nextCursor: payload.nextCursor ?? null,
+        totalCount: payload.totalCount ?? 0,
+        pendingCount: payload.pendingCount ?? 0,
       };
     },
     staleTime: 60_000,
@@ -121,7 +175,11 @@ export function useCompleteAdminPayoutRequestMutation() {
         throw new Error(await parseErrorMessage(response));
       }
 
-      return response.json() as Promise<{ status: 'succeeded' }>;
+      return response.json() as Promise<{
+        status: 'pending';
+        workflowStage: 'submitted_to_provider';
+        providerStatus: string | null;
+      }>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminPayoutRequestKeys.all, });

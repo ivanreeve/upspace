@@ -124,6 +124,14 @@ export function AdminChrome({
                   <span>Payout requests</span>
                 </CommandItem>
                 <CommandItem
+                  value="reconciliation"
+                  onSelect={ () => handleNavigate('/admin/reconciliation') }
+                  className={ marketplaceSearchActionItemClassName }
+                >
+                  <FiTrendingUp className="size-4" aria-hidden="true" />
+                  <span>Reconciliation</span>
+                </CommandItem>
+                <CommandItem
                   value="users"
                   onSelect={ () => handleNavigate('/admin/users') }
                   className={ marketplaceSearchActionItemClassName }

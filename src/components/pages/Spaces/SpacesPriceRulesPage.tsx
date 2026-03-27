@@ -17,11 +17,10 @@ FiTrash2
 } from 'react-icons/fi';
 import { GoArrowUpRight } from 'react-icons/go';
 import { toast } from 'sonner';
-import dynamic from 'next/dynamic';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { SpacesBreadcrumbs } from './SpacesBreadcrumbs';
-
-const PriceRuleDialog = dynamic(() => import('./PriceRuleDialog'), { ssr: false, });
+import { PriceRuleDialog } from './PriceRuleDialog';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -55,13 +54,16 @@ import {
   TableRow
 } from '@/components/ui/table';
 import {
+  partnerSpacesKeys,
   useCreatePriceRuleMutation,
   useDeletePriceRuleMutation,
   usePartnerSpacesQuery,
   useUpdatePriceRuleMutation
 } from '@/hooks/api/usePartnerSpaces';
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
+import type { SpaceRecord } from '@/data/spaces';
 import type { PriceRuleFormValues, PriceRuleRecord } from '@/lib/pricing-rules';
+import { BUILT_IN_VARIABLE_KEYS } from '@/lib/pricing-rules';
 
 const priceRuleDateFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -70,6 +72,7 @@ const priceRuleDateFormatter = new Intl.DateTimeFormat('en-US', {
 });
 
 export function SpacesPriceRulesPage() {
+  const queryClient = useQueryClient();
   const {
     data: spaces,
     isError,
@@ -82,27 +85,26 @@ export function SpacesPriceRulesPage() {
 
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [priceRuleDialogOpen, setPriceRuleDialogOpen] = useState(false);
-  const [editingPriceRule, setEditingPriceRule] =
-    useState<PriceRuleRecord | null>(null);
+  const [editingPriceRuleId, setEditingPriceRuleId] =
+    useState<string | null>(null);
   const [selectedRuleIds, setSelectedRuleIds] = useState<Set<string>>(new Set());
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
-  const [testingRule, setTestingRule] = useState<PriceRuleRecord | null>(null);
+  const [testingRuleId, setTestingRuleId] = useState<string | null>(null);
   const [testBookingHours, setTestBookingHours] = useState('1');
   const [testGuestCount, setTestGuestCount] = useState('1');
   const [testStartAt, setTestStartAt] = useState('');
   const [testResult, setTestResult] = useState<{
     price: number | null;
-    unitPrice: number | null;
     branch: string | null;
     appliedExpression: string | null;
     conditionsSatisfied: boolean;
-    guestMultiplierApplied: boolean;
   } | null>(null);
   const [isTestingLoading, setIsTestingLoading] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
   const authFetch = useAuthenticatedFetch();
+  const [customVarValues, setCustomVarValues] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!selectedSpaceId && spaces?.length) {
@@ -119,6 +121,21 @@ export function SpacesPriceRulesPage() {
     () => selectedSpace?.pricing_rules ?? [],
     [selectedSpace]
   );
+
+  const editingPriceRule = useMemo(
+    () => rules.find((r) => r.id === editingPriceRuleId) ?? null,
+    [rules, editingPriceRuleId]
+  );
+
+  const testingRule = useMemo(
+    () => rules.find((r) => r.id === testingRuleId) ?? null,
+    [rules, testingRuleId]
+  );
+
+  const customVariables = useMemo(() => {
+    if (!testingRule) return [];
+    return testingRule.definition.variables.filter(v => !BUILT_IN_VARIABLE_KEYS.has(v.key) && v.userInput);
+  }, [testingRule]);
 
   const deletableRuleIds = useMemo(
     () =>
@@ -157,13 +174,13 @@ export function SpacesPriceRulesPage() {
   );
 
   const handlePriceRuleDialogOpen = useCallback((rule?: PriceRuleRecord) => {
-    setEditingPriceRule(rule ?? null);
+    setEditingPriceRuleId(rule?.id ?? null);
     setPriceRuleDialogOpen(true);
   }, []);
 
   const handlePriceRuleDialogOpenChange = useCallback((open: boolean) => {
     if (!open) {
-      setEditingPriceRule(null);
+      setEditingPriceRuleId(null);
     }
     setPriceRuleDialogOpen(open);
   }, []);
@@ -177,16 +194,43 @@ export function SpacesPriceRulesPage() {
 
       try {
         if (editingPriceRule) {
-          await updatePriceRuleMutation.mutateAsync({
+          const updatedRule = await updatePriceRuleMutation.mutateAsync({
             priceRuleId: editingPriceRule.id,
             payload: values,
           });
+          queryClient.setQueryData<SpaceRecord[]>(
+            partnerSpacesKeys.list(),
+            (prev) =>
+              prev?.map((space) =>
+                space.id === selectedSpaceId
+                  ? {
+                      ...space,
+                      pricing_rules: space.pricing_rules.map((rule) =>
+                        rule.id === editingPriceRule.id ? updatedRule : rule
+                      ),
+                    }
+                  : space
+              )
+          );
           toast.success('Pricing rule updated.');
         } else {
-          await createPriceRuleMutation.mutateAsync(values);
+          const createdRule = await createPriceRuleMutation.mutateAsync(values);
+          queryClient.setQueryData<SpaceRecord[]>(
+            partnerSpacesKeys.list(),
+            (prev) =>
+              prev?.map((space) =>
+                space.id === selectedSpaceId
+                  ? {
+                      ...space,
+                      pricing_rules: [...space.pricing_rules, createdRule],
+                    }
+                  : space
+              )
+          );
           toast.success('Pricing rule saved.');
         }
         setPriceRuleDialogOpen(false);
+        setEditingPriceRuleId(null);
       } catch (mutationError) {
         toast.error(
           mutationError instanceof Error
@@ -198,6 +242,7 @@ export function SpacesPriceRulesPage() {
     [
       createPriceRuleMutation,
       editingPriceRule,
+      queryClient,
       selectedSpaceId,
       updatePriceRuleMutation
     ]
@@ -218,6 +263,19 @@ export function SpacesPriceRulesPage() {
       const guestCountNum = Number(testGuestCount);
       if (guestCountNum > 0) body.guestCount = guestCountNum;
       if (testStartAt) body.startAt = new Date(testStartAt).toISOString();
+
+      if (customVariables.length > 0) {
+        const overrides: Record<string, string | number> = {};
+        for (const v of customVariables) {
+          const raw = customVarValues[v.key] ?? v.initialValue ?? '';
+          if (raw !== '') {
+            overrides[v.key] = v.type === 'number' ? Number(raw) : raw;
+          }
+        }
+        if (Object.keys(overrides).length > 0) {
+          body.variableOverrides = overrides;
+        }
+      }
 
       const response = await authFetch(
         `/api/v1/partner/spaces/${selectedSpaceId}/pricing-rules/evaluate`,
@@ -241,15 +299,16 @@ export function SpacesPriceRulesPage() {
     } finally {
       setIsTestingLoading(false);
     }
-  }, [authFetch, selectedSpaceId, testBookingHours, testGuestCount, testStartAt, testingRule]);
+  }, [authFetch, customVarValues, customVariables, selectedSpaceId, testBookingHours, testGuestCount, testStartAt, testingRule]);
 
   const handleOpenTestDialog = useCallback((rule: PriceRuleRecord) => {
-    setTestingRule(rule);
+    setTestingRuleId(rule.id);
     setTestBookingHours('1');
     setTestGuestCount('1');
     setTestStartAt('');
     setTestResult(null);
     setTestError(null);
+    setCustomVarValues({});
   }, []);
 
   const selectedCount = rules.filter(
@@ -616,6 +675,7 @@ export function SpacesPriceRulesPage() {
                                 type="button"
                                 variant="outline"
                                 size="sm"
+                                className="hover:bg-[oklch(0.955_0.02_204.6929)] hover:text-primary hover:[&_svg]:text-primary"
                                 onClick={ () => handleOpenTestDialog(rule) }
                                 disabled={ isAnyDeletePending }
                               >
@@ -624,7 +684,7 @@ export function SpacesPriceRulesPage() {
                               </Button>
                               <Button
                                 type="button"
-                                variant="outline"
+                                variant="default"
                                 size="sm"
                                 className="hover:text-white"
                                 onClick={ () => handlePriceRuleDialogOpen(rule) }
@@ -670,10 +730,13 @@ export function SpacesPriceRulesPage() {
       <Dialog
         open={ testingRule !== null }
         onOpenChange={ (open) => {
-          if (!open) setTestingRule(null);
+          if (!open) setTestingRuleId(null);
         } }
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent
+          className="sm:max-w-md"
+          dismissible={ !isTestingLoading }
+        >
           <DialogHeader>
             <DialogTitle>Test pricing rule</DialogTitle>
             <DialogDescription>
@@ -716,6 +779,34 @@ export function SpacesPriceRulesPage() {
               />
             </div>
 
+            { customVariables.length > 0 ? (
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-muted-foreground">Custom variables</p>
+                { customVariables.map((variable) => {
+                  const inputType = variable.type === 'number' ? 'number'
+                    : variable.type === 'date' ? 'date'
+                    : variable.type === 'time' ? 'time'
+                    : 'text';
+                  const inputId = `test-custom-var-${variable.key}`;
+                  return (
+                    <div key={ variable.key } className="space-y-2">
+                      <Label htmlFor={ inputId }>{ variable.displayName || variable.label || variable.key }</Label>
+                      <Input
+                        id={ inputId }
+                        type={ inputType }
+                        value={ customVarValues[variable.key] ?? variable.initialValue ?? '' }
+                        onChange={ (e) => setCustomVarValues((prev) => ({
+                          ...prev,
+                          [variable.key]: e.target.value,
+                        })) }
+                        aria-label={ variable.displayName || variable.label || variable.key }
+                      />
+                    </div>
+                  );
+                }) }
+              </div>
+            ) : null }
+
             { testError ? (
               <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
                 { testError }
@@ -730,12 +821,6 @@ export function SpacesPriceRulesPage() {
                     { testResult.price !== null ? `₱${testResult.price.toLocaleString()}` : '—' }
                   </span>
                 </div>
-                { testResult.unitPrice !== null && testResult.guestMultiplierApplied ? (
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Unit price (per guest)</span>
-                    <span className="text-sm text-foreground">₱{ testResult.unitPrice.toLocaleString() }</span>
-                  </div>
-                ) : null }
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Branch</span>
                   <Badge variant="outline" className="text-xs">{ testResult.branch ?? 'unconditional' }</Badge>
@@ -755,11 +840,12 @@ export function SpacesPriceRulesPage() {
               </div>
             ) : null }
           </div>
-          <DialogFooter className="flex-col gap-2 sm:flex-row">
+          <DialogFooter className="mt-4 flex-col gap-2 sm:flex-row">
             <Button
               type="button"
               variant="outline"
-              onClick={ () => setTestingRule(null) }
+              onClick={ () => setTestingRuleId(null) }
+              disabled={ isTestingLoading }
             >
               Close
             </Button>
@@ -769,12 +855,10 @@ export function SpacesPriceRulesPage() {
               className="hover:text-white"
               onClick={ handleTestRule }
               disabled={ isTestingLoading }
+              loading={ isTestingLoading }
+              loadingText="Evaluating…"
             >
-              { isTestingLoading ? (
-                <FiLoader className="mr-2 size-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <FiPlay className="mr-2 size-4" aria-hidden="true" />
-              ) }
+              <FiPlay className="mr-2 size-4" aria-hidden="true" />
               Evaluate
             </Button>
           </DialogFooter>
@@ -789,7 +873,7 @@ export function SpacesPriceRulesPage() {
           }
         } }
       >
-        <DialogContent>
+        <DialogContent dismissible={ !isAnyDeletePending }>
           <DialogHeader>
             <DialogTitle>Delete selected pricing rules</DialogTitle>
             <DialogDescription>
@@ -830,8 +914,10 @@ export function SpacesPriceRulesPage() {
               variant="destructive"
               onClick={ handleBulkDeletePriceRules }
               disabled={ isAnyDeletePending || selectedCount === 0 }
+              loading={ isAnyDeletePending }
+              loadingText="Deleting..."
             >
-              { isAnyDeletePending ? 'Deleting...' : 'Delete selected' }
+              Delete selected
             </Button>
           </DialogFooter>
         </DialogContent>

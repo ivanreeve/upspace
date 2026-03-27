@@ -3,10 +3,10 @@ import { randomUUID } from 'crypto';
 import { BOOKING_PRICE_MINOR_FACTOR, mapBookingRowToRecord, normalizeNumeric } from '@/lib/bookings/serializer';
 import { countActiveBookingsOverlap, resolveBookingDecision } from '@/lib/bookings/occupancy';
 import { sendBookingNotificationEmail } from '@/lib/email';
-import { createPaymongoCheckoutSession } from '@/lib/paymongo';
 import { prisma } from '@/lib/prisma';
 import { evaluatePriceRule } from '@/lib/pricing-rules-evaluator';
-import type { PriceRuleRecord } from '@/lib/pricing-rules';
+import { BUILT_IN_VARIABLE_KEYS, type PriceRuleRecord } from '@/lib/pricing-rules';
+import { getFinancialProvider } from '@/lib/providers/provider-registry';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { isTestingModeEnabled } from '@/lib/testing-mode';
 import { recordTestModeBookingWalletCharge } from '@/lib/wallet-server';
@@ -16,7 +16,7 @@ const APP_URL = (process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_
   ? process.env.NEXT_PUBLIC_APP_URL
   : DEFAULT_APP_URL).replace(/\/+$/, '');
 const BOOKING_ID_PLACEHOLDER = '__BOOKING_ID__';
-const PAYMONGO_ALLOWED_REDIRECT_ORIGINS = process.env.PAYMONGO_ALLOWED_REDIRECT_ORIGINS ?? '';
+const CHECKOUT_ALLOWED_REDIRECT_ORIGINS = process.env.CHECKOUT_ALLOWED_REDIRECT_ORIGINS ?? '';
 
 function resolveAllowedRedirectOrigins() {
   const origins = new Set<string>();
@@ -27,7 +27,7 @@ function resolveAllowedRedirectOrigins() {
     // APP_URL fallback should never block checkout creation.
   }
 
-  for (const entry of PAYMONGO_ALLOWED_REDIRECT_ORIGINS.split(',')) {
+  for (const entry of CHECKOUT_ALLOWED_REDIRECT_ORIGINS.split(',')) {
     const candidate = entry.trim();
     if (!candidate) {
       continue;
@@ -103,6 +103,7 @@ export type CreateBookingCheckoutSessionOptions = {
   spaceId: string;
   startAt: Date;
   successUrl?: string;
+  variableOverrides?: Record<string, string | number>;
 };
 
 export type CreateBookingCheckoutSessionResult = {
@@ -121,6 +122,21 @@ export type CreateBookingCheckoutSessionResult = {
   testingMode: boolean;
 };
 
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function getExistingProviderCheckoutUrl(rawGatewayJson: unknown) {
+  if (!isJsonObject(rawGatewayJson)) {
+    return null;
+  }
+
+  const invoiceUrl = rawGatewayJson.invoice_url;
+  return typeof invoiceUrl === 'string' && invoiceUrl.length > 0
+    ? invoiceUrl
+    : null;
+}
+
 export async function createBookingCheckoutSession(
   options: CreateBookingCheckoutSessionOptions
 ): Promise<CreateBookingCheckoutSessionResult> {
@@ -133,6 +149,7 @@ export async function createBookingCheckoutSession(
     spaceId,
     startAt,
     successUrl,
+    variableOverrides: customVariableOverrides,
   } = options;
 
   if (!Number.isFinite(startAt.getTime())) {
@@ -188,11 +205,17 @@ export async function createBookingCheckoutSession(
     throw new BookingCheckoutError(400, `This area allows up to ${areaMaxCapacity} guests.`);
   }
 
-  if (area.advance_booking_enabled) {
-    const leadMs = resolveLeadTimeMs(area.advance_booking_value, area.advance_booking_unit);
-    const minStart = new Date(now.getTime() + leadMs);
-    if (startAt.getTime() < minStart.getTime()) {
-      throw new BookingCheckoutError(400, 'Please book further in advance for this area.');
+  const maxLeadMs = area.advance_booking_enabled
+    ? resolveLeadTimeMs(area.advance_booking_value, area.advance_booking_unit)
+    : 24 * 60 * 60 * 1000;
+
+  if (maxLeadMs > 0) {
+    const maxStart = new Date(now.getTime() + maxLeadMs);
+    if (startAt.getTime() > maxStart.getTime()) {
+      throw new BookingCheckoutError(
+        400,
+        `This area only allows bookings up to ${area.advance_booking_enabled ? `${area.advance_booking_value} ${area.advance_booking_unit}` : '24 hours'} in advance.`
+      );
     }
   }
 
@@ -210,17 +233,48 @@ export async function createBookingCheckoutSession(
     throw new BookingCheckoutError(400, 'The pricing rule for this area is currently inactive.');
   }
 
+  // Validate that customer-provided overrides only target variables declared
+  // with userInput: true. This prevents customers from overriding internal
+  // variables the partner intended to be fixed.
+  if (customVariableOverrides && Object.keys(customVariableOverrides).length > 0) {
+    const allowedOverrideKeys = new Set(
+      priceRule.definition.variables
+        .filter((v) => v.userInput === true)
+        .map((v) => v.key)
+    );
+
+    const invalidKeys = Object.keys(customVariableOverrides).filter(
+      (key) => !allowedOverrideKeys.has(key) && !BUILT_IN_VARIABLE_KEYS.has(key)
+    );
+
+    if (invalidKeys.length > 0) {
+      throw new BookingCheckoutError(
+        400,
+        `Invalid variable overrides: ${invalidKeys.join(', ')}`
+      );
+    }
+  }
+
   const priceEvaluation = (() => {
     try {
       return evaluatePriceRule(priceRule.definition, {
         bookingHours,
         now: startAt,
-        variableOverrides: { guest_count: guestCount, },
+        variableOverrides: {
+          ...customVariableOverrides,
+          guest_count: guestCount,
+          ...(areaMaxCapacity !== null ? { area_max_capacity: areaMaxCapacity, } : {}),
+        },
       });
     } catch (error) {
-      console.error('Invalid price rule definition', {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Price rule evaluation failed', {
         areaId: area.id,
-        error,
+        priceRuleId: priceRule.id,
+        priceRuleName: priceRule.name,
+        bookingHours,
+        guestCount,
+        error: errorMessage,
       });
       return {
         price: null,
@@ -236,7 +290,29 @@ export async function createBookingCheckoutSession(
     throw new BookingCheckoutError(400, 'Unable to compute a price for this booking.');
   }
 
-  const formulaAlreadyHandlesGuests = priceEvaluation.usedVariables.includes('guest_count');
+  // Check if the formula *meaningfully* uses guest_count by evaluating again
+  // with guest_count = 1. A formula like `100 + guest_count * 0` technically
+  // references the variable but doesn't change the output — in that case we
+  // still need to apply the automatic guest multiplier.
+  const formulaAlreadyHandlesGuests = (() => {
+    if (!priceEvaluation.usedVariables.includes('guest_count') || guestCount <= 1) {
+      return false;
+    }
+    try {
+      const singleGuestEval = evaluatePriceRule(priceRule.definition, {
+        bookingHours,
+        now: startAt,
+        variableOverrides: {
+          ...customVariableOverrides,
+          guest_count: 1,
+          ...(areaMaxCapacity !== null ? { area_max_capacity: areaMaxCapacity, } : {}),
+        },
+      });
+      return singleGuestEval.price !== priceEvaluation.price;
+    } catch {
+      return false;
+    }
+  })();
   const guestMultiplier = formulaAlreadyHandlesGuests ? 1 : guestCount;
   const priceMinor = Math.round(priceEvaluation.price * guestMultiplier * BOOKING_PRICE_MINOR_FACTOR);
 
@@ -253,13 +329,31 @@ export async function createBookingCheckoutSession(
       start_at: startAt,
       status: 'pending',
       user_auth_id: customer.auth_user_id,
-      payment_transaction: { none: {}, },
     },
     orderBy: { created_at: 'desc', },
+    include: {
+      payment_transaction: {
+        orderBy: { created_at: 'desc', },
+        take: 1,
+        select: {
+          id: true,
+          provider: true,
+          provider_object_id: true,
+          status: true,
+          raw_gateway_json: true,
+          amount_minor: true,
+          currency_iso3: true,
+          is_live: true,
+          occurred_at: true,
+          created_at: true,
+        },
+      },
+    },
   });
 
   const bookingResult = existingPendingBooking
     ? await (async () => {
+        const existingPaymentTransaction = existingPendingBooking.payment_transaction[0] ?? null;
         const activeCount = await countActiveBookingsOverlap(
           prisma,
           area.id,
@@ -281,6 +375,7 @@ export async function createBookingCheckoutSession(
 
         return {
           bookingRow: existingPendingBooking,
+          existingPaymentTransaction,
           requiresHostApproval: approval.status === 'pending',
         };
       })()
@@ -329,11 +424,15 @@ export async function createBookingCheckoutSession(
                 price_rule_snapshot: priceRule.definition,
                 price_rule_branch: priceEvaluation.branch ?? null,
                 price_rule_expression: priceEvaluation.appliedExpression ?? null,
+                ...(customVariableOverrides && Object.keys(customVariableOverrides).length > 0
+                  ? { price_rule_overrides: customVariableOverrides, }
+                  : {}),
               },
             });
 
             return {
               bookingRow: created,
+              existingPaymentTransaction: null,
               requiresHostApproval,
             };
           },
@@ -352,6 +451,7 @@ export async function createBookingCheckoutSession(
 
   const {
     bookingRow,
+    existingPaymentTransaction,
     requiresHostApproval,
   } = bookingResult;
 
@@ -369,10 +469,23 @@ export async function createBookingCheckoutSession(
   const partnerWalletOwner = partnerAuthId
     ? await prisma.user.findUnique({
         where: { auth_user_id: partnerAuthId, },
-        select: { user_id: true, },
+        select: {
+          user_id: true,
+          provider_accounts: {
+            where: { provider: 'xendit', },
+            select: {
+              id: true,
+              provider_account_id: true,
+              status: true,
+              currency: true,
+            },
+            take: 1,
+          },
+        },
       })
     : null;
   const partnerInternalUserId = partnerWalletOwner?.user_id?.toString() ?? null;
+  const partnerProviderAccount = partnerWalletOwner?.provider_accounts[0] ?? null;
 
   const metadata = {
     booking_id: bookingRow.id,
@@ -494,24 +607,98 @@ export async function createBookingCheckoutSession(
     };
   }
 
-  const checkoutSession = await createPaymongoCheckoutSession({
-    amountMinor: priceMinor,
+  if (
+    existingPaymentTransaction?.provider === 'xendit' &&
+    existingPaymentTransaction.status === 'pending'
+  ) {
+    const existingCheckoutUrl = getExistingProviderCheckoutUrl(
+      existingPaymentTransaction.raw_gateway_json
+    );
+
+    if (existingCheckoutUrl) {
+      // Use the amount from the existing payment transaction to ensure the
+      // displayed price matches what the customer will actually be charged.
+      const chargedAmountMinor = Number(existingPaymentTransaction.amount_minor);
+      const displayPrice = Number.isFinite(chargedAmountMinor) && chargedAmountMinor > 0
+        ? chargedAmountMinor / BOOKING_PRICE_MINOR_FACTOR
+        : priceMinor / BOOKING_PRICE_MINOR_FACTOR;
+
+      return {
+        areaId: area.id,
+        areaName: area.name,
+        bookingHours,
+        bookingId: bookingRow.id,
+        checkoutUrl: existingCheckoutUrl,
+        guestCount,
+        price: displayPrice,
+        priceCurrency: 'PHP',
+        requiresHostApproval,
+        spaceId: area.space.id,
+        spaceName: area.space.name,
+        startAt: startAt.toISOString(),
+        testingMode: false,
+      };
+    }
+  }
+
+  if (!partnerProviderAccount?.provider_account_id || partnerProviderAccount.status !== 'live') {
+    throw new BookingCheckoutError(
+      409,
+      'This space is temporarily unavailable because the partner payout account is not ready.'
+    );
+  }
+
+  const provider = getFinancialProvider();
+  const checkoutSession = await provider.createBookingPayment({
+    partnerProviderAccountId: partnerProviderAccount.provider_account_id,
+    referenceId: bookingRow.id,
+    amountMinor: BigInt(priceMinor),
     currency: bookingRow.currency,
     description: `${area.space.name} · ${area.name}`,
-    lineItemName: area.name,
     successUrl: resolvedSuccessUrl,
     cancelUrl: resolvedCancelUrl,
-    metadata,
-    lineItems: [
-      {
-        quantity: 1,
-        price_data: {
-          currency: bookingRow.currency,
-          unit_amount: priceMinor,
-          product_data: { name: `${area.space.name} · ${area.name}`, },
-        },
-      }
-    ],
+    metadata: {
+      ...metadata,
+      partner_provider_account_id: partnerProviderAccount.id,
+    },
+  });
+
+  await prisma.payment_transaction.upsert({
+    where: {
+      provider_provider_object_id: {
+        provider: 'xendit',
+        provider_object_id: checkoutSession.paymentId,
+      },
+    },
+    create: {
+      booking_id: bookingRow.id,
+      provider: 'xendit',
+      provider_object_id: checkoutSession.paymentId,
+      status: 'pending',
+      amount_minor: BigInt(priceMinor),
+      currency_iso3: bookingRow.currency,
+      payment_method_type: 'xendit_invoice',
+      is_live: checkoutSession.isLive,
+      raw_gateway_json: {
+        ...(checkoutSession.raw ?? {}),
+        invoice_url: checkoutSession.checkoutUrl,
+        partner_provider_account_id: partnerProviderAccount.id,
+      },
+    },
+    update: {
+      booking_id: bookingRow.id,
+      status: 'pending',
+      amount_minor: BigInt(priceMinor),
+      currency_iso3: bookingRow.currency,
+      payment_method_type: 'xendit_invoice',
+      is_live: checkoutSession.isLive,
+      raw_gateway_json: {
+        ...(checkoutSession.raw ?? {}),
+        invoice_url: checkoutSession.checkoutUrl,
+        partner_provider_account_id: partnerProviderAccount.id,
+      },
+      updated_at: new Date(),
+    },
   });
 
   return {
@@ -519,7 +706,7 @@ export async function createBookingCheckoutSession(
     areaName: area.name,
     bookingHours,
     bookingId: bookingRow.id,
-    checkoutUrl: checkoutSession.data.attributes.checkout_url,
+    checkoutUrl: checkoutSession.checkoutUrl,
     guestCount,
     price: priceMinor / BOOKING_PRICE_MINOR_FACTOR,
     priceCurrency: 'PHP',

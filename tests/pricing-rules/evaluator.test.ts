@@ -798,8 +798,8 @@ valueType: 'time',
           })
         ],
       });
-      // 7 PM → should match >= 18:00
-      const evening = new Date('2024-01-15T19:00:00');
+      // 7 PM UTC → should match >= 18:00
+      const evening = new Date('2024-01-15T19:00:00Z');
       const result = evaluatePriceRule(def, {
  bookingHours: 1,
 now: evening, 

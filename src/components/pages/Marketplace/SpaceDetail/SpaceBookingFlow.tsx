@@ -15,13 +15,21 @@ import {
   type SetStateAction
 } from 'react';
 import { CgSpinner } from 'react-icons/cg';
-import { FiMinus, FiPlus } from 'react-icons/fi';
+import {
+FiCalendar,
+FiClock,
+FiEdit,
+FiMinus,
+FiPlus,
+FiUsers
+} from 'react-icons/fi';
 import { toast } from 'sonner';
 import { useSearchParams } from 'next/navigation';
 
 import { BookingCard } from './BookingCard';
 
 import type { MarketplaceSpaceDetail } from '@/lib/queries/space';
+import type { PriceRuleVariable } from '@/lib/pricing-rules';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -85,6 +93,7 @@ type BookingFormState = {
   isPricingLoading: boolean;
   guestCount: number;
   scheduledDate: string;
+  customVariables: Record<string, string | number>;
 };
 
 type BookingFormAction =
@@ -98,7 +107,8 @@ type BookingFormAction =
   | { type: 'set-booking-hours'; bookingHours: number }
   | { type: 'set-pricing-loading'; isPricingLoading: boolean }
   | { type: 'set-guest-count'; guestCount: number }
-  | { type: 'set-scheduled-date'; scheduledDate: string };
+  | { type: 'set-scheduled-date'; scheduledDate: string }
+  | { type: 'set-custom-variable'; key: string; value: string | number };
 
 function createInitialBookingFormState(
   earliestScheduleDate: string
@@ -109,6 +119,7 @@ function createInitialBookingFormState(
     isPricingLoading: false,
     guestCount: MIN_GUEST_COUNT,
     scheduledDate: earliestScheduleDate,
+    customVariables: {},
   };
 }
 
@@ -123,6 +134,7 @@ function bookingFormReducer(
         bookingHours: DEFAULT_BOOKING_HOURS,
         selectedAreaId: action.defaultAreaId,
         isPricingLoading: Boolean(action.defaultAreaId),
+        customVariables: {},
       };
     case 'reset':
       return {
@@ -131,6 +143,7 @@ function bookingFormReducer(
         isPricingLoading: Boolean(action.defaultAreaId),
         guestCount: MIN_GUEST_COUNT,
         scheduledDate: action.earliestScheduleDate,
+        customVariables: {},
       };
     case 'select-area':
       return {
@@ -138,6 +151,7 @@ function bookingFormReducer(
         selectedAreaId: action.areaId,
         bookingHours: DEFAULT_BOOKING_HOURS,
         isPricingLoading: true,
+        customVariables: {},
       };
     case 'set-booking-hours':
       return {
@@ -158,6 +172,14 @@ function bookingFormReducer(
       return {
         ...state,
         scheduledDate: action.scheduledDate,
+      };
+    case 'set-custom-variable':
+      return {
+        ...state,
+        customVariables: {
+          ...state.customVariables,
+          [action.key]: action.value,
+        },
       };
     default: {
       const exhaustiveCheck: never = action;
@@ -234,6 +256,9 @@ type BookingDurationFormProps = {
   priceEvaluation: PriceRuleEvaluationResult | null;
   isBookingFormPristine: boolean;
   onResetBookingForm: () => void;
+  userInputVariables: PriceRuleVariable[];
+  customVariables: Record<string, string | number>;
+  onCustomVariableChange: (key: string, value: string | number) => void;
 };
 
 function priceBranchLabel(branch: PriceRuleEvaluationResult['branch']) {
@@ -272,230 +297,272 @@ function BookingDurationForm({
   priceEvaluation,
   isBookingFormPristine,
   onResetBookingForm,
+  userInputVariables,
+  customVariables,
+  onCustomVariableChange,
 }: BookingDurationFormProps) {
   return (
-    <div className="space-y-4">
-      <div className="space-y-1">
-        <p className="text-lg font-semibold text-left font-sf text-muted-foreground">
-          Plan your visit
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Choose an area, date, duration, and guest count to preview pricing.
-        </p>
-      </div>
-      <div className="space-y-4 rounded-2xl border border-border/60 bg-background/80 p-4 shadow-sm">
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label
-                htmlFor="area-select"
-                className="text-sm font-semibold text-foreground"
-              >
-                Area selection
-              </Label>
-              <span className="text-xs text-muted-foreground">
-                { areas.length } area{ areas.length === 1 ? '' : 's' }
-              </span>
-            </div>
-            { areas.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border/60 bg-muted/40 px-3 py-5 text-center text-sm text-muted-foreground">
-                No areas available yet.
+    <div className="space-y-6 py-2">
+      <div className="grid gap-6 md:grid-cols-2">
+        { /* Step 1: Selection & Schedule */ }
+        <div className="space-y-4">
+          <div className="space-y-4 rounded-xl border border-border/50 bg-muted/20 p-4">
+            <div className="flex items-center gap-2 border-b border-border/50 pb-2">
+              <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <FiCalendar className="size-4" />
               </div>
-            ) : (
-              <Select value={ selectedAreaId ?? undefined } onValueChange={ onSelectArea }>
-                <SelectTrigger
-                  id="area-select"
-                  className="w-full rounded-md"
-                  aria-label="Select an area"
+              <h3 className="font-semibold text-foreground">1. Where & When</h3>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label
+                    htmlFor="area-select"
+                    className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                  >
+                    Select Area
+                  </Label>
+                </div>
+                { areas.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-border bg-muted/40 px-3 py-4 text-center text-sm text-muted-foreground">
+                    No areas available.
+                  </div>
+                ) : (
+                  <Select value={ selectedAreaId ?? undefined } onValueChange={ onSelectArea }>
+                    <SelectTrigger
+                      id="area-select"
+                      className="h-11 rounded-lg border-border/50 bg-background shadow-none transition-all hover:bg-accent/50 focus:ring-1"
+                      aria-label="Select an area"
+                    >
+                      <SelectValue placeholder="Pick an area" />
+                    </SelectTrigger>
+                    <SelectContent className="max-w-[26rem]">
+                      { areas.map((area) => (
+                        <SelectItem
+                          key={ area.id }
+                          value={ area.id }
+                          disabled={ !area.pricingRuleId }
+                        >
+                          <span className="font-medium">{ area.name }</span>
+                        </SelectItem>
+                      )) }
+                    </SelectContent>
+                  </Select>
+                ) }
+              </div>
+
+              <div className="space-y-2">
+                <Label
+                  htmlFor="booking-date"
+                  className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
                 >
-                  <SelectValue placeholder="Select an area" />
-                </SelectTrigger>
-                <SelectContent className="max-w-[26rem]">
-                  { areas.map((area) => {
-                    const hasPricingRule = Boolean(
-                      area.pricingRuleId && area.pricingRuleName
-                    );
-                    return (
-                      <SelectItem
-                        key={ area.id }
-                        value={ area.id }
-                        disabled={ !hasPricingRule }
-                      >
-                        <div className="flex w-full flex-col gap-0.5">
-                          <span className="text-sm font-semibold leading-tight text-foreground">
-                            { area.name }
-                          </span>
-                        </div>
-                      </SelectItem>
-                    );
-                  }) }
-                </SelectContent>
-              </Select>
-            ) }
+                  Visit Date
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="booking-date"
+                    type="date"
+                    value={ scheduledDate }
+                    min={ earliestScheduleDate }
+                    onChange={ onScheduledDateChange }
+                    className="h-11 rounded-lg border-border/50 bg-background shadow-none transition-all hover:bg-accent/50 focus:ring-1"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label
-              htmlFor="booking-date"
-              className="text-sm font-semibold text-foreground"
-            >
-              Calendar schedule
-            </Label>
-            <Input
-              id="booking-date"
-              type="date"
-              value={ scheduledDate }
-              min={ earliestScheduleDate }
-              onChange={ onScheduledDateChange }
-            />
-            <p className="text-xs text-muted-foreground">
-              We&apos;ll confirm availability with the host for { scheduledDate }.
-            </p>
+
+          <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
+            <div className="flex items-center gap-2 border-b border-border/50 pb-2">
+              <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <FiUsers className="size-4" />
+              </div>
+              <h3 className="font-semibold text-foreground">2. Guests</h3>
+            </div>
+            
+            <div className="mt-4 space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1 space-y-1">
+                  <p className="text-sm font-medium">Number of Guests</p>
+                  <p
+                    className={ cn(
+                      'text-xs',
+                      isOverCapacity ? 'font-medium text-destructive' : 'text-muted-foreground'
+                    ) }
+                  >
+                    { capacityHelperText }
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 rounded-lg border border-border/50 bg-background p-1 shadow-sm">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 rounded-md"
+                    onClick={ onDecreaseGuestCount }
+                    disabled={ guestCount <= MIN_GUEST_COUNT }
+                  >
+                    <FiMinus className="size-3" />
+                  </Button>
+                  <Input
+                    type="number"
+                    className="h-8 w-12 border-none bg-transparent p-0 text-center text-sm font-semibold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none focus-visible:ring-0"
+                    value={ guestCount }
+                    onChange={ onGuestCountInputChange }
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 rounded-md"
+                    onClick={ onIncreaseGuestCount }
+                    disabled={ guestCount >= currentGuestLimit }
+                  >
+                    <FiPlus className="size-3" />
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-semibold text-foreground">
-                Duration
-              </Label>
-              <span className="text-xs text-muted-foreground">
-                { bookingHours === MAX_BOOKING_HOURS
-                  ? '1 day (24 hours) total'
-                  : `${bookingHours} hour${bookingHours === 1 ? '' : 's'} total` }
-              </span>
+
+        { /* Step 2: Duration & Details */ }
+        <div className="space-y-4">
+          <div className="space-y-4 rounded-xl border border-border/50 bg-muted/20 p-4">
+            <div className="flex items-center gap-2 border-b border-border/50 pb-2">
+              <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <FiClock className="size-4" />
+              </div>
+              <h3 className="font-semibold text-foreground">3. Duration</h3>
             </div>
-            <div className="space-y-3 rounded-2xl border border-border/70 bg-muted/40 px-4 py-4 shadow-sm">
-              <div className="text-center">
-                <p className="text-3xl font-semibold text-foreground">
+
+            <div className="space-y-6 pt-2">
+              <div className="flex flex-col items-center justify-center space-y-1 py-2">
+                <div className="text-4xl font-bold tracking-tight text-foreground">
                   { bookingHours === MAX_BOOKING_HOURS
-                    ? '1 day'
-                    : `${bookingHours} hr${bookingHours === 1 ? '' : 's'}` }
-                </p>
-                <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                    ? '24'
+                    : bookingHours }
+                  <span className="ml-1 text-lg font-medium text-muted-foreground">
+                    { bookingHours === 1 ? 'hour' : 'hours' }
+                  </span>
+                </div>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary/80">
                   { bookingHours === MAX_BOOKING_HOURS
-                    ? 'Max duration'
-                    : 'Hourly booking' }
+                    ? 'Maximum Duration'
+                    : 'Time Selection' }
                 </p>
               </div>
-              <Slider
-                value={ [bookingHours] }
-                min={ MIN_BOOKING_HOURS }
-                max={ MAX_BOOKING_HOURS }
-                step={ 1 }
-                onValueChange={ ([value]) => {
-                  const nextValue = value ?? MIN_BOOKING_HOURS;
-                  onBookingHoursChange(nextValue);
-                } }
-                disabled={ isPricingLoading || !selectedAreaId }
-                className="h-5"
-                aria-label="Pick booking duration in hours"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{ MIN_BOOKING_HOURS } hr</span>
-                <span>24 hrs / 1 day</span>
+
+              <div className="px-2">
+                <Slider
+                  value={ [bookingHours] }
+                  min={ MIN_BOOKING_HOURS }
+                  max={ MAX_BOOKING_HOURS }
+                  step={ 1 }
+                  onValueChange={ ([value]) => {
+                    const nextValue = value ?? MIN_BOOKING_HOURS;
+                    onBookingHoursChange(nextValue);
+                  } }
+                  disabled={ isPricingLoading || !selectedAreaId }
+                  className="py-4"
+                />
+                <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
+                  <span>{ MIN_BOOKING_HOURS }H</span>
+                  <span>12H</span>
+                  <span>24H</span>
+                </div>
               </div>
-              <p className="text-center text-xs font-medium text-muted-foreground">
-                { shouldShowHourSelector ? 'Dynamic pricing' : 'Fixed rate' }
-              </p>
+              
+              <div className="rounded-lg bg-background/50 p-2 text-center">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">
+                  { shouldShowHourSelector ? 'Variable pricing active' : 'Standard rate applies' }
+                </p>
+              </div>
             </div>
           </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-semibold text-foreground">
-                No. of guests
-              </Label>
-              <span className="text-xs text-muted-foreground">
-                { selectedAreaMaxCapacity
-                  ? `Max ${selectedAreaMaxCapacity}`
-                  : 'No maximum' }
-              </span>
-            </div>
-            <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-muted/40 px-2 py-1">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={ onDecreaseGuestCount }
-                disabled={ guestCount <= MIN_GUEST_COUNT }
-                aria-label="Decrease guest count"
-              >
-                <FiMinus className="size-4" aria-hidden="true" />
-              </Button>
-              <Input
-                type="number"
-                min={ MIN_GUEST_COUNT }
-                max={ currentGuestLimit }
-                step={ 1 }
-                className="w-16 text-center text-sm"
-                value={ guestCount }
-                onChange={ onGuestCountInputChange }
-                aria-label="Number of guests"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={ onIncreaseGuestCount }
-                disabled={ guestCount >= currentGuestLimit }
-                aria-label="Increase guest count"
-              >
-                <FiPlus className="size-4" aria-hidden="true" />
-              </Button>
-            </div>
-            <p
-              className={ cn(
-                'text-xs font-medium',
-                isOverCapacity ? 'text-destructive' : 'text-muted-foreground'
-              ) }
-              aria-live="polite"
-            >
-              { capacityHelperText }
-            </p>
-          </div>
-        </div>
-      </div>
-      <div className="rounded-2xl border border-border/70 bg-background/80 p-4 shadow-sm">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-muted-foreground">
-            Final price
-          </span>
-          { isPricingLoading && (
-            <div className="flex items-center gap-1 text-xs font-semibold text-muted-foreground">
-              <CgSpinner className="h-3 w-3 animate-spin" aria-hidden="true" />
-              <span>Updating</span>
+
+          { userInputVariables.length > 0 && (
+            <div className="space-y-4 rounded-xl border border-border/50 bg-muted/20 p-4">
+              <div className="flex items-center gap-2 border-b border-border/50 pb-2">
+                <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <FiEdit className="size-4" />
+                </div>
+                <h3 className="font-semibold text-foreground">4. Extra Details</h3>
+              </div>
+              <div className="grid gap-3 pt-2">
+                { userInputVariables.map((variable) => (
+                  <div key={ variable.key } className="space-y-1.5">
+                    <Label
+                      htmlFor={ `custom-var-${variable.key}` }
+                      className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                    >
+                      { variable.displayName || variable.label }
+                    </Label>
+                    <Input
+                      id={ `custom-var-${variable.key}` }
+                      type={ variable.type === 'number' ? 'number' : 'text' }
+                      value={ customVariables[variable.key] ?? '' }
+                      onChange={ (e) => {
+                        const raw = e.target.value;
+                        onCustomVariableChange(
+                          variable.key,
+                          variable.type === 'number' ? (raw === '' ? '' : Number(raw)) : raw
+                        );
+                      } }
+                      className="h-10 border-border/50 shadow-none focus:ring-1"
+                    />
+                  </div>
+                )) }
+              </div>
             </div>
           ) }
         </div>
-        <p className="mt-2 text-3xl font-semibold text-foreground">
-          { pricePreviewLabel }
-        </p>
-        { priceEvaluation && priceEvaluation.branch !== 'no-match' ? (
-          <p className="text-xs text-muted-foreground">
-            { priceBranchLabel(priceEvaluation.branch) }
-          </p>
-        ) : null }
-        { isOverCapacity && (
-          <p className="mt-2 text-xs font-medium text-destructive">
-            Guest count exceeds this area&apos;s capacity.
-          </p>
+      </div>
+
+      { /* Summary Section */ }
+      <div className="relative mt-8 overflow-hidden rounded-2xl border border-primary/20 bg-primary/5 p-6 transition-all dark:border-primary/30 dark:bg-primary/10">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h4 className="text-sm font-bold uppercase tracking-[0.1em] text-primary/80">
+              Estimated Total
+            </h4>
+            <div className="flex items-baseline gap-2">
+              <span className="text-4xl font-bold tracking-tight text-foreground">
+                { pricePreviewLabel }
+              </span>
+              { isPricingLoading && (
+                <CgSpinner className="size-5 animate-spin text-primary" />
+              ) }
+            </div>
+            { priceEvaluation && priceEvaluation.branch !== 'no-match' && (
+              <p className="text-xs font-medium text-muted-foreground">
+                { priceBranchLabel(priceEvaluation.branch) }
+              </p>
+            ) }
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={ onResetBookingForm }
+              disabled={ isBookingFormPristine }
+              className="text-muted-foreground transition-colors hover:bg-background/80 hover:text-foreground"
+            >
+              Reset Form
+            </Button>
+          </div>
+        </div>
+        
+        { !selectedAreaId && (
+          <div className="mt-4 flex items-center gap-2 rounded-lg bg-background/50 px-3 py-2 text-xs text-muted-foreground">
+            <FiPlus className="size-3" />
+            <span>Pick an area to calculate final pricing.</span>
+          </div>
         ) }
       </div>
-      <div className="flex justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={ onResetBookingForm }
-          disabled={ isBookingFormPristine }
-        >
-          Reset form
-        </Button>
-      </div>
-      { !selectedAreaId && (
-        <div className="rounded-lg border border-dashed border-border/70 bg-muted/30 px-4 py-2 text-xs text-muted-foreground">
-          Select an area to unlock pricing and confirm your preferred date.
-        </div>
-      ) }
     </div>
   );
 }
@@ -511,6 +578,7 @@ type BookingReservationOverlayProps = {
   onConfirmBooking: () => void;
   onCloseBooking: () => void;
   isCheckoutPending: boolean;
+  isPricingLoading: boolean;
   primaryActionLabel: string;
 };
 
@@ -523,83 +591,119 @@ function BookingReservationOverlay({
   onConfirmBooking,
   onCloseBooking,
   isCheckoutPending,
+  isPricingLoading,
   primaryActionLabel,
 }: BookingReservationOverlayProps) {
+  const handleOpenChange = (open: boolean) => {
+    if (!open && isCheckoutPending) {
+      return;
+    }
+    setIsBookingOpen(open);
+  };
+
   return (
     <>
       <Dialog
         open={ isDesktopViewport && isBookingOpen }
-        onOpenChange={ setIsBookingOpen }
+        onOpenChange={ handleOpenChange }
       >
         <DialogContent
           showCloseButton={ false }
-          fullWidth
-          className="max-h-[90vh] overflow-y-auto lg:max-w-[1024px]"
+          dismissible={ !isCheckoutPending }
+          className="max-h-[95vh] overflow-y-auto border-none p-0 sm:max-w-3xl"
         >
-          <DialogHeader>
-            <DialogTitle>Book a reservation</DialogTitle>
-            <DialogDescription>
-              Confirm your preferred duration and review the booking summary
-              before checkout.
-            </DialogDescription>
-          </DialogHeader>
-          { bookingContent }
-          <DialogFooter className="mt-4 flex-col gap-3 lg:flex-row lg:items-center">
-            <Button
-              type="button"
-              className="w-full lg:w-auto"
-              onClick={ onConfirmBooking }
-              disabled={ !canConfirmBooking }
-            >
-              { isCheckoutPending && (
-                <CgSpinner className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) }
-              { primaryActionLabel }
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full lg:w-auto hover:text-white"
-              onClick={ onCloseBooking }
-            >
-              Cancel
-            </Button>
-          </DialogFooter>
+          <div className="flex flex-col">
+            <DialogHeader className="border-b border-border/50 p-6 text-left">
+              <div className="flex items-center justify-between">
+                <div>
+                  <DialogTitle className="text-2xl font-bold tracking-tight">Complete Reservation</DialogTitle>
+                  <DialogDescription className="mt-1.5 text-sm">
+                    Customize your visit details and review your booking summary.
+                  </DialogDescription>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={ onCloseBooking } 
+                  className="rounded-full"
+                  disabled={ isCheckoutPending }
+                >
+                  <FiPlus className="size-5 rotate-45" />
+                </Button>
+              </div>
+            </DialogHeader>
+            
+            <div className="flex-1 px-6 py-2">
+              { bookingContent }
+            </div>
+
+            <DialogFooter className="mt-0 border-t border-border/50 bg-muted/30 p-6 sm:justify-between">
+              <div className="hidden flex-col justify-center sm:flex">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Secure Checkout</p>
+                <p className="text-xs text-muted-foreground">Powered by Xendit</p>
+              </div>
+              <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="order-2 h-12 px-8 font-semibold sm:order-1"
+                  onClick={ onCloseBooking }
+                  disabled={ isCheckoutPending }
+                >
+                  Back
+                </Button>
+                <Button
+                  type="button"
+                  className="order-1 h-12 px-10 text-base font-bold shadow-lg shadow-primary/20 sm:order-2"
+                  onClick={ onConfirmBooking }
+                  disabled={ !canConfirmBooking }
+                  loading={ isCheckoutPending }
+                >
+                  { isPricingLoading ? 'Updating Price...' : `Confirm & Pay ${primaryActionLabel.includes('₱') ? primaryActionLabel : ''}` }
+                </Button>
+              </div>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
       <Sheet
         open={ !isDesktopViewport && isBookingOpen }
-        onOpenChange={ setIsBookingOpen }
+        onOpenChange={ handleOpenChange }
       >
         <SheetContent
           side="bottom"
-          className="max-h-[90vh] gap-4 overflow-y-auto rounded-t-2xl"
+          dismissible={ !isCheckoutPending }
+          className="max-h-[96vh] gap-0 overflow-y-auto rounded-t-[2rem] border-none p-0 shadow-2xl"
         >
-          <SheetHeader>
-            <SheetTitle>Book a reservation</SheetTitle>
+          <SheetHeader className="border-b border-border/50 p-6 text-left">
+            <SheetTitle className="text-2xl font-bold">Book Reservation</SheetTitle>
           </SheetHeader>
-          <div className="px-6 pb-4">{ bookingContent }</div>
-          <SheetFooter className="mt-4 space-y-3 px-6 pb-6">
-            <Button
-              type="button"
-              className="w-full"
-              onClick={ onConfirmBooking }
-              disabled={ !canConfirmBooking }
-            >
-              { isCheckoutPending && (
-                <CgSpinner className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) }
-              { primaryActionLabel }
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full hover:text-white"
-              onClick={ onCloseBooking }
-            >
-              Cancel
-            </Button>
-          </SheetFooter>
+          <div className="px-6 pb-24 pt-4">
+            { bookingContent }
+          </div>
+          <div className="fixed bottom-0 left-0 right-0 border-t border-border/50 bg-background/95 p-6 backdrop-blur-md">
+            <div className="flex flex-col gap-3">
+              <Button
+                type="button"
+                size="lg"
+                className="h-14 w-full text-lg font-bold shadow-lg shadow-primary/20"
+                onClick={ onConfirmBooking }
+                disabled={ !canConfirmBooking }
+                loading={ isCheckoutPending }
+              >
+                { isPricingLoading ? 'Updating...' : `Confirm & Pay ${primaryActionLabel.includes('₱') ? primaryActionLabel : ''}` }
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-10 w-full font-medium text-muted-foreground"
+                onClick={ onCloseBooking }
+                disabled={ isCheckoutPending }
+              >
+                Maybe later
+              </Button>
+            </div>
+          </div>
         </SheetContent>
       </Sheet>
     </>
@@ -687,6 +791,7 @@ export const SpaceBookingFlow = forwardRef<
     isPricingLoading,
     guestCount,
     scheduledDate,
+    customVariables,
   } = bookingState;
 
   const bookingStartAtIso = useMemo(() => {
@@ -802,6 +907,26 @@ scheduledDate: event.target.value,
     [activePriceRule]
   );
 
+  const userInputVariables = useMemo<PriceRuleVariable[]>(() => {
+    if (!activePriceRule) {
+      return [];
+    }
+    return activePriceRule.definition.variables.filter(
+      (variable) => variable.userInput === true
+    );
+  }, [activePriceRule]);
+
+  const handleCustomVariableChange = useCallback(
+    (key: string, value: string | number) => {
+      dispatchBookingAction({
+ type: 'set-custom-variable',
+key,
+value, 
+});
+    },
+    []
+  );
+
   const defaultPricedAreaId = findFirstPricedAreaId();
   const isBookingFormPristine =
     selectedAreaId === defaultPricedAreaId &&
@@ -810,7 +935,7 @@ scheduledDate: event.target.value,
     scheduledDate === earliestScheduleDate;
 
   const variableOverrides = useMemo(() => {
-    const overrides: Record<string, number> = { guest_count: guestCount, };
+    const overrides: Record<string, string | number> = { guest_count: guestCount, };
 
     if (selectedArea) {
       if (typeof selectedArea.maxCapacity === 'number') {
@@ -821,8 +946,14 @@ scheduledDate: event.target.value,
       }
     }
 
+    for (const [key, value] of Object.entries(customVariables)) {
+      if (value !== '') {
+        overrides[key] = value;
+      }
+    }
+
     return overrides;
-  }, [guestCount, selectedArea]);
+  }, [customVariables, guestCount, selectedArea]);
 
   const priceEvaluation = useMemo(() => {
     if (!activePriceRule) {
@@ -914,9 +1045,6 @@ scheduledDate: event.target.value,
     if (!selectedAreaId) {
       return 'Select an area';
     }
-    if (createCheckoutSession.isPending) {
-      return 'Booking...';
-    }
     if (isPricingLoading) {
       return 'Computing price...';
     }
@@ -929,6 +1057,13 @@ scheduledDate: event.target.value,
     return PRICE_FORMATTER.format(totalPrice);
   })();
 
+  const hasAllCustomVariables = userInputVariables.every((variable) => {
+    const value = customVariables[variable.key];
+    if (value === undefined || value === '') return false;
+    if (variable.type === 'number' && typeof value === 'number' && !Number.isFinite(value)) return false;
+    return true;
+  });
+
   const canConfirmBooking = Boolean(
     selectedAreaId &&
       !isPricingLoading &&
@@ -936,7 +1071,8 @@ scheduledDate: event.target.value,
       totalPrice !== null &&
       canBook &&
       !createCheckoutSession.isPending &&
-      !isOverCapacity
+      !isOverCapacity &&
+      hasAllCustomVariables
   );
 
   const handleConfirmBooking = useCallback(async () => {
@@ -945,12 +1081,23 @@ scheduledDate: event.target.value,
     }
 
     try {
+      const checkoutOverrides: Record<string, string | number> = {};
+      for (const variable of userInputVariables) {
+        const value = customVariables[variable.key];
+        if (value !== undefined && value !== '') {
+          checkoutOverrides[variable.key] = value;
+        }
+      }
+
       const result = await createCheckoutSession.mutateAsync({
         spaceId: space.id,
         areaId: selectedArea.id,
         bookingHours,
         startAt: bookingStartAtIso,
         guestCount,
+        ...(Object.keys(checkoutOverrides).length > 0
+          ? { variableOverrides: checkoutOverrides, }
+          : {}),
       });
       resetBookingState();
       setIsBookingOpen(false);
@@ -965,11 +1112,13 @@ scheduledDate: event.target.value,
     bookingStartAtIso,
     canConfirmBooking,
     createCheckoutSession,
+    customVariables,
     guestCount,
     resetBookingState,
     selectedArea,
     session,
-    space.id
+    space.id,
+    userInputVariables
   ]);
 
   // Expose openBooking to the parent via ref
@@ -1018,6 +1167,9 @@ scheduledDate: event.target.value,
       priceEvaluation={ priceEvaluation }
       isBookingFormPristine={ isBookingFormPristine }
       onResetBookingForm={ handleResetBookingForm }
+      userInputVariables={ userInputVariables }
+      customVariables={ customVariables }
+      onCustomVariableChange={ handleCustomVariableChange }
     />
   );
 
@@ -1035,6 +1187,7 @@ scheduledDate: event.target.value,
       onConfirmBooking={ handleConfirmBooking }
       onCloseBooking={ handleCloseBooking }
       isCheckoutPending={ createCheckoutSession.isPending }
+      isPricingLoading={ isPricingLoading }
       primaryActionLabel={ primaryActionLabel }
     />
   );

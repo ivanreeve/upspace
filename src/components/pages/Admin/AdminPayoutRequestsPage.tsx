@@ -7,6 +7,7 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiClock,
+  FiLoader,
   FiXCircle
 } from 'react-icons/fi';
 import { toast } from 'sonner';
@@ -60,7 +61,7 @@ const REQUEST_TABS = [
   {
     value: 'pending',
     label: 'Pending',
-    description: 'Requests waiting for payout completion or rejection.',
+    description: 'Requests waiting for admin submission or the final Xendit outcome.',
   },
   {
     value: 'succeeded',
@@ -111,7 +112,18 @@ const getStatusVariant = (status: AdminPayoutRequest['status']) => {
   return 'secondary' as const;
 };
 
-const getStatusLabel = (status: AdminPayoutRequest['status']) => {
+const getStatusLabel = (
+  status: AdminPayoutRequest['status'],
+  workflowStage: AdminPayoutRequest['workflowStage']
+) => {
+  if (status === 'pending' && workflowStage === 'submitted_to_provider') {
+    return 'Processing with Xendit';
+  }
+
+  if (status === 'pending' && workflowStage === 'submitting_to_provider') {
+    return 'Submitting to Xendit';
+  }
+
   if (status === 'succeeded') {
     return 'Completed';
   }
@@ -137,7 +149,7 @@ export function AdminPayoutRequestsPage() {
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(PAGE_SIZE_OPTIONS[1]);
   const [pageIndex, setPageIndex] = useState(0);
   const [pageCursors, setPageCursors] = useState<(string | null)[]>([null]);
-  const [selectedRequest, setSelectedRequest] = useState<AdminPayoutRequest | null>(null);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [resolutionNote, setResolutionNote] = useState('');
   const cursor = pageCursors[pageIndex] ?? null;
 
@@ -157,7 +169,13 @@ export function AdminPayoutRequestsPage() {
   const completeMutation = useCompleteAdminPayoutRequestMutation();
   const rejectMutation = useRejectAdminPayoutRequestMutation();
   const requests = useMemo(() => page?.data ?? [], [page?.data]);
+  const selectedRequest = useMemo(
+    () => requests.find((r) => r.id === selectedRequestId) ?? null,
+    [requests, selectedRequestId]
+  );
   const nextCursor = page?.nextCursor ?? null;
+  const totalCount = page?.totalCount ?? 0;
+  const pendingCount = page?.pendingCount ?? 0;
   const currentTabInfo = REQUEST_TABS.find((tab) => tab.value === activeTab);
   const isSubmittingAction =
     completeMutation.isPending || rejectMutation.isPending;
@@ -180,6 +198,15 @@ export function AdminPayoutRequestsPage() {
       return next;
     });
   }, [page, pageIndex]);
+
+  useEffect(() => {
+    if (!selectedRequestId || selectedRequest || isFetching) {
+      return;
+    }
+
+    setSelectedRequestId(null);
+    setResolutionNote('');
+  }, [isFetching, selectedRequest, selectedRequestId]);
 
   const handleTabChange = (value: string) => {
     const nextTab = value as RequestTabValue;
@@ -230,7 +257,7 @@ export function AdminPayoutRequestsPage() {
   };
 
   const openRequestDialog = (request: AdminPayoutRequest) => {
-    setSelectedRequest(request);
+    setSelectedRequestId(request.id);
     setResolutionNote(request.resolutionNote ?? '');
   };
 
@@ -239,7 +266,7 @@ export function AdminPayoutRequestsPage() {
       return;
     }
 
-    setSelectedRequest(null);
+    setSelectedRequestId(null);
     setResolutionNote('');
   };
 
@@ -253,7 +280,7 @@ export function AdminPayoutRequestsPage() {
         requestId: selectedRequest.id,
         resolutionNote: resolutionNote.trim() || undefined,
       });
-      toast.success('Payout marked as completed.');
+      toast.success('Payout submitted to Xendit.');
       closeRequestDialog();
     } catch (mutationError) {
       toast.error(
@@ -336,6 +363,15 @@ export function AdminPayoutRequestsPage() {
                 <p className="text-xs text-muted-foreground">
                   Available balance: { formatCurrencyMinor(request.partner.currentBalanceMinor, request.currency) }
                 </p>
+                <p className="text-xs text-muted-foreground">
+                  Provider: { request.partnerProviderAccount?.accountReference ?? 'Not enabled' }
+                  { request.partnerProviderAccount?.status ? ` · ${request.partnerProviderAccount.status}` : '' }
+                </p>
+                { request.payoutDestination?.channelName ? (
+                  <p className="text-xs text-muted-foreground">
+                    Destination: { request.payoutDestination.channelName } · { request.payoutDestination.accountNumberMasked ?? '—' }
+                  </p>
+                ) : null }
               </div>
             </TableCell>
             <TableCell className="align-top font-medium">
@@ -348,10 +384,10 @@ export function AdminPayoutRequestsPage() {
               </div>
             </TableCell>
             <TableCell className="align-top">
-              <Badge variant={ getStatusVariant(request.status) }>
-                { getStatusLabel(request.status) }
-              </Badge>
-            </TableCell>
+                  <Badge variant={ getStatusVariant(request.status) }>
+                    { getStatusLabel(request.status, request.workflowStage) }
+                  </Badge>
+                </TableCell>
             <TableCell className="align-top">
               <div className="space-y-1 text-sm">
                 <p>{ formatDate(request.processedAt) }</p>
@@ -436,6 +472,11 @@ export function AdminPayoutRequestsPage() {
                               <FiXCircle className="mr-1 size-3.5" aria-hidden="true" />
                             ) }
                             { tab.label }
+                            { tab.value === 'pending' && pendingCount > 0 && (
+                              <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1.5 text-[10px] font-bold">
+                                { pendingCount }
+                              </Badge>
+                            ) }
                           </TabsTrigger>
                         )) }
                       </TabsList>
@@ -486,7 +527,7 @@ export function AdminPayoutRequestsPage() {
 
                 <div className="flex items-center justify-between gap-4">
                   <p className="text-sm text-muted-foreground">
-                    Page { pageIndex + 1 }
+                    Page { pageIndex + 1 } · { totalCount } total
                   </p>
                   <div className="flex items-center gap-2">
                     <Button
@@ -518,17 +559,22 @@ export function AdminPayoutRequestsPage() {
       </div>
 
       <Dialog open={ Boolean(selectedRequest) } onOpenChange={ (open) => !open && closeRequestDialog() }>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent
+          className="sm:max-w-2xl"
+          dismissible={ !isSubmittingAction }
+        >
           <DialogHeader>
             <DialogTitle>
               { selectedRequest?.status === 'pending'
-                ? 'Review payout request'
-                : 'Payout request details' }
+              ? 'Review payout request'
+              : 'Payout request details' }
             </DialogTitle>
             <DialogDescription>
-              { selectedRequest?.status === 'pending'
-                ? 'Complete the payout after settlement, or reject it to return the held funds to the partner wallet.'
-                : 'Review the request details, timing, and final outcome.' }
+              { selectedRequest?.status === 'pending' && selectedRequest.workflowStage === 'awaiting_review'
+                ? 'Submit the payout to Xendit, or reject it to return the held funds to the partner wallet.'
+                : selectedRequest?.status === 'pending'
+                  ? 'This payout has already been submitted to Xendit and is awaiting the provider outcome.'
+                  : 'Review the request details, timing, and final outcome.' }
             </DialogDescription>
           </DialogHeader>
 
@@ -544,6 +590,9 @@ export function AdminPayoutRequestsPage() {
                   </p>
                   <p className="text-sm text-muted-foreground">
                     @{ selectedRequest.partner.handle }
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Provider: { selectedRequest.partnerProviderAccount?.accountReference ?? 'Not enabled' }
                   </p>
                 </div>
                 <div className="rounded-md border border-border/70 bg-muted/20 p-4">
@@ -564,6 +613,69 @@ export function AdminPayoutRequestsPage() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-md border border-border/70 bg-muted/20 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Current provider status
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-foreground">
+                    { selectedRequest.partnerProviderAccount?.status ?? 'Not enabled' }
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Last synced: { formatDate(selectedRequest.partnerProviderAccount?.lastSyncedAt ?? null) }
+                  </p>
+                </div>
+                <div className="rounded-md border border-border/70 bg-muted/20 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Request snapshot
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-foreground">
+                    { selectedRequest.providerSnapshot?.status ?? 'No provider snapshot recorded' }
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Balance at request:{ ' ' }
+                    { selectedRequest.providerSnapshot?.availableBalanceMinor
+                      ? formatCurrencyMinor(
+                        selectedRequest.providerSnapshot.availableBalanceMinor,
+                        selectedRequest.currency
+                      )
+                      : '—' }
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-md border border-border/70 bg-muted/20 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Payout destination
+                </p>
+                <p className="mt-2 text-sm font-semibold text-foreground">
+                  { selectedRequest.payoutDestination?.channelName ?? 'No destination recorded' }
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  { selectedRequest.payoutDestination?.accountHolderName ?? '—' }
+                  { selectedRequest.payoutDestination?.accountNumberMasked
+                    ? ` · ${selectedRequest.payoutDestination.accountNumberMasked}`
+                    : '' }
+                </p>
+              </div>
+
+              { selectedRequest.providerPayout ? (
+                <div className="rounded-md border border-border/70 bg-muted/20 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Xendit payout
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-foreground">
+                    { selectedRequest.providerPayout.providerStatus ?? 'Unknown status' }
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Payout ID: { selectedRequest.providerPayout.payoutId ?? '—' }
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Submitted: { formatDate(selectedRequest.providerPayout.submittedAt) }
+                  </p>
+                </div>
+              ) : null }
+
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Submitted
@@ -578,7 +690,7 @@ export function AdminPayoutRequestsPage() {
                     Status
                   </p>
                   <Badge variant={ getStatusVariant(selectedRequest.status) }>
-                    { getStatusLabel(selectedRequest.status) }
+                    { getStatusLabel(selectedRequest.status, selectedRequest.workflowStage) }
                   </Badge>
                 </div>
                 <div className="space-y-1">
@@ -597,7 +709,7 @@ export function AdminPayoutRequestsPage() {
                 </div>
               </div>
 
-              { selectedRequest.status === 'pending' ? (
+              { selectedRequest.status === 'pending' && selectedRequest.workflowStage === 'awaiting_review' ? (
                 <div className="space-y-2">
                   <Label htmlFor="payout-resolution-note">Admin note</Label>
                   <Textarea
@@ -611,6 +723,15 @@ export function AdminPayoutRequestsPage() {
                   <p className="text-xs text-muted-foreground">
                     Rejections require a clear reason so the partner understands why the request was declined.
                   </p>
+                </div>
+              ) : selectedRequest.status === 'pending' ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Provider processing note
+                  </p>
+                  <div className="rounded-md border border-border/70 bg-muted/20 p-4 text-sm text-foreground">
+                    This payout has already been submitted to Xendit. Final success or failure will arrive from the provider.
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -634,7 +755,7 @@ export function AdminPayoutRequestsPage() {
             >
               Close
             </Button>
-            { selectedRequest?.status === 'pending' && (
+            { selectedRequest?.status === 'pending' && selectedRequest.workflowStage === 'awaiting_review' && (
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Button
                   type="button"
@@ -643,6 +764,7 @@ export function AdminPayoutRequestsPage() {
                     void handleReject();
                   } }
                   disabled={ isSubmittingAction }
+                  loading={ rejectMutation.isPending }
                 >
                   Reject request
                 </Button>
@@ -652,6 +774,7 @@ export function AdminPayoutRequestsPage() {
                     void handleComplete();
                   } }
                   disabled={ isSubmittingAction }
+                  loading={ completeMutation.isPending }
                 >
                   Mark completed
                 </Button>

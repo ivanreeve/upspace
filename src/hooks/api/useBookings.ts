@@ -123,6 +123,7 @@ type CreateCheckoutSessionInput = {
   bookingHours: number;
   startAt: string;
   guestCount: number;
+  variableOverrides?: Record<string, string | number>;
 };
 
 type CreateCheckoutSessionResponse = {
@@ -135,7 +136,7 @@ export function useCreateCheckoutSessionMutation() {
 
   return useMutation<CreateCheckoutSessionResponse, Error, CreateCheckoutSessionInput>({
     mutationFn: async (payload) => {
-      const response = await authFetch('/api/v1/paymongo/checkout', {
+      const response = await authFetch('/api/v1/financial/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', },
         body: JSON.stringify({
@@ -144,6 +145,9 @@ export function useCreateCheckoutSessionMutation() {
           bookingHours: payload.bookingHours,
           startAt: payload.startAt,
           guestCount: payload.guestCount,
+          ...(payload.variableOverrides && Object.keys(payload.variableOverrides).length > 0
+            ? { variableOverrides: payload.variableOverrides, }
+            : {}),
         }),
       });
 

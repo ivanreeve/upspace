@@ -121,7 +121,6 @@ export function AdminChatReportsPage() {
   const cursor = pageCursors[pageIndex] ?? null;
   const [dismissingReport, setDismissingReport] = useState<AdminChatReport | null>(null);
   const [dismissalNote, setDismissalNote] = useState('');
-  const [isSubmittingDismissal, setIsSubmittingDismissal] = useState(false);
 
   const {
     data: page,
@@ -138,6 +137,7 @@ export function AdminChatReportsPage() {
 
   const resolveMutation = useResolveChatReportMutation();
   const dismissMutation = useDismissChatReportMutation();
+  const isSubmittingDismissal = dismissMutation.isPending;
 
   const reports = useMemo(() => page?.data ?? [], [page?.data]);
   const nextCursor = page?.nextCursor ?? null;
@@ -242,7 +242,6 @@ export function AdminChatReportsPage() {
       return;
     }
 
-    setIsSubmittingDismissal(true);
     try {
       await dismissMutation.mutateAsync({
         reportId: dismissingReport.id,
@@ -257,8 +256,6 @@ export function AdminChatReportsPage() {
           ? mutationError.message
           : 'Unable to dismiss report.'
       );
-    } finally {
-      setIsSubmittingDismissal(false);
     }
   };
 
@@ -513,12 +510,18 @@ export function AdminChatReportsPage() {
         open={ Boolean(dismissingReport) }
         onOpenChange={ (open) => {
           if (!open) {
+            if (isSubmittingDismissal) {
+              return;
+            }
             setDismissingReport(null);
             setDismissalNote('');
           }
         } }
       >
-        <DialogContent className="sm:max-w-[520px]">
+        <DialogContent
+          className="sm:max-w-[520px]"
+          dismissible={ !isSubmittingDismissal }
+        >
           <DialogHeader>
             <DialogTitle>Dismiss report</DialogTitle>
             <DialogDescription>
@@ -558,8 +561,10 @@ export function AdminChatReportsPage() {
               className="rounded-md"
               onClick={ handleConfirmDismiss }
               disabled={ isSubmittingDismissal }
+              loading={ isSubmittingDismissal }
+              loadingText="Dismissing…"
             >
-              { isSubmittingDismissal ? 'Dismissing…' : 'Dismiss report' }
+              Dismiss report
             </Button>
           </DialogFooter>
         </DialogContent>

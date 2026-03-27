@@ -24,6 +24,7 @@ const DEFAULT_RATE_LIMIT_CONFIGS = {
   'chat-messages': createRateLimitConfig('RATE_LIMIT_CHAT_MESSAGES_LIMIT', 'RATE_LIMIT_CHAT_MESSAGES_WINDOW', 30, 60),
   'review-create': createRateLimitConfig('RATE_LIMIT_REVIEW_CREATE_LIMIT', 'RATE_LIMIT_REVIEW_CREATE_WINDOW', 5, 60),
   'bookmark-toggle': createRateLimitConfig('RATE_LIMIT_BOOKMARK_TOGGLE_LIMIT', 'RATE_LIMIT_BOOKMARK_TOGGLE_WINDOW', 30, 60),
+  'payout-request': createRateLimitConfig('RATE_LIMIT_PAYOUT_REQUEST_LIMIT', 'RATE_LIMIT_PAYOUT_REQUEST_WINDOW', 5, 300),
 } as const;
 
 export type RateLimitScope = keyof typeof DEFAULT_RATE_LIMIT_CONFIGS;
