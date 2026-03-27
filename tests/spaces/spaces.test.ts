@@ -28,6 +28,7 @@ const mockPrisma = {
   space_image: { createMany: vi.fn(), },
   verification: { create: vi.fn(), },
   verification_document: { createMany: vi.fn(), },
+  $queryRaw: vi.fn(),
   $transaction: vi.fn(),
 };
 
@@ -129,6 +130,7 @@ beforeEach(() => {
     }
   });
   mockPrisma.$transaction.mockImplementation(defaultTransaction);
+  mockPrisma.$queryRaw.mockReset().mockResolvedValue([]);
   mockSupabaseClient.auth.getUser.mockReset();
   mockedSupabaseServerClient.mockClear();
   mockBuildSpacesListCacheKey.mockReset().mockReturnValue('spaces:list:test-cache');
@@ -143,14 +145,20 @@ describe('GET /api/v1/spaces', () => {
  listResult, partner, 
 } = spaceFixtures;
     mockPrisma.space.findMany.mockResolvedValueOnce(listResult);
-    mockPrisma.review.groupBy.mockResolvedValueOnce([
-      {
- space_id: listResult[0].id,
-_avg: { rating_star: 4.5, },
-_count: { rating_star: 2, }, 
-}
-    ]);
-    mockPrisma.bookmark.findMany.mockResolvedValueOnce([{ space_id: listResult[0].id, }]);
+    mockPrisma.$queryRaw
+      .mockResolvedValueOnce([
+        {
+          space_id: listResult[0].id,
+          average_rating: 4.5,
+          total_reviews: 2,
+        }
+      ])
+      .mockResolvedValueOnce([
+        {
+          db_user_id: partner.userId,
+          space_id: listResult[0].id,
+        }
+      ]);
     setAuthUser(partner.authUserId);
     mockPrisma.user.findFirst.mockResolvedValueOnce({ user_id: partner.userId, });
 
@@ -195,7 +203,7 @@ _count: { rating_star: 2, },
   it('applies amenities-only filters against amenity_choice names', async () => {
     const listResult = spaceFixtures.listResult;
     mockPrisma.space.findMany.mockResolvedValueOnce(listResult);
-    mockPrisma.review.groupBy.mockResolvedValueOnce([]);
+    mockPrisma.$queryRaw.mockResolvedValueOnce([]);
     setAuthUser(null);
 
     const response = await GET(

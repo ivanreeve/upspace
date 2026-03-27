@@ -9,7 +9,7 @@ import { createSupabaseReadOnlyServerClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
   title: 'Wallet | UpSpace',
-  description: 'Manage your provider-backed wallet balance, payouts, and recent transactions.',
+  description: 'Manage your partner wallet earnings, refunds, payout requests, and recent booking transactions.',
 };
 
 export default async function WalletRoutePage() {

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { vi } from 'vitest';
+import { beforeEach, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { MarketplaceChrome } from '@/components/pages/Marketplace/MarketplaceChrome';
@@ -12,6 +12,18 @@ import { SpacesChrome } from '@/components/pages/Spaces/SpacesChrome';
 (global as any).React = React;
 
 const queryClient = new QueryClient();
+
+beforeEach(() => {
+  Object.defineProperty(window, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    },
+  });
+});
 
 // Mock hooks
 vi.mock('@/components/auth/SessionProvider', () => ({
