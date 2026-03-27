@@ -58,7 +58,7 @@ import {
 import { cn } from '@/lib/utils';
 import { MIN_BOOKING_HOURS } from '@/lib/bookings/constants';
 import { type PriceRuleRecord } from '@/lib/pricing-rules';
-import { evaluatePriceRule, type PriceRuleEvaluationResult } from '@/lib/pricing-rules-evaluator';
+import { evaluatePriceRule } from '@/lib/pricing-rules-evaluator';
 import { useAreaOccupancyQuery, useCreateCheckoutSessionMutation } from '@/hooks/api/useBookings';
 
 const PRICE_FORMATTER = new Intl.NumberFormat('en-PH', {
@@ -276,26 +276,12 @@ type BookingDurationFormProps = {
   isOverCapacity: boolean;
   capacityHelperText: string;
   pricePreviewLabel: string;
-  priceEvaluation: PriceRuleEvaluationResult | null;
   isBookingFormPristine: boolean;
   onResetBookingForm: () => void;
   userInputVariables: PriceRuleVariable[];
   customVariables: Record<string, string | number>;
   onCustomVariableChange: (key: string, value: string | number) => void;
 };
-
-function priceBranchLabel(branch: PriceRuleEvaluationResult['branch']) {
-  switch (branch) {
-    case 'then':
-      return 'Matches rule conditions';
-    case 'else':
-      return 'Fallback pricing applied';
-    case 'unconditional':
-      return 'Flat rate applied';
-    default:
-      return 'Pricing rule';
-  }
-}
 
 function isCouponLikeVariable(variable: PriceRuleVariable) {
   const searchableText = `${variable.key} ${variable.label} ${variable.displayName ?? ''}`;
@@ -326,7 +312,6 @@ function BookingDurationForm({
   isOverCapacity,
   capacityHelperText,
   pricePreviewLabel,
-  priceEvaluation,
   isBookingFormPristine,
   onResetBookingForm,
   userInputVariables,
@@ -337,251 +322,22 @@ function BookingDurationForm({
   const isBelowMinimum = derivedBookingHours !== null && derivedBookingHours < MIN_BOOKING_HOURS;
 
   return (
-    <div className="space-y-6 py-2">
-      <div className="space-y-4">
-        { /* Step 1: Area selection */ }
-        <div className="space-y-4 rounded-xl border border-border/50 bg-muted/20 p-4">
-          <div className="flex items-center gap-2 border-b border-border/50 pb-2">
-            <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <FiCalendar className="size-4" />
-            </div>
-            <h3 className="font-semibold text-foreground">1. Select Area</h3>
-          </div>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label
-                  htmlFor="area-select"
-                  className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                >
-                  Area
-                </Label>
-              </div>
-              { areas.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-border bg-muted/40 px-3 py-4 text-center text-sm text-muted-foreground">
-                  No areas available.
-                </div>
-              ) : (
-                <Select value={ selectedAreaId ?? undefined } onValueChange={ onSelectArea }>
-                  <SelectTrigger
-                    id="area-select"
-                    className="h-11 rounded-lg border-border/50 bg-background shadow-none transition-all hover:bg-accent/50 focus:ring-1"
-                    aria-label="Select an area"
-                  >
-                    <SelectValue placeholder="Pick an area" />
-                  </SelectTrigger>
-                  <SelectContent className="max-w-[26rem]">
-                    { areas.map((area) => (
-                      <SelectItem
-                        key={ area.id }
-                        value={ area.id }
-                        disabled={ !area.pricingRuleId }
-                      >
-                        <span className="font-medium">{ area.name }</span>
-                      </SelectItem>
-                    )) }
-                  </SelectContent>
-                </Select>
-              ) }
-            </div>
-          </div>
-        </div>
-
-        { /* Step 2: Guests */ }
-        <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
-          <div className="flex items-center gap-2 border-b border-border/50 pb-2">
-            <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <FiUsers className="size-4" />
-            </div>
-            <h3 className="font-semibold text-foreground">2. Guests</h3>
-          </div>
-
-          <div className="mt-4 space-y-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex-1 space-y-1">
-                <p className="text-sm font-medium">Number of Guests</p>
-                <p
-                  className={ cn(
-                    'text-xs',
-                    isOverCapacity ? 'font-medium text-destructive' : 'text-muted-foreground'
-                  ) }
-                >
-                  { capacityHelperText }
-                </p>
-              </div>
-              <div className="flex items-center gap-1 rounded-lg border border-border/50 bg-background p-1 shadow-sm">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-8 rounded-md"
-                  onClick={ onDecreaseGuestCount }
-                  disabled={ guestCount <= MIN_GUEST_COUNT }
-                >
-                  <FiMinus className="size-3" />
-                </Button>
-                <Input
-                  type="number"
-                  className="h-8 w-12 border-none bg-transparent p-0 text-center text-sm font-semibold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none focus-visible:ring-0"
-                  value={ guestCount }
-                  onChange={ onGuestCountInputChange }
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-8 rounded-md"
-                  onClick={ onIncreaseGuestCount }
-                  disabled={ guestCount >= currentGuestLimit }
-                >
-                  <FiPlus className="size-3" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        { /* Step 3: Check-in / Check-out */ }
-          <div className="space-y-4 rounded-xl border border-border/50 bg-muted/20 p-4">
-            <div className="flex items-center gap-2 border-b border-border/50 pb-2">
-              <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <FiClock className="size-4" />
-              </div>
-              <h3 className="font-semibold text-foreground">3. Check-in & Check-out</h3>
-            </div>
-
-            <div className="space-y-4 pt-2">
-              { /* Check-in */ }
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Check-in
-                </Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    type="date"
-                    value={ checkInDate }
-                    min={ earliestScheduleDate }
-                    onChange={ onCheckInDateChange }
-                    aria-label="Check-in date"
-                    className="h-11 rounded-lg border-border/50 bg-background shadow-none transition-all hover:bg-accent/50 focus:ring-1"
-                  />
-                  <Input
-                    type="time"
-                    value={ checkInTime }
-                    onChange={ onCheckInTimeChange }
-                    aria-label="Check-in time"
-                    className="h-11 rounded-lg border-border/50 bg-background shadow-none transition-all hover:bg-accent/50 focus:ring-1"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-center">
-                <FiArrowRight className="size-4 text-muted-foreground" aria-hidden="true" />
-              </div>
-
-              { /* Check-out */ }
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Check-out
-                </Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    type="date"
-                    value={ checkOutDate }
-                    min={ checkInDate }
-                    onChange={ onCheckOutDateChange }
-                    aria-label="Check-out date"
-                    className="h-11 rounded-lg border-border/50 bg-background shadow-none transition-all hover:bg-accent/50 focus:ring-1"
-                  />
-                  <Input
-                    type="time"
-                    value={ checkOutTime }
-                    onChange={ onCheckOutTimeChange }
-                    aria-label="Check-out time"
-                    className="h-11 rounded-lg border-border/50 bg-background shadow-none transition-all hover:bg-accent/50 focus:ring-1"
-                  />
-                </div>
-              </div>
-
-              { /* Duration summary */ }
-              <div
-                className={ cn(
-                  'rounded-lg px-3 py-2 text-center text-sm font-medium',
-                  isInvalidRange || isBelowMinimum
-                    ? 'bg-destructive/10 text-destructive'
-                    : 'bg-primary/10 text-primary'
-                ) }
-              >
-                { isInvalidRange
-                  ? 'Check-out must be after check-in'
-                  : isBelowMinimum
-                    ? `Minimum booking is ${MIN_BOOKING_HOURS} hour${MIN_BOOKING_HOURS === 1 ? '' : 's'}`
-                    : `Duration: ${formatDurationLabel(derivedBookingHours)} (billed ${derivedBookingHours} hr${derivedBookingHours === 1 ? '' : 's'})` }
-              </div>
-            </div>
-          </div>
-
-          { userInputVariables.length > 0 && (
-            <div className="space-y-4 rounded-xl border border-border/50 bg-muted/20 p-4">
-              <div className="flex items-center gap-2 border-b border-border/50 pb-2">
-                <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <FiEdit className="size-4" />
-                </div>
-                <h3 className="font-semibold text-foreground">4. Extra Details</h3>
-              </div>
-              <div className="grid gap-3 pt-2">
-                { userInputVariables.map((variable) => (
-                  <div key={ variable.key } className="space-y-1.5">
-                    <Label
-                      htmlFor={ `custom-var-${variable.key}` }
-                      className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                    >
-                      { variable.displayName || variable.label }
-                    </Label>
-                    <Input
-                      id={ `custom-var-${variable.key}` }
-                      type={ variable.type === 'number' ? 'number' : 'text' }
-                      value={ customVariables[variable.key] ?? '' }
-                      onChange={ (e) => {
-                        const raw = e.target.value;
-                        onCustomVariableChange(
-                          variable.key,
-                          variable.type === 'number' ? (raw === '' ? '' : Number(raw)) : raw
-                        );
-                      } }
-                      className={ cn(
-                        'h-10 border-border/50 shadow-none focus:ring-1',
-                        isCouponLikeVariable(variable) && 'bg-white dark:bg-input/30'
-                      ) }
-                    />
-                  </div>
-                )) }
-              </div>
-            </div>
-          ) }
-      </div>
-
+    <div className="space-y-3 py-1">
       { /* Summary Section */ }
-      <div className="relative mt-8 overflow-hidden rounded-2xl border border-primary/20 bg-primary/5 p-6 transition-all dark:border-primary/30 dark:bg-primary/10">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <h4 className="text-sm font-bold uppercase tracking-[0.1em] text-primary/80">
+      <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-primary/5 p-4 transition-all dark:border-primary/30 dark:bg-primary/10">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-0.5">
+            <h4 className="text-xs font-bold uppercase tracking-[0.1em] text-primary/80">
               Estimated Total
             </h4>
             <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold tracking-tight text-foreground">
+              <span className="text-3xl font-bold tracking-tight text-foreground">
                 { pricePreviewLabel }
               </span>
               { isPricingLoading && (
-                <CgSpinner className="size-5 animate-spin text-primary" />
+                <CgSpinner className="size-4 animate-spin text-primary" />
               ) }
             </div>
-            { priceEvaluation && priceEvaluation.branch !== 'no-match' && (
-              <p className="text-xs font-medium text-muted-foreground">
-                { priceBranchLabel(priceEvaluation.branch) }
-              </p>
-            ) }
           </div>
 
           <div className="flex items-center gap-3">
@@ -599,9 +355,229 @@ function BookingDurationForm({
         </div>
 
         { !selectedAreaId && (
-          <div className="mt-4 flex items-center gap-2 rounded-lg bg-background/50 px-3 py-2 text-xs text-muted-foreground">
+          <div className="mt-3 flex items-center gap-2 rounded-lg bg-background/50 px-3 py-1.5 text-xs text-muted-foreground">
             <FiPlus className="size-3" />
             <span>Pick an area to calculate final pricing.</span>
+          </div>
+        ) }
+      </div>
+
+      <div className="space-y-3">
+        { /* Step 1: Area selection */ }
+        <div className="space-y-2.5 rounded-xl border border-border/50 bg-muted/20 px-4 py-3">
+          <div className="flex items-center gap-2 border-b border-border/50 pb-1.5">
+            <div className="flex size-6 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <FiCalendar className="size-3.5" />
+            </div>
+            <h3 className="text-sm font-semibold text-foreground">1. Select Area</h3>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="area-select"
+              className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+            >
+              Area
+            </Label>
+            { areas.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-muted/40 px-3 py-3 text-center text-sm text-muted-foreground">
+                No areas available.
+              </div>
+            ) : (
+              <Select value={ selectedAreaId ?? undefined } onValueChange={ onSelectArea }>
+                <SelectTrigger
+                  id="area-select"
+                  className="h-10 rounded-lg border-border/50 bg-background shadow-none transition-all hover:bg-accent/50 focus:ring-1"
+                  aria-label="Select an area"
+                >
+                  <SelectValue placeholder="Pick an area" />
+                </SelectTrigger>
+                <SelectContent className="max-w-[26rem]">
+                  { areas.map((area) => (
+                    <SelectItem
+                      key={ area.id }
+                      value={ area.id }
+                      disabled={ !area.pricingRuleId }
+                    >
+                      <span className="font-medium">{ area.name }</span>
+                    </SelectItem>
+                  )) }
+                </SelectContent>
+              </Select>
+            ) }
+          </div>
+        </div>
+
+        { /* Step 2: Guests */ }
+        <div className="rounded-xl border border-border/50 bg-muted/20 px-4 py-3">
+          <div className="flex items-center gap-2 border-b border-border/50 pb-1.5">
+            <div className="flex size-6 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <FiUsers className="size-3.5" />
+            </div>
+            <h3 className="text-sm font-semibold text-foreground">2. Guests</h3>
+          </div>
+
+          <div className="mt-2">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1 space-y-0.5">
+                <p className="text-sm font-medium">Number of Guests</p>
+                <p
+                  className={ cn(
+                    'text-xs',
+                    isOverCapacity ? 'font-medium text-destructive' : 'text-muted-foreground'
+                  ) }
+                >
+                  { capacityHelperText }
+                </p>
+              </div>
+              <div className="flex items-center gap-1 rounded-lg border border-border/50 bg-background p-1 shadow-sm">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 rounded-md hover:[&_svg]:text-white dark:hover:[&_svg]:text-current"
+                  onClick={ onDecreaseGuestCount }
+                  disabled={ guestCount <= MIN_GUEST_COUNT }
+                >
+                  <FiMinus className="size-3" />
+                </Button>
+                <Input
+                  type="number"
+                  className="h-8 w-12 border-none bg-transparent p-0 text-center text-sm font-semibold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none focus-visible:ring-0"
+                  value={ guestCount }
+                  onChange={ onGuestCountInputChange }
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 rounded-md hover:[&_svg]:text-white dark:hover:[&_svg]:text-current"
+                  onClick={ onIncreaseGuestCount }
+                  disabled={ guestCount >= currentGuestLimit }
+                >
+                  <FiPlus className="size-3" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        { /* Step 3: Check-in / Check-out */ }
+        <div className="space-y-2.5 rounded-xl border border-border/50 bg-muted/20 px-4 py-3">
+          <div className="flex items-center gap-2 border-b border-border/50 pb-1.5">
+            <div className="flex size-6 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <FiClock className="size-3.5" />
+            </div>
+            <h3 className="text-sm font-semibold text-foreground">3. Check-in & Check-out</h3>
+          </div>
+
+          <div className="space-y-3">
+            { /* Check-in */ }
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Check-in
+              </Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  type="date"
+                  value={ checkInDate }
+                  min={ earliestScheduleDate }
+                  onChange={ onCheckInDateChange }
+                  aria-label="Check-in date"
+                  className="h-10 rounded-lg border-border/50 bg-background shadow-none transition-all hover:bg-primary/10 hover:text-primary dark:hover:bg-accent/50 dark:hover:text-current focus:ring-1"
+                />
+                <Input
+                  type="time"
+                  value={ checkInTime }
+                  onChange={ onCheckInTimeChange }
+                  aria-label="Check-in time"
+                  className="h-10 rounded-lg border-border/50 bg-background shadow-none transition-all hover:bg-primary/10 hover:text-primary dark:hover:bg-accent/50 dark:hover:text-current focus:ring-1"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center py-0.5">
+              <FiArrowRight className="size-3.5 text-muted-foreground" aria-hidden="true" />
+            </div>
+
+            { /* Check-out */ }
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Check-out
+              </Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  type="date"
+                  value={ checkOutDate }
+                  min={ checkInDate }
+                  onChange={ onCheckOutDateChange }
+                  aria-label="Check-out date"
+                  className="h-10 rounded-lg border-border/50 bg-background shadow-none transition-all hover:bg-primary/10 hover:text-primary dark:hover:bg-accent/50 dark:hover:text-current focus:ring-1"
+                />
+                <Input
+                  type="time"
+                  value={ checkOutTime }
+                  onChange={ onCheckOutTimeChange }
+                  aria-label="Check-out time"
+                  className="h-10 rounded-lg border-border/50 bg-background shadow-none transition-all hover:bg-primary/10 hover:text-primary dark:hover:bg-accent/50 dark:hover:text-current focus:ring-1"
+                />
+              </div>
+            </div>
+
+            { /* Duration summary */ }
+            <div
+              className={ cn(
+                'rounded-lg px-3 py-1.5 text-center text-sm font-medium',
+                isInvalidRange || isBelowMinimum
+                  ? 'bg-destructive/10 text-destructive'
+                  : 'bg-primary/10 text-primary'
+              ) }
+            >
+              { isInvalidRange
+                ? 'Check-out must be after check-in'
+                : isBelowMinimum
+                  ? `Minimum booking is ${MIN_BOOKING_HOURS} hour${MIN_BOOKING_HOURS === 1 ? '' : 's'}`
+                  : `Duration: ${formatDurationLabel(derivedBookingHours)} (billed ${derivedBookingHours} hr${derivedBookingHours === 1 ? '' : 's'})` }
+            </div>
+          </div>
+        </div>
+
+        { userInputVariables.length > 0 && (
+          <div className="space-y-2.5 rounded-xl border border-border/50 bg-muted/20 px-4 py-3">
+            <div className="flex items-center gap-2 border-b border-border/50 pb-1.5">
+              <div className="flex size-6 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <FiEdit className="size-3.5" />
+              </div>
+              <h3 className="text-sm font-semibold text-foreground">4. Extra Details</h3>
+            </div>
+            <div className="grid gap-2.5">
+              { userInputVariables.map((variable) => (
+                <div key={ variable.key } className="space-y-1">
+                  <Label
+                    htmlFor={ `custom-var-${variable.key}` }
+                    className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                  >
+                    { variable.displayName || variable.label }
+                  </Label>
+                  <Input
+                    id={ `custom-var-${variable.key}` }
+                    type={ variable.type === 'number' ? 'number' : 'text' }
+                    value={ customVariables[variable.key] ?? '' }
+                    onChange={ (e) => {
+                      const raw = e.target.value;
+                      onCustomVariableChange(
+                        variable.key,
+                        variable.type === 'number' ? (raw === '' ? '' : Number(raw)) : raw
+                      );
+                    } }
+                    className={ cn(
+                      'h-10 border-border/50 shadow-none focus:ring-1',
+                      isCouponLikeVariable(variable) && 'bg-white dark:bg-input/30'
+                    ) }
+                  />
+                </div>
+              )) }
+            </div>
           </div>
         ) }
       </div>
@@ -1248,7 +1224,6 @@ value,
       isOverCapacity={ isOverCapacity }
       capacityHelperText={ capacityHelperText }
       pricePreviewLabel={ pricePreviewLabel }
-      priceEvaluation={ priceEvaluation }
       isBookingFormPristine={ isBookingFormPristine }
       onResetBookingForm={ handleResetBookingForm }
       userInputVariables={ userInputVariables }
