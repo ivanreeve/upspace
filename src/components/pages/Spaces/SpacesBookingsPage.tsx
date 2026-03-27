@@ -304,12 +304,16 @@ name,
     const counts = new Map<string, number>();
     const now = Date.now();
     sortedBookings.forEach((booking) => {
-      const startMs = new Date(booking.startAt).getTime();
-      const endMs = startMs + booking.bookingHours * 60 * 60 * 1000;
-      if (startMs <= now && endMs > now) {
-        const guests = booking.guestCount ?? 1;
-        counts.set(booking.areaId, (counts.get(booking.areaId) ?? 0) + guests);
+      const isCheckedIn = booking.status === 'checkedin';
+      if (!isCheckedIn) {
+        const startMs = new Date(booking.startAt).getTime();
+        const endMs = startMs + booking.bookingHours * 60 * 60 * 1000;
+        if (startMs > now || endMs <= now) {
+          return;
+        }
       }
+      const guests = booking.guestCount ?? 1;
+      counts.set(booking.areaId, (counts.get(booking.areaId) ?? 0) + guests);
     });
     return counts;
   }, [sortedBookings]);
@@ -498,7 +502,7 @@ name,
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={ 9 } className="text-sm text-destructive">
+            <TableCell colSpan={ 10 } className="text-sm text-destructive">
               { error instanceof Error
                 ? error.message
                 : 'Unable to load bookings.' }
@@ -512,7 +516,7 @@ name,
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={ 9 }>
+            <TableCell colSpan={ 10 }>
               <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
                 <FiAlertCircle className="size-5" aria-hidden="true" />
                 <p>
@@ -530,7 +534,7 @@ name,
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={ 9 }>
+            <TableCell colSpan={ 10 }>
               <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
                 <FiAlertCircle className="size-5" aria-hidden="true" />
                 <p>No active bookings are filling your areas right now.</p>
@@ -545,7 +549,7 @@ name,
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={ 9 }>
+            <TableCell colSpan={ 10 }>
               <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
                 <FiAlertCircle className="size-5" aria-hidden="true" />
                 <p>No results match your search.</p>
@@ -687,6 +691,11 @@ name,
                     </DropdownMenu>
                   ) : null }
                 </div>
+              </TableCell>
+              <TableCell>
+                <span className="text-sm text-foreground">
+                  { bookingDateFormatter.format(new Date(booking.startAt)) }
+                </span>
               </TableCell>
               <TableCell>
                 { booking.bookingHours } hr{ booking.bookingHours === 1 ? '' : 's' }
@@ -940,6 +949,7 @@ name,
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Space / Area</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Status</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Next step</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Scheduled</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Duration</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Price</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Capacity</TableHead>
