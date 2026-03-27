@@ -52,6 +52,7 @@ export type CreateProviderBookingPaymentInput = {
   successUrl: string;
   cancelUrl: string;
   customerEmail?: string | null;
+  invoiceDurationSeconds?: number;
   metadata: Record<string, string>;
 };
 

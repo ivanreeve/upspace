@@ -1,3 +1,4 @@
+import { runBookingLifecycleChecks } from '@/lib/bookings/expiration';
 import { mapBookingsWithProfiles, type BookingRow } from '@/lib/bookings/serializer';
 import type { BookingRecord } from '@/lib/bookings/types';
 import { prisma } from '@/lib/prisma';
@@ -8,6 +9,8 @@ const TEN_MINUTES_MS = 10 * 60 * 1000;
 export async function getCustomerBookings(
   authUserId: string
 ): Promise<BookingRecord[]> {
+  await runBookingLifecycleChecks();
+
   const rows = await prisma.booking.findMany({
     where: { user_auth_id: authUserId, },
     orderBy: { created_at: 'desc', },
@@ -20,6 +23,8 @@ export async function getCustomerBookings(
 export async function getPartnerBookings(
   authUserId: string
 ): Promise<BookingRecord[]> {
+  await runBookingLifecycleChecks();
+
   const rows = await prisma.booking.findMany({
     where: { partner_auth_id: authUserId, },
     orderBy: { created_at: 'desc', },
