@@ -3,9 +3,7 @@
 import { useEffect } from 'react';
 import { ApiReferenceReact, type AnyApiReferenceConfiguration } from '@scalar/api-reference-react';
 
-type ScalarApiReferenceProps = { spec: Record<string, unknown> }
-
-export default function ScalarApiReference({ spec, }: ScalarApiReferenceProps) {
+export default function ScalarApiReference() {
   useEffect(() => {
     document.body.classList.add('scrollbar-hidden');
     document.documentElement.classList.add('scrollbar-hidden');
@@ -15,6 +13,7 @@ export default function ScalarApiReference({ spec, }: ScalarApiReferenceProps) {
     };
   }, []);
 
-  const configuration = { content: spec, } satisfies AnyApiReferenceConfiguration;
+  const configuration = { url: '/openapi.json', } satisfies AnyApiReferenceConfiguration;
+
   return <ApiReferenceReact configuration={ configuration } />;
 }
