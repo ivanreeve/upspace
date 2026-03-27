@@ -16,6 +16,7 @@ import {
 } from 'react';
 import { CgSpinner } from 'react-icons/cg';
 import {
+FiArrowRight,
 FiCalendar,
 FiClock,
 FiEdit,
@@ -40,11 +41,9 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle
@@ -57,8 +56,8 @@ import {
   SheetTitle
 } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
-import { MAX_BOOKING_HOURS, MIN_BOOKING_HOURS } from '@/lib/bookings/constants';
-import { BOOKING_DURATION_VARIABLE_KEYS, type PriceRuleOperand, type PriceRuleRecord } from '@/lib/pricing-rules';
+import { MIN_BOOKING_HOURS } from '@/lib/bookings/constants';
+import { type PriceRuleRecord } from '@/lib/pricing-rules';
 import { evaluatePriceRule, type PriceRuleEvaluationResult } from '@/lib/pricing-rules-evaluator';
 import { useAreaOccupancyQuery, useCreateCheckoutSessionMutation } from '@/hooks/api/useBookings';
 
@@ -67,13 +66,52 @@ const PRICE_FORMATTER = new Intl.NumberFormat('en-PH', {
   currency: 'PHP',
   maximumFractionDigits: 0,
 });
-const DEFAULT_BOOKING_HOURS = MIN_BOOKING_HOURS;
 const MIN_GUEST_COUNT = 1;
 const MAX_GUEST_COUNT = 99;
+const COUPON_LIKE_VARIABLE_PATTERN = /\b(coupon|promo|voucher|discount)\b/i;
+const MS_PER_HOUR = 60 * 60 * 1000;
 
 const getTodayIsoDate = () => {
   const today = new Date();
   return today.toISOString().split('T')[0];
+};
+
+const getDefaultCheckInTime = () => '09:00';
+const getDefaultCheckOutTime = () => '10:00';
+
+/**
+ * Derive booking hours from check-in/check-out with ceiling to the nearest
+ * whole hour. Returns null when the range is invalid (check-out <= check-in).
+ */
+const deriveBookingHours = (
+  checkInDate: string,
+  checkInTime: string,
+  checkOutDate: string,
+  checkOutTime: string
+): number | null => {
+  const start = new Date(`${checkInDate}T${checkInTime}:00`);
+  const end = new Date(`${checkOutDate}T${checkOutTime}:00`);
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) {
+    return null;
+  }
+  const diffMs = end.getTime() - start.getTime();
+  if (diffMs <= 0) {
+    return null;
+  }
+  return Math.ceil(diffMs / MS_PER_HOUR);
+};
+
+const formatDurationLabel = (hours: number): string => {
+  if (hours < 24) {
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+  }
+  const days = Math.floor(hours / 24);
+  const remainingHours = hours % 24;
+  const dayLabel = `${days} ${days === 1 ? 'day' : 'days'}`;
+  if (remainingHours === 0) {
+    return dayLabel;
+  }
+  return `${dayLabel}, ${remainingHours} ${remainingHours === 1 ? 'hr' : 'hrs'}`;
 };
 
 const clampGuestCount = (value: number, maxLimit: number | null = null) => {
@@ -88,11 +126,13 @@ const clampGuestCount = (value: number, maxLimit: number | null = null) => {
 type SessionValue = ReturnType<typeof import('@/components/auth/SessionProvider').useSession>['session'];
 
 type BookingFormState = {
-  bookingHours: number;
+  checkInDate: string;
+  checkInTime: string;
+  checkOutDate: string;
+  checkOutTime: string;
   selectedAreaId: string | null;
   isPricingLoading: boolean;
   guestCount: number;
-  scheduledDate: string;
   customVariables: Record<string, string | number>;
 };
 
@@ -104,21 +144,25 @@ type BookingFormAction =
       earliestScheduleDate: string;
     }
   | { type: 'select-area'; areaId: string }
-  | { type: 'set-booking-hours'; bookingHours: number }
   | { type: 'set-pricing-loading'; isPricingLoading: boolean }
   | { type: 'set-guest-count'; guestCount: number }
-  | { type: 'set-scheduled-date'; scheduledDate: string }
+  | { type: 'set-check-in-date'; value: string }
+  | { type: 'set-check-in-time'; value: string }
+  | { type: 'set-check-out-date'; value: string }
+  | { type: 'set-check-out-time'; value: string }
   | { type: 'set-custom-variable'; key: string; value: string | number };
 
 function createInitialBookingFormState(
   earliestScheduleDate: string
 ): BookingFormState {
   return {
-    bookingHours: DEFAULT_BOOKING_HOURS,
+    checkInDate: earliestScheduleDate,
+    checkInTime: getDefaultCheckInTime(),
+    checkOutDate: earliestScheduleDate,
+    checkOutTime: getDefaultCheckOutTime(),
     selectedAreaId: null,
     isPricingLoading: false,
     guestCount: MIN_GUEST_COUNT,
-    scheduledDate: earliestScheduleDate,
     customVariables: {},
   };
 }
@@ -131,32 +175,29 @@ function bookingFormReducer(
     case 'initialize':
       return {
         ...state,
-        bookingHours: DEFAULT_BOOKING_HOURS,
+        checkInTime: getDefaultCheckInTime(),
+        checkOutTime: getDefaultCheckOutTime(),
         selectedAreaId: action.defaultAreaId,
         isPricingLoading: Boolean(action.defaultAreaId),
         customVariables: {},
       };
     case 'reset':
       return {
-        bookingHours: DEFAULT_BOOKING_HOURS,
+        checkInDate: action.earliestScheduleDate,
+        checkInTime: getDefaultCheckInTime(),
+        checkOutDate: action.earliestScheduleDate,
+        checkOutTime: getDefaultCheckOutTime(),
         selectedAreaId: action.defaultAreaId,
         isPricingLoading: Boolean(action.defaultAreaId),
         guestCount: MIN_GUEST_COUNT,
-        scheduledDate: action.earliestScheduleDate,
         customVariables: {},
       };
     case 'select-area':
       return {
         ...state,
         selectedAreaId: action.areaId,
-        bookingHours: DEFAULT_BOOKING_HOURS,
         isPricingLoading: true,
         customVariables: {},
-      };
-    case 'set-booking-hours':
-      return {
-        ...state,
-        bookingHours: action.bookingHours,
       };
     case 'set-pricing-loading':
       return {
@@ -168,11 +209,20 @@ function bookingFormReducer(
         ...state,
         guestCount: action.guestCount,
       };
-    case 'set-scheduled-date':
-      return {
-        ...state,
-        scheduledDate: action.scheduledDate,
-      };
+    case 'set-check-in-date': {
+      const next = { ...state, checkInDate: action.value };
+      // If check-out date is before the new check-in date, advance it
+      if (next.checkOutDate < next.checkInDate) {
+        next.checkOutDate = next.checkInDate;
+      }
+      return next;
+    }
+    case 'set-check-in-time':
+      return { ...state, checkInTime: action.value };
+    case 'set-check-out-date':
+      return { ...state, checkOutDate: action.value };
+    case 'set-check-out-time':
+      return { ...state, checkOutTime: action.value };
     case 'set-custom-variable':
       return {
         ...state,
@@ -188,62 +238,23 @@ function bookingFormReducer(
   }
 }
 
-// --- Booking Duration Variables Check ---
-
-const BOOKING_DURATION_VARIABLE_KEY_SET = new Set(
-  BOOKING_DURATION_VARIABLE_KEYS.map((key) => key.toLowerCase())
-);
-
-function isBookingDurationVariableOperand(operand: PriceRuleOperand): boolean {
-  return (
-    operand.kind === 'variable' &&
-    BOOKING_DURATION_VARIABLE_KEY_SET.has(operand.key.trim().toLowerCase())
-  );
-}
-
-function doesRuleUseBookingDurationVariables(
-  rule: PriceRuleRecord | null
-): boolean {
-  if (!rule) {
-    return false;
-  }
-
-  const referencesInConditions = rule.definition.conditions.some(
-    (condition) =>
-      isBookingDurationVariableOperand(condition.left) ||
-      isBookingDurationVariableOperand(condition.right)
-  );
-
-  const normalizedFormula = rule.definition.formula.toLowerCase();
-  const formulaReferencesBookingDuration = BOOKING_DURATION_VARIABLE_KEYS.some(
-    (variable) => normalizedFormula.includes(variable.toLowerCase())
-  );
-
-  const declaresBookingDurationVariable = rule.definition.variables.some(
-    (variable) =>
-      BOOKING_DURATION_VARIABLE_KEY_SET.has(variable.key.trim().toLowerCase())
-  );
-
-  return (
-    referencesInConditions ||
-    formulaReferencesBookingDuration ||
-    declaresBookingDurationVariable
-  );
-}
-
 // --- Sub-components ---
 
 type BookingDurationFormProps = {
   areas: MarketplaceSpaceDetail['areas'];
   selectedAreaId: string | null;
   onSelectArea: (areaId: string) => void;
-  scheduledDate: string;
+  checkInDate: string;
+  checkInTime: string;
+  checkOutDate: string;
+  checkOutTime: string;
   earliestScheduleDate: string;
-  onScheduledDateChange: (event: ChangeEvent<HTMLInputElement>) => void;
-  bookingHours: number;
-  onBookingHoursChange: (bookingHours: number) => void;
+  onCheckInDateChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onCheckInTimeChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onCheckOutDateChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onCheckOutTimeChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  derivedBookingHours: number | null;
   isPricingLoading: boolean;
-  shouldShowHourSelector: boolean;
   selectedAreaMaxCapacity: number | null;
   currentGuestLimit: number;
   guestCount: number;
@@ -274,17 +285,26 @@ function priceBranchLabel(branch: PriceRuleEvaluationResult['branch']) {
   }
 }
 
+function isCouponLikeVariable(variable: PriceRuleVariable) {
+  const searchableText = `${variable.key} ${variable.label} ${variable.displayName ?? ''}`;
+  return COUPON_LIKE_VARIABLE_PATTERN.test(searchableText);
+}
+
 function BookingDurationForm({
   areas,
   selectedAreaId,
   onSelectArea,
-  scheduledDate,
+  checkInDate,
+  checkInTime,
+  checkOutDate,
+  checkOutTime,
   earliestScheduleDate,
-  onScheduledDateChange,
-  bookingHours,
-  onBookingHoursChange,
+  onCheckInDateChange,
+  onCheckInTimeChange,
+  onCheckOutDateChange,
+  onCheckOutTimeChange,
+  derivedBookingHours,
   isPricingLoading,
-  shouldShowHourSelector,
   selectedAreaMaxCapacity,
   currentGuestLimit,
   guestCount,
@@ -301,19 +321,22 @@ function BookingDurationForm({
   customVariables,
   onCustomVariableChange,
 }: BookingDurationFormProps) {
+  const isInvalidRange = derivedBookingHours === null;
+  const isBelowMinimum = derivedBookingHours !== null && derivedBookingHours < MIN_BOOKING_HOURS;
+
   return (
     <div className="space-y-6 py-2">
       <div className="grid gap-6 md:grid-cols-2">
-        { /* Step 1: Selection & Schedule */ }
+        { /* Step 1: Area selection */ }
         <div className="space-y-4">
           <div className="space-y-4 rounded-xl border border-border/50 bg-muted/20 p-4">
             <div className="flex items-center gap-2 border-b border-border/50 pb-2">
               <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <FiCalendar className="size-4" />
               </div>
-              <h3 className="font-semibold text-foreground">1. Where & When</h3>
+              <h3 className="font-semibold text-foreground">1. Select Area</h3>
             </div>
-            
+
             <div className="space-y-4">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -321,7 +344,7 @@ function BookingDurationForm({
                     htmlFor="area-select"
                     className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
                   >
-                    Select Area
+                    Area
                   </Label>
                 </div>
                 { areas.length === 0 ? (
@@ -351,25 +374,6 @@ function BookingDurationForm({
                   </Select>
                 ) }
               </div>
-
-              <div className="space-y-2">
-                <Label
-                  htmlFor="booking-date"
-                  className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                >
-                  Visit Date
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="booking-date"
-                    type="date"
-                    value={ scheduledDate }
-                    min={ earliestScheduleDate }
-                    onChange={ onScheduledDateChange }
-                    className="h-11 rounded-lg border-border/50 bg-background shadow-none transition-all hover:bg-accent/50 focus:ring-1"
-                  />
-                </div>
-              </div>
             </div>
           </div>
 
@@ -380,7 +384,7 @@ function BookingDurationForm({
               </div>
               <h3 className="font-semibold text-foreground">2. Guests</h3>
             </div>
-            
+
             <div className="mt-4 space-y-4">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex-1 space-y-1">
@@ -427,68 +431,83 @@ function BookingDurationForm({
           </div>
         </div>
 
-        { /* Step 2: Duration & Details */ }
+        { /* Step 2: Check-in / Check-out & Details */ }
         <div className="space-y-4">
           <div className="space-y-4 rounded-xl border border-border/50 bg-muted/20 p-4">
             <div className="flex items-center gap-2 border-b border-border/50 pb-2">
               <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <FiClock className="size-4" />
               </div>
-              <h3 className="font-semibold text-foreground">3. Duration</h3>
+              <h3 className="font-semibold text-foreground">3. Check-in & Check-out</h3>
             </div>
 
-            <div className="space-y-6 pt-2">
-              <div className="flex flex-col items-center justify-center space-y-1 py-2">
-                <div className="text-4xl font-bold tracking-tight text-foreground">
-                  { bookingHours === MAX_BOOKING_HOURS
-                    ? '24'
-                    : bookingHours }
-                  <span className="ml-1 text-lg font-medium text-muted-foreground">
-                    { bookingHours === 1 ? 'hour' : 'hours' }
-                  </span>
+            <div className="space-y-4 pt-2">
+              { /* Check-in */ }
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Check-in
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    type="date"
+                    value={ checkInDate }
+                    min={ earliestScheduleDate }
+                    onChange={ onCheckInDateChange }
+                    aria-label="Check-in date"
+                    className="h-11 rounded-lg border-border/50 bg-background shadow-none transition-all hover:bg-accent/50 focus:ring-1"
+                  />
+                  <Input
+                    type="time"
+                    value={ checkInTime }
+                    onChange={ onCheckInTimeChange }
+                    aria-label="Check-in time"
+                    className="h-11 rounded-lg border-border/50 bg-background shadow-none transition-all hover:bg-accent/50 focus:ring-1"
+                  />
                 </div>
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary/80">
-                  { bookingHours === MAX_BOOKING_HOURS
-                    ? 'Maximum Duration'
-                    : 'Time Selection' }
-                </p>
               </div>
 
-              <div className="px-2">
-                <Slider
-                  value={ [bookingHours] }
-                  min={ MIN_BOOKING_HOURS }
-                  max={ MAX_BOOKING_HOURS }
-                  step={ 1 }
-                  onValueChange={ ([value]) => {
-                    const nextValue = value ?? MIN_BOOKING_HOURS;
-                    onBookingHoursChange(nextValue);
-                  } }
-                  disabled={ isPricingLoading || !selectedAreaId }
-                  className="py-6"
-                  trackClassName="h-3 rounded-full bg-muted/80"
-                  rangeClassName="rounded-full"
-                  thumbClassName="flex size-14 items-center justify-center border-4 border-background bg-primary text-center text-primary-foreground shadow-lg shadow-primary/25 ring-8 ring-primary/10 transition-all hover:scale-105 hover:ring-primary/20 focus-visible:ring-8"
-                  renderThumbContent={ (value) => (
-                    <span className="pointer-events-none flex flex-col items-center justify-center leading-none">
-                      <span className="text-base font-bold">{ value }</span>
-                      <span className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] opacity-80">
-                        { value === 1 ? 'hr' : 'hrs' }
-                      </span>
-                    </span>
-                  ) }
-                />
-                <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
-                  <span>{ MIN_BOOKING_HOURS }H</span>
-                  <span>12H</span>
-                  <span>24H</span>
+              <div className="flex items-center justify-center">
+                <FiArrowRight className="size-4 text-muted-foreground" aria-hidden="true" />
+              </div>
+
+              { /* Check-out */ }
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Check-out
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    type="date"
+                    value={ checkOutDate }
+                    min={ checkInDate }
+                    onChange={ onCheckOutDateChange }
+                    aria-label="Check-out date"
+                    className="h-11 rounded-lg border-border/50 bg-background shadow-none transition-all hover:bg-accent/50 focus:ring-1"
+                  />
+                  <Input
+                    type="time"
+                    value={ checkOutTime }
+                    onChange={ onCheckOutTimeChange }
+                    aria-label="Check-out time"
+                    className="h-11 rounded-lg border-border/50 bg-background shadow-none transition-all hover:bg-accent/50 focus:ring-1"
+                  />
                 </div>
               </div>
-              
-              <div className="rounded-lg bg-background/50 p-2 text-center">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">
-                  { shouldShowHourSelector ? 'Variable pricing active' : 'Standard rate applies' }
-                </p>
+
+              { /* Duration summary */ }
+              <div
+                className={ cn(
+                  'rounded-lg px-3 py-2 text-center text-sm font-medium',
+                  isInvalidRange || isBelowMinimum
+                    ? 'bg-destructive/10 text-destructive'
+                    : 'bg-primary/10 text-primary'
+                ) }
+              >
+                { isInvalidRange
+                  ? 'Check-out must be after check-in'
+                  : isBelowMinimum
+                    ? `Minimum booking is ${MIN_BOOKING_HOURS} hour${MIN_BOOKING_HOURS === 1 ? '' : 's'}`
+                    : `Duration: ${formatDurationLabel(derivedBookingHours)} (billed ${derivedBookingHours} hr${derivedBookingHours === 1 ? '' : 's'})` }
               </div>
             </div>
           </div>
@@ -521,7 +540,10 @@ function BookingDurationForm({
                           variable.type === 'number' ? (raw === '' ? '' : Number(raw)) : raw
                         );
                       } }
-                      className="h-10 border-border/50 shadow-none focus:ring-1"
+                      className={ cn(
+                        'h-10 border-border/50 shadow-none focus:ring-1',
+                        isCouponLikeVariable(variable) && 'bg-white dark:bg-input/30'
+                      ) }
                     />
                   </div>
                 )) }
@@ -552,7 +574,7 @@ function BookingDurationForm({
               </p>
             ) }
           </div>
-          
+
           <div className="flex items-center gap-3">
             <Button
               type="button"
@@ -566,7 +588,7 @@ function BookingDurationForm({
             </Button>
           </div>
         </div>
-        
+
         { !selectedAreaId && (
           <div className="mt-4 flex items-center gap-2 rounded-lg bg-background/50 px-3 py-2 text-xs text-muted-foreground">
             <FiPlus className="size-3" />
@@ -628,9 +650,6 @@ function BookingReservationOverlay({
               <div className="flex items-center justify-between">
                 <div>
                   <DialogTitle className="text-2xl font-bold tracking-tight">Complete Reservation</DialogTitle>
-                  <DialogDescription className="mt-1.5 text-sm">
-                    Customize your visit details and review your booking summary.
-                  </DialogDescription>
                 </div>
                 <Button 
                   variant="ghost" 
@@ -657,7 +676,7 @@ function BookingReservationOverlay({
                 <Button
                   type="button"
                   variant="outline"
-                  className="order-2 h-12 border-border bg-muted px-8 font-semibold hover:bg-muted/80 sm:order-1"
+                  className="order-2 h-12 border-border bg-muted px-8 font-semibold text-foreground hover:bg-muted/80 hover:text-foreground sm:order-1"
                   onClick={ onCloseBooking }
                   disabled={ isCheckoutPending }
                 >
@@ -797,16 +816,24 @@ export const SpaceBookingFlow = forwardRef<
   );
 
   const {
-    bookingHours,
+    checkInDate,
+    checkInTime,
+    checkOutDate,
+    checkOutTime,
     selectedAreaId,
     isPricingLoading,
     guestCount,
-    scheduledDate,
     customVariables,
   } = bookingState;
 
+  const derivedBookingHours = useMemo(
+    () => deriveBookingHours(checkInDate, checkInTime, checkOutDate, checkOutTime),
+    [checkInDate, checkInTime, checkOutDate, checkOutTime]
+  );
+  const bookingHours = derivedBookingHours ?? MIN_BOOKING_HOURS;
+
   const bookingStartAtIso = useMemo(() => {
-    const candidate = new Date(`${scheduledDate}T23:00:00`);
+    const candidate = new Date(`${checkInDate}T${checkInTime}:00`);
     const now = new Date();
     if (!Number.isFinite(candidate.getTime())) {
       return now.toISOString();
@@ -815,7 +842,7 @@ export const SpaceBookingFlow = forwardRef<
       return new Date(now.getTime() + 60 * 60 * 1000).toISOString();
     }
     return candidate.toISOString();
-  }, [scheduledDate]);
+  }, [checkInDate, checkInTime]);
 
   const resetBookingState = useCallback(() => {
     dispatchBookingAction({
@@ -857,19 +884,30 @@ areaId,
 });
   }, []);
 
-  const handleBookingHoursChange = useCallback((nextBookingHours: number) => {
-    dispatchBookingAction({
- type: 'set-booking-hours',
-bookingHours: nextBookingHours, 
-});
-  }, []);
-
-  const handleScheduledDateChange = useCallback(
+  const handleCheckInDateChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      dispatchBookingAction({
- type: 'set-scheduled-date',
-scheduledDate: event.target.value, 
-});
+      dispatchBookingAction({ type: 'set-check-in-date', value: event.target.value });
+    },
+    []
+  );
+
+  const handleCheckInTimeChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      dispatchBookingAction({ type: 'set-check-in-time', value: event.target.value });
+    },
+    []
+  );
+
+  const handleCheckOutDateChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      dispatchBookingAction({ type: 'set-check-out-date', value: event.target.value });
+    },
+    []
+  );
+
+  const handleCheckOutTimeChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      dispatchBookingAction({ type: 'set-check-out-time', value: event.target.value });
     },
     []
   );
@@ -913,11 +951,6 @@ scheduledDate: event.target.value,
     );
   }, [selectedArea?.pricingRuleId, space.pricingRules]);
 
-  const shouldShowHourSelector = useMemo(
-    () => doesRuleUseBookingDurationVariables(activePriceRule),
-    [activePriceRule]
-  );
-
   const userInputVariables = useMemo<PriceRuleVariable[]>(() => {
     if (!activePriceRule) {
       return [];
@@ -942,8 +975,10 @@ value,
   const isBookingFormPristine =
     selectedAreaId === defaultPricedAreaId &&
     guestCount === MIN_GUEST_COUNT &&
-    bookingHours === MIN_BOOKING_HOURS &&
-    scheduledDate === earliestScheduleDate;
+    checkInDate === earliestScheduleDate &&
+    checkInTime === getDefaultCheckInTime() &&
+    checkOutDate === earliestScheduleDate &&
+    checkOutTime === getDefaultCheckOutTime();
 
   const variableOverrides = useMemo(() => {
     const overrides: Record<string, string | number> = { guest_count: guestCount, };
@@ -1094,7 +1129,9 @@ value,
       canBook &&
       !createCheckoutSession.isPending &&
       !isOverCapacity &&
-      hasAllCustomVariables
+      hasAllCustomVariables &&
+      derivedBookingHours !== null &&
+      derivedBookingHours >= MIN_BOOKING_HOURS
   );
 
   const handleConfirmBooking = useCallback(async () => {
@@ -1170,13 +1207,17 @@ value,
       areas={ space.areas }
       selectedAreaId={ selectedAreaId }
       onSelectArea={ handleSelectArea }
-      scheduledDate={ scheduledDate }
+      checkInDate={ checkInDate }
+      checkInTime={ checkInTime }
+      checkOutDate={ checkOutDate }
+      checkOutTime={ checkOutTime }
       earliestScheduleDate={ earliestScheduleDate }
-      onScheduledDateChange={ handleScheduledDateChange }
-      bookingHours={ bookingHours }
-      onBookingHoursChange={ handleBookingHoursChange }
+      onCheckInDateChange={ handleCheckInDateChange }
+      onCheckInTimeChange={ handleCheckInTimeChange }
+      onCheckOutDateChange={ handleCheckOutDateChange }
+      onCheckOutTimeChange={ handleCheckOutTimeChange }
+      derivedBookingHours={ derivedBookingHours }
       isPricingLoading={ isPricingLoading }
-      shouldShowHourSelector={ shouldShowHourSelector }
       selectedAreaMaxCapacity={ selectedAreaMaxCapacity }
       currentGuestLimit={ currentGuestLimit }
       guestCount={ guestCount }

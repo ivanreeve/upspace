@@ -477,11 +477,14 @@ name,
               <TableCell className="w-36">
                 <Skeleton className="h-8 w-28 rounded-md" />
               </TableCell>
-              <TableCell className="w-24">
-                <Skeleton className="h-4 w-14" />
+              <TableCell className="w-28">
+                <Skeleton className="h-4 w-20" />
               </TableCell>
               <TableCell className="w-28">
-                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-20" />
+              </TableCell>
+              <TableCell className="w-20">
+                <Skeleton className="h-4 w-14" />
               </TableCell>
               <TableCell className="w-40">
                 <Skeleton className="h-4 w-28" />
@@ -499,7 +502,7 @@ name,
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={ 10 } className="text-sm text-destructive">
+            <TableCell colSpan={ 11 } className="text-sm text-destructive">
               { error instanceof Error
                 ? error.message
                 : 'Unable to load bookings.' }
@@ -513,7 +516,7 @@ name,
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={ 10 }>
+            <TableCell colSpan={ 11 }>
               <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
                 <FiAlertCircle className="size-5" aria-hidden="true" />
                 <p>
@@ -531,7 +534,7 @@ name,
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={ 10 }>
+            <TableCell colSpan={ 11 }>
               <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
                 <FiAlertCircle className="size-5" aria-hidden="true" />
                 <p>No active bookings are filling your areas right now.</p>
@@ -546,7 +549,7 @@ name,
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={ 10 }>
+            <TableCell colSpan={ 11 }>
               <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
                 <FiAlertCircle className="size-5" aria-hidden="true" />
                 <p>No results match your search.</p>
@@ -692,6 +695,16 @@ name,
               <TableCell>
                 <span className="text-sm text-foreground">
                   { bookingDateFormatter.format(new Date(booking.startAt)) }
+                </span>
+              </TableCell>
+              <TableCell>
+                <span className="text-sm text-foreground">
+                  { bookingDateFormatter.format(
+                    new Date(
+                      new Date(booking.startAt).getTime() +
+                        booking.bookingHours * 60 * 60 * 1000
+                    )
+                  ) }
                 </span>
               </TableCell>
               <TableCell>
@@ -950,7 +963,8 @@ name,
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Space / Area</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Status</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Next step</TableHead>
-                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Scheduled</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Check-in</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Check-out</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Duration</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Price</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Capacity</TableHead>
