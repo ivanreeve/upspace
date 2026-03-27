@@ -108,6 +108,9 @@ const BULK_STATUS_OPTIONS: { label: string; status: BookingStatus }[] = [
   }
 ];
 
+const bulkEditMenuItemClassName =
+  'data-[highlighted]:bg-[oklch(0.955_0.02_204.6929)] focus-visible:bg-[oklch(0.955_0.02_204.6929)] dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] data-[highlighted]:text-primary data-[highlighted]:[&_svg]:text-primary dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary hover:!text-primary hover:[&_svg]:!text-primary dark:hover:!text-secondary dark:hover:[&_svg]:!text-secondary';
+
 const bookingStatusMeta: Record<
   BookingStatus,
   {
@@ -883,13 +886,17 @@ name,
                       ) }
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-56 rounded-md border border-border bg-card p-1 shadow-lg"
+                  >
                     <DropdownMenuLabel>Change status</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     { BULK_STATUS_OPTIONS.map((option) => (
                       <DropdownMenuItem
                         key={ option.status }
                         onSelect={ () => handleBulkStatusChange(option.status) }
+                        className={ bulkEditMenuItemClassName }
                       >
                         { option.label }
                       </DropdownMenuItem>
