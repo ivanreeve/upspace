@@ -465,7 +465,18 @@ function BookingDurationForm({
                     onBookingHoursChange(nextValue);
                   } }
                   disabled={ isPricingLoading || !selectedAreaId }
-                  className="py-4"
+                  className="py-6"
+                  trackClassName="h-3 rounded-full bg-muted/80"
+                  rangeClassName="rounded-full"
+                  thumbClassName="flex size-14 items-center justify-center border-4 border-background bg-primary text-center text-primary-foreground shadow-lg shadow-primary/25 ring-8 ring-primary/10 transition-all hover:scale-105 hover:ring-primary/20 focus-visible:ring-8"
+                  renderThumbContent={ (value) => (
+                    <span className="pointer-events-none flex flex-col items-center justify-center leading-none">
+                      <span className="text-base font-bold">{ value }</span>
+                      <span className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] opacity-80">
+                        { value === 1 ? 'hr' : 'hrs' }
+                      </span>
+                    </span>
+                  ) }
                 />
                 <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
                   <span>{ MIN_BOOKING_HOURS }H</span>
@@ -646,7 +657,7 @@ function BookingReservationOverlay({
                 <Button
                   type="button"
                   variant="outline"
-                  className="order-2 h-12 px-8 font-semibold sm:order-1"
+                  className="order-2 h-12 border-border bg-muted px-8 font-semibold hover:bg-muted/80 sm:order-1"
                   onClick={ onCloseBooking }
                   disabled={ isCheckoutPending }
                 >

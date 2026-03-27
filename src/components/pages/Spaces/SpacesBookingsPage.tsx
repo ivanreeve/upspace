@@ -983,7 +983,7 @@ name,
           <div className="space-y-2">
             <label
               htmlFor={ cancellationReasonFieldId }
-              className="text-sm font-medium text-foreground"
+              className="mt-2 block text-sm font-medium text-foreground"
             >
               Cancellation reason
             </label>
