@@ -534,65 +534,67 @@ function QueueSection({
           Export CSV
         </Button>
       </div>
-      <div className="overflow-hidden rounded-md border border-border/70 bg-muted/20">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Queue</TableHead>
-              <TableHead>Pending</TableHead>
-              <TableHead>Oldest (days)</TableHead>
-              <TableHead>Avg resolution (days)</TableHead>
-              <TableHead>Resolved</TableHead>
-              <TableHead>Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            { isLoading ? (
-              <TableSkeletonRows rows={ 5 } columns={ 6 } />
-            ) : queues.length ? (
-              queues.map((queue) => (
-                <TableRow key={ queue.key }>
-                  <TableCell className="font-medium">
-                    <div className="space-y-0.5">
-                      <p>{ queue.label }</p>
-                      <p className="text-xs text-muted-foreground">
-                        { QUEUE_LABEL_HELP[queue.key] }
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell>{ formatCount(queue.pendingCount) }</TableCell>
-                  <TableCell>
-                    { queue.oldestPendingDays === null
-                      ? '-'
-                      : queue.oldestPendingDays }
-                  </TableCell>
-                  <TableCell>
-                    { queue.averageResolutionDays === null
-                      ? '-'
-                      : queue.averageResolutionDays.toFixed(1) }
-                  </TableCell>
-                  <TableCell>
-                    { formatCount(queue.resolvedCount) }
-                  </TableCell>
-                  <TableCell>
-                    <Button asChild size="sm" variant="outline" className="gap-2">
-                      <Link href={ QUEUE_ROUTE_MAP[queue.key] }>
-                        Open queue
-                        <FiExternalLink className="size-3.5" aria-hidden="true" />
-                      </Link>
-                    </Button>
+      <div className="rounded-md border border-border/70 bg-muted/20">
+        <div className="overflow-x-auto">
+          <Table className="min-w-[720px]">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Queue</TableHead>
+                <TableHead>Pending</TableHead>
+                <TableHead>Oldest (days)</TableHead>
+                <TableHead>Avg resolution (days)</TableHead>
+                <TableHead>Resolved</TableHead>
+                <TableHead>Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              { isLoading ? (
+                <TableSkeletonRows rows={ 5 } columns={ 6 } />
+              ) : queues.length ? (
+                queues.map((queue) => (
+                  <TableRow key={ queue.key }>
+                    <TableCell className="font-medium">
+                      <div className="space-y-0.5">
+                        <p>{ queue.label }</p>
+                        <p className="text-xs text-muted-foreground">
+                          { QUEUE_LABEL_HELP[queue.key] }
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell>{ formatCount(queue.pendingCount) }</TableCell>
+                    <TableCell>
+                      { queue.oldestPendingDays === null
+                        ? '-'
+                        : queue.oldestPendingDays }
+                    </TableCell>
+                    <TableCell>
+                      { queue.averageResolutionDays === null
+                        ? '-'
+                        : queue.averageResolutionDays.toFixed(1) }
+                    </TableCell>
+                    <TableCell>
+                      { formatCount(queue.resolvedCount) }
+                    </TableCell>
+                    <TableCell>
+                      <Button asChild size="sm" variant="outline" className="gap-2">
+                        <Link href={ QUEUE_ROUTE_MAP[queue.key] }>
+                          Open queue
+                          <FiExternalLink className="size-3.5" aria-hidden="true" />
+                        </Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={ 6 } className="py-10 text-center text-sm text-muted-foreground">
+                    No queue activity in this range.
                   </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={ 6 } className="py-10 text-center text-sm text-muted-foreground">
-                  No queue activity in this range.
-                </TableCell>
-              </TableRow>
-            ) }
-          </TableBody>
-        </Table>
+              ) }
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   );
@@ -665,71 +667,73 @@ function RiskSection({
           Export CSV
         </Button>
       </div>
-      <div className="overflow-hidden rounded-md border border-border/70 bg-muted/20">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Space</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Bookings</TableHead>
-              <TableHead>Cancelled</TableHead>
-              <TableHead>Rate</TableHead>
-              <TableHead>Signal</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            { isLoading ? (
-              <TableSkeletonRows rows={ 4 } columns={ 6 } />
-            ) : spaces.length ? (
-              spaces.map((space) => {
-                const isHighRisk = space.cancellationRate >= RISK_ALERT_THRESHOLD;
-                const score = Math.round(
-                  Math.min(100, space.cancellationRate * 100 + Math.min(space.totalBookings, 50))
-                );
-                return (
-                  <TableRow key={ space.space_id }>
-                    <TableCell className="font-medium">
-                      <div className="space-y-0.5">
-                        <p>{ space.space_name }</p>
-                        <p className="text-xs text-muted-foreground">
-                          { space.totalBookings } bookings in range
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      { space.city }, { space.region }
-                    </TableCell>
-                    <TableCell>{ formatCount(space.totalBookings) }</TableCell>
-                    <TableCell>{ formatCount(space.cancelledBookings) }</TableCell>
-                    <TableCell>
-                      <span
-                        className={ cn(
-                          'text-xs font-semibold',
-                          isHighRisk
-                            ? 'text-destructive'
-                            : 'text-muted-foreground'
-                        ) }
-                      >
-                        { formatRate(space.cancellationRate) }
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={ isHighRisk ? 'destructive' : 'secondary' } className="text-xs">
-                        Risk { score }
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            ) : (
+      <div className="rounded-md border border-border/70 bg-muted/20">
+        <div className="overflow-x-auto">
+          <Table className="min-w-[720px]">
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={ 6 } className="py-10 text-center text-sm text-muted-foreground">
-                  No high-cancellation spaces in this range.
-                </TableCell>
+                <TableHead>Space</TableHead>
+                <TableHead>Location</TableHead>
+                <TableHead>Bookings</TableHead>
+                <TableHead>Cancelled</TableHead>
+                <TableHead>Rate</TableHead>
+                <TableHead>Signal</TableHead>
               </TableRow>
-            ) }
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              { isLoading ? (
+                <TableSkeletonRows rows={ 4 } columns={ 6 } />
+              ) : spaces.length ? (
+                spaces.map((space) => {
+                  const isHighRisk = space.cancellationRate >= RISK_ALERT_THRESHOLD;
+                  const score = Math.round(
+                    Math.min(100, space.cancellationRate * 100 + Math.min(space.totalBookings, 50))
+                  );
+                  return (
+                    <TableRow key={ space.space_id }>
+                      <TableCell className="font-medium">
+                        <div className="space-y-0.5">
+                          <p>{ space.space_name }</p>
+                          <p className="text-xs text-muted-foreground">
+                            { space.totalBookings } bookings in range
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        { space.city }, { space.region }
+                      </TableCell>
+                      <TableCell>{ formatCount(space.totalBookings) }</TableCell>
+                      <TableCell>{ formatCount(space.cancelledBookings) }</TableCell>
+                      <TableCell>
+                        <span
+                          className={ cn(
+                            'text-xs font-semibold',
+                            isHighRisk
+                              ? 'text-destructive'
+                              : 'text-muted-foreground'
+                          ) }
+                        >
+                          { formatRate(space.cancellationRate) }
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={ isHighRisk ? 'destructive' : 'secondary' } className="text-xs">
+                          Risk { score }
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={ 6 } className="py-10 text-center text-sm text-muted-foreground">
+                    No high-cancellation spaces in this range.
+                  </TableCell>
+                </TableRow>
+              ) }
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   );
