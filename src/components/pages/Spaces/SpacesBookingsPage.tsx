@@ -302,15 +302,9 @@ name,
 
   const areaGuestCounts = useMemo(() => {
     const counts = new Map<string, number>();
-    const now = Date.now();
     sortedBookings.forEach((booking) => {
-      const isCheckedIn = booking.status === 'checkedin';
-      if (!isCheckedIn) {
-        const startMs = new Date(booking.startAt).getTime();
-        const endMs = startMs + booking.bookingHours * 60 * 60 * 1000;
-        if (startMs > now || endMs <= now) {
-          return;
-        }
+      if (booking.status !== 'checkedin') {
+        return;
       }
       const guests = booking.guestCount ?? 1;
       counts.set(booking.areaId, (counts.get(booking.areaId) ?? 0) + guests);
