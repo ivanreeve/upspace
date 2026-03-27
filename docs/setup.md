@@ -1,130 +1,336 @@
 # Setup Guide
 
-This guide will help you set up the UpSpace project locally.
+This guide is the authoritative local-environment reference for UpSpace. It covers the services the app expects, the environment variables currently referenced by the codebase, database extension requirements, and the checks you should run before trusting a local instance.
 
-## Prerequisites
+## What You Need Before Starting
 
-Ensure you have the following installed:
+### Required tooling
 
-- **Node.js**: v20.x or higher
-- **pnpm**: Package manager (`npm install -g pnpm`)
-- **Docker**: For running a local PostgreSQL database (optional if using Supabase directly)
-- **Git**: For version control
+- Node.js `20.x`
+- `pnpm`
+- Git
+- PostgreSQL or a Supabase project
 
-## 1. Clone the Repository
+### Required platform services
+
+- Supabase project with Auth enabled
+- PostgreSQL database reachable from Prisma
+
+### Optional but strongly recommended services
+
+- Redis or Upstash Redis for cached listings and rate limiting
+- SMTP credentials for OTP and booking emails
+- Xendit sandbox account for checkout, refunds, payouts, and payout-account sync
+- OpenRouter API key for the marketplace AI assistant
+- Google Maps API key for address autocomplete
+
+## Clone and Install
 
 ```bash
-git clone <repository_url>
+git clone https://github.com/ivanreeve/upspace.git
 cd upspace
-```
-
-## 2. Install Dependencies
-
-Install the project dependencies using pnpm:
-
-```bash
 pnpm install
 ```
 
-## 3. Environment Configuration
+## Environment Variables
 
-Create a `.env` file in the root directory. The fastest path is:
+The repository currently does not include a committed `.env.example`, so create `.env` manually in the project root.
+
+### Core application variables
+
+These are the baseline values most local environments need:
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `DATABASE_URL` | Yes | Prisma connection string for PostgreSQL. |
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL used by server and client helpers. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Public anonymous key used by Supabase client helpers. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes for admin/profile sync flows | Required by server-side profile creation and admin sync work. |
+| `NEXT_PUBLIC_APP_URL` | Yes | Base URL used in redirect and email links. |
+| `NEXT_PUBLIC_APP_NAME` | Recommended | Branding label used by some UX and email flows. |
+
+### Storage and client-facing assets
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SPACE_IMAGES_BUCKET` | Recommended | Public bucket path used for space media resolution. |
+| `NEXT_PUBLIC_VERIFICATION_DOCS_BUCKET` | Recommended | Bucket used for verification document uploads. |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Optional | Enables address autocomplete and Places-powered UX. |
+| `NEXT_PUBLIC_FACEBOOK_APP_ID` | Optional | Reserved for future client integration needs. |
+
+### AI and search
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `OPENROUTER_API_KEY` | Required for AI assistant | Enables `/api/v1/ai-assistant`. |
+| `OPENROUTER_MODEL` | Optional | Overrides the default assistant model. |
+| `GEMINI_API_KEY` | Optional | Reserved for alternate AI provider work. |
+| `AI_COMMIT_INSTRUCTIONS_PATH` | Optional | Internal file path used by AI tooling. |
+
+### Redis and rate limiting
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `REDIS_URL` | Optional | Enables Redis-backed listing caches and rate limiting. |
+| `SPACES_LIST_CACHE_TTL_SECONDS` | Optional | Overrides the public spaces cache TTL. |
+
+### Financial and payout provider variables
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `XENDIT_SECRET_KEY` | Required for financial flows | Main provider credential. |
+| `XENDIT_WEBHOOK_VERIFICATION_TOKEN` | Required for webhook verification | Preferred token for `/api/provider/webhook`. |
+| `XENDIT_CALLBACK_TOKEN` | Optional fallback | Legacy callback token fallback for webhook verification. |
+| `XENDIT_API_URL` | Optional | Override provider base URL, usually only for testing. |
+| `XENDIT_COUNTRY` | Optional | Defaults to `PH` for Philippine payout channels. |
+| `FINANCIAL_DATA_ENCRYPTION_KEY` | Strongly recommended | Encrypts payout-destination data at rest. |
+| `CHECKOUT_ALLOWED_REDIRECT_ORIGINS` | Optional | Restricts allowed checkout redirect origins. |
+
+### Email and OTP delivery
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `EMAIL_SMTP_HOST` | Required for OTP and booking mail | SMTP hostname. |
+| `EMAIL_SMTP_PORT` | Required for OTP and booking mail | SMTP port. |
+| `EMAIL_SMTP_SECURE` | Optional | Set to `true` or `1` for secure SMTP transport. |
+| `EMAIL_SMTP_USER` | Required for OTP and booking mail | SMTP username. |
+| `EMAIL_SMTP_PASSWORD` | Required for OTP and booking mail | SMTP password. |
+| `EMAIL_FROM` | Optional | Override sender email address. |
+| `EMAIL_FROM_NAME` | Optional | Override sender display name. |
+
+### Testing and runtime toggles
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `TESTING_MODE_ENABLED` | Optional | Enables testing-oriented behavior where supported. |
+| `NODE_ENV` | Managed by runtime | Standard Node environment mode. |
+
+### Example `.env`
 
 ```bash
-cp .env.example .env
-```
-
-At minimum, provide the required values below:
-
-```bash
-# Database (Prisma)
-# format: postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=public
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/upspace?schema=public"
 
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL="your_supabase_project_url"
-NEXT_PUBLIC_SUPABASE_ANON_KEY="your_supabase_anon_key"
-
-# App
+NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"
+SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
+NEXT_PUBLIC_APP_NAME="UpSpace"
 
-# Xendit
+NEXT_PUBLIC_SPACE_IMAGES_BUCKET="space-images"
+NEXT_PUBLIC_VERIFICATION_DOCS_BUCKET="verification-docs"
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="your-google-maps-key"
+
+OPENROUTER_API_KEY="your-openrouter-key"
+OPENROUTER_MODEL="anthropic/claude-haiku-4.5"
+
+REDIS_URL="redis://localhost:6379"
+SPACES_LIST_CACHE_TTL_SECONDS="60"
+
 XENDIT_SECRET_KEY="xnd_development_your_xendit_secret_key"
-XENDIT_WEBHOOK_VERIFICATION_TOKEN="your_xendit_webhook_verification_token"
-FINANCIAL_DATA_ENCRYPTION_KEY="replace_with_a_long_random_secret"
+XENDIT_WEBHOOK_VERIFICATION_TOKEN="your-webhook-token"
+FINANCIAL_DATA_ENCRYPTION_KEY="replace-with-a-long-random-secret"
+
+EMAIL_SMTP_HOST="smtp.example.com"
+EMAIL_SMTP_PORT="587"
+EMAIL_SMTP_SECURE="false"
+EMAIL_SMTP_USER="smtp-user"
+EMAIL_SMTP_PASSWORD="smtp-password"
+EMAIL_FROM="noreply@example.com"
+EMAIL_FROM_NAME="UpSpace"
 ```
 
-Configure your Xendit webhook endpoint to:
+## Database Requirements
 
-```text
-https://<your-domain>/api/provider/webhook
+UpSpace expects PostgreSQL with geospatial, text search, and UUID support.
+
+### Required extensions
+
+- `postgis`
+- `pgcrypto`
+- `pg_trgm`
+- `unaccent`
+- `uuid-ossp`
+
+### Why each extension matters
+
+| Extension | Why it matters in UpSpace |
+| --- | --- |
+| `postgis` | Supports geospatial search and coordinate-aware listing behavior. |
+| `pgcrypto` | Supports `gen_random_uuid()` usage in the schema and related database logic. |
+| `pg_trgm` | Supports fuzzy search across names and location fields. |
+| `unaccent` | Makes search more forgiving for accented text. |
+| `uuid-ossp` | Required by the Prisma datasource extension configuration. |
+
+### Example SQL
+
+Run this once against your local database if the extensions are not already enabled:
+
+```sql
+create extension if not exists postgis;
+create extension if not exists pgcrypto;
+create extension if not exists pg_trgm;
+create extension if not exists unaccent;
+create extension if not exists "uuid-ossp";
 ```
 
-If you need the rest of the optional integrations, use [`.env.example`](/home/ivanreeve/projects/upspace/.env.example).
+## Supabase Notes
 
-### Redis-backed features
+UpSpace uses Supabase in several places:
 
-The marketplace uses Redis for cached collections and rate limiting. Point `REDIS_URL` to your Redis or Upstash instance to enable these protections; the code will fallback gracefully when the variable is missing.
+- browser and server auth sessions;
+- admin profile synchronization;
+- storage-backed image and verification-document URL resolution;
+- SSR-safe middleware and route handlers.
 
-```bash
-REDIS_URL="redis://USER:PASSWORD@HOST:PORT"
-```
+Make sure the following are consistent:
 
-### Rate limiting overrides
+- the Supabase project URL matches `NEXT_PUBLIC_SUPABASE_URL`;
+- anon and service-role keys belong to the same project;
+- storage buckets used for images and verification documents exist;
+- Auth is configured for the sign-up and sign-in flows you expect to test.
 
-The read-heavy catalog, suggestion, and partner feed endpoints are throttled by default. Each window is expressed in seconds:
+## Prisma and Migrations
 
-| Variable | Default | Explanation |
-| --- | --- | --- |
-| `RATE_LIMIT_SPACES_LIMIT` | `120` | Requests allowed per `RATE_LIMIT_SPACES_WINDOW` for `GET /api/v1/spaces`. |
-| `RATE_LIMIT_SPACES_WINDOW` | `60` | Window duration for the public spaces listing. |
-| `RATE_LIMIT_SPACES_SUGGEST_LIMIT` | `60` | Requests allowed per window for `GET /api/v1/spaces/suggest`. |
-| `RATE_LIMIT_SPACES_SUGGEST_WINDOW` | `60` | Window duration for the suggestion endpoint. |
-| `RATE_LIMIT_PARTNER_SPACES_LIMIT` | `30` | Requests allowed per window when partners list their own spaces. |
-| `RATE_LIMIT_PARTNER_SPACES_WINDOW` | `60` | Window duration for partners listing spaces. |
-| `RATE_LIMIT_PARTNER_DASHBOARD_FEED_LIMIT` | `30` | Requests allowed per window for the partner dashboard feed. |
-| `RATE_LIMIT_PARTNER_DASHBOARD_FEED_WINDOW` | `60` | Window duration for the dashboard feed. |
-
-Unset any of the overrides above to keep using the defaults.
-
-## 4. Database Setup
-
-This project uses Prisma with PostgreSQL.
-
-### Option A: Local Development (Docker)
-
-If you have a `docker-compose.yml` (check project root), you can spin up a local DB. Otherwise, ensure you have a local Postgres instance running with the required extensions (`postgis`, `pgcrypto`, `pg_trgm`, `unaccent`).
-
-### Option B: Remote Database (Supabase)
-
-If you are using Supabase:
-1. Create a new project on Supabase.
-2. Get the connection string from Database settings.
-3. Update `.env`.
-
-### Run Migrations
-
-Apply the database schema:
+Generate the Prisma client and apply the current schema:
 
 ```bash
 pnpm prisma generate
 pnpm prisma migrate dev
 ```
 
-## 5. Running the Application
+If you only need a fresh local client after pulling changes:
 
-Start the development server:
+```bash
+pnpm prisma generate
+```
+
+## Generate API Documentation
+
+Regenerate the checked-in API docs before or after route work:
+
+```bash
+pnpm docs:api
+```
+
+This command updates:
+
+- `public/openapi.json`
+- `docs/api-reference.md`
+
+## Run the Application
 
 ```bash
 pnpm dev
 ```
 
-The application should be available at `http://localhost:3000`.
+Important local URLs:
 
-## 6. Testing
+- Product UI: `http://localhost:3000`
+- Scalar API docs: `http://localhost:3000/docs`
+- Raw OpenAPI document: `http://localhost:3000/openapi.json`
 
-Run the test suite to ensure everything is working:
+## Verification Checklist
+
+Run these before assuming the environment is healthy:
 
 ```bash
+pnpm lint
 pnpm test
+pnpm build
 ```
+
+If the app starts but critical features fail, verify the relevant service class below.
+
+## Feature-Specific Setup Notes
+
+### Redis-backed caching and rate limiting
+
+Without `REDIS_URL`, the app can still run, but you lose:
+
+- Redis-backed public space list caching;
+- shared rate-limit state across instances;
+- some production-like behavior for partner inventory throttling.
+
+### Xendit webhooks
+
+Provider callbacks are handled at:
+
+```text
+https://<your-domain>/api/provider/webhook
+```
+
+For local tunnel testing, make sure:
+
+- your tunnel forwards to the local Next.js server;
+- the verification token configured in Xendit matches `XENDIT_WEBHOOK_VERIFICATION_TOKEN` or the legacy fallback `XENDIT_CALLBACK_TOKEN`;
+- `NEXT_PUBLIC_APP_URL` matches the user-visible origin used in redirect links.
+
+### Email flows
+
+The following features depend on working SMTP:
+
+- sign-up OTP delivery;
+- forgot-password OTP delivery;
+- booking lifecycle emails;
+- complaint and payout-adjacent operational messaging.
+
+### AI assistant
+
+`/api/v1/ai-assistant` requires a valid `OPENROUTER_API_KEY`. Without it, AI-assisted marketplace search will not function.
+
+## Troubleshooting
+
+### `Missing Supabase configuration`
+
+Check:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` for admin sync flows
+
+### Prisma or migration failures around extensions
+
+Check that the database really has:
+
+- `postgis`
+- `pgcrypto`
+- `pg_trgm`
+- `unaccent`
+- `uuid-ossp`
+
+### Auth works but profile-backed routes fail
+
+This usually means the auth session exists but the internal `user` row has not been created or synced. Re-check:
+
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `/api/v1/auth/sync-profile`
+- sign-up flow completion
+
+### Wallet and payout flows fail immediately
+
+Check:
+
+- `XENDIT_SECRET_KEY`
+- `FINANCIAL_DATA_ENCRYPTION_KEY`
+- provider webhook token configuration
+
+### AI assistant returns configuration errors
+
+Check:
+
+- `OPENROUTER_API_KEY`
+- `OPENROUTER_MODEL`
+- any non-ASCII characters accidentally pasted into the API key
+
+## Recommended First Run Order
+
+If you are bringing up the project from scratch, this is the most reliable sequence:
+
+1. Create `.env`.
+2. Enable the required PostgreSQL extensions.
+3. Run `pnpm install`.
+4. Run `pnpm prisma generate`.
+5. Run `pnpm prisma migrate dev`.
+6. Run `pnpm docs:api`.
+7. Run `pnpm dev`.
+8. Run `pnpm lint`, `pnpm test`, and `pnpm build` once the app boots.
