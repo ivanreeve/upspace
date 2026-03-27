@@ -808,6 +808,108 @@ now: evening,
     });
   });
 
+  describe('check_out_date variable', () => {
+    it('resolves check-out date from start + booking hours', () => {
+      // Check-in: 2024-01-15 10:00 UTC, 8 hours → check-out: 2024-01-15 18:00 UTC
+      // check_out_date should equal 2024-01-15
+      const checkIn = new Date('2024-01-15T10:00:00Z');
+      const def = makeDefinition({
+        formula: '1 ELSE 0',
+        conditions: [
+          makeCondition({
+            id: 'c1',
+            comparator: '=',
+            left: { kind: 'variable', key: 'check_out_date' },
+            right: { kind: 'literal', value: '2024-01-15', valueType: 'date' },
+          })
+        ],
+      });
+      const result = evaluatePriceRule(def, { bookingHours: 8, now: checkIn });
+      expect(result.branch).toBe('then');
+    });
+
+    it('advances check-out date when booking crosses midnight', () => {
+      // Check-in: 2024-01-15 22:00 UTC, 4 hours → check-out: 2024-01-16 02:00 UTC
+      const checkIn = new Date('2024-01-15T22:00:00Z');
+      const def = makeDefinition({
+        formula: '1 ELSE 0',
+        conditions: [
+          makeCondition({
+            id: 'c1',
+            comparator: '=',
+            left: { kind: 'variable', key: 'check_out_date' },
+            right: { kind: 'literal', value: '2024-01-16', valueType: 'date' },
+          })
+        ],
+      });
+      const result = evaluatePriceRule(def, { bookingHours: 4, now: checkIn });
+      expect(result.branch).toBe('then');
+    });
+  });
+
+  describe('check_out_time variable', () => {
+    it('resolves check-out time from start + booking hours', () => {
+      // Check-in: 09:00, 3 hours → check-out time: 12:00
+      const checkIn = new Date('2024-01-15T09:00:00Z');
+      const def = makeDefinition({
+        formula: '1 ELSE 0',
+        conditions: [
+          makeCondition({
+            id: 'c1',
+            comparator: '=',
+            left: { kind: 'variable', key: 'check_out_time' },
+            right: { kind: 'literal', value: '12:00', valueType: 'time' },
+          })
+        ],
+      });
+      const result = evaluatePriceRule(def, { bookingHours: 3, now: checkIn });
+      expect(result.branch).toBe('then');
+    });
+
+    it('wraps check-out time past midnight', () => {
+      // Check-in: 22:00, 5 hours → check-out time: 03:00
+      const checkIn = new Date('2024-01-15T22:00:00Z');
+      const def = makeDefinition({
+        formula: '1 ELSE 0',
+        conditions: [
+          makeCondition({
+            id: 'c1',
+            comparator: '=',
+            left: { kind: 'variable', key: 'check_out_time' },
+            right: { kind: 'literal', value: '03:00', valueType: 'time' },
+          })
+        ],
+      });
+      const result = evaluatePriceRule(def, { bookingHours: 5, now: checkIn });
+      expect(result.branch).toBe('then');
+    });
+
+    it('enables late check-out surcharge rule', () => {
+      // Surcharge if check-out is after 18:00
+      const checkIn = new Date('2024-01-15T10:00:00Z');
+      const def = makeDefinition({
+        formula: 'booking_hours * 120 ELSE booking_hours * 100',
+        conditions: [
+          makeCondition({
+            id: 'c1',
+            comparator: '>=',
+            left: { kind: 'variable', key: 'check_out_time' },
+            right: { kind: 'literal', value: '18:00', valueType: 'time' },
+          })
+        ],
+      });
+      // 10 hours: check-out at 20:00 → surcharge branch
+      const surcharge = evaluatePriceRule(def, { bookingHours: 10, now: checkIn });
+      expect(surcharge.branch).toBe('then');
+      expect(surcharge.price).toBe(1200);
+
+      // 6 hours: check-out at 16:00 → normal branch
+      const normal = evaluatePriceRule(def, { bookingHours: 6, now: checkIn });
+      expect(normal.branch).toBe('else');
+      expect(normal.price).toBe(600);
+    });
+  });
+
   describe('conditions count limit', () => {
     it('throws when conditions exceed maximum', () => {
       const conditions: PriceRuleCondition[] = Array.from(

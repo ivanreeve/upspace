@@ -428,6 +428,10 @@ const buildExecutionVariableMap = (
   const defaultTime = secondsIntoDay(now);
   const defaultDayOfWeek = ((now.getDay() + 6) % 7);
 
+  const checkOut = new Date(now.getTime() + bookingHours * 3_600_000);
+  const defaultCheckOutDate = startOfUtcDay(checkOut).getTime();
+  const defaultCheckOutTime = secondsIntoDay(checkOut);
+
   definition.variables.forEach((variable) => {
     const override = overrides[variable.key];
 
@@ -448,6 +452,16 @@ const buildExecutionVariableMap = (
 
     if (variable.key === 'booking_months') {
       map[variable.key] = bookingMonths;
+      return;
+    }
+
+    if (variable.key === 'check_out_date') {
+      map[variable.key] = defaultCheckOutDate;
+      return;
+    }
+
+    if (variable.key === 'check_out_time') {
+      map[variable.key] = defaultCheckOutTime;
       return;
     }
 
