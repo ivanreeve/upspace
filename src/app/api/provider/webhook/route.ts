@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 
 import { finalizeSuccessfulBookingPayment } from '@/lib/bookings/payment-finalization';
+import { mapBookingRowToRecord } from '@/lib/bookings/serializer';
 import { sendRefundNotificationEmail } from '@/lib/email';
 import { applyXenditPayoutStatus, syncPartnerWalletFromRemoteAccountId } from '@/lib/financial/xendit-payouts';
 import { notifyBookingEvent } from '@/lib/notifications/booking';
@@ -616,6 +617,31 @@ async function handleXenditInvoiceWebhook(
         where: { id: bookingRow.id, },
         data: { status: 'cancelled', },
       });
+
+      const booking = mapBookingRowToRecord(bookingRow);
+      try {
+        await notifyBookingEvent(
+          {
+            bookingId: booking.id,
+            spaceId: booking.spaceId,
+            areaId: booking.areaId,
+            spaceName: booking.spaceName,
+            areaName: booking.areaName,
+            customerAuthId: booking.customerAuthId,
+            partnerAuthId: booking.partnerAuthId,
+          },
+          {
+            title: 'Booking expired',
+            body: `Your booking at ${booking.areaName} · ${booking.spaceName} has expired.`,
+          },
+          null
+        );
+      } catch (notifError) {
+        console.error('Failed to create expiration notification', {
+          bookingId: booking.id,
+          error: notifError,
+        });
+      }
     }
 
     await finalizePaymentEvent({

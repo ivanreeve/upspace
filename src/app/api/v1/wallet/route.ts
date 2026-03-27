@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import type { wallet, wallet_transaction } from '@prisma/client';
 
+import { reconcilePendingPayouts } from '@/lib/financial/on-demand-sync';
 import { getPartnerProviderAccountView } from '@/lib/financial/provider-accounts';
 import { prisma } from '@/lib/prisma';
 import { ensureWalletRow, resolveAuthenticatedUserForWallet } from '@/lib/wallet-server';
@@ -102,8 +103,14 @@ export async function GET(req: NextRequest) {
     }
 
     const {
- cursor, includeProvider, limit, type, status, 
+ cursor, includeProvider, limit, type, status,
 } = parsed.data;
+
+    // Reconcile any stuck payouts before fetching wallet data
+    reconcilePendingPayouts(auth.dbUser!.user_id).catch((error) => {
+      console.error('On-demand payout reconciliation failed', { error, });
+    });
+
     const walletRow = await ensureWalletRow(auth.dbUser!.user_id);
 
     const transactionWhere: Record<string, unknown> = { wallet_id: walletRow.id, };
