@@ -42,9 +42,14 @@ function SheetContent({
   className,
   children,
   side = 'right',
+  dismissible = true,
+  onEscapeKeyDown,
+  onInteractOutside,
+  onPointerDownOutside,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: 'top' | 'right' | 'bottom' | 'left'
+  dismissible?: boolean,
 }) {
   return (
     <SheetPortal>
@@ -63,13 +68,33 @@ function SheetContent({
           'data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom inset-x-0 bottom-0 h-auto border-t',
           className
         ) }
+        onEscapeKeyDown={ (event) => {
+          if (!dismissible) {
+            event.preventDefault();
+          }
+          onEscapeKeyDown?.(event);
+        } }
+        onInteractOutside={ (event) => {
+          if (!dismissible) {
+            event.preventDefault();
+          }
+          onInteractOutside?.(event);
+        } }
+        onPointerDownOutside={ (event) => {
+          if (!dismissible) {
+            event.preventDefault();
+          }
+          onPointerDownOutside?.(event);
+        } }
         { ...props }
       >
         { children }
-        <SheetPrimitive.Close className="py-2 px-3 bg-muted dark:bg-muted dark:text-muted-foreground text-primary ring-offset-transparent focus:ring-transparent data-[state=open]:bg-secondary absolute top-4 right-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none text-primary">
-          <FaArrowRight className="size-5" />
-          <span className="sr-only">Close</span>
-        </SheetPrimitive.Close>
+        { dismissible && (
+          <SheetPrimitive.Close className="py-2 px-3 bg-muted dark:bg-muted dark:text-muted-foreground text-primary ring-offset-transparent focus:ring-transparent data-[state=open]:bg-secondary absolute top-4 right-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none text-primary">
+            <FaArrowRight className="size-5" />
+            <span className="sr-only">Close</span>
+          </SheetPrimitive.Close>
+        ) }
       </SheetPrimitive.Content>
     </SheetPortal>
   );

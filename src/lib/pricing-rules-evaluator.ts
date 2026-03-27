@@ -243,20 +243,20 @@ const evaluateConditionSequence = (
     return true;
   }
 
-  let result = evaluateCondition(conditions[0], variables, definition);
-
-  for (let i = 1; i < conditions.length; i += 1) {
-    const condition = conditions[i];
-    const nextValue = evaluateCondition(condition, variables, definition);
-    const connector = condition.connector ?? 'and';
-    if (connector === 'and') {
-      result = result && nextValue;
-    } else {
-      result = result || nextValue;
+  // Group conditions into AND-groups separated by OR connectors.
+  // Within each group AND is applied; groups are combined with OR.
+  // This gives AND higher precedence than OR (standard boolean logic).
+  const andGroups: PriceRuleCondition[][] = [[]];
+  for (const condition of conditions) {
+    if (condition.connector === 'or' && andGroups[andGroups.length - 1].length > 0) {
+      andGroups.push([]);
     }
+    andGroups[andGroups.length - 1].push(condition);
   }
 
-  return result;
+  return andGroups.some((group) =>
+    group.every((condition) => evaluateCondition(condition, variables, definition))
+  );
 };
 
 const evaluateCondition = (
@@ -279,18 +279,6 @@ const resolveOperandValue = (
   definition: PriceRuleDefinition
 ): OperandComparable => {
   if (operand.kind === 'literal') {
-    const normalized = operand.value.trim();
-    const matchingVariable = definition.variables.find((variable) => variable.key === normalized);
-    if (matchingVariable) {
-      return resolveOperandValue(
-        {
-          kind: 'variable',
-          key: matchingVariable.key,
-        },
-        variables,
-        definition
-      );
-    }
     const value = parseComparableValue(operand);
     const kind = operand.valueType === 'text' ? 'text' : 'number';
     return {
@@ -584,7 +572,7 @@ const startOfUtcDay = (value: Date) => {
 };
 
 const secondsIntoDay = (value: Date) => {
-  return value.getHours() * 3600 + value.getMinutes() * 60 + value.getSeconds();
+  return value.getUTCHours() * 3600 + value.getUTCMinutes() * 60 + value.getUTCSeconds();
 };
 
 export const FORMULA_MAX_LENGTH = 1024;

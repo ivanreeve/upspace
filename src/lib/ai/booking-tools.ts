@@ -146,7 +146,15 @@ export async function getBookingPricing(input: unknown) {
   }
 
   try {
-    const priceResult = evaluatePriceRule(area.price_rule.definition as PriceRuleDefinition, { bookingHours, });
+    const areaMaxCapacity = area.max_capacity ? Number(area.max_capacity) : null;
+    const priceResult = evaluatePriceRule(area.price_rule.definition as PriceRuleDefinition, {
+      bookingHours,
+      now: start_date,
+      variableOverrides: {
+        guest_count: 1,
+        ...(areaMaxCapacity !== null ? { area_max_capacity: areaMaxCapacity, } : {}),
+      },
+    });
 
     if (priceResult.price === null) {
       return { error: 'Could not calculate price for this booking duration', };

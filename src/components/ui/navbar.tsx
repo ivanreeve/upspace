@@ -163,7 +163,7 @@ function AccountMenu({
           onSelect={ () => {
             onLogout();
           } }
-          className="mt-2 rounded-sm text-sm font-medium text-destructive focus-visible:text-destructive data-[highlighted]:bg-[oklch(0.9647_0.0345_19.81)] focus-visible:bg-[oklch(0.9647_0.0345_19.81)] dark:data-[highlighted]:bg-[oklch(0.24_0.04_19.81)] dark:focus-visible:bg-[oklch(0.24_0.04_19.81)] data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive hover:bg-[oklch(0.9647_0.0345_19.81)] dark:hover:bg-[oklch(0.24_0.04_19.81)] hover:text-destructive hover:[&_svg]:text-destructive"
+          className="mt-2 rounded-sm text-sm font-medium text-destructive focus-visible:bg-[oklch(0.9647_0.0345_19.81)] focus-visible:text-destructive focus-visible:[&_svg]:text-destructive dark:focus-visible:bg-[oklch(0.24_0.04_19.81)] dark:focus-visible:text-destructive dark:focus-visible:[&_svg]:text-destructive data-[highlighted]:bg-[oklch(0.9647_0.0345_19.81)] data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive dark:data-[highlighted]:bg-[oklch(0.24_0.04_19.81)] dark:data-[highlighted]:text-destructive dark:data-[highlighted]:[&_svg]:text-destructive hover:bg-[oklch(0.9647_0.0345_19.81)] dark:hover:bg-[oklch(0.24_0.04_19.81)] hover:text-destructive hover:[&_svg]:text-destructive"
         >
           <FiLogOut className="size-4 text-destructive" aria-hidden="true" />
           Logout

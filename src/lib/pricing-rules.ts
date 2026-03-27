@@ -32,6 +32,7 @@ export type PriceRuleVariable = {
   type: PriceRuleVariableType;
   initialValue?: string;
   userInput?: boolean;
+  displayName?: string;
 };
 
 export type PriceRuleDefinition = {
@@ -85,6 +86,7 @@ export const priceRuleDefinitionSchema = z.object({
       type: z.enum(['text', 'number', 'date', 'time']),
       initialValue: z.string().optional(),
       userInput: z.boolean().optional(),
+      displayName: z.string().optional(),
     })
   ),
   conditions: z.array(priceRuleConditionSchema).max(FORMULA_MAX_CONDITIONS, `A rule can have at most ${FORMULA_MAX_CONDITIONS} conditions.`),
@@ -156,6 +158,16 @@ export const FORMULA_ALLOWED_BUILTIN_KEYS = [
   ...BOOKING_DURATION_VARIABLE_KEYS,
   'guest_count'
 ] as const;
+
+export const BUILT_IN_VARIABLE_KEYS = new Set([
+  ...BOOKING_DURATION_VARIABLE_KEYS,
+  'guest_count',
+  'date',
+  'time',
+  'day_of_week',
+  'area_max_capacity',
+  'area_min_capacity'
+]);
 
 export const BOOKING_DURATION_VARIABLE_REFERENCE_TEXT =
   'booking_hours, booking_days, booking_weeks, booking_months, or guest_count';

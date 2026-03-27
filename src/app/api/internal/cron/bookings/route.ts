@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { countActiveBookingsOverlap } from '@/lib/bookings/occupancy';
 import { mapBookingRowToRecord } from '@/lib/bookings/serializer';
+import { hasValidCronSecret } from '@/lib/cron-auth';
 import { notifyBookingEvent } from '@/lib/notifications/booking';
 import { prisma } from '@/lib/prisma';
 
@@ -62,11 +63,8 @@ async function createConfirmationNotifications(bookingId: string) {
 }
 
 export async function GET(request: Request) {
-  if (CRON_SECRET) {
-    const provided = request.headers.get('x-cron-secret');
-    if (provided !== CRON_SECRET) {
-      return unauthorizedResponse;
-    }
+  if (!hasValidCronSecret(request, CRON_SECRET)) {
+    return unauthorizedResponse;
   }
 
   const now = Date.now();

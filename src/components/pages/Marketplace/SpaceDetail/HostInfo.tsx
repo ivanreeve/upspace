@@ -51,10 +51,8 @@ export default function HostInfo({
         disabled={ isMessagingDisabled }
         aria-label="Message host"
         className="inline-flex items-center justify-center gap-2 
-                  shrink-0 rounded-xl
+                  shrink-0 rounded-md
                   px-5 py-3 text-sm font-medium
-                  bg-transparent border border-[#034C53] text-[#034C53] 
-                  hover:bg-[#034C53] hover:text-white
                   transition-colors"
       >
         <FiMessageSquare className="size-4" aria-hidden="true" />

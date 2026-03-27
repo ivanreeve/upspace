@@ -298,7 +298,7 @@ function SidebarFooterContent({
   const sidebarAccountMenuItemClassName =
     'data-[highlighted]:bg-[oklch(0.955_0.02_204.6929)] focus-visible:bg-[oklch(0.955_0.02_204.6929)] dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] data-[highlighted]:text-primary data-[highlighted]:[&_svg]:text-primary dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary hover:!text-primary hover:[&_svg]:!text-primary dark:hover:!text-secondary dark:hover:[&_svg]:!text-secondary';
   const sidebarLogoutMenuItemClassName =
-    'mt-2 text-destructive focus-visible:text-destructive data-[highlighted]:bg-[oklch(0.9647_0.0345_19.81)] focus-visible:bg-[oklch(0.9647_0.0345_19.81)] dark:data-[highlighted]:bg-[oklch(0.24_0.04_19.81)] dark:focus-visible:bg-[oklch(0.24_0.04_19.81)] data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive hover:bg-[oklch(0.9647_0.0345_19.81)] dark:hover:bg-[oklch(0.24_0.04_19.81)] hover:text-destructive hover:[&_svg]:text-destructive';
+    'mt-2 text-destructive focus-visible:bg-[oklch(0.9647_0.0345_19.81)] focus-visible:text-destructive focus-visible:[&_svg]:text-destructive dark:focus-visible:bg-[oklch(0.24_0.04_19.81)] dark:focus-visible:text-destructive dark:focus-visible:[&_svg]:text-destructive data-[highlighted]:bg-[oklch(0.9647_0.0345_19.81)] data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive dark:data-[highlighted]:bg-[oklch(0.24_0.04_19.81)] dark:data-[highlighted]:text-destructive dark:data-[highlighted]:[&_svg]:text-destructive hover:bg-[oklch(0.9647_0.0345_19.81)] dark:hover:bg-[oklch(0.24_0.04_19.81)] hover:text-destructive hover:[&_svg]:text-destructive';
 
   if (isMobile) {
     return null;
@@ -793,7 +793,7 @@ function MobileTopNav({
                 ) }
                 <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
-                  className="mt-2 text-destructive focus-visible:text-destructive data-[highlighted]:bg-[oklch(0.9647_0.0345_19.81)] focus-visible:bg-[oklch(0.9647_0.0345_19.81)] dark:data-[highlighted]:bg-[oklch(0.24_0.04_19.81)] dark:focus-visible:bg-[oklch(0.24_0.04_19.81)] data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive hover:bg-[oklch(0.9647_0.0345_19.81)] dark:hover:bg-[oklch(0.24_0.04_19.81)] hover:text-destructive hover:[&_svg]:text-destructive"
+                  className="mt-2 text-destructive focus-visible:bg-[oklch(0.9647_0.0345_19.81)] focus-visible:text-destructive focus-visible:[&_svg]:text-destructive dark:focus-visible:bg-[oklch(0.24_0.04_19.81)] dark:focus-visible:text-destructive dark:focus-visible:[&_svg]:text-destructive data-[highlighted]:bg-[oklch(0.9647_0.0345_19.81)] data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive dark:data-[highlighted]:bg-[oklch(0.24_0.04_19.81)] dark:data-[highlighted]:text-destructive dark:data-[highlighted]:[&_svg]:text-destructive hover:bg-[oklch(0.9647_0.0345_19.81)] dark:hover:bg-[oklch(0.24_0.04_19.81)] hover:text-destructive hover:[&_svg]:text-destructive"
                   onSelect={ () => {
                     void onLogout();
                   } }

@@ -28,7 +28,13 @@ pnpm install
 
 ## 3. Environment Configuration
 
-Create a `.env` file in the root directory. You can start by copying the example if available, or use the template below:
+Create a `.env` file in the root directory. The fastest path is:
+
+```bash
+cp .env.example .env
+```
+
+At minimum, provide the required values below:
 
 ```bash
 # Database (Prisma)
@@ -39,19 +45,52 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5432/upspace?schema=publi
 NEXT_PUBLIC_SUPABASE_URL="your_supabase_project_url"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="your_supabase_anon_key"
 
-# Google Maps (Required for address autocomplete)
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="your_google_maps_api_key"
+# App
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
 
-# Payment Gateway (PayMongo)
-PAYMONGO_SECRET_KEY="your_paymongo_secret_key"
-PAYMONGO_WEBHOOK_SECRET="your_paymongo_webhook_secret"
-PAYMONGO_ALLOWED_REDIRECT_ORIGINS="https://your-app.example.com,http://localhost:3000"
+# Xendit
+XENDIT_SECRET_KEY="xnd_development_your_xendit_secret_key"
+XENDIT_WEBHOOK_VERIFICATION_TOKEN="your_xendit_webhook_verification_token"
+FINANCIAL_DATA_ENCRYPTION_KEY="replace_with_a_long_random_secret"
+
+# Cron protection
+CRON_SECRET="replace_with_a_long_random_secret"
 ```
 
-Configure your PayMongo webhook endpoint to:
+Configure your Xendit webhook endpoint to:
 
 ```text
-https://<your-domain>/api/paymongo/webhook
+https://<your-domain>/api/provider/webhook
+```
+
+If you need the rest of the optional integrations, use [`.env.example`](/home/ivanreeve/projects/upspace/.env.example).
+
+### Vercel cron jobs
+
+The repository already includes [vercel.json](/home/ivanreeve/projects/upspace/vercel.json) with both scheduled routes configured:
+
+- `/api/internal/cron/provider-sync` at `0 3 * * *`
+- `/api/internal/cron/bookings` at `*/15 * * * *`
+
+To make them work:
+
+1. Set `CRON_SECRET` in your Vercel project environment variables.
+2. Deploy to `production`.
+3. Keep the route paths unchanged unless you also update `vercel.json`.
+
+Important note:
+
+- `provider-sync` daily works fine on Vercel Hobby.
+- `bookings` every 15 minutes requires a plan that supports sub-daily cron schedules. If you stay on Hobby, use an external scheduler to call `/api/internal/cron/bookings` with `Authorization: Bearer <CRON_SECRET>`.
+
+Local/manual verification:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  http://localhost:3000/api/internal/cron/provider-sync
+
+curl -H "Authorization: Bearer $CRON_SECRET" \
+  http://localhost:3000/api/internal/cron/bookings
 ```
 
 

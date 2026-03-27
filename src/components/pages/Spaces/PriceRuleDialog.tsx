@@ -55,6 +55,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import {
   BOOKING_DURATION_VARIABLE_REFERENCE_TEXT,
+  BUILT_IN_VARIABLE_KEYS,
   FORMULA_ALLOWED_BUILTIN_KEYS,
   PRICE_RULE_COMPARATORS,
   PRICE_RULE_CONNECTORS,
@@ -251,7 +252,7 @@ function DatePickerInput({
     : 'Pick a date';
 
   return (
-    <Popover modal={ false }>
+    <Popover modal>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -275,7 +276,7 @@ function DatePickerInput({
           />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
+      <PopoverContent className="z-[70] w-auto p-0">
         <Calendar
           mode="single"
           selected={ selectedDate }
@@ -452,8 +453,8 @@ const buildConditionExpressionFromDefinition = (
     return conditionText;
   }
 
-  const elseSeparator = ' ELSE ';
-  const elseIndex = trimmedFormula.indexOf(elseSeparator);
+  const elseSeparatorLength = 6; // ' else '.length
+  const elseIndex = trimmedFormula.toLowerCase().indexOf(' else ');
 
   if (elseIndex === -1) {
     return `IF ${conditionText} THEN ${trimmedFormula}`;
@@ -461,7 +462,7 @@ const buildConditionExpressionFromDefinition = (
 
   const thenFormula = trimmedFormula.slice(0, elseIndex).trim();
   const elseFormula = trimmedFormula
-    .slice(elseIndex + elseSeparator.length)
+    .slice(elseIndex + elseSeparatorLength)
     .trim();
 
   if (!thenFormula) {
@@ -1885,7 +1886,7 @@ const pricingRuleTemplates: Array<{
             },
           }
         ],
-        formula: 'base_rate * weekend_multiplier ELSE base_rate',
+        formula: 'base_rate * booking_hours * weekend_multiplier ELSE base_rate * booking_hours',
       },
     }),
   },
@@ -1956,6 +1957,8 @@ export type PriceRuleFormState = {
   setNewVariableValue: Dispatch<SetStateAction<string>>;
   newVariableUserInput: boolean;
   setNewVariableUserInput: Dispatch<SetStateAction<boolean>>;
+  newVariableDisplayName: string;
+  setNewVariableDisplayName: Dispatch<SetStateAction<string>>;
   handleAddVariable: () => void;
   removeVariable: (key: string) => void;
   usedVariables: Set<string>;
@@ -1970,11 +1973,41 @@ export type PriceRuleFormState = {
   ) => void;
 };
 
+function computeInitialFormState(initialValues?: PriceRuleFormValues) {
+  if (initialValues) {
+    const clonedDefinition = cloneDefinition(initialValues.definition);
+    const derivedConfig = deriveGuidedConfigFromDefinition(clonedDefinition);
+    const supportsGuided = definitionSupportsGuidedBuilder(clonedDefinition);
+    return {
+      values: {
+        ...initialValues,
+        definition: clonedDefinition,
+      } as PriceRuleFormValues,
+      conditionExpression: buildConditionExpressionFromDefinition(clonedDefinition),
+      guidedConfig: derivedConfig,
+      canUseGuidedBuilder: supportsGuided,
+      builderMode: (supportsGuided ? 'guided' : 'advanced') as 'guided' | 'advanced',
+    };
+  }
+  const defaultConfig = createDefaultGuidedConfig();
+  const defaultDefinition = buildDefinitionFromGuidedConfig(defaultConfig);
+  return {
+    values: {
+      ...createDefaultRule(),
+      definition: defaultDefinition,
+    } as PriceRuleFormValues,
+    conditionExpression: buildConditionExpressionFromDefinition(defaultDefinition),
+    guidedConfig: defaultConfig,
+    canUseGuidedBuilder: true,
+    builderMode: 'guided' as const,
+  };
+}
+
 export function usePriceRuleFormState(
   initialValues?: PriceRuleFormValues,
   resetTrigger?: unknown
 ): PriceRuleFormState {
-  const [values, setValues] = useState<PriceRuleFormValues>(createDefaultRule);
+  const [values, setValues] = useState<PriceRuleFormValues>(() => computeInitialFormState(initialValues).values);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [newVariableLabel, setNewVariableLabel] = useState('');
   const [newVariableType, setNewVariableType] = useState<
@@ -1982,13 +2015,18 @@ export function usePriceRuleFormState(
   >('text');
   const [newVariableValue, setNewVariableValue] = useState('');
   const [newVariableUserInput, setNewVariableUserInput] = useState(false);
-  const [conditionExpression, setConditionExpression] = useState('');
+  const [newVariableDisplayName, setNewVariableDisplayName] = useState('');
+  const [conditionExpression, setConditionExpression] = useState(
+    () => computeInitialFormState(initialValues).conditionExpression
+  );
   const [conditionError, setConditionError] = useState<string | null>(null);
   const [builderMode, setBuilderModeState] =
-    useState<'guided' | 'advanced'>('guided');
-  const [canUseGuidedBuilder, setCanUseGuidedBuilder] = useState(true);
+    useState<'guided' | 'advanced'>(() => computeInitialFormState(initialValues).builderMode);
+  const [canUseGuidedBuilder, setCanUseGuidedBuilder] = useState(
+    () => computeInitialFormState(initialValues).canUseGuidedBuilder
+  );
   const [guidedConfig, setGuidedConfig] =
-    useState<GuidedPriceRuleConfig>(createDefaultGuidedConfig);
+    useState<GuidedPriceRuleConfig>(() => computeInitialFormState(initialValues).guidedConfig);
   const guidedConfigRef = useRef(guidedConfig);
   useEffect(() => {
     guidedConfigRef.current = guidedConfig;
@@ -1999,6 +2037,7 @@ export function usePriceRuleFormState(
     setNewVariableType('text');
     setNewVariableValue('');
     setNewVariableUserInput(false);
+    setNewVariableDisplayName('');
     setConditionError(null);
   }, []);
   const replaceDefinition = useCallback(
@@ -2144,6 +2183,9 @@ export function usePriceRuleFormState(
             ? undefined
             : newVariableValue || undefined,
           userInput: userInputAllowed || undefined,
+          displayName: userInputAllowed && newVariableDisplayName.trim()
+            ? newVariableDisplayName.trim()
+            : undefined,
         }
       ],
     }));
@@ -2152,6 +2194,7 @@ export function usePriceRuleFormState(
     setNewVariableType('text');
     setNewVariableValue('');
     setNewVariableUserInput(false);
+    setNewVariableDisplayName('');
   };
 
   const usedVariables = useMemo(() => {
@@ -2319,6 +2362,8 @@ export function usePriceRuleFormState(
     setNewVariableValue,
     newVariableUserInput,
     setNewVariableUserInput,
+    newVariableDisplayName,
+    setNewVariableDisplayName,
     handleAddVariable,
     usedVariables,
     removeVariable,
@@ -2339,6 +2384,8 @@ type RuleLanguageEditorProps = {
   setNewVariableValue: Dispatch<SetStateAction<string>>;
   newVariableUserInput: boolean;
   setNewVariableUserInput: Dispatch<SetStateAction<boolean>>;
+  newVariableDisplayName: string;
+  setNewVariableDisplayName: Dispatch<SetStateAction<string>>;
   handleAddVariable: () => void;
   usedVariables: Set<string>;
   removeVariable: (key: string) => void;
@@ -2967,34 +3014,62 @@ function useRuleLanguageEditorController({
       });
       return;
     }
-    try {
-      const condition = splitConditionAndFormula(trimmed).condition;
-      const parsedConditions = parseConditionExpression(condition, definition);
-      const simulatedConditions = [
-        ...definition.conditions,
-        ...parsedConditions
-      ];
-      const collisionError = detectConditionCollisions(
-        simulatedConditions,
-        definition
-      );
-      if (collisionError) {
+    const lower = trimmed.toLowerCase();
+    if (!lower.startsWith('if ')) {
+      try {
+        const variableMap = createVariableValueMap(definition);
+        validatePriceExpression(trimmed, 'Formula', variableMap, definition);
+      } catch (error) {
         dispatchEditor({
           type: 'setExpressionError',
-          value: collisionError,
+          value: error instanceof Error ? error.message : 'Invalid formula.',
         });
         return;
       }
-    } catch (error) {
-      dispatchEditor({
-        type: 'setExpressionError',
-        value: error instanceof Error ? error.message : 'Invalid condition.',
-      });
-      return;
+      handleConditionExpressionChange(trimmed);
+    } else {
+      try {
+        const {
+ condition, thenFormula, elseFormula, 
+} = splitConditionAndFormula(trimmed);
+        if (!condition) {
+          throw new Error('Condition is missing operands.');
+        }
+        if (!thenFormula) {
+          throw new Error('Add a price expression after THEN.');
+        }
+        const variableMap = createVariableValueMap(definition);
+        validatePriceExpression(thenFormula, 'THEN', variableMap, definition);
+        if (elseFormula) {
+          validatePriceExpression(elseFormula, 'ELSE', variableMap, definition);
+        }
+        const parsedConditions = parseConditionExpression(condition, definition);
+        const simulatedConditions = [
+          ...definition.conditions,
+          ...parsedConditions
+        ];
+        const collisionError = detectConditionCollisions(
+          simulatedConditions,
+          definition
+        );
+        if (collisionError) {
+          dispatchEditor({
+            type: 'setExpressionError',
+            value: collisionError,
+          });
+          return;
+        }
+      } catch (error) {
+        dispatchEditor({
+          type: 'setExpressionError',
+          value: error instanceof Error ? error.message : 'Invalid condition.',
+        });
+        return;
+      }
+      const baseExpression = conditionExpression.trim();
+      const separator = baseExpression ? ' AND ' : '';
+      handleConditionExpressionChange(`${baseExpression}${separator}${trimmed}`);
     }
-    const baseExpression = conditionExpression.trim();
-    const separator = baseExpression ? ' AND ' : '';
-    handleConditionExpressionChange(`${baseExpression}${separator}${trimmed}`);
     dispatchEditor({ type: 'resetComposer', });
   }, [
     conditionExpression,
@@ -3099,6 +3174,8 @@ type RuleLanguageVariablesSectionProps = Pick<
   | 'setNewVariableValue'
   | 'newVariableUserInput'
   | 'setNewVariableUserInput'
+  | 'newVariableDisplayName'
+  | 'setNewVariableDisplayName'
   | 'handleAddVariable'
   | 'usedVariables'
   | 'removeVariable'
@@ -3114,6 +3191,8 @@ function RuleLanguageVariablesSection({
   setNewVariableValue,
   newVariableUserInput,
   setNewVariableUserInput,
+  newVariableDisplayName,
+  setNewVariableDisplayName,
   handleAddVariable,
   usedVariables,
   removeVariable,
@@ -3140,6 +3219,11 @@ function RuleLanguageVariablesSection({
                 <span className="text-xs">
                   { variable.label.toLowerCase() }
                 </span>
+                { variable.displayName ? (
+                  <span className="text-[9px] text-muted-foreground">
+                    — { variable.displayName }
+                  </span>
+                ) : null }
               </div>
               { variable.userInput ? (
                 <span className="text-[9px] font-semibold text-muted-foreground">
@@ -3195,25 +3279,25 @@ function RuleLanguageVariablesSection({
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="text">
+            <SelectItem value="text" className="data-[highlighted]:!bg-[oklch(0.955_0.02_204.6929)] data-[highlighted]:!text-primary data-[highlighted]:[&_svg]:!text-primary dark:data-[highlighted]:!bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:!text-secondary dark:data-[highlighted]:[&_svg]:!text-secondary">
               <div className="flex items-center gap-2">
                 <TypeIcon type="text" />
                 Text
               </div>
             </SelectItem>
-            <SelectItem value="number">
+            <SelectItem value="number" className="data-[highlighted]:!bg-[oklch(0.955_0.02_204.6929)] data-[highlighted]:!text-primary data-[highlighted]:[&_svg]:!text-primary dark:data-[highlighted]:!bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:!text-secondary dark:data-[highlighted]:[&_svg]:!text-secondary">
               <div className="flex items-center gap-2">
                 <TypeIcon type="number" />
                 Number
               </div>
             </SelectItem>
-            <SelectItem value="date">
+            <SelectItem value="date" className="data-[highlighted]:!bg-[oklch(0.955_0.02_204.6929)] data-[highlighted]:!text-primary data-[highlighted]:[&_svg]:!text-primary dark:data-[highlighted]:!bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:!text-secondary dark:data-[highlighted]:[&_svg]:!text-secondary">
               <div className="flex items-center gap-2">
                 <TypeIcon type="date" />
                 Date
               </div>
             </SelectItem>
-            <SelectItem value="time">
+            <SelectItem value="time" className="data-[highlighted]:!bg-[oklch(0.955_0.02_204.6929)] data-[highlighted]:!text-primary data-[highlighted]:[&_svg]:!text-primary dark:data-[highlighted]:!bg-[oklch(0.24_0.02_204.6929)] dark:data-[highlighted]:!text-secondary dark:data-[highlighted]:[&_svg]:!text-secondary">
               <div className="flex items-center gap-2">
                 <TypeIcon type="time" />
                 Time
@@ -3326,6 +3410,20 @@ function RuleLanguageVariablesSection({
               : '' }
           </label>
         </div>
+        { newVariableUserInput &&
+          newVariableType !== 'date' &&
+          newVariableType !== 'time' && (
+          <div className="flex items-center gap-2 whitespace-nowrap">
+            <Input
+              id="variable-display-name"
+              placeholder="Display name"
+              value={ newVariableDisplayName }
+              onChange={ (e) => setNewVariableDisplayName(e.target.value) }
+              className="h-7 text-xs bg-white"
+              aria-label="Variable display name"
+            />
+          </div>
+        ) }
       </div>
     </div>
   );
@@ -3390,7 +3488,7 @@ function RuleLanguageConditionsSection({
           <div className="relative">
             <div
               aria-hidden="true"
-              className={ `pointer-events-none absolute inset-0 z-0 flex items-center overflow-hidden rounded-md px-3 py-1 text-foreground/70 ${CONDITION_FIELD_TEXT_STYLES}` }
+              className={ `pointer-events-none absolute inset-0 z-0 flex items-center overflow-hidden rounded-md bg-white dark:bg-transparent px-3 py-1 text-foreground/70 ${CONDITION_FIELD_TEXT_STYLES}` }
             >
               { isConditionFieldEmpty ? (
                 <span className="m-0 w-full whitespace-pre text-muted-foreground">
@@ -3588,6 +3686,8 @@ function RuleLanguageEditor({
   setNewVariableValue,
   newVariableUserInput,
   setNewVariableUserInput,
+  newVariableDisplayName,
+  setNewVariableDisplayName,
   handleAddVariable,
   usedVariables,
   removeVariable,
@@ -3602,7 +3702,7 @@ function RuleLanguageEditor({
   });
 
   return (
-    <section className="space-y-4 rounded-xl border border-border bg-background p-4">
+    <section className="space-y-4 rounded-xl border border-border/80 bg-muted/20 p-4">
       <div className="flex flex-col gap-2">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
@@ -3628,6 +3728,8 @@ function RuleLanguageEditor({
           setNewVariableValue={ setNewVariableValue }
           newVariableUserInput={ newVariableUserInput }
           setNewVariableUserInput={ setNewVariableUserInput }
+          newVariableDisplayName={ newVariableDisplayName }
+          setNewVariableDisplayName={ setNewVariableDisplayName }
           handleAddVariable={ handleAddVariable }
           usedVariables={ usedVariables }
           removeVariable={ removeVariable }
@@ -3942,6 +4044,14 @@ function PriceRulePreviewCard({ definition, }: PriceRulePreviewCardProps) {
   const [bookingHours, setBookingHours] = useState('2');
   const [guestCount, setGuestCount] = useState('1');
   const [startAt, setStartAt] = useState('');
+  const [customVarValues, setCustomVarValues] = useState<Record<string, string>>({});
+
+  const customVariables = useMemo(
+    () => definition.variables.filter(
+      (v) => !BUILT_IN_VARIABLE_KEYS.has(v.key) && v.userInput
+    ),
+    [definition.variables]
+  );
 
   const previewDate = useMemo(() => {
     if (!startAt) {
@@ -3958,15 +4068,22 @@ function PriceRulePreviewCard({ definition, }: PriceRulePreviewCardProps) {
     try {
       const hours = parsePositiveNumberOrFallback(bookingHours, 1);
       const guests = parsePositiveNumberOrFallback(guestCount, 1);
+      const overrides: Record<string, string | number> = { guest_count: guests, };
+      for (const v of customVariables) {
+        const raw = customVarValues[v.key] ?? v.initialValue ?? '';
+        if (raw !== '') {
+          overrides[v.key] = v.type === 'number' ? Number(raw) : raw;
+        }
+      }
       return evaluatePriceRule(definition, {
         bookingHours: hours,
         now: previewDate,
-        variableOverrides: { guest_count: guests, },
+        variableOverrides: overrides,
       });
     } catch {
       return null;
     }
-  }, [bookingHours, definition, guestCount, previewDate]);
+  }, [bookingHours, customVarValues, customVariables, definition, guestCount, previewDate]);
 
   const previewLabel =
     evaluation && evaluation.price !== null
@@ -4034,6 +4151,28 @@ function PriceRulePreviewCard({ definition, }: PriceRulePreviewCardProps) {
             aria-label="Preview start date"
           />
         </div>
+        { customVariables.map((variable) => {
+          const inputType = variable.type === 'number' ? 'number'
+            : variable.type === 'date' ? 'date'
+            : variable.type === 'time' ? 'time'
+            : 'text';
+          const inputId = `preview-custom-var-${variable.key}`;
+          return (
+            <div key={ variable.key } className="space-y-1">
+              <Label htmlFor={ inputId }>{ variable.displayName || variable.label || variable.key }</Label>
+              <Input
+                id={ inputId }
+                type={ inputType }
+                value={ customVarValues[variable.key] ?? variable.initialValue ?? '' }
+                onChange={ (event) => setCustomVarValues((prev) => ({
+                  ...prev,
+                  [variable.key]: event.target.value,
+                })) }
+                aria-label={ variable.displayName || variable.label || variable.key }
+              />
+            </div>
+          );
+        }) }
       </div>
 
       <div className="mt-4 rounded-lg border border-border/80 bg-muted/20 p-3">
@@ -4081,6 +4220,8 @@ export function PriceRuleFormShell({
   setNewVariableValue,
   newVariableUserInput,
   setNewVariableUserInput,
+  newVariableDisplayName,
+  setNewVariableDisplayName,
   handleAddVariable,
   removeVariable,
   usedVariables,
@@ -4266,6 +4407,8 @@ export function PriceRuleFormShell({
                 setNewVariableValue={ setNewVariableValue }
                 newVariableUserInput={ newVariableUserInput }
                 setNewVariableUserInput={ setNewVariableUserInput }
+                newVariableDisplayName={ newVariableDisplayName }
+                setNewVariableDisplayName={ setNewVariableDisplayName }
                 handleAddVariable={ handleAddVariable }
                 removeVariable={ removeVariable }
                 usedVariables={ usedVariables }
@@ -4299,16 +4442,13 @@ export function PriceRuleFormShell({
             Boolean(conditionError) ||
             !conditionExpression.trim()
           }
+          loading={ isSubmitting }
+          loadingText="Saving…"
           className="inline-flex items-center justify-center gap-2"
         >
-          { isSubmitting && (
-            <CgSpinner className="size-4 animate-spin" aria-hidden="true" />
-          ) }
-          { isSubmitting
-            ? 'Saving…'
-            : mode === 'create'
-              ? 'Save rule'
-              : 'Update rule' }
+          { mode === 'create'
+            ? 'Save rule'
+            : 'Update rule' }
         </Button>
       </div>
     </div>
@@ -4336,7 +4476,10 @@ export function PriceRuleDialog({
 
   return (
     <Dialog open={ open } onOpenChange={ onOpenChange }>
-      <DialogContent className="h-screen w-screen max-w-none p-0 sm:max-w-none">
+      <DialogContent
+        className="h-screen w-screen max-w-none p-0 sm:max-w-none"
+        dismissible={ !isSubmitting }
+      >
         <div className="flex h-full flex-col">
           <DialogHeader className="px-6 pt-6">
             <DialogTitle>

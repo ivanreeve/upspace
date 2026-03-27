@@ -2,14 +2,35 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import type { wallet, wallet_transaction } from '@prisma/client';
 
+import { getPartnerProviderAccountView } from '@/lib/financial/provider-accounts';
 import { prisma } from '@/lib/prisma';
 import { ensureWalletRow, resolveAuthenticatedUserForWallet } from '@/lib/wallet-server';
+
+const booleanQueryParamSchema = z.preprocess((value) => {
+  if (value === undefined) {
+    return true;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === '1' || normalized === 'true') {
+      return true;
+    }
+
+    if (normalized === '0' || normalized === 'false') {
+      return false;
+    }
+  }
+
+  return value;
+}, z.boolean());
 
 const walletQuerySchema = z.object({
   cursor: z.string().uuid().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
   type: z.enum(['cash_in', 'charge', 'refund', 'payout']).optional(),
   status: z.enum(['pending', 'succeeded', 'failed']).optional(),
+  includeProvider: booleanQueryParamSchema,
 });
 
 function mapWallet(walletRow: wallet) {
@@ -20,6 +41,17 @@ function mapWallet(walletRow: wallet) {
     createdAt: walletRow.created_at.toISOString(),
     updatedAt: (walletRow.updated_at ?? walletRow.created_at).toISOString(),
   };
+}
+
+function sanitizeWalletTransactionMetadata(metadata: wallet_transaction['metadata']) {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return metadata ?? null;
+  }
+
+  const sanitized = { ...metadata, };
+  delete sanitized.payout_destination_encrypted;
+
+  return sanitized;
 }
 
 function mapWalletTransaction(
@@ -48,7 +80,7 @@ function mapWalletTransaction(
       }
       : null,
     externalReference: transaction.external_reference,
-    metadata: transaction.metadata ?? null,
+    metadata: sanitizeWalletTransactionMetadata(transaction.metadata),
     createdAt: transaction.created_at.toISOString(),
   };
 }
@@ -70,7 +102,7 @@ export async function GET(req: NextRequest) {
     }
 
     const {
- cursor, limit, type, status, 
+ cursor, includeProvider, limit, type, status, 
 } = parsed.data;
     const walletRow = await ensureWalletRow(auth.dbUser!.user_id);
 
@@ -78,7 +110,10 @@ export async function GET(req: NextRequest) {
     if (type) transactionWhere.type = type;
     if (status) transactionWhere.status = status;
 
-    const [transactions, chargeAgg, refundAgg, filteredCount] = await Promise.all([
+    const [providerAccount, transactions, chargeAgg, refundAgg, pendingPayoutAgg, paidOutAgg, filteredCount] = await Promise.all([
+      includeProvider
+        ? getPartnerProviderAccountView({ partnerUserId: auth.dbUser!.user_id, })
+        : Promise.resolve(null),
       prisma.wallet_transaction.findMany({
         where: transactionWhere,
         orderBy: { created_at: 'desc', },
@@ -102,12 +137,31 @@ status: 'succeeded',
         where: {
  wallet_id: walletRow.id,
 type: 'refund',
-status: 'succeeded', 
+status: 'succeeded',
 },
+        _sum: { amount_minor: true, },
+      }),
+      prisma.wallet_transaction.aggregate({
+        where: {
+          wallet_id: walletRow.id,
+          type: 'payout',
+          status: 'pending',
+        },
+        _sum: { amount_minor: true, },
+      }),
+      prisma.wallet_transaction.aggregate({
+        where: {
+          wallet_id: walletRow.id,
+          type: 'payout',
+          status: 'succeeded',
+        },
         _sum: { amount_minor: true, },
       }),
       prisma.wallet_transaction.count({ where: transactionWhere, })
     ]);
+    const resolvedWalletRow = includeProvider
+      ? await prisma.wallet.findUnique({ where: { id: walletRow.id, }, }) ?? walletRow
+      : walletRow;
 
     const bookingIds = Array.from(
       new Set(
@@ -143,7 +197,8 @@ area_name: row.area_name,
     const nextCursor = hasMore ? transactions[transactions.length - 1]?.id : undefined;
 
     return NextResponse.json({
-      wallet: mapWallet(walletRow),
+      wallet: mapWallet(resolvedWalletRow),
+      providerAccount,
       transactions: transactions.map((transaction) =>
         mapWalletTransaction(transaction, bookingLookup)
       ),
@@ -154,6 +209,8 @@ nextCursor,
       stats: {
         totalEarnedMinor: (chargeAgg._sum.amount_minor ?? BigInt(0)).toString(),
         totalRefundedMinor: (refundAgg._sum.amount_minor ?? BigInt(0)).toString(),
+        pendingPayoutMinor: (pendingPayoutAgg._sum.amount_minor ?? BigInt(0)).toString(),
+        totalPaidOutMinor: (paidOutAgg._sum.amount_minor ?? BigInt(0)).toString(),
         transactionCount: filteredCount,
       },
     });

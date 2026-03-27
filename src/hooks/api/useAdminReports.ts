@@ -59,6 +59,15 @@ export type AdminReportRiskSpace = {
   cancellationRate: number;
 };
 
+export type AdminReportProviderHealth = {
+  configuredAccounts: number;
+  liveAccounts: number;
+  staleAccounts: number;
+  failedSnapshotCount: number;
+  pendingProviderPayouts: number;
+  pendingRefunds: number;
+};
+
 export type AdminReportPayload = {
   range: {
     days: number;
@@ -75,6 +84,7 @@ export type AdminReportPayload = {
     averageRating: AdminReportRatingTrend;
   };
   queueHealth: AdminReportQueueHealth[];
+  providerHealth: AdminReportProviderHealth;
   risk: {
     topCancellationSpaces: AdminReportRiskSpace[];
   };

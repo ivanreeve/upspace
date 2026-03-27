@@ -15,8 +15,10 @@ import {
   FiLoader,
   FiLogIn,
   FiLogOut,
+  FiMoreHorizontal,
   FiSearch
 } from 'react-icons/fi';
+import type { IconType } from 'react-icons';
 import { toast } from 'sonner';
 
 import { SpacesBreadcrumbs } from './SpacesBreadcrumbs';
@@ -106,19 +108,94 @@ const BULK_STATUS_OPTIONS: { label: string; status: BookingStatus }[] = [
   }
 ];
 
-const statusVariantMap: Record<
+const bookingStatusMeta: Record<
   BookingStatus,
-  ComponentProps<typeof Badge>['variant']
+  {
+    label: string;
+    helper: string;
+    helperClassName?: string;
+    variant: ComponentProps<typeof Badge>['variant'];
+  }
 > = {
-  confirmed: 'default',
-  pending: 'secondary',
-  cancelled: 'destructive',
-  rejected: 'destructive',
-  expired: 'outline',
-  checkedin: 'success',
-  checkedout: 'secondary',
-  completed: 'outline',
-  noshow: 'destructive',
+  pending: {
+    label: 'Pending',
+    helper: 'Needs confirmation',
+    helperClassName: 'text-amber-700 dark:text-amber-300',
+    variant: 'secondary',
+  },
+  confirmed: {
+    label: 'Confirmed',
+    helper: 'Ready for check-in',
+    helperClassName: 'text-primary',
+    variant: 'default',
+  },
+  checkedin: {
+    label: 'Checked in',
+    helper: 'Guest is currently on site',
+    helperClassName: 'text-emerald-700 dark:text-emerald-300',
+    variant: 'success',
+  },
+  checkedout: {
+    label: 'Checked out',
+    helper: 'Visit has ended',
+    variant: 'secondary',
+  },
+  completed: {
+    label: 'Completed',
+    helper: 'Booking is fully closed',
+    variant: 'outline',
+  },
+  cancelled: {
+    label: 'Cancelled',
+    helper: 'Booking was cancelled',
+    variant: 'destructive',
+  },
+  rejected: {
+    label: 'Rejected',
+    helper: 'Booking was declined',
+    variant: 'destructive',
+  },
+  expired: {
+    label: 'Expired',
+    helper: 'Booking timed out',
+    variant: 'outline',
+  },
+  noshow: {
+    label: 'No show',
+    helper: 'Guest never checked in',
+    variant: 'destructive',
+  },
+};
+
+const bookingPrimaryActionMap: Partial<
+  Record<
+    BookingStatus,
+    {
+      icon: IconType;
+      label: string;
+      nextStatus: BookingStatus;
+      variant: ComponentProps<typeof Button>['variant'];
+    }
+  >
+> = {
+  pending: {
+    icon: FiCheck,
+    label: 'Confirm',
+    nextStatus: 'confirmed',
+    variant: 'default',
+  },
+  confirmed: {
+    icon: FiLogIn,
+    label: 'Check in',
+    nextStatus: 'checkedin',
+    variant: 'outline',
+  },
+  checkedin: {
+    icon: FiLogOut,
+    label: 'Check out',
+    nextStatus: 'checkedout',
+    variant: 'outline',
+  },
 };
 
 export function SpacesBookingsPage({
@@ -390,6 +467,9 @@ name,
               <TableCell className="w-24">
                 <Skeleton className="h-5 w-16" />
               </TableCell>
+              <TableCell className="w-36">
+                <Skeleton className="h-8 w-28 rounded-md" />
+              </TableCell>
               <TableCell className="w-24">
                 <Skeleton className="h-4 w-14" />
               </TableCell>
@@ -412,7 +492,7 @@ name,
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={ 8 } className="text-sm text-destructive">
+            <TableCell colSpan={ 9 } className="text-sm text-destructive">
               { error instanceof Error
                 ? error.message
                 : 'Unable to load bookings.' }
@@ -426,7 +506,7 @@ name,
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={ 8 }>
+            <TableCell colSpan={ 9 }>
               <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
                 <FiAlertCircle className="size-5" aria-hidden="true" />
                 <p>
@@ -444,7 +524,7 @@ name,
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={ 8 }>
+            <TableCell colSpan={ 9 }>
               <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
                 <FiAlertCircle className="size-5" aria-hidden="true" />
                 <p>No active bookings are filling your areas right now.</p>
@@ -459,7 +539,7 @@ name,
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={ 8 }>
+            <TableCell colSpan={ 9 }>
               <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
                 <FiAlertCircle className="size-5" aria-hidden="true" />
                 <p>No results match your search.</p>
@@ -482,6 +562,9 @@ name,
           const userDisplayName = booking.customerName ?? 'Guest';
           const userHandle =
             booking.customerHandle ?? booking.customerAuthId.slice(0, 8);
+          const statusMeta = bookingStatusMeta[booking.status];
+          const primaryAction = bookingPrimaryActionMap[booking.status] ?? null;
+          const canCancel = ACTIVE_BOOKING_STATUSES.has(booking.status);
 
           return (
             <TableRow
@@ -522,76 +605,74 @@ name,
                 </div>
               </TableCell>
               <TableCell>
-                <div className="flex items-center gap-2">
-                  <Badge variant={ statusVariantMap[booking.status] }>
-                    { booking.status }
+                <div className="space-y-1">
+                  <Badge
+                    variant={ statusMeta.variant }
+                    className="rounded-md"
+                  >
+                    { statusMeta.label }
                   </Badge>
-                  { booking.status === 'confirmed' ? (
+                  <p
+                    className={ cn(
+                      'text-xs text-muted-foreground',
+                      statusMeta.helperClassName
+                    ) }
+                  >
+                    { statusMeta.helper }
+                  </p>
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  { primaryAction ? (
                     <Button
                       size="sm"
-                      variant="ghost"
-                      className="h-7 gap-1 px-2 text-xs"
+                      variant={ primaryAction.variant }
+                      className="h-8 gap-1.5 rounded-md px-3 text-xs"
                       onClick={ () =>
                         bulkUpdate.mutate({
                           ids: [booking.id],
-                          status: 'checkedin',
+                          status: primaryAction.nextStatus,
                         })
                       }
                       disabled={ bulkUpdate.isPending }
-                      aria-label={ `Check in ${userDisplayName}` }
+                      aria-label={ `${primaryAction.label} ${userDisplayName}` }
                     >
-                      <FiLogIn className="size-3.5" aria-hidden="true" />
-                      Check in
+                      <primaryAction.icon className="size-3.5" aria-hidden="true" />
+                      { primaryAction.label }
                     </Button>
-                  ) : booking.status === 'checkedin' ? (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 gap-1 px-2 text-xs"
-                      onClick={ () =>
-                        bulkUpdate.mutate({
-                          ids: [booking.id],
-                          status: 'checkedout',
-                        })
-                      }
-                      disabled={ bulkUpdate.isPending }
-                      aria-label={ `Check out ${userDisplayName}` }
-                    >
-                      <FiLogOut className="size-3.5" aria-hidden="true" />
-                      Check out
-                    </Button>
-                  ) : null }
-                  { booking.status === 'pending' ? (
-                    <Button
-                      size="sm"
-                      variant="default"
-                      className="h-7 gap-1 px-2 text-xs"
-                      onClick={ () =>
-                        bulkUpdate.mutate({
-                          ids: [booking.id],
-                          status: 'confirmed',
-                        })
-                      }
-                      disabled={ bulkUpdate.isPending }
-                      aria-label={ `Confirm booking for ${userDisplayName}` }
-                    >
-                      <FiCheck className="size-3.5" aria-hidden="true" />
-                      Confirm
-                    </Button>
-                  ) : null }
-                  { !['cancelled', 'rejected', 'expired', 'noshow', 'checkedout', 'completed'].includes(
-                    booking.status
-                  ) ? (
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="h-7 px-2 text-xs"
-                      onClick={ () => openCancelDialog([booking.id]) }
-                      disabled={ bulkUpdate.isPending }
-                      aria-label={ `Cancel booking for ${userDisplayName}` }
-                    >
-                      Cancel
-                    </Button>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">No step</span>
+                  ) }
+                  { canCancel ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="size-8 rounded-md border-border/70 bg-background shadow-none"
+                          disabled={ bulkUpdate.isPending }
+                          aria-label={ `Open actions for ${userDisplayName}` }
+                        >
+                          <FiMoreHorizontal className="size-4" aria-hidden="true" />
+                          <span className="sr-only">Open booking actions</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="end"
+                        sideOffset={ 6 }
+                        className="min-w-[180px] rounded-md bg-popover px-1 py-1 shadow-lg"
+                      >
+                        <DropdownMenuItem
+                          onSelect={ () => openCancelDialog([booking.id]) }
+                          className="text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive focus-visible:[&_svg]:text-destructive data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive"
+                        >
+                          <FiAlertCircle className="size-4 text-destructive" aria-hidden="true" />
+                          Cancel booking
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   ) : null }
                 </div>
               </TableCell>
@@ -846,6 +927,7 @@ name,
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">User</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Space / Area</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Status</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Next step</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Duration</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Price</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Capacity</TableHead>
@@ -867,7 +949,7 @@ name,
           }
         } }
       >
-        <DialogContent>
+        <DialogContent dismissible={ !bulkUpdate.isPending }>
           <DialogHeader>
             <DialogTitle>Cancel booking</DialogTitle>
             <DialogDescription>
@@ -908,8 +990,10 @@ name,
               variant="destructive"
               onClick={ submitCancellation }
               disabled={ bulkUpdate.isPending || !isCancellationReasonValid }
+              loading={ bulkUpdate.isPending }
+              loadingText="Cancelling..."
             >
-              { bulkUpdate.isPending ? 'Cancelling...' : 'Cancel booking' }
+              Cancel booking
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -2,6 +2,8 @@
 
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 
+import type { PartnerProviderAccountView } from '@/lib/financial/provider-account-view';
+
 export type WalletTransactionType = 'cash_in' | 'charge' | 'refund' | 'payout';
 export type WalletTransactionStatus = 'pending' | 'succeeded' | 'failed';
 
@@ -43,11 +45,14 @@ export type WalletPagination = {
 export type WalletStats = {
   totalEarnedMinor: string;
   totalRefundedMinor: string;
+  pendingPayoutMinor: string;
+  totalPaidOutMinor: string;
   transactionCount: number;
 };
 
 export type WalletData = {
   wallet: WalletSnapshot;
+  providerAccount: PartnerProviderAccountView | null;
   transactions: WalletTransactionRecord[];
   pagination: WalletPagination;
   stats: WalletStats;
@@ -66,7 +71,7 @@ export function useWallet(options?: { enabled?: boolean }) {
   return useQuery<WalletData>({
     queryKey: walletQueryKey,
     queryFn: async () => {
-      const response = await fetch('/api/v1/wallet?limit=1', { credentials: 'same-origin', });
+      const response = await fetch('/api/v1/wallet?limit=1&includeProvider=1', { credentials: 'same-origin', });
 
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
@@ -97,6 +102,7 @@ export function useWalletTransactions(options?: {
     queryFn: async ({ pageParam, }) => {
       const params = new URLSearchParams();
       params.set('limit', String(limit));
+      params.set('includeProvider', '0');
       if (pageParam) params.set('cursor', pageParam as string);
       if (filters?.type) params.set('type', filters.type);
       if (filters?.status) params.set('status', filters.status);

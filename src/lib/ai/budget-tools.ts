@@ -75,7 +75,10 @@ export async function estimateMonthlyCost(input: unknown) {
 
     try {
       // Daily cost
-      const dailyResult = evaluatePriceRule(area.price_rule.definition as PriceRuleDefinition, { bookingHours: hours_per_day, });
+      const dailyResult = evaluatePriceRule(area.price_rule.definition as PriceRuleDefinition, {
+        bookingHours: hours_per_day,
+        variableOverrides: { guest_count: 1, },
+      });
 
       if (dailyResult.price === null) {
         return {

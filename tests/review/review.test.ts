@@ -39,6 +39,12 @@ vi.doMock('next/server', async () => {
     NextResponse: MockNextResponse,
   };
 });
+vi.mock('@/lib/rate-limit', () => ({
+  enforceRateLimit: vi.fn(async () => undefined),
+  RateLimitExceededError: class RateLimitExceededError extends Error {
+    retryAfter = 60;
+  },
+}));
 
 const { MockNextRequest, } = await import('../utils/mock-next-server');
 const {
@@ -180,13 +186,16 @@ describe('GET /api/v1/spaces/{space_id}/reviews', () => {
           }
         ],
         viewer_reviewed: true,
+        pagination: { hasMore: false, },
       },
     });
 
     expect(mockPrisma.review.findMany).toHaveBeenCalledWith({
       where: { space_id: spaceId, },
       orderBy: { created_at: 'desc', },
-      take: 2,
+      take: 3,
+      cursor: { id: 'abc', },
+      skip: 1,
       select: expect.any(Object),
     });
   });
@@ -253,6 +262,8 @@ count: 0,
           ],
         },
         reviews: [],
+        viewer_reviewed: false,
+        pagination: { hasMore: false, },
       },
     });
   });

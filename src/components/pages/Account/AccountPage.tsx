@@ -20,6 +20,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { PartnerPayoutSetupCard } from '@/components/pages/Account/PartnerPayoutSetupCard';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -76,6 +77,13 @@ export default function AccountPage() {
       return;
     }
     setIsDialogOpen(open);
+  };
+
+  const handleDeleteDialogOpenChange = (open: boolean) => {
+    if (isDeleting) {
+      return;
+    }
+    setIsDeleteDialogOpen(open);
   };
 
   const handleSubmitDeactivationRequest = async () => {
@@ -245,6 +253,10 @@ export default function AccountPage() {
               </div>
             </div>
           </header>
+
+          { profile?.role === 'partner' && pathname?.includes('/settings') ? (
+            <PartnerPayoutSetupCard />
+          ) : null }
 
           <section className="space-y-4 rounded-md border border-border/70 bg-card/80 p-6 shadow-sm backdrop-blur">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -489,7 +501,7 @@ export default function AccountPage() {
       </main>
 
       <Dialog open={ isDialogOpen } onOpenChange={ handleDialogOpenChange }>
-        <DialogContent fullWidth>
+        <DialogContent fullWidth dismissible={ !isDeactivating }>
           <DialogHeader>
             <DialogTitle>Request account deactivation</DialogTitle>
             <DialogDescription>
@@ -547,15 +559,17 @@ export default function AccountPage() {
               variant="destructive"
               onClick={ handleSubmitDeactivationRequest }
               disabled={ isDeactivating }
+              loading={ isDeactivating }
+              loadingText="Submitting..."
             >
-              { isDeactivating ? 'Submitting...' : 'Submit deactivation request' }
+              Submit deactivation request
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={ isDeleteDialogOpen } onOpenChange={ setIsDeleteDialogOpen }>
-        <DialogContent fullWidth>
+      <Dialog open={ isDeleteDialogOpen } onOpenChange={ handleDeleteDialogOpenChange }>
+        <DialogContent fullWidth dismissible={ !isDeleting }>
           <DialogHeader>
             <DialogTitle>Delete account</DialogTitle>
             <DialogDescription>
@@ -612,8 +626,10 @@ export default function AccountPage() {
               variant="destructive"
               onClick={ handleSubmitDeletionRequest }
               disabled={ isDeleting }
+              loading={ isDeleting }
+              loadingText="Submitting..."
             >
-              { isDeleting ? 'Submitting...' : 'Request deletion' }
+              Request deletion
             </Button>
           </DialogFooter>
         </DialogContent>
