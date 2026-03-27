@@ -33,12 +33,12 @@ function buildDisplayName(user: {
   handle: string;
 }) {
   const fullName = [user.first_name, user.last_name]
-    .map((part) => part?.trim())
+    .map((part) => part?.trim().replace(/[^a-zA-Z0-9\s.-]/g, ''))
     .filter((part): part is string => Boolean(part))
     .join(' ')
     .trim();
 
-  return fullName || user.handle;
+  return fullName || user.handle.replace(/[^a-zA-Z0-9\s.-]/g, '');
 }
 
 function mapSetupState(status: ProviderAccountStatus | null) {
