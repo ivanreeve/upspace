@@ -338,113 +338,111 @@ function BookingDurationForm({
 
   return (
     <div className="space-y-6 py-2">
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="space-y-4">
         { /* Step 1: Area selection */ }
-        <div className="space-y-4">
-          <div className="space-y-4 rounded-xl border border-border/50 bg-muted/20 p-4">
-            <div className="flex items-center gap-2 border-b border-border/50 pb-2">
-              <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <FiCalendar className="size-4" />
-              </div>
-              <h3 className="font-semibold text-foreground">1. Select Area</h3>
+        <div className="space-y-4 rounded-xl border border-border/50 bg-muted/20 p-4">
+          <div className="flex items-center gap-2 border-b border-border/50 pb-2">
+            <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <FiCalendar className="size-4" />
             </div>
-
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label
-                    htmlFor="area-select"
-                    className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                  >
-                    Area
-                  </Label>
-                </div>
-                { areas.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-border bg-muted/40 px-3 py-4 text-center text-sm text-muted-foreground">
-                    No areas available.
-                  </div>
-                ) : (
-                  <Select value={ selectedAreaId ?? undefined } onValueChange={ onSelectArea }>
-                    <SelectTrigger
-                      id="area-select"
-                      className="h-11 rounded-lg border-border/50 bg-background shadow-none transition-all hover:bg-accent/50 focus:ring-1"
-                      aria-label="Select an area"
-                    >
-                      <SelectValue placeholder="Pick an area" />
-                    </SelectTrigger>
-                    <SelectContent className="max-w-[26rem]">
-                      { areas.map((area) => (
-                        <SelectItem
-                          key={ area.id }
-                          value={ area.id }
-                          disabled={ !area.pricingRuleId }
-                        >
-                          <span className="font-medium">{ area.name }</span>
-                        </SelectItem>
-                      )) }
-                    </SelectContent>
-                  </Select>
-                ) }
-              </div>
-            </div>
+            <h3 className="font-semibold text-foreground">1. Select Area</h3>
           </div>
 
-          <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
-            <div className="flex items-center gap-2 border-b border-border/50 pb-2">
-              <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <FiUsers className="size-4" />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label
+                  htmlFor="area-select"
+                  className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                >
+                  Area
+                </Label>
               </div>
-              <h3 className="font-semibold text-foreground">2. Guests</h3>
+              { areas.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border bg-muted/40 px-3 py-4 text-center text-sm text-muted-foreground">
+                  No areas available.
+                </div>
+              ) : (
+                <Select value={ selectedAreaId ?? undefined } onValueChange={ onSelectArea }>
+                  <SelectTrigger
+                    id="area-select"
+                    className="h-11 rounded-lg border-border/50 bg-background shadow-none transition-all hover:bg-accent/50 focus:ring-1"
+                    aria-label="Select an area"
+                  >
+                    <SelectValue placeholder="Pick an area" />
+                  </SelectTrigger>
+                  <SelectContent className="max-w-[26rem]">
+                    { areas.map((area) => (
+                      <SelectItem
+                        key={ area.id }
+                        value={ area.id }
+                        disabled={ !area.pricingRuleId }
+                      >
+                        <span className="font-medium">{ area.name }</span>
+                      </SelectItem>
+                    )) }
+                  </SelectContent>
+                </Select>
+              ) }
             </div>
+          </div>
+        </div>
 
-            <div className="mt-4 space-y-4">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex-1 space-y-1">
-                  <p className="text-sm font-medium">Number of Guests</p>
-                  <p
-                    className={ cn(
-                      'text-xs',
-                      isOverCapacity ? 'font-medium text-destructive' : 'text-muted-foreground'
-                    ) }
-                  >
-                    { capacityHelperText }
-                  </p>
-                </div>
-                <div className="flex items-center gap-1 rounded-lg border border-border/50 bg-background p-1 shadow-sm">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="size-8 rounded-md"
-                    onClick={ onDecreaseGuestCount }
-                    disabled={ guestCount <= MIN_GUEST_COUNT }
-                  >
-                    <FiMinus className="size-3" />
-                  </Button>
-                  <Input
-                    type="number"
-                    className="h-8 w-12 border-none bg-transparent p-0 text-center text-sm font-semibold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none focus-visible:ring-0"
-                    value={ guestCount }
-                    onChange={ onGuestCountInputChange }
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="size-8 rounded-md"
-                    onClick={ onIncreaseGuestCount }
-                    disabled={ guestCount >= currentGuestLimit }
-                  >
-                    <FiPlus className="size-3" />
-                  </Button>
-                </div>
+        { /* Step 2: Guests */ }
+        <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
+          <div className="flex items-center gap-2 border-b border-border/50 pb-2">
+            <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <FiUsers className="size-4" />
+            </div>
+            <h3 className="font-semibold text-foreground">2. Guests</h3>
+          </div>
+
+          <div className="mt-4 space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1 space-y-1">
+                <p className="text-sm font-medium">Number of Guests</p>
+                <p
+                  className={ cn(
+                    'text-xs',
+                    isOverCapacity ? 'font-medium text-destructive' : 'text-muted-foreground'
+                  ) }
+                >
+                  { capacityHelperText }
+                </p>
+              </div>
+              <div className="flex items-center gap-1 rounded-lg border border-border/50 bg-background p-1 shadow-sm">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 rounded-md"
+                  onClick={ onDecreaseGuestCount }
+                  disabled={ guestCount <= MIN_GUEST_COUNT }
+                >
+                  <FiMinus className="size-3" />
+                </Button>
+                <Input
+                  type="number"
+                  className="h-8 w-12 border-none bg-transparent p-0 text-center text-sm font-semibold [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none focus-visible:ring-0"
+                  value={ guestCount }
+                  onChange={ onGuestCountInputChange }
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 rounded-md"
+                  onClick={ onIncreaseGuestCount }
+                  disabled={ guestCount >= currentGuestLimit }
+                >
+                  <FiPlus className="size-3" />
+                </Button>
               </div>
             </div>
           </div>
         </div>
 
-        { /* Step 2: Check-in / Check-out & Details */ }
-        <div className="space-y-4">
+        { /* Step 3: Check-in / Check-out */ }
           <div className="space-y-4 rounded-xl border border-border/50 bg-muted/20 p-4">
             <div className="flex items-center gap-2 border-b border-border/50 pb-2">
               <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -562,7 +560,6 @@ function BookingDurationForm({
               </div>
             </div>
           ) }
-        </div>
       </div>
 
       { /* Summary Section */ }
