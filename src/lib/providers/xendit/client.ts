@@ -354,6 +354,7 @@ export class XenditFinancialProvider implements FinancialProvider {
         amount: amountFromMinorUnits(input.amountMinor, input.currency),
         currency: input.currency,
         description: input.description,
+        invoice_duration: input.invoiceDurationSeconds ?? 1800,
         success_redirect_url: input.successUrl,
         failure_redirect_url: input.cancelUrl,
         payer_email: input.customerEmail ?? undefined,

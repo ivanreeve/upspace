@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
+import { runBookingLifecycleChecks } from '@/lib/bookings/expiration';
 import { sendBookingNotificationEmail, sendBookingRejectionEmail } from '@/lib/email';
 import { notifyBookingEvent } from '@/lib/notifications/booking';
 import {
@@ -130,6 +131,8 @@ export async function GET(req: NextRequest) {
     Math.max(parseInt(limitParam ?? '', 10) || DEFAULT_PAGE_SIZE, 1),
     MAX_PAGE_SIZE
   );
+
+  await runBookingLifecycleChecks();
 
   const filters = (() => {
     if (dbUser.role === 'partner') {
