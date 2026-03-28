@@ -6,10 +6,12 @@ import {
   FiCheckCircle,
   FiChevronLeft,
   FiChevronRight,
+  FiDownload,
   FiXCircle
 } from 'react-icons/fi';
 import { toast } from 'sonner';
 
+import { exportPdf } from '@/lib/export-pdf';
 import {
   useAdminChatReportsQuery,
   useDismissChatReportMutation,
@@ -259,6 +261,40 @@ export function AdminChatReportsPage() {
     }
   };
 
+  const handleExportPdf = async () => {
+    if (!reports.length) {
+      toast.error('No data available to export.');
+      return;
+    }
+
+    try {
+      await exportPdf({
+        title: 'UpSpace Chat Reports',
+        subtitle: `${currentTabInfo?.label ?? activeTab} reports`,
+        filename: `chat-reports-${activeTab}.pdf`,
+        sections: [
+          {
+            kind: 'table',
+            title: `${currentTabInfo?.label ?? activeTab} Reports`,
+            headers: ['Reporter', 'Reported User', 'Space', 'Reason', 'Submitted', 'Status'],
+            rows: reports.map((report) => [
+              `${report.reporter.name} (@${report.reporter.handle})`,
+              `${report.reported_user.name} (@${report.reported_user.handle})`,
+              report.space.name,
+              CHAT_REPORT_REASON_LABELS[report.reason],
+              formatDate(report.created_at),
+              CHAT_REPORT_STATUS_LABELS[report.status]
+            ]),
+          }
+        ],
+      });
+
+      toast.success('PDF exported.');
+    } catch {
+      toast.error('Failed to generate PDF.');
+    }
+  };
+
   const tableContent = (() => {
     if (isLoading) {
       return (
@@ -434,22 +470,35 @@ export function AdminChatReportsPage() {
         </div>
 
         <div className="space-y-4">
-          <Tabs value={ activeTab } onValueChange={ handleTabChange }>
-            <TabsList className="h-auto w-full flex-wrap justify-start gap-2 rounded-md bg-muted/40 p-1.5 md:w-auto">
-              { REPORT_TABS.map((tab) => (
-                <TabsTrigger
-                  key={ tab.value }
-                  value={ tab.value }
-                  className="gap-2 rounded-md px-3 py-1.5"
-                >
-                  { tab.value === 'pending' && <FiAlertCircle className="size-4" aria-hidden="true" /> }
-                  { tab.value === 'resolved' && <FiCheckCircle className="size-4" aria-hidden="true" /> }
-                  { tab.value === 'dismissed' && <FiXCircle className="size-4" aria-hidden="true" /> }
-                  { tab.label }
-                </TabsTrigger>
-              )) }
-            </TabsList>
-          </Tabs>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Tabs value={ activeTab } onValueChange={ handleTabChange }>
+              <TabsList className="h-auto w-full flex-wrap justify-start gap-2 rounded-md bg-muted/40 p-1.5 md:w-auto">
+                { REPORT_TABS.map((tab) => (
+                  <TabsTrigger
+                    key={ tab.value }
+                    value={ tab.value }
+                    className="gap-2 rounded-md px-3 py-1.5"
+                  >
+                    { tab.value === 'pending' && <FiAlertCircle className="size-4" aria-hidden="true" /> }
+                    { tab.value === 'resolved' && <FiCheckCircle className="size-4" aria-hidden="true" /> }
+                    { tab.value === 'dismissed' && <FiXCircle className="size-4" aria-hidden="true" /> }
+                    { tab.label }
+                  </TabsTrigger>
+                )) }
+              </TabsList>
+            </Tabs>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={ !reports.length || isLoading }
+              onClick={ () => void handleExportPdf() }
+            >
+              <FiDownload className="size-4" aria-hidden="true" />
+              Export PDF
+            </Button>
+          </div>
 
           <div className="flex items-center gap-2">
             <Label htmlFor="admin-chat-reports-page-size">Rows per page</Label>

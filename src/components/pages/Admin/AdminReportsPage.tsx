@@ -16,11 +16,37 @@ import {
   FiFilter,
   FiRefreshCw,
   FiSearch,
+  FiFileText,
   FiTrendingUp
 } from 'react-icons/fi';
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  XAxis,
+  YAxis
+} from 'recharts';
 import { toast } from 'sonner';
 
-import { type AdminReportPayload, useAdminReportsQuery } from '@/hooks/api/useAdminReports';
+import { exportPdf, type PdfSection } from '@/lib/export-pdf';
+import {
+  type AdminReportDailyBooking,
+  type AdminReportDailyRevenue,
+  type AdminReportPayload,
+  type AdminReportQueueHealth,
+  type AdminReportRiskSpace,
+  useAdminReportsQuery
+} from '@/hooks/api/useAdminReports';
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent
+} from '@/components/ui/chart';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -739,14 +765,307 @@ function RiskSection({
   );
 }
 
+const bookingsChartConfig = {
+  bookings: {
+    label: 'Bookings',
+    color: 'hsl(var(--chart-1))',
+  },
+  cancellations: {
+    label: 'Cancellations',
+    color: 'hsl(var(--chart-4))',
+  },
+} satisfies ChartConfig;
+
+const revenueChartConfig = {
+  revenue: {
+    label: 'Revenue',
+    color: 'hsl(var(--chart-2))',
+  },
+} satisfies ChartConfig;
+
+const queueChartConfig = {
+  pendingCount: {
+    label: 'Pending',
+    color: 'hsl(var(--chart-4))',
+  },
+  resolvedCount: {
+    label: 'Resolved',
+    color: 'hsl(var(--chart-1))',
+  },
+} satisfies ChartConfig;
+
+const riskChartConfig = {
+  cancellationRate: {
+    label: 'Cancellation Rate',
+    color: 'hsl(var(--chart-4))',
+  },
+} satisfies ChartConfig;
+
+const shortDateFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+});
+
+const formatShortDate = (value: string) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return shortDateFormatter.format(parsed);
+};
+
+type BookingsChartProps = {
+  data: AdminReportDailyBooking[];
+  isLoading: boolean;
+};
+
+function BookingsChart({
+ data, isLoading, 
+}: BookingsChartProps) {
+  return (
+    <Card className="rounded-md border border-border/70 bg-muted/20 shadow-none">
+      <CardHeader>
+        <CardTitle className="text-base">Bookings Trend</CardTitle>
+        <CardDescription className="text-xs text-muted-foreground">
+          Daily bookings and cancellations over the selected period.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        { isLoading ? (
+          <Skeleton className="h-[260px] w-full" />
+        ) : data.length === 0 ? (
+          <p className="py-12 text-center text-sm text-muted-foreground">
+            No booking data in this range.
+          </p>
+        ) : (
+          <ChartContainer config={ bookingsChartConfig } className="aspect-auto h-[260px] w-full">
+            <BarChart data={ data } accessibilityLayer>
+              <CartesianGrid vertical={ false } />
+              <XAxis
+                dataKey="date"
+                tickLine={ false }
+                axisLine={ false }
+                tickMargin={ 8 }
+                tickFormatter={ formatShortDate }
+              />
+              <YAxis tickLine={ false } axisLine={ false } allowDecimals={ false } width={ 40 } />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    labelFormatter={ (value) => formatShortDate(String(value)) }
+                  />
+                }
+              />
+              <ChartLegend content={ <ChartLegendContent /> } />
+              <Bar dataKey="bookings" fill="var(--color-bookings)" radius={ [4, 4, 0, 0] } />
+              <Bar dataKey="cancellations" fill="var(--color-cancellations)" radius={ [4, 4, 0, 0] } />
+            </BarChart>
+          </ChartContainer>
+        ) }
+      </CardContent>
+    </Card>
+  );
+}
+
+type RevenueChartProps = {
+  data: AdminReportDailyRevenue[];
+  isLoading: boolean;
+};
+
+function RevenueChart({
+ data, isLoading, 
+}: RevenueChartProps) {
+  const chartData = useMemo(
+    () => data.map((entry) => ({
+      date: entry.date,
+      revenue: Number(entry.revenueMinor) / 100,
+    })),
+    [data]
+  );
+
+  return (
+    <Card className="rounded-md border border-border/70 bg-muted/20 shadow-none">
+      <CardHeader>
+        <CardTitle className="text-base">Revenue Trend</CardTitle>
+        <CardDescription className="text-xs text-muted-foreground">
+          Daily gross revenue (PHP) over the selected period.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        { isLoading ? (
+          <Skeleton className="h-[260px] w-full" />
+        ) : chartData.length === 0 ? (
+          <p className="py-12 text-center text-sm text-muted-foreground">
+            No revenue data in this range.
+          </p>
+        ) : (
+          <ChartContainer config={ revenueChartConfig } className="aspect-auto h-[260px] w-full">
+            <AreaChart data={ chartData } accessibilityLayer>
+              <defs>
+                <linearGradient id="fillRevenue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--color-revenue)" stopOpacity={ 0.8 } />
+                  <stop offset="95%" stopColor="var(--color-revenue)" stopOpacity={ 0.1 } />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={ false } />
+              <XAxis
+                dataKey="date"
+                tickLine={ false }
+                axisLine={ false }
+                tickMargin={ 8 }
+                tickFormatter={ formatShortDate }
+              />
+              <YAxis
+                tickLine={ false }
+                axisLine={ false }
+                width={ 60 }
+                tickFormatter={ (value: number) => `${numberFormatter.format(value)}` }
+              />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    labelFormatter={ (value) => formatShortDate(String(value)) }
+                    formatter={ (value) => [`PHP ${numberFormatter.format(Number(value))}`, 'Revenue'] }
+                  />
+                }
+              />
+              <Area
+                dataKey="revenue"
+                type="monotone"
+                fill="url(#fillRevenue)"
+                stroke="var(--color-revenue)"
+                strokeWidth={ 2 }
+              />
+            </AreaChart>
+          </ChartContainer>
+        ) }
+      </CardContent>
+    </Card>
+  );
+}
+
+type QueueChartProps = {
+  data: AdminReportQueueHealth[];
+  isLoading: boolean;
+};
+
+function QueueChart({
+ data, isLoading, 
+}: QueueChartProps) {
+  return (
+    <Card className="rounded-md border border-border/70 bg-muted/20 shadow-none">
+      <CardHeader>
+        <CardTitle className="text-base">Queue Overview</CardTitle>
+        <CardDescription className="text-xs text-muted-foreground">
+          Pending vs resolved items per admin queue.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        { isLoading ? (
+          <Skeleton className="h-[220px] w-full" />
+        ) : data.length === 0 ? (
+          <p className="py-12 text-center text-sm text-muted-foreground">
+            No queue data available.
+          </p>
+        ) : (
+          <ChartContainer config={ queueChartConfig } className="aspect-auto h-[220px] w-full">
+            <BarChart data={ data } layout="vertical" accessibilityLayer>
+              <CartesianGrid horizontal={ false } />
+              <YAxis
+                dataKey="label"
+                type="category"
+                tickLine={ false }
+                axisLine={ false }
+                width={ 120 }
+                className="text-xs"
+              />
+              <XAxis type="number" tickLine={ false } axisLine={ false } allowDecimals={ false } />
+              <ChartTooltip content={ <ChartTooltipContent /> } />
+              <ChartLegend content={ <ChartLegendContent /> } />
+              <Bar dataKey="pendingCount" fill="var(--color-pendingCount)" radius={ [0, 4, 4, 0] } />
+              <Bar dataKey="resolvedCount" fill="var(--color-resolvedCount)" radius={ [0, 4, 4, 0] } />
+            </BarChart>
+          </ChartContainer>
+        ) }
+      </CardContent>
+    </Card>
+  );
+}
+
+type RiskChartProps = {
+  data: AdminReportRiskSpace[];
+  isLoading: boolean;
+};
+
+function RiskChart({
+ data, isLoading, 
+}: RiskChartProps) {
+  const chartData = useMemo(
+    () => data.map((space) => ({
+      name: space.space_name.length > 20
+        ? `${space.space_name.slice(0, 18)}...`
+        : space.space_name,
+      cancellationRate: Math.round(space.cancellationRate * 100),
+    })),
+    [data]
+  );
+
+  return (
+    <Card className="rounded-md border border-border/70 bg-muted/20 shadow-none">
+      <CardHeader>
+        <CardTitle className="text-base">Cancellation Risk</CardTitle>
+        <CardDescription className="text-xs text-muted-foreground">
+          Top spaces by cancellation rate (%).
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        { isLoading ? (
+          <Skeleton className="h-[220px] w-full" />
+        ) : chartData.length === 0 ? (
+          <p className="py-12 text-center text-sm text-muted-foreground">
+            No high-risk spaces in this range.
+          </p>
+        ) : (
+          <ChartContainer config={ riskChartConfig } className="aspect-auto h-[220px] w-full">
+            <BarChart data={ chartData } layout="vertical" accessibilityLayer>
+              <CartesianGrid horizontal={ false } />
+              <YAxis
+                dataKey="name"
+                type="category"
+                tickLine={ false }
+                axisLine={ false }
+                width={ 130 }
+                className="text-xs"
+              />
+              <XAxis
+                type="number"
+                tickLine={ false }
+                axisLine={ false }
+                tickFormatter={ (value: number) => `${value}%` }
+              />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    formatter={ (value) => [`${value}%`, 'Cancellation Rate'] }
+                  />
+                }
+              />
+              <Bar dataKey="cancellationRate" fill="var(--color-cancellationRate)" radius={ [0, 4, 4, 0] } />
+            </BarChart>
+          </ChartContainer>
+        ) }
+      </CardContent>
+    </Card>
+  );
+}
+
 type ActionsSectionProps = {
   queues: AdminReportPayload['queueHealth'];
+  onPdfExport: () => void;
   onQueueExport: () => void;
   onRiskExport: () => void;
 };
 
 function ActionsSection({
- queues, onQueueExport, onRiskExport, 
+ queues, onPdfExport, onQueueExport, onRiskExport,
 }: ActionsSectionProps) {
   return (
     <div className="grid gap-4 lg:grid-cols-3">
@@ -783,6 +1102,15 @@ function ActionsSection({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full justify-between"
+            onClick={ onPdfExport }
+          >
+            Export full report (PDF)
+            <FiFileText className="size-4" aria-hidden="true" />
+          </Button>
           <Button
             type="button"
             variant="outline"
@@ -963,6 +1291,8 @@ value: option.value,
     [data?.risk.topCancellationSpaces]
   );
   const lastUpdated = data?.range?.end;
+  const dailyBookings = useMemo(() => data?.timeSeries.dailyBookings ?? [], [data?.timeSeries.dailyBookings]);
+  const dailyRevenue = useMemo(() => data?.timeSeries.dailyRevenue ?? [], [data?.timeSeries.dailyRevenue]);
 
   const filteredQueues = useMemo(() => {
     if (!state.queuePendingOnly) return queueHealth;
@@ -1046,6 +1376,110 @@ value: option.value,
     handleExportCsv(rows, `admin-cancellation-risk-${state.rangeDays}d.csv`);
   };
 
+  const handleExportPdf = async () => {
+    if (!data) {
+      toast.error('No data available to export.');
+      return;
+    }
+
+    try {
+      const sections: PdfSection[] = [
+        {
+          kind: 'key-value',
+          title: 'Trend Metrics',
+          entries: [
+            {
+ label: 'Bookings Volume',
+value: `${formatCount(trends?.bookings?.current)} (prev: ${formatCount(trends?.bookings?.previous)})`, 
+},
+            {
+ label: 'Gross Revenue',
+value: `${formatMinor(trends?.grossRevenue?.currentMinor)} (prev: ${formatMinor(trends?.grossRevenue?.previousMinor)})`, 
+},
+            {
+ label: 'Cancellation Rate',
+value: `${formatRate(trends?.cancellationRate?.current)} (prev: ${formatRate(trends?.cancellationRate?.previous)})`, 
+},
+            {
+ label: 'Refund Rate',
+value: `${formatRate(trends?.refunds?.rate?.current)} (prev: ${formatRate(trends?.refunds?.rate?.previous)})`, 
+},
+            {
+ label: 'Average Rating',
+value: trends?.averageRating?.current?.toFixed(2) ?? '-', 
+}
+          ],
+        },
+        {
+          kind: 'table',
+          title: 'Queue Health',
+          headers: ['Queue', 'Pending', 'Oldest (days)', 'Avg Resolution (days)', 'Resolved'],
+          rows: filteredQueues.map((queue) => [
+            queue.label,
+            String(queue.pendingCount),
+            queue.oldestPendingDays === null ? '-' : String(queue.oldestPendingDays),
+            queue.averageResolutionDays === null ? '-' : queue.averageResolutionDays.toFixed(1),
+            String(queue.resolvedCount)
+          ]),
+        },
+        {
+          kind: 'table',
+          title: 'Cancellation Risk',
+          headers: ['Space', 'City', 'Region', 'Bookings', 'Cancelled', 'Rate'],
+          rows: filteredRiskSpaces.map((space) => [
+            space.space_name,
+            space.city,
+            space.region,
+            String(space.totalBookings),
+            String(space.cancelledBookings),
+            formatRate(space.cancellationRate)
+          ]),
+        },
+        {
+          kind: 'key-value',
+          title: 'Provider Health',
+          entries: [
+            {
+ label: 'Configured Accounts',
+value: formatCount(providerHealth?.configuredAccounts), 
+},
+            {
+ label: 'Live Accounts',
+value: formatCount(providerHealth?.liveAccounts), 
+},
+            {
+ label: 'Stale Accounts',
+value: formatCount(providerHealth?.staleAccounts), 
+},
+            {
+ label: 'Failed Snapshots',
+value: formatCount(providerHealth?.failedSnapshotCount), 
+},
+            {
+ label: 'Pending Payouts',
+value: formatCount(providerHealth?.pendingProviderPayouts), 
+},
+            {
+ label: 'Pending Refunds',
+value: formatCount(providerHealth?.pendingRefunds), 
+}
+          ],
+        }
+      ];
+
+      await exportPdf({
+        title: 'UpSpace Admin Report',
+        subtitle: formatRangeLabel(data.range),
+        filename: `admin-report-${state.rangeDays}d.pdf`,
+        sections,
+      });
+
+      toast.success('PDF exported.');
+    } catch {
+      toast.error('Failed to generate PDF.');
+    }
+  };
+
   return (
     <div className="w-full px-4 pb-8 sm:px-6 lg:px-8">
       <section className="space-y-6 py-8 md:space-y-8 md:py-12">
@@ -1083,9 +1517,21 @@ value: option.value,
               trends={ trends }
               onSelectMetric={ (metric) => dispatch({
  type: 'set-active-metric',
-value: metric, 
+value: metric,
 }) }
             />
+
+            <Separator />
+
+            <div className="grid gap-6 lg:grid-cols-2">
+              <BookingsChart data={ dailyBookings } isLoading={ isLoadingData } />
+              <RevenueChart data={ dailyRevenue } isLoading={ isLoadingData } />
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-2">
+              <QueueChart data={ queueHealth } isLoading={ isLoadingData } />
+              <RiskChart data={ topCancellationSpaces } isLoading={ isLoadingData } />
+            </div>
 
             <Separator />
 
@@ -1158,6 +1604,7 @@ value,
 
             <ActionsSection
               queues={ queueHealth }
+              onPdfExport={ () => void handleExportPdf() }
               onQueueExport={ handleQueueExport }
               onRiskExport={ handleRiskExport }
             />
