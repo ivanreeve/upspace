@@ -2,14 +2,13 @@ import { applyXenditPayoutStatus, syncPartnerWalletFromRemoteAccountId } from '@
 import { prisma } from '@/lib/prisma';
 import { getFinancialProvider } from '@/lib/providers/provider-registry';
 
-const PAYOUT_RECONCILIATION_STALE_MS = 15 * 60 * 1000;
-
 /**
  * Reconcile pending payouts for a specific partner on-demand.
  *
  * Checks each pending payout against Xendit to detect status changes
- * that may have been missed by webhooks. Only runs if the partner's
- * account hasn't been reconciled within the staleness window.
+ * that may have been missed by webhooks. Balance refreshes update the
+ * provider account sync timestamp too, so pending payouts must be
+ * reconciled independently of snapshot freshness.
  */
 export async function reconcilePendingPayouts(partnerUserId: bigint) {
   const account = await prisma.partner_provider_account.findFirst({
@@ -28,14 +27,6 @@ export async function reconcilePendingPayouts(partnerUserId: bigint) {
   });
 
   if (!account?.provider_account_id || !account.partner.wallet?.id) {
-    return;
-  }
-
-  const isStale =
-    !account.last_synced_at ||
-    Date.now() - account.last_synced_at.getTime() > PAYOUT_RECONCILIATION_STALE_MS;
-
-  if (!isStale) {
     return;
   }
 

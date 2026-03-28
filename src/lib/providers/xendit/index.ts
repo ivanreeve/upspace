@@ -1,1 +1,1 @@
-export { XenditFinancialProvider } from './client';
+export { amountToMinorUnits, XenditFinancialProvider } from './client';

@@ -119,7 +119,7 @@ function mapXenditRefundStatus(rawStatus: string): ProviderRefundStatus {
   return 'PENDING';
 }
 
-function amountToMinorUnits(value: string | number | bigint, currency: string) {
+export function amountToMinorUnits(value: string | number | bigint, currency: string) {
   if (typeof value === 'bigint') {
     return value;
   }
@@ -415,7 +415,7 @@ export class XenditFinancialProvider implements FinancialProvider {
 
   async listPayoutChannels(currency: string): Promise<ProviderPayoutChannel[]> {
     const payload = await xenditFetch<unknown>(
-      `/available_disbursements_channels?currency=${encodeURIComponent(currency)}`,
+      `/payouts_channels?currency=${encodeURIComponent(currency)}`,
       { method: 'GET', }
     );
     const channels = parseXenditPayload(
@@ -427,7 +427,7 @@ export class XenditFinancialProvider implements FinancialProvider {
     return channels.map((channel) => ({
       channelCode: channel.channel_code,
       channelName: channel.channel_name,
-      category: mapXenditPayoutChannelCategory(channel.category),
+      category: mapXenditPayoutChannelCategory(channel.channel_category ?? channel.category ?? ''),
       currency: channel.currency,
       country: channel.country ?? null,
       minimumAmountMinor:
@@ -454,6 +454,7 @@ export class XenditFinancialProvider implements FinancialProvider {
           input.amountMinor != null && input.currency
             ? amountFromMinorUnits(input.amountMinor, input.currency)
             : undefined,
+        currency: input.currency ?? undefined,
         reason: input.reason,
         metadata: input.metadata ?? undefined,
       }),

@@ -6,10 +6,12 @@ import {
   FiCheckCircle,
   FiChevronLeft,
   FiChevronRight,
+  FiDownload,
   FiXCircle
 } from 'react-icons/fi';
 import { toast } from 'sonner';
 
+import { exportPdf } from '@/lib/export-pdf';
 import {
   useAdminChatReportsQuery,
   useDismissChatReportMutation,
@@ -112,6 +114,16 @@ const truncate = (value: string, maxLength = 140) => {
   }
   return `${value.slice(0, maxLength - 1)}…`;
 };
+
+const ensurePdfRows = (
+  rows: string[][],
+  columnCount: number,
+  emptyLabel = 'No data available'
+) => (
+  rows.length
+    ? rows
+    : [[emptyLabel, ...Array.from({ length: columnCount - 1, }, () => '—')]]
+);
 
 export function AdminChatReportsPage() {
   const [activeTab, setActiveTab] = useState<ReportTabValue>('pending');
@@ -256,6 +268,100 @@ export function AdminChatReportsPage() {
           ? mutationError.message
           : 'Unable to dismiss report.'
       );
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!reports.length) {
+      toast.error('No data available to export.');
+      return;
+    }
+
+    try {
+      const resolvedCount = reports.filter((report) => report.status === 'resolved').length;
+      const dismissedCount = reports.filter((report) => report.status === 'dismissed').length;
+      const pendingCount = reports.filter((report) => report.status === 'pending').length;
+
+      await exportPdf({
+        title: 'UpSpace Chat Reports',
+        subtitle: `${currentTabInfo?.label ?? activeTab} reports`,
+        filename: `chat-reports-${activeTab}.pdf`,
+        orientation: 'landscape',
+        sections: [
+          {
+            kind: 'key-value',
+            title: 'Report Scope',
+            entries: [
+              {
+                label: 'Queue',
+                value: currentTabInfo?.label ?? activeTab,
+              },
+              {
+                label: 'Description',
+                value: currentTabInfo?.description ?? 'Moderation report export.',
+              },
+              {
+                label: 'Rows Exported',
+                value: String(reports.length),
+              },
+              {
+                label: 'Page Size',
+                value: String(pageSize),
+              },
+              {
+                label: 'Current Page',
+                value: String(pageIndex + 1),
+              },
+              {
+                label: 'Has Next Page',
+                value: nextCursor ? 'Yes' : 'No',
+              },
+              {
+                label: 'Pending in Export',
+                value: String(pendingCount),
+              },
+              {
+                label: 'Resolved in Export',
+                value: String(resolvedCount),
+              },
+              {
+                label: 'Dismissed in Export',
+                value: String(dismissedCount),
+              }
+            ],
+          },
+          {
+            kind: 'table',
+            title: `${currentTabInfo?.label ?? activeTab} Report Summary`,
+            headers: ['Reporter', 'Reported User', 'Space', 'Reason', 'Submitted', 'Processed', 'Status'],
+            rows: ensurePdfRows(reports.map((report) => [
+              `${report.reporter.name} (@${report.reporter.handle})`,
+              `${report.reported_user.name} (@${report.reported_user.handle})`,
+              report.space.name,
+              CHAT_REPORT_REASON_LABELS[report.reason],
+              formatDate(report.created_at),
+              formatDate(report.processed_at),
+              CHAT_REPORT_STATUS_LABELS[report.status]
+            ]), 7),
+          },
+          {
+            kind: 'table',
+            title: 'Narrative Details',
+            headers: ['Space', 'Reason', 'Reported Details', 'Resolution Note', 'Processed By'],
+            rows: ensurePdfRows(reports.map((report) => [
+              report.space.name,
+              CHAT_REPORT_REASON_LABELS[report.reason],
+              report.details?.trim() || '—',
+              report.resolution_note?.trim() || '—',
+              report.processed_by?.name ?? '—'
+            ]), 5),
+          }
+        ],
+      });
+
+      toast.success('PDF exported.');
+    } catch {
+      toast.error('Failed to generate PDF.');
     }
   };
 
@@ -434,22 +540,35 @@ export function AdminChatReportsPage() {
         </div>
 
         <div className="space-y-4">
-          <Tabs value={ activeTab } onValueChange={ handleTabChange }>
-            <TabsList className="h-auto w-full flex-wrap justify-start gap-2 rounded-md bg-muted/40 p-1.5 md:w-auto">
-              { REPORT_TABS.map((tab) => (
-                <TabsTrigger
-                  key={ tab.value }
-                  value={ tab.value }
-                  className="gap-2 rounded-md px-3 py-1.5"
-                >
-                  { tab.value === 'pending' && <FiAlertCircle className="size-4" aria-hidden="true" /> }
-                  { tab.value === 'resolved' && <FiCheckCircle className="size-4" aria-hidden="true" /> }
-                  { tab.value === 'dismissed' && <FiXCircle className="size-4" aria-hidden="true" /> }
-                  { tab.label }
-                </TabsTrigger>
-              )) }
-            </TabsList>
-          </Tabs>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Tabs value={ activeTab } onValueChange={ handleTabChange }>
+              <TabsList className="h-auto w-full flex-wrap justify-start gap-2 rounded-md bg-muted/40 p-1.5 md:w-auto">
+                { REPORT_TABS.map((tab) => (
+                  <TabsTrigger
+                    key={ tab.value }
+                    value={ tab.value }
+                    className="gap-2 rounded-md px-3 py-1.5"
+                  >
+                    { tab.value === 'pending' && <FiAlertCircle className="size-4" aria-hidden="true" /> }
+                    { tab.value === 'resolved' && <FiCheckCircle className="size-4" aria-hidden="true" /> }
+                    { tab.value === 'dismissed' && <FiXCircle className="size-4" aria-hidden="true" /> }
+                    { tab.label }
+                  </TabsTrigger>
+                )) }
+              </TabsList>
+            </Tabs>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={ !reports.length || isLoading }
+              onClick={ () => void handleExportPdf() }
+            >
+              <FiDownload className="size-4" aria-hidden="true" />
+              Export PDF
+            </Button>
+          </div>
 
           <div className="flex items-center gap-2">
             <Label htmlFor="admin-chat-reports-page-size">Rows per page</Label>

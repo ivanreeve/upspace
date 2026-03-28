@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { subDays } from 'date-fns';
+import { subDays, format } from 'date-fns';
 
 import { prisma } from '@/lib/prisma';
 import { AdminSessionError, requireAdminSession } from '@/lib/auth/require-admin-session';
@@ -283,6 +283,29 @@ created_at: previousRange,
       },
     });
 
+    type DailyBookingRow = { day: Date; total: bigint; cancelled: bigint };
+    const dailyBookingsPromise = prisma.$queryRaw<DailyBookingRow[]>`
+      SELECT
+        DATE_TRUNC('day', created_at) AS day,
+        COUNT(*)::bigint AS total,
+        COUNT(*) FILTER (WHERE status IN ('cancelled', 'noshow'))::bigint AS cancelled
+      FROM booking
+      WHERE created_at >= ${rangeStart} AND created_at < ${rangeEnd}
+      GROUP BY day
+      ORDER BY day
+    `;
+
+    type DailyRevenueRow = { day: Date; revenue_minor: bigint };
+    const dailyRevenuePromise = prisma.$queryRaw<DailyRevenueRow[]>`
+      SELECT
+        DATE_TRUNC('day', created_at) AS day,
+        COALESCE(SUM(amount_minor), 0)::bigint AS revenue_minor
+      FROM payment_transaction
+      WHERE status = 'succeeded' AND created_at >= ${rangeStart} AND created_at < ${rangeEnd}
+      GROUP BY day
+      ORDER BY day
+    `;
+
     const [
       bookingStatusCurrent,
       bookingStatusPrevious,
@@ -313,8 +336,10 @@ created_at: previousRange,
       providerStaleCount,
       failedWalletSnapshots,
       pendingProviderPayouts,
-      pendingRefunds
-    ] = await Promise.all([
+      pendingRefunds,
+      dailyBookingsRaw,
+      dailyRevenueRaw
+    ] = await prisma.$transaction([
       bookingStatusCurrentPromise,
       bookingStatusPreviousPromise,
       bookingStatusBySpacePromise,
@@ -344,7 +369,9 @@ created_at: previousRange,
       providerStaleCountPromise,
       failedWalletSnapshotsPromise,
       pendingProviderPayoutsPromise,
-      pendingRefundsPromise
+      pendingRefundsPromise,
+      dailyBookingsPromise,
+      dailyRevenuePromise
     ]);
 
     const bookingTotalCurrent = bookingStatusCurrent.reduce(
@@ -542,6 +569,17 @@ region: true,
       topSpaces.map((space) => [space.id, space])
     );
 
+    const dailyBookings = dailyBookingsRaw.map((row) => ({
+      date: format(row.day, 'yyyy-MM-dd'),
+      bookings: Number(row.total),
+      cancellations: Number(row.cancelled),
+    }));
+
+    const dailyRevenue = dailyRevenueRaw.map((row) => ({
+      date: format(row.day, 'yyyy-MM-dd'),
+      revenueMinor: row.revenue_minor.toString(),
+    }));
+
     const payload = {
       range: {
         days,
@@ -611,6 +649,10 @@ region: true,
             cancellationRate: entry.rate,
           };
         }),
+      },
+      timeSeries: {
+        dailyBookings,
+        dailyRevenue,
       },
     };
 

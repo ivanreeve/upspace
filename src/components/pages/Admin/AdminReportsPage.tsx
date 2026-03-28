@@ -1,6 +1,7 @@
 'use client';
 
 import React, {
+  useCallback,
   useEffect,
   useMemo,
   useReducer,
@@ -16,11 +17,37 @@ import {
   FiFilter,
   FiRefreshCw,
   FiSearch,
+  FiFileText,
   FiTrendingUp
 } from 'react-icons/fi';
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  XAxis,
+  YAxis
+} from 'recharts';
 import { toast } from 'sonner';
 
-import { type AdminReportPayload, useAdminReportsQuery } from '@/hooks/api/useAdminReports';
+import { exportPdf, type PdfSection } from '@/lib/export-pdf';
+import {
+  type AdminReportDailyBooking,
+  type AdminReportDailyRevenue,
+  type AdminReportPayload,
+  type AdminReportQueueHealth,
+  type AdminReportRiskSpace,
+  useAdminReportsQuery
+} from '@/hooks/api/useAdminReports';
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent
+} from '@/components/ui/chart';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -103,6 +130,41 @@ const formatCount = (value?: number | null) =>
 
 const formatMinor = (value?: string | null) =>
   value ? formatCurrencyMinor(value, 'PHP') : '-';
+
+const formatChangeLabel = (value?: number | null) => {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return 'No prior data';
+  }
+  if (value === 0) {
+    return 'No change';
+  }
+  return `${Math.abs(value).toFixed(1)}% ${value > 0 ? 'increase' : 'decrease'}`;
+};
+
+const calculateRiskScore = (cancellationRate: number, totalBookings: number) =>
+  Math.round(
+    Math.min(100, cancellationRate * 100 + Math.min(totalBookings, 50))
+  );
+
+const getRiskTier = (cancellationRate: number) => {
+  if (cancellationRate >= RISK_ALERT_THRESHOLD) {
+    return 'High';
+  }
+  if (cancellationRate >= 0.15) {
+    return 'Moderate';
+  }
+  return 'Watch';
+};
+
+const ensurePdfTableRows = (
+  rows: string[][],
+  columnCount: number,
+  emptyLabel = 'No data available'
+) => (
+  rows.length
+    ? rows
+    : [[emptyLabel, ...Array.from({ length: columnCount - 1, }, () => '—')]]
+);
 
 const formatRangeLabel = (range?: AdminReportPayload['range']) => {
   if (!range) return '-';
@@ -686,8 +748,9 @@ function RiskSection({
               ) : spaces.length ? (
                 spaces.map((space) => {
                   const isHighRisk = space.cancellationRate >= RISK_ALERT_THRESHOLD;
-                  const score = Math.round(
-                    Math.min(100, space.cancellationRate * 100 + Math.min(space.totalBookings, 50))
+                  const score = calculateRiskScore(
+                    space.cancellationRate,
+                    space.totalBookings
                   );
                   return (
                     <TableRow key={ space.space_id }>
@@ -739,14 +802,451 @@ function RiskSection({
   );
 }
 
+const chartPrimaryTheme = {
+  light: 'var(--primary)',
+  dark: 'var(--secondary)',
+} as const;
+
+const chartPrimaryMutedTheme = {
+  light: 'color-mix(in oklch, var(--primary) 45%, var(--background))',
+  dark: 'color-mix(in oklch, var(--secondary) 45%, var(--background))',
+} as const;
+
+const bookingsChartConfig = {
+  bookings: {
+    label: 'Bookings',
+    theme: chartPrimaryTheme,
+  },
+  cancellations: {
+    label: 'Cancellations',
+    theme: chartPrimaryMutedTheme,
+  },
+} satisfies ChartConfig;
+
+const revenueChartConfig = {
+  revenue: {
+    label: 'Revenue',
+    theme: chartPrimaryTheme,
+  },
+} satisfies ChartConfig;
+
+const queueChartConfig = {
+  pendingCount: {
+    label: 'Pending',
+    theme: chartPrimaryMutedTheme,
+  },
+  resolvedCount: {
+    label: 'Resolved',
+    theme: chartPrimaryTheme,
+  },
+} satisfies ChartConfig;
+
+const riskChartConfig = {
+  cancellationRate: {
+    label: 'Cancellation Rate',
+    theme: chartPrimaryTheme,
+  },
+} satisfies ChartConfig;
+
+const shortDateFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+});
+
+const formatShortDate = (value: string) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return shortDateFormatter.format(parsed);
+};
+
+const CHART_EXPORT_STYLE_PROPERTIES = [
+  'fill',
+  'fill-opacity',
+  'stroke',
+  'stroke-opacity',
+  'stroke-width',
+  'stroke-dasharray',
+  'stroke-linecap',
+  'stroke-linejoin',
+  'opacity',
+  'font-size',
+  'font-family',
+  'font-weight',
+  'letter-spacing',
+  'text-anchor',
+  'dominant-baseline',
+  'color',
+  'display',
+  'visibility'
+] as const;
+
+const waitForChartPaint = async () => {
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => resolve());
+    });
+  });
+};
+
+const cloneSvgForExport = (svg: SVGSVGElement) => {
+  const clone = svg.cloneNode(true) as SVGSVGElement;
+  const sourceElements = [svg, ...Array.from(svg.querySelectorAll('*'))];
+  const cloneElements = [clone, ...Array.from(clone.querySelectorAll('*'))];
+
+  sourceElements.forEach((sourceElement, index) => {
+    const cloneElement = cloneElements[index];
+    if (!cloneElement) {
+      return;
+    }
+
+    const computedStyle = window.getComputedStyle(sourceElement);
+    const inlineStyle = CHART_EXPORT_STYLE_PROPERTIES.map((property) => {
+      const value = computedStyle.getPropertyValue(property);
+      return value ? `${property}:${value};` : '';
+    }).join('');
+
+    const existingStyle = cloneElement.getAttribute('style') ?? '';
+    if (inlineStyle) {
+      cloneElement.setAttribute('style', `${existingStyle}${inlineStyle}`);
+    }
+  });
+
+  return clone;
+};
+
+const captureChartImage = async (
+  container: HTMLDivElement | null
+): Promise<string | null> => {
+  if (!container) {
+    return null;
+  }
+
+  await waitForChartPaint();
+
+  const svg = container.querySelector('svg');
+  if (!(svg instanceof SVGSVGElement)) {
+    return null;
+  }
+
+  const bounds = svg.getBoundingClientRect();
+  const width = Math.max(
+    Math.round(bounds.width),
+    svg.viewBox.baseVal.width || Number(svg.getAttribute('width')) || 0
+  );
+  const height = Math.max(
+    Math.round(bounds.height),
+    svg.viewBox.baseVal.height || Number(svg.getAttribute('height')) || 0
+  );
+
+  if (width <= 0 || height <= 0) {
+    return null;
+  }
+
+  const exportedSvg = cloneSvgForExport(svg);
+  exportedSvg.setAttribute('width', String(width));
+  exportedSvg.setAttribute('height', String(height));
+  if (!exportedSvg.getAttribute('viewBox')) {
+    exportedSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  }
+
+  const serializedSvg = new XMLSerializer().serializeToString(exportedSvg);
+  const svgBlob = new Blob([serializedSvg], { type: 'image/svg+xml;charset=utf-8', });
+  const objectUrl = URL.createObjectURL(svgBlob);
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const nextImage = new Image();
+      nextImage.onload = () => resolve(nextImage);
+      nextImage.onerror = () => reject(new Error('Unable to load chart image.'));
+      nextImage.src = objectUrl;
+    });
+
+    const scale = 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+
+    const context = canvas.getContext('2d');
+    if (!context) {
+      return null;
+    }
+
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.scale(scale, scale);
+    context.drawImage(image, 0, 0, width, height);
+    return canvas.toDataURL('image/png');
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+};
+
+type BookingsChartProps = {
+  data: AdminReportDailyBooking[];
+  isLoading: boolean;
+  captureRef?: React.RefObject<HTMLDivElement | null>;
+};
+
+function BookingsChart({
+ data, isLoading, captureRef,
+}: BookingsChartProps) {
+  return (
+    <Card className="rounded-md border border-border/70 bg-muted/20 shadow-none">
+      <CardHeader>
+        <CardTitle className="text-base">Bookings Trend</CardTitle>
+        <CardDescription className="text-xs text-muted-foreground">
+          Daily bookings and cancellations over the selected period.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        { isLoading ? (
+          <Skeleton className="h-[260px] w-full" />
+        ) : data.length === 0 ? (
+          <p className="py-12 text-center text-sm text-muted-foreground">
+            No booking data in this range.
+          </p>
+        ) : (
+          <div ref={ captureRef }>
+            <ChartContainer config={ bookingsChartConfig } className="aspect-auto h-[260px] w-full">
+              <BarChart data={ data } accessibilityLayer>
+                <CartesianGrid vertical={ false } />
+                <XAxis
+                  dataKey="date"
+                  tickLine={ false }
+                  axisLine={ false }
+                  tickMargin={ 8 }
+                  tickFormatter={ formatShortDate }
+                />
+                <YAxis tickLine={ false } axisLine={ false } allowDecimals={ false } width={ 40 } />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      labelFormatter={ (value) => formatShortDate(String(value)) }
+                    />
+                  }
+                />
+                <ChartLegend content={ <ChartLegendContent /> } />
+                <Bar dataKey="bookings" fill="var(--color-bookings)" radius={ [4, 4, 0, 0] } />
+                <Bar dataKey="cancellations" fill="var(--color-cancellations)" radius={ [4, 4, 0, 0] } />
+              </BarChart>
+            </ChartContainer>
+          </div>
+        ) }
+      </CardContent>
+    </Card>
+  );
+}
+
+type RevenueChartProps = {
+  data: AdminReportDailyRevenue[];
+  isLoading: boolean;
+  captureRef?: React.RefObject<HTMLDivElement | null>;
+};
+
+function RevenueChart({
+ data, isLoading, captureRef,
+}: RevenueChartProps) {
+  const chartData = useMemo(
+    () => data.map((entry) => ({
+      date: entry.date,
+      revenue: Number(entry.revenueMinor) / 100,
+    })),
+    [data]
+  );
+
+  return (
+    <Card className="rounded-md border border-border/70 bg-muted/20 shadow-none">
+      <CardHeader>
+        <CardTitle className="text-base">Revenue Trend</CardTitle>
+        <CardDescription className="text-xs text-muted-foreground">
+          Daily gross revenue (PHP) over the selected period.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        { isLoading ? (
+          <Skeleton className="h-[260px] w-full" />
+        ) : chartData.length === 0 ? (
+          <p className="py-12 text-center text-sm text-muted-foreground">
+            No revenue data in this range.
+          </p>
+        ) : (
+          <div ref={ captureRef }>
+            <ChartContainer config={ revenueChartConfig } className="aspect-auto h-[260px] w-full">
+              <AreaChart data={ chartData } accessibilityLayer>
+                <defs>
+                  <linearGradient id="fillRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-revenue)" stopOpacity={ 0.8 } />
+                    <stop offset="95%" stopColor="var(--color-revenue)" stopOpacity={ 0.1 } />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={ false } />
+                <XAxis
+                  dataKey="date"
+                  tickLine={ false }
+                  axisLine={ false }
+                  tickMargin={ 8 }
+                  tickFormatter={ formatShortDate }
+                />
+                <YAxis
+                  tickLine={ false }
+                  axisLine={ false }
+                  width={ 60 }
+                  tickFormatter={ (value: number) => `${numberFormatter.format(value)}` }
+                />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      labelFormatter={ (value) => formatShortDate(String(value)) }
+                      formatter={ (value) => [`PHP ${numberFormatter.format(Number(value))}`, 'Revenue'] }
+                    />
+                  }
+                />
+                <Area
+                  dataKey="revenue"
+                  type="monotone"
+                  fill="url(#fillRevenue)"
+                  stroke="var(--color-revenue)"
+                  strokeWidth={ 2 }
+                />
+              </AreaChart>
+            </ChartContainer>
+          </div>
+        ) }
+      </CardContent>
+    </Card>
+  );
+}
+
+type QueueChartProps = {
+  data: AdminReportQueueHealth[];
+  isLoading: boolean;
+  captureRef?: React.RefObject<HTMLDivElement | null>;
+};
+
+function QueueChart({
+ data, isLoading, captureRef,
+}: QueueChartProps) {
+  return (
+    <Card className="rounded-md border border-border/70 bg-muted/20 shadow-none">
+      <CardHeader>
+        <CardTitle className="text-base">Queue Overview</CardTitle>
+        <CardDescription className="text-xs text-muted-foreground">
+          Pending vs resolved items per admin queue.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        { isLoading ? (
+          <Skeleton className="h-[220px] w-full" />
+        ) : data.length === 0 ? (
+          <p className="py-12 text-center text-sm text-muted-foreground">
+            No queue data available.
+          </p>
+        ) : (
+          <div ref={ captureRef }>
+            <ChartContainer config={ queueChartConfig } className="aspect-auto h-[220px] w-full">
+              <BarChart data={ data } layout="vertical" accessibilityLayer>
+                <CartesianGrid horizontal={ false } />
+                <YAxis
+                  dataKey="label"
+                  type="category"
+                  tickLine={ false }
+                  axisLine={ false }
+                  width={ 120 }
+                  className="text-xs"
+                />
+                <XAxis type="number" tickLine={ false } axisLine={ false } allowDecimals={ false } />
+                <ChartTooltip content={ <ChartTooltipContent /> } />
+                <ChartLegend content={ <ChartLegendContent /> } />
+                <Bar dataKey="pendingCount" fill="var(--color-pendingCount)" radius={ [0, 4, 4, 0] } />
+                <Bar dataKey="resolvedCount" fill="var(--color-resolvedCount)" radius={ [0, 4, 4, 0] } />
+              </BarChart>
+            </ChartContainer>
+          </div>
+        ) }
+      </CardContent>
+    </Card>
+  );
+}
+
+type RiskChartProps = {
+  data: AdminReportRiskSpace[];
+  isLoading: boolean;
+  captureRef?: React.RefObject<HTMLDivElement | null>;
+};
+
+function RiskChart({
+ data, isLoading, captureRef,
+}: RiskChartProps) {
+  const chartData = useMemo(
+    () => data.map((space) => ({
+      name: space.space_name.length > 20
+        ? `${space.space_name.slice(0, 18)}...`
+        : space.space_name,
+      cancellationRate: Math.round(space.cancellationRate * 100),
+    })),
+    [data]
+  );
+
+  return (
+    <Card className="rounded-md border border-border/70 bg-muted/20 shadow-none">
+      <CardHeader>
+        <CardTitle className="text-base">Cancellation Risk</CardTitle>
+        <CardDescription className="text-xs text-muted-foreground">
+          Top spaces by cancellation rate (%).
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        { isLoading ? (
+          <Skeleton className="h-[220px] w-full" />
+        ) : chartData.length === 0 ? (
+          <p className="py-12 text-center text-sm text-muted-foreground">
+            No high-risk spaces in this range.
+          </p>
+        ) : (
+          <div ref={ captureRef }>
+            <ChartContainer config={ riskChartConfig } className="aspect-auto h-[220px] w-full">
+              <BarChart data={ chartData } layout="vertical" accessibilityLayer>
+                <CartesianGrid horizontal={ false } />
+                <YAxis
+                  dataKey="name"
+                  type="category"
+                  tickLine={ false }
+                  axisLine={ false }
+                  width={ 130 }
+                  className="text-xs"
+                />
+                <XAxis
+                  type="number"
+                  tickLine={ false }
+                  axisLine={ false }
+                  tickFormatter={ (value: number) => `${value}%` }
+                />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      formatter={ (value) => [`${value}%`, 'Cancellation Rate'] }
+                    />
+                  }
+                />
+                <Bar dataKey="cancellationRate" fill="var(--color-cancellationRate)" radius={ [0, 4, 4, 0] } />
+              </BarChart>
+            </ChartContainer>
+          </div>
+        ) }
+      </CardContent>
+    </Card>
+  );
+}
+
 type ActionsSectionProps = {
   queues: AdminReportPayload['queueHealth'];
+  onPdfExport: () => void;
   onQueueExport: () => void;
   onRiskExport: () => void;
 };
 
 function ActionsSection({
- queues, onQueueExport, onRiskExport, 
+ queues, onPdfExport, onQueueExport, onRiskExport,
 }: ActionsSectionProps) {
   return (
     <div className="grid gap-4 lg:grid-cols-3">
@@ -783,6 +1283,15 @@ function ActionsSection({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full justify-between"
+            onClick={ onPdfExport }
+          >
+            Export full report (PDF)
+            <FiFileText className="size-4" aria-hidden="true" />
+          </Button>
           <Button
             type="button"
             variant="outline"
@@ -859,6 +1368,10 @@ function MetricDialog({
 
 export function AdminReportsPage() {
   const [state, dispatch] = useReducer(reportUiReducer, initialReportUiState);
+  const bookingsChartExportRef = useRef<HTMLDivElement | null>(null);
+  const revenueChartExportRef = useRef<HTMLDivElement | null>(null);
+  const queueChartExportRef = useRef<HTMLDivElement | null>(null);
+  const riskChartExportRef = useRef<HTMLDivElement | null>(null);
 
   const {
     data,
@@ -963,6 +1476,8 @@ value: option.value,
     [data?.risk.topCancellationSpaces]
   );
   const lastUpdated = data?.range?.end;
+  const dailyBookings = useMemo(() => data?.timeSeries.dailyBookings ?? [], [data?.timeSeries.dailyBookings]);
+  const dailyRevenue = useMemo(() => data?.timeSeries.dailyRevenue ?? [], [data?.timeSeries.dailyRevenue]);
 
   const filteredQueues = useMemo(() => {
     if (!state.queuePendingOnly) return queueHealth;
@@ -1046,6 +1561,304 @@ value: option.value,
     handleExportCsv(rows, `admin-cancellation-risk-${state.rangeDays}d.csv`);
   };
 
+  const handleExportPdf = useCallback(async () => {
+    if (!data) {
+      toast.error('No data available to export.');
+      return;
+    }
+
+    try {
+      const [
+        bookingsChartImage,
+        revenueChartImage,
+        queueChartImage,
+        riskChartImage
+      ] = await Promise.all([
+        captureChartImage(bookingsChartExportRef.current),
+        captureChartImage(revenueChartExportRef.current),
+        captureChartImage(queueChartExportRef.current),
+        captureChartImage(riskChartExportRef.current)
+      ]);
+
+      const reportScopeEntries = [
+        {
+          label: 'Report Range',
+          value: formatRangeLabel(data.range),
+        },
+        {
+          label: 'Window Size',
+          value: `${state.rangeDays} days`,
+        },
+        {
+          label: 'Queue Filter',
+          value: state.queuePendingOnly ? 'Pending queues only' : 'All queues',
+        },
+        {
+          label: 'Risk Filter',
+          value: state.riskHighOnly
+            ? `High risk only (>= ${Math.round(RISK_ALERT_THRESHOLD * 100)}%)`
+            : 'All flagged spaces',
+        },
+        {
+          label: 'Risk Search',
+          value: state.riskSearch.trim() || 'No search filter applied',
+        },
+        {
+          label: 'Risk Summary',
+          value: riskSummary,
+        }
+      ];
+
+      const trendRows = ensurePdfTableRows([
+        [
+          'Bookings Volume',
+          formatCount(trends?.bookings?.current),
+          formatCount(trends?.bookings?.previous),
+          formatChangeLabel(trends?.bookings?.changePct),
+          'New bookings created in the selected period.'
+        ],
+        [
+          'Gross Revenue',
+          formatMinor(trends?.grossRevenue?.currentMinor),
+          formatMinor(trends?.grossRevenue?.previousMinor),
+          formatChangeLabel(trends?.grossRevenue?.changePct),
+          'Succeeded payment volume.'
+        ],
+        [
+          'Cancellation Rate',
+          formatRate(trends?.cancellationRate?.current),
+          formatRate(trends?.cancellationRate?.previous),
+          formatChangeLabel(trends?.cancellationRate?.changePct),
+          'Cancelled and no-show bookings as a share of bookings created.'
+        ],
+        [
+          'Refund Rate',
+          formatRate(trends?.refunds?.rate?.current),
+          formatRate(trends?.refunds?.rate?.previous),
+          formatChangeLabel(trends?.refunds?.rate?.changePct),
+          'Refund count relative to succeeded payments.'
+        ],
+        [
+          'Refund Count',
+          formatCount(trends?.refunds?.count?.current),
+          formatCount(trends?.refunds?.count?.previous),
+          formatChangeLabel(trends?.refunds?.count?.changePct),
+          'Number of refund transactions recorded.'
+        ],
+        [
+          'Refund Amount',
+          formatMinor(trends?.refunds?.amountMinor?.currentMinor),
+          formatMinor(trends?.refunds?.amountMinor?.previousMinor),
+          formatChangeLabel(trends?.refunds?.amountMinor?.changePct),
+          'Total refunded amount in PHP.'
+        ],
+        [
+          'Average Rating',
+          trends?.averageRating?.current?.toFixed(2) ?? '-',
+          trends?.averageRating?.previous?.toFixed(2) ?? '-',
+          formatChangeLabel(trends?.averageRating?.changePct),
+          'Average star rating from submitted reviews.'
+        ]
+      ], 5);
+
+      const queueRows = ensurePdfTableRows(
+        filteredQueues.map((queue) => [
+          queue.label,
+          String(queue.pendingCount),
+          queue.oldestPendingDays === null ? '-' : String(queue.oldestPendingDays),
+          queue.averageResolutionDays === null ? '-' : queue.averageResolutionDays.toFixed(1),
+          String(queue.resolvedCount),
+          QUEUE_LABEL_HELP[queue.key]
+        ]),
+        6,
+        'No queue activity in this range'
+      );
+
+      const providerCoverage =
+        providerHealth && providerHealth.configuredAccounts > 0
+          ? `${((providerHealth.liveAccounts / providerHealth.configuredAccounts) * 100).toFixed(1)}% live`
+          : 'No configured accounts';
+      const staleCoverage =
+        providerHealth && providerHealth.configuredAccounts > 0
+          ? `${((providerHealth.staleAccounts / providerHealth.configuredAccounts) * 100).toFixed(1)}% stale`
+          : 'No configured accounts';
+
+      const bookingTrendRows = ensurePdfTableRows(
+        dailyBookings.map((entry) => [
+          formatShortDate(entry.date),
+          String(entry.bookings),
+          String(entry.cancellations),
+          entry.bookings > 0
+            ? formatRate(entry.cancellations / entry.bookings)
+            : '0.0%'
+        ]),
+        4,
+        'No booking trend data in this range'
+      );
+
+      const revenueTrendRows = ensurePdfTableRows(
+        dailyRevenue.map((entry) => [
+          formatShortDate(entry.date),
+          formatMinor(entry.revenueMinor)
+        ]),
+        2,
+        'No revenue trend data in this range'
+      );
+
+      const riskRows = ensurePdfTableRows(
+        filteredRiskSpaces.map((space) => [
+          space.space_name,
+          space.city,
+          space.region,
+          String(space.totalBookings),
+          String(space.cancelledBookings),
+          formatRate(space.cancellationRate),
+          String(calculateRiskScore(space.cancellationRate, space.totalBookings)),
+          getRiskTier(space.cancellationRate)
+        ]),
+        8,
+        'No cancellation-risk spaces in this range'
+      );
+
+      const sections: PdfSection[] = [
+        {
+          kind: 'key-value',
+          title: 'Report Scope',
+          entries: reportScopeEntries,
+        },
+        {
+          kind: 'table',
+          title: 'Trend Metrics',
+          headers: ['Metric', 'Current', 'Previous', 'Change', 'Notes'],
+          rows: trendRows,
+        },
+        ...(bookingsChartImage
+          ? [{
+              kind: 'image' as const,
+              title: 'Bookings Trend Chart',
+              imageDataUrl: bookingsChartImage,
+              caption: 'Daily bookings and cancellations over the selected period.',
+              maxHeightMm: 85,
+            }]
+          : []),
+        ...(revenueChartImage
+          ? [{
+              kind: 'image' as const,
+              title: 'Revenue Trend Chart',
+              imageDataUrl: revenueChartImage,
+              caption: 'Daily gross revenue in PHP over the selected period.',
+              maxHeightMm: 85,
+            }]
+          : []),
+        ...(queueChartImage
+          ? [{
+              kind: 'image' as const,
+              title: 'Queue Overview Chart',
+              imageDataUrl: queueChartImage,
+              caption: 'Pending versus resolved items across admin queues.',
+              maxHeightMm: 80,
+            }]
+          : []),
+        ...(riskChartImage
+          ? [{
+              kind: 'image' as const,
+              title: 'Cancellation Risk Chart',
+              imageDataUrl: riskChartImage,
+              caption: 'Top spaces by cancellation rate percentage.',
+              maxHeightMm: 80,
+            }]
+          : []),
+        {
+          kind: 'table',
+          title: 'Queue Health',
+          headers: ['Queue', 'Pending', 'Oldest (days)', 'Avg Resolution (days)', 'Resolved', 'Context'],
+          rows: queueRows,
+        },
+        {
+          kind: 'table',
+          title: 'Cancellation Risk',
+          headers: ['Space', 'City', 'Region', 'Bookings', 'Cancelled', 'Rate', 'Risk Score', 'Tier'],
+          rows: riskRows,
+        },
+        {
+          kind: 'key-value',
+          title: 'Provider Health',
+          entries: [
+            {
+ label: 'Configured Accounts',
+value: formatCount(providerHealth?.configuredAccounts), 
+},
+            {
+ label: 'Live Accounts',
+value: formatCount(providerHealth?.liveAccounts), 
+},
+            {
+ label: 'Live Coverage',
+value: providerCoverage, 
+},
+            {
+ label: 'Stale Accounts',
+value: formatCount(providerHealth?.staleAccounts), 
+},
+            {
+ label: 'Stale Coverage',
+value: staleCoverage, 
+},
+            {
+ label: 'Failed Snapshots',
+value: formatCount(providerHealth?.failedSnapshotCount), 
+},
+            {
+ label: 'Pending Payouts',
+value: formatCount(providerHealth?.pendingProviderPayouts), 
+},
+            {
+ label: 'Pending Refunds',
+value: formatCount(providerHealth?.pendingRefunds), 
+}
+          ],
+        },
+        {
+          kind: 'table',
+          title: 'Daily Booking Trend',
+          headers: ['Date', 'Bookings', 'Cancellations', 'Cancellation Rate'],
+          rows: bookingTrendRows,
+        },
+        {
+          kind: 'table',
+          title: 'Daily Revenue Trend',
+          headers: ['Date', 'Revenue'],
+          rows: revenueTrendRows,
+        }
+      ];
+
+      await exportPdf({
+        title: 'UpSpace Admin Report',
+        subtitle: formatRangeLabel(data.range),
+        filename: `admin-report-${state.rangeDays}d.pdf`,
+        orientation: 'landscape',
+        sections,
+      });
+
+      toast.success('PDF exported.');
+    } catch {
+      toast.error('Failed to generate PDF.');
+    }
+  }, [
+    data,
+    dailyBookings,
+    dailyRevenue,
+    filteredQueues,
+    filteredRiskSpaces,
+    providerHealth,
+    riskSummary,
+    state.queuePendingOnly,
+    state.rangeDays,
+    state.riskHighOnly,
+    state.riskSearch,
+    trends
+  ]);
+
   return (
     <div className="w-full px-4 pb-8 sm:px-6 lg:px-8">
       <section className="space-y-6 py-8 md:space-y-8 md:py-12">
@@ -1083,9 +1896,37 @@ value: option.value,
               trends={ trends }
               onSelectMetric={ (metric) => dispatch({
  type: 'set-active-metric',
-value: metric, 
+value: metric,
 }) }
             />
+
+            <Separator />
+
+            <div className="grid gap-6 lg:grid-cols-2">
+              <BookingsChart
+                data={ dailyBookings }
+                isLoading={ isLoadingData }
+                captureRef={ bookingsChartExportRef }
+              />
+              <RevenueChart
+                data={ dailyRevenue }
+                isLoading={ isLoadingData }
+                captureRef={ revenueChartExportRef }
+              />
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-2">
+              <QueueChart
+                data={ queueHealth }
+                isLoading={ isLoadingData }
+                captureRef={ queueChartExportRef }
+              />
+              <RiskChart
+                data={ topCancellationSpaces }
+                isLoading={ isLoadingData }
+                captureRef={ riskChartExportRef }
+              />
+            </div>
 
             <Separator />
 
@@ -1158,6 +1999,7 @@ value,
 
             <ActionsSection
               queues={ queueHealth }
+              onPdfExport={ () => void handleExportPdf() }
               onQueueExport={ handleQueueExport }
               onRiskExport={ handleRiskExport }
             />

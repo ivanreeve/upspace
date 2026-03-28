@@ -209,6 +209,121 @@ describe('admin payout requests api', () => {
     });
   });
 
+  it('loads payout destination details from encrypted or legacy metadata', async () => {
+    process.env.FINANCIAL_DATA_ENCRYPTION_KEY = 'test-financial-encryption-key';
+
+    vi.spyOn(adminSessionModule, 'requireAdminSession').mockResolvedValue({
+      authUserId: 'admin-auth-id',
+      userId: 99n,
+    });
+
+    const encryptedDestination = encryptPayoutDestination({
+      channelCode: 'PH_BDO',
+      channelName: 'BDO',
+      channelCategory: 'BANK',
+      currency: 'PHP',
+      accountNumber: '123456789012',
+      accountHolderName: 'Pat Partner',
+    });
+
+    const count = vi
+      .fn()
+      .mockResolvedValueOnce(2)
+      .mockResolvedValueOnce(2);
+
+    vi.spyOn(prismaModule, 'prisma', 'get').mockReturnValue({
+      wallet_transaction: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: requestId,
+            status: 'pending',
+            amount_minor: 150000n,
+            net_amount_minor: 150000n,
+            currency: 'PHP',
+            description: 'Payout request',
+            created_at: new Date('2026-03-07T12:00:00.000Z'),
+            processed_at: null,
+            resolution_note: null,
+            metadata: {
+              workflow_stage: 'awaiting_review',
+              payout_destination_encrypted: encryptedDestination,
+            },
+            wallet: {
+              balance_minor: 350000n,
+              user: {
+                user_id: 42n,
+                first_name: 'Pat',
+                last_name: 'Partner',
+                handle: 'patpartner',
+                role: 'partner',
+                provider_accounts: [],
+              },
+            },
+            processed_by: null,
+          },
+          {
+            id: secondRequestId,
+            status: 'pending',
+            amount_minor: 175000n,
+            net_amount_minor: 175000n,
+            currency: 'PHP',
+            description: 'Payout request',
+            created_at: new Date('2026-03-07T12:30:00.000Z'),
+            processed_at: null,
+            resolution_note: null,
+            metadata: {
+              workflow_stage: 'awaiting_review',
+              payout_destination: {
+                channel_code: 'PH_GCASH',
+                channel_name: 'GCash',
+                channel_category: 'EWALLET',
+                currency: 'PHP',
+                account_holder_name: 'Pat Partner',
+                account_number_masked: '*******4567',
+              },
+            },
+            wallet: {
+              balance_minor: 280000n,
+              user: {
+                user_id: 43n,
+                first_name: 'Pat',
+                last_name: 'Partner',
+                handle: 'patpartner2',
+                role: 'partner',
+                provider_accounts: [],
+              },
+            },
+            processed_by: null,
+          }
+        ]),
+        count,
+      },
+    } as unknown as typeof prismaModule.prisma);
+
+    const response = await listPayoutRequestsHandler(
+      makeRequest({ url: 'http://localhost/api/v1/admin/payout-requests?status=pending&limit=20', })
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.data[0].payoutDestination).toEqual({
+      channelCode: 'PH_BDO',
+      channelName: 'BDO',
+      channelCategory: 'BANK',
+      currency: 'PHP',
+      accountHolderName: 'Pat Partner',
+      accountNumberMasked: '********9012',
+    });
+    expect(body.data[1].payoutDestination).toEqual({
+      channelCode: 'PH_GCASH',
+      channelName: 'GCash',
+      channelCategory: 'EWALLET',
+      currency: 'PHP',
+      accountHolderName: 'Pat Partner',
+      accountNumberMasked: '*******4567',
+    });
+  });
+
   it('submits a payout request to Xendit without restoring wallet balance', async () => {
     process.env.FINANCIAL_DATA_ENCRYPTION_KEY = 'test-financial-encryption-key';
 
