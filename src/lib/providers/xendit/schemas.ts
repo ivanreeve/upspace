@@ -20,7 +20,7 @@ const xenditRawAccountSchema = z.object({
 }).passthrough();
 
 const xenditRawBalanceSchema = z.object({
-  balance: bigintLikeSchema,
+  balance: decimalLikeSchema,
   currency: z.string().min(1).optional(),
   type: z.string().min(1).optional(),
   account_type: z.string().min(1).optional(),
