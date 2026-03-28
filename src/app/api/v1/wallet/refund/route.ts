@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 
 import { submitXenditRefund } from '@/lib/financial/xendit-refunds';
+import { notifyCustomerRefundUpdate } from '@/lib/notifications/booking';
 import { prisma } from '@/lib/prisma';
 import { FinancialProviderError } from '@/lib/providers/errors';
 import { ensureWalletRow, resolveAuthenticatedUserForWallet } from '@/lib/wallet-server';
@@ -56,6 +57,20 @@ function toSafeMinor(value: bigint | null | undefined) {
   return Number.isFinite(resolved) ? resolved : 0;
 }
 
+function mapRefundTransactionStatusToNotificationState(
+  status: 'pending' | 'succeeded' | 'failed'
+) {
+  switch (status) {
+    case 'pending':
+      return 'processing' as const;
+    case 'succeeded':
+      return 'completed' as const;
+    case 'failed':
+    default:
+      return 'review' as const;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const parsed = refundRequestSchema.safeParse(await req.json().catch(() => ({})));
@@ -80,6 +95,12 @@ export async function POST(req: NextRequest) {
         id: true,
         partner_auth_id: true,
         price_minor: true,
+        currency: true,
+        space_id: true,
+        space_name: true,
+        area_id: true,
+        area_name: true,
+        user_auth_id: true,
       },
     });
 
@@ -89,6 +110,30 @@ export async function POST(req: NextRequest) {
         { status: 404, }
       );
     }
+
+    const notifyCustomerRefundStage = async (input: {
+      state: 'processing' | 'review' | 'completed';
+      amountMinor: string;
+      currency: string;
+    }) => {
+      await notifyCustomerRefundUpdate(
+        {
+          bookingId: booking.id,
+          spaceId: booking.space_id,
+          areaId: booking.area_id,
+          spaceName: booking.space_name,
+          areaName: booking.area_name,
+          customerAuthId: booking.user_auth_id,
+          partnerAuthId: booking.partner_auth_id,
+        },
+        input
+      ).catch((notificationError) => {
+        console.error('Failed to create refund status notification', {
+          bookingId: booking.id,
+          error: notificationError,
+        });
+      });
+    };
 
     const paymentTx = await prisma.payment_transaction.findFirst({
       where: {
@@ -188,6 +233,12 @@ created,
       }, { isolationLevel: 'Serializable', });
 
       if (txResult.existing) {
+        await notifyCustomerRefundStage({
+          state: mapRefundTransactionStatusToNotificationState(txResult.existing.status),
+          amountMinor: txResult.existing.amount_minor.toString(),
+          currency: txResult.existing.currency,
+        });
+
         return NextResponse.json({
           transaction: {
             id: txResult.existing.id,
@@ -238,6 +289,12 @@ created,
           providedPaymentReference: parsed.data.paymentId,
         });
 
+        await notifyCustomerRefundStage({
+          state: mapRefundTransactionStatusToNotificationState(refund.transaction.status),
+          amountMinor: refund.transaction.amount_minor.toString(),
+          currency: refund.transaction.currency,
+        });
+
         return NextResponse.json({
           transaction: {
             id: refund.transaction.id,
@@ -249,6 +306,12 @@ created,
           refundId: refund.providerRefund?.refundId ?? refund.transaction.external_reference,
         });
       } catch (refundError) {
+        await notifyCustomerRefundStage({
+          state: 'review',
+          amountMinor: String(amountMinor),
+          currency: paymentTx.currency_iso3,
+        });
+
         if (refundError instanceof FinancialProviderError) {
           return NextResponse.json(
             { message: refundError.message, },
@@ -270,6 +333,12 @@ created,
         status: 'failed',
         updated_at: new Date(),
       },
+    });
+
+    await notifyCustomerRefundStage({
+      state: 'review',
+      amountMinor: String(amountMinor),
+      currency: paymentTx.currency_iso3 ?? booking.currency,
     });
 
     return NextResponse.json(

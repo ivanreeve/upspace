@@ -1,3 +1,5 @@
+import type { BookingRefundSummary } from './refund-summary';
+
 export type BookingStatus =
   | 'confirmed'
   | 'pending'
@@ -19,6 +21,7 @@ export type BookingRecord = {
   startAt: string;
   guestCount: number | null;
   price: number | null;
+  currency?: string;
   status: BookingStatus;
   createdAt: string;
   customerAuthId: string;
@@ -26,6 +29,9 @@ export type BookingRecord = {
   areaMaxCapacity: number | null;
   customerHandle: string | null;
   customerName: string | null;
+  paymentCaptured?: boolean;
+  paymentMethod?: string | null;
+  refundSummary?: BookingRefundSummary | null;
 };
 
 export type CancellableStatus = Extract<BookingStatus, 'pending' | 'confirmed'>;

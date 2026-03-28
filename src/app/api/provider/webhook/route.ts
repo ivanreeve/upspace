@@ -5,7 +5,7 @@ import { finalizeSuccessfulBookingPayment } from '@/lib/bookings/payment-finaliz
 import { mapBookingRowToRecord } from '@/lib/bookings/serializer';
 import { sendRefundNotificationEmail } from '@/lib/email';
 import { applyXenditPayoutStatus, syncPartnerWalletFromRemoteAccountId } from '@/lib/financial/xendit-payouts';
-import { notifyBookingEvent } from '@/lib/notifications/booking';
+import { notifyBookingEvent, notifyCustomerRefundUpdate } from '@/lib/notifications/booking';
 import { getFinancialProvider } from '@/lib/providers/provider-registry';
 import { amountToMinorUnits } from '@/lib/providers/xendit';
 import { parseXenditInvoicePayload, parseXenditPayoutPayload, parseXenditRefundWebhookPayload } from '@/lib/providers/xendit/schemas';
@@ -323,12 +323,7 @@ async function notifyRefundOutcome(input: {
       return;
     }
 
-    const refundLabel = input.status === 'succeeded' ? 'Refund completed' : 'Refund failed';
-    const refundBody = input.status === 'succeeded'
-      ? `Your refund of ${formatCurrencyMinor(input.amountMinor.toString(), input.currency)} for ${booking.area_name} · ${booking.space_name} has been completed.`
-      : `Your refund for ${booking.area_name} · ${booking.space_name} could not be processed. Please contact support.`;
-
-    await notifyBookingEvent(
+    await notifyCustomerRefundUpdate(
       {
         bookingId: booking.id,
         spaceId: booking.space_id,
@@ -339,10 +334,10 @@ async function notifyRefundOutcome(input: {
         partnerAuthId: booking.partner_auth_id,
       },
       {
-        title: refundLabel,
-        body: refundBody,
-      },
-      null
+        state: input.status === 'succeeded' ? 'completed' : 'failed',
+        amountMinor: input.amountMinor.toString(),
+        currency: input.currency,
+      }
     );
 
     try {

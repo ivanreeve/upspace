@@ -586,9 +586,11 @@ function WalletQuickNotes({ notes, }: {
 function WalletProviderStatusCard({
   walletCardClassName,
   providerAccount,
+  pendingProviderCredit,
 }: {
   walletCardClassName: string;
   providerAccount: PartnerProviderAccountView | null;
+  pendingProviderCredit: string | null;
 }) {
   const isReady = providerAccount?.setupState === 'ready';
   const badgeClassName = !providerAccount
@@ -627,17 +629,25 @@ function WalletProviderStatusCard({
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-md border border-border/60 bg-background px-4 py-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Provider balance
-          </p>
-          <p className="mt-1 text-sm font-semibold text-foreground">{ syncedBalance }</p>
-        </div>
-        <div className="rounded-md border border-border/60 bg-background px-4 py-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Account reference
-          </p>
+        <CardContent className="grid gap-3 sm:grid-cols-4">
+          <div className="rounded-md border border-border/60 bg-background px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Provider balance
+            </p>
+            <p className="mt-1 text-sm font-semibold text-foreground">{ syncedBalance }</p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-background px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Still processing to Xendit
+            </p>
+            <p className="mt-1 text-sm font-semibold text-foreground">
+              { pendingProviderCredit ?? 'Unavailable' }
+            </p>
+          </div>
+          <div className="rounded-md border border-border/60 bg-background px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Account reference
+            </p>
           <p className="mt-1 text-sm font-semibold text-foreground">
             { providerAccount?.providerAccountReference ?? 'Not created yet' }
           </p>
@@ -1587,6 +1597,10 @@ export default function WalletPage() {
   const pendingPayout = pendingPayoutMinor > 0
     ? formatCurrencyMinor(String(pendingPayoutMinor), walletCurrency)
     : null;
+  const pendingProviderCreditMinor = stats?.pendingProviderCreditMinor ?? null;
+  const pendingProviderCredit = pendingProviderCreditMinor === null
+    ? null
+    : formatCurrencyMinor(pendingProviderCreditMinor, walletCurrency);
   const totalPaidOutMinor = Number(stats?.totalPaidOutMinor ?? '0');
   const totalPaidOut = totalPaidOutMinor > 0
     ? formatCurrencyMinor(String(totalPaidOutMinor), walletCurrency)
@@ -1622,6 +1636,7 @@ export default function WalletPage() {
       <WalletProviderStatusCard
         walletCardClassName={ walletCardClassName }
         providerAccount={ providerAccount }
+        pendingProviderCredit={ pendingProviderCredit }
       />
 
       <WalletWithdrawalsCard

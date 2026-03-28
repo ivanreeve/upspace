@@ -1,4 +1,5 @@
 import type { BookingStatus } from '@/lib/bookings/types';
+import type { BookingRefundSummary } from '@/lib/bookings/refund-summary';
 
 export type TimelineEventKind = 'created' | 'confirmed' | 'checkedin' | 'checkedout' | 'completed' | 'noshow' | 'payment' | 'cancellation' | 'refund';
 
@@ -29,6 +30,7 @@ export type BookingDetailRecord = {
   createdAt: string;
   paymentCaptured: boolean;
   paymentMethod: string | null;
+  refundSummary: BookingRefundSummary | null;
   reviewState: 'host_approval' | 'capacity_review' | null;
   latestStatusTitle: string | null;
   isLive: boolean | null;

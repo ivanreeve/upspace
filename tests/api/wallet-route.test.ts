@@ -7,6 +7,7 @@ import {
   vi
 } from 'vitest';
 
+import * as onDemandSyncModule from '@/lib/financial/on-demand-sync';
 import * as providerAccountsModule from '@/lib/financial/provider-accounts';
 import * as prismaModule from '@/lib/prisma';
 import * as walletServerModule from '@/lib/wallet-server';
@@ -21,6 +22,7 @@ describe('wallet route', () => {
   });
 
   it('includes provider-backed payout setup in wallet summary reads', async () => {
+    vi.spyOn(onDemandSyncModule, 'reconcilePendingPayouts').mockResolvedValue();
     vi.spyOn(walletServerModule, 'resolveAuthenticatedUserForWallet').mockResolvedValue({
       response: null,
       dbUser: {
@@ -97,10 +99,12 @@ describe('wallet route', () => {
       syncWarning: null,
     });
     expect(body.wallet.balanceMinor).toBe('300000');
+    expect(body.stats.pendingProviderCreditMinor).toBe('120000');
     expect(providerAccountsModule.getPartnerProviderAccountView).toHaveBeenCalledWith({ partnerUserId: 42n, });
   });
 
   it('skips provider sync when includeProvider=0 for transaction pagination', async () => {
+    vi.spyOn(onDemandSyncModule, 'reconcilePendingPayouts').mockResolvedValue();
     vi.spyOn(walletServerModule, 'resolveAuthenticatedUserForWallet').mockResolvedValue({
       response: null,
       dbUser: {
@@ -140,6 +144,7 @@ describe('wallet route', () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.providerAccount).toBeNull();
+    expect(body.stats.pendingProviderCreditMinor).toBeNull();
     expect(providerSpy).not.toHaveBeenCalled();
   });
 });

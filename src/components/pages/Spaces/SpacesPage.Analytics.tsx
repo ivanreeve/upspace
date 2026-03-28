@@ -43,6 +43,8 @@ import { usePartnerBookingsQuery } from '@/hooks/api/useBookings';
 import { usePartnerDashboardFeedQuery } from '@/hooks/api/usePartnerDashboardFeed';
 import { usePartnerSpacesQuery } from '@/hooks/api/usePartnerSpaces';
 import type { BookingStatus } from '@/lib/bookings/types';
+import type { BookingRefundState } from '@/lib/bookings/refund-summary';
+import { formatCurrencyMinor } from '@/lib/wallet';
 
 type DateRangeKey = 'today' | '7d' | '30d' | 'custom';
 type BookingTypeKey = 'all' | 'hourly' | 'daily';
@@ -64,6 +66,22 @@ const BOOKING_STATUS_ORDER: BookingStatus[] = [
   'expired',
   'noshow'
 ];
+
+const ACTIVE_OPERATIONAL_BOOKING_STATUSES = new Set<BookingStatus>([
+  'pending',
+  'confirmed',
+  'checkedin'
+]);
+
+const REFUND_STATUS_VARIANTS: Record<
+  BookingRefundState,
+  'success' | 'secondary' | 'destructive'
+> = {
+  pending: 'secondary',
+  succeeded: 'success',
+  failed: 'destructive',
+  attention: 'destructive',
+};
 
 const DATE_RANGE_PRESETS: {
   label: string;
@@ -147,7 +165,7 @@ type PeakDemand = {
 
 type RecentBooking = Pick<
   PartnerBookingRecord,
-  'id' | 'spaceName' | 'createdAt' | 'areaName' | 'status'
+  'id' | 'spaceName' | 'createdAt' | 'areaName' | 'status' | 'refundSummary'
 >;
 
 type AnalyticsFilterState = {
@@ -410,6 +428,17 @@ const resolveStatusVariant = (status: BookingStatus) => {
       return 'destructive' as const;
   }
 };
+
+function formatRefundAmount(
+  amountMinor: string | null | undefined,
+  currency: string | null | undefined
+) {
+  if (!amountMinor) {
+    return null;
+  }
+
+  return formatCurrencyMinor(amountMinor, currency ?? 'PHP');
+}
 
 type AnalyticsFiltersCardProps = {
   filters: AnalyticsFilterState;
@@ -965,7 +994,7 @@ function AnalyticsStatusSection({
         <CardHeader className="flex flex-row items-start justify-between">
           <div>
             <CardTitle>Operational insights</CardTitle>
-            <CardDescription>Upcoming bookings and peak demand.</CardDescription>
+            <CardDescription>Upcoming bookings, refund follow-up, and peak demand.</CardDescription>
           </div>
           <Badge variant="outline">Live</Badge>
         </CardHeader>
@@ -1039,18 +1068,33 @@ function AnalyticsStatusSection({
               recentBookings.map((booking) => (
                 <div
                   key={ booking.id }
-                  className="flex items-center justify-between rounded-md border px-4 py-3"
+                  className="flex items-start justify-between gap-3 rounded-md border px-4 py-3"
                 >
-                  <div>
+                  <div className="min-w-0 space-y-1">
                     <p className="text-sm font-semibold">{ booking.spaceName }</p>
                     <p className="text-xs text-muted-foreground">
                       { format(new Date(booking.createdAt), 'MMM d · h:mm a') } ·{ ' ' }
                       { booking.areaName }
                     </p>
+                    { booking.refundSummary ? (
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        { formatRefundAmount(
+                          booking.refundSummary.amountMinor,
+                          booking.refundSummary.currency
+                        ) ?? 'Refund' } · { booking.refundSummary.detail }
+                      </p>
+                    ) : null }
                   </div>
-                  <Badge variant={ resolveStatusVariant(booking.status) }>
-                    { booking.status }
-                  </Badge>
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                    <Badge variant={ resolveStatusVariant(booking.status) }>
+                      { booking.status }
+                    </Badge>
+                    { booking.refundSummary ? (
+                      <Badge variant={ REFUND_STATUS_VARIANTS[booking.refundSummary.state] }>
+                        { booking.refundSummary.label }
+                      </Badge>
+                    ) : null }
+                  </div>
                 </div>
               ))
             ) }
@@ -1169,7 +1213,8 @@ function useOperationalInsights(filteredBookings: PartnerBookingRecord[]) {
   const recentBookings = useMemo<RecentBooking[]>(() => {
     return [...filteredBookings]
       .filter((booking) =>
-        ['confirmed', 'pending', 'checkedin'].includes(booking.status)
+        ACTIVE_OPERATIONAL_BOOKING_STATUSES.has(booking.status) ||
+        Boolean(booking.refundSummary)
       )
       .sort(
         (first, second) =>

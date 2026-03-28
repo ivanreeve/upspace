@@ -47,6 +47,7 @@ export type WalletStats = {
   totalRefundedMinor: string;
   pendingPayoutMinor: string;
   totalPaidOutMinor: string;
+  pendingProviderCreditMinor: string | null;
   transactionCount: number;
 };
 
