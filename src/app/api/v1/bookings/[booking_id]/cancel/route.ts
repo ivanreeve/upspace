@@ -295,16 +295,6 @@ error: emailError,
                   error: refundError,
                 }
               );
-
-              await prisma.wallet_transaction.update({
-                where: { id: refundRecordId, },
-                data: { status: 'failed', },
-              }).catch((updateError) => {
-                console.error('Failed to mark refund record as failed', {
-                  refundRecordId,
-                  error: updateError,
-                });
-              });
             }
           }
         }

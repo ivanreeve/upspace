@@ -119,7 +119,7 @@ function mapXenditRefundStatus(rawStatus: string): ProviderRefundStatus {
   return 'PENDING';
 }
 
-function amountToMinorUnits(value: string | number | bigint, currency: string) {
+export function amountToMinorUnits(value: string | number | bigint, currency: string) {
   if (typeof value === 'bigint') {
     return value;
   }
@@ -454,6 +454,7 @@ export class XenditFinancialProvider implements FinancialProvider {
           input.amountMinor != null && input.currency
             ? amountFromMinorUnits(input.amountMinor, input.currency)
             : undefined,
+        currency: input.currency ?? undefined,
         reason: input.reason,
         metadata: input.metadata ?? undefined,
       }),

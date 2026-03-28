@@ -7,6 +7,7 @@ import { sendRefundNotificationEmail } from '@/lib/email';
 import { applyXenditPayoutStatus, syncPartnerWalletFromRemoteAccountId } from '@/lib/financial/xendit-payouts';
 import { notifyBookingEvent } from '@/lib/notifications/booking';
 import { getFinancialProvider } from '@/lib/providers/provider-registry';
+import { amountToMinorUnits } from '@/lib/providers/xendit';
 import { parseXenditInvoicePayload, parseXenditPayoutPayload, parseXenditRefundWebhookPayload } from '@/lib/providers/xendit/schemas';
 import { prisma } from '@/lib/prisma';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
@@ -436,19 +437,18 @@ async function handleXenditRefundWebhook(
         return;
       }
 
+      const resolvedAmountMinor =
+        payload.refund.amount != null && payload.refund.currency
+          ? amountToMinorUnits(payload.refund.amount, payload.refund.currency)
+          : walletTransaction.amount_minor;
+
       await tx.wallet_transaction.update({
         where: { id: walletTransaction.id, },
         data: {
           status: nextStatus,
           external_reference: payload.refund.id,
-          amount_minor:
-            payload.refund.amount != null && payload.refund.currency
-              ? BigInt(Math.round(Number(payload.refund.amount) * 100))
-              : walletTransaction.amount_minor,
-          net_amount_minor:
-            payload.refund.amount != null && payload.refund.currency
-              ? BigInt(Math.round(Number(payload.refund.amount) * 100))
-              : walletTransaction.amount_minor,
+          amount_minor: resolvedAmountMinor,
+          net_amount_minor: resolvedAmountMinor,
           currency: payload.refund.currency ?? walletTransaction.currency,
           metadata: buildRefundWebhookMetadata(walletTransaction.metadata, {
             providerStatus: payload.refund.status,
@@ -476,7 +476,7 @@ async function handleXenditRefundWebhook(
 
         if (
           paymentTransaction &&
-          walletTransaction.amount_minor >= paymentTransaction.amount_minor
+          resolvedAmountMinor >= paymentTransaction.amount_minor
         ) {
           await tx.payment_transaction.update({
             where: { id: paymentTransaction.id, },
@@ -508,12 +508,14 @@ async function handleXenditRefundWebhook(
       }
     }
 
+    const notifyAmountMinor =
+      payload.refund.amount != null && payload.refund.currency
+        ? amountToMinorUnits(payload.refund.amount, payload.refund.currency)
+        : 0n;
+
     await notifyRefundOutcome({
       bookingId: bookingIdToNotify,
-      amountMinor:
-        payload.refund.amount != null && payload.refund.currency
-          ? BigInt(Math.round(Number(payload.refund.amount) * 100))
-          : 0n,
+      amountMinor: notifyAmountMinor,
       currency: payload.refund.currency ?? 'PHP',
       status: payload.eventType === 'refund.succeeded' ? 'succeeded' : 'failed',
     });
@@ -590,7 +592,7 @@ async function handleXenditInvoiceWebhook(
       provider_object_id: invoice.id,
       payment_event_id: paymentEvent.id,
       status: mapInvoicePaymentStatus(invoice.status),
-      amount_minor: BigInt(Math.round(Number(invoice.amount) * 100)),
+      amount_minor: amountToMinorUnits(invoice.amount, invoice.currency),
       currency_iso3: invoice.currency,
       payment_method_type: invoice.payment_method ?? 'xendit_invoice',
       is_live: false,
@@ -601,7 +603,7 @@ async function handleXenditInvoiceWebhook(
       booking_id: bookingId,
       payment_event_id: paymentEvent.id,
       status: mapInvoicePaymentStatus(invoice.status),
-      amount_minor: BigInt(Math.round(Number(invoice.amount) * 100)),
+      amount_minor: amountToMinorUnits(invoice.amount, invoice.currency),
       currency_iso3: invoice.currency,
       payment_method_type: invoice.payment_method ?? 'xendit_invoice',
       raw_gateway_json: mergedRawGatewayJson,
@@ -663,7 +665,7 @@ async function handleXenditInvoiceWebhook(
     bookingRow.price_minor === null
       ? null
       : Number(bookingRow.price_minor);
-  const paidAmountMinor = Math.round(Number(invoice.amount) * 100);
+  const paidAmountMinor = Number(amountToMinorUnits(invoice.amount, invoice.currency));
   const amountMatches =
     expectedAmountMinor !== null &&
     Number.isFinite(expectedAmountMinor) &&

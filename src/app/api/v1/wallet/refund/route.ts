@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 
 import { submitXenditRefund } from '@/lib/financial/xendit-refunds';
@@ -112,43 +113,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const existing = await prisma.wallet_transaction.findFirst({
-      where: {
-        wallet_id: walletRow.id,
-        booking_id: booking.id,
-        type: 'refund',
-        status: { in: ['pending', 'succeeded'], },
-        OR: [
-          {
-            metadata: {
-              path: ['payment_transaction_id'],
-              equals: paymentTx.id,
-            },
-          },
-          {
-            metadata: {
-              path: ['payment_id'],
-              equals: parsed.data.paymentId,
-            },
-          }
-        ],
-      },
-      orderBy: { created_at: 'desc', },
-    });
-
-    if (existing) {
-      return NextResponse.json({
-        transaction: {
-          id: existing.id,
-          type: existing.type,
-          status: existing.status,
-          amountMinor: existing.amount_minor.toString(),
-          currency: existing.currency,
-        },
-        refundId: existing.external_reference,
-      });
-    }
-
     const maxRefundableMinor = paymentTx
       ? toSafeMinor(paymentTx.amount_minor)
       : toSafeMinor(booking.price_minor);
@@ -161,26 +125,95 @@ export async function POST(req: NextRequest) {
     }
 
     const metadata = normalizeMetadata(parsed.data.metadata);
-    const createdIntent = await prisma.wallet_transaction.create({
-      data: {
-        wallet_id: walletRow.id,
-        type: 'refund',
-        status: 'pending',
-        amount_minor: BigInt(amountMinor),
-        net_amount_minor: BigInt(amountMinor),
-        currency: paymentTx?.currency_iso3 ?? 'PHP',
-        description: parsed.data.notes ?? null,
-        booking_id: booking.id,
-        metadata: {
-          ...(metadata ?? {}),
-          payment_id: parsed.data.paymentId,
-          payment_transaction_id: paymentTx.id,
-          payment_provider_object_id: paymentTx.provider_object_id,
-          booking_id: booking.id,
-          requested_by: auth.dbUser!.auth_user_id,
-        },
-      },
-    });
+
+    let createdIntent: Awaited<ReturnType<typeof prisma.wallet_transaction.create>>;
+    try {
+      const txResult = await prisma.$transaction(async (tx) => {
+        const existing = await tx.wallet_transaction.findFirst({
+          where: {
+            wallet_id: walletRow.id,
+            booking_id: booking.id,
+            type: 'refund',
+            status: { in: ['pending', 'succeeded'], },
+            OR: [
+              {
+                metadata: {
+                  path: ['payment_transaction_id'],
+                  equals: paymentTx.id,
+                },
+              },
+              {
+                metadata: {
+                  path: ['payment_id'],
+                  equals: parsed.data.paymentId,
+                },
+              }
+            ],
+          },
+          orderBy: { created_at: 'desc', },
+        });
+
+        if (existing) {
+          return {
+ existing,
+created: null, 
+};
+        }
+
+        const created = await tx.wallet_transaction.create({
+          data: {
+            wallet_id: walletRow.id,
+            type: 'refund',
+            status: 'pending',
+            amount_minor: BigInt(amountMinor),
+            net_amount_minor: BigInt(amountMinor),
+            currency: paymentTx?.currency_iso3 ?? 'PHP',
+            description: parsed.data.notes ?? null,
+            booking_id: booking.id,
+            metadata: {
+              ...(metadata ?? {}),
+              payment_id: parsed.data.paymentId,
+              payment_transaction_id: paymentTx.id,
+              payment_provider_object_id: paymentTx.provider_object_id,
+              booking_id: booking.id,
+              requested_by: auth.dbUser!.auth_user_id,
+            },
+          },
+        });
+
+        return {
+ existing: null,
+created, 
+};
+      }, { isolationLevel: 'Serializable', });
+
+      if (txResult.existing) {
+        return NextResponse.json({
+          transaction: {
+            id: txResult.existing.id,
+            type: txResult.existing.type,
+            status: txResult.existing.status,
+            amountMinor: txResult.existing.amount_minor.toString(),
+            currency: txResult.existing.currency,
+          },
+          refundId: txResult.existing.external_reference,
+        });
+      }
+
+      createdIntent = txResult.created!;
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2034'
+      ) {
+        return NextResponse.json(
+          { message: 'A refund for this booking is already being processed.', },
+          { status: 409, }
+        );
+      }
+
+      throw error;
+    }
 
     if (paymentTx.provider === 'xendit') {
       try {
