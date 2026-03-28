@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 
 import { maskProviderAccountReference } from '@/lib/financial/provider-account-view';
+import { buildPayoutDestinationSummary, decryptPayoutDestination } from '@/lib/financial/payout-destination';
 import { prisma } from '@/lib/prisma';
 import { AdminSessionError, requireAdminSession } from '@/lib/auth/require-admin-session';
 import { formatUserDisplayName } from '@/lib/user/display-name';
@@ -66,38 +67,57 @@ function readPayoutDestination(
     return null;
   }
 
-  const destination = (metadata as Prisma.JsonObject).payout_destination;
-  if (!destination || typeof destination !== 'object' || Array.isArray(destination)) {
+  const metadataObject = metadata as Prisma.JsonObject;
+  const destination = metadataObject.payout_destination;
+  const encryptedDestination = metadataObject.payout_destination_encrypted;
+
+  if (destination && typeof destination === 'object' && !Array.isArray(destination)) {
+    const payoutDestination = destination as Prisma.JsonObject;
+    const category = payoutDestination.channelCategory ?? payoutDestination.channel_category;
+
+    return {
+      channelCode:
+        typeof payoutDestination.channelCode === 'string'
+          ? payoutDestination.channelCode
+          : typeof payoutDestination.channel_code === 'string'
+            ? payoutDestination.channel_code
+            : null,
+      channelName:
+        typeof payoutDestination.channelName === 'string'
+          ? payoutDestination.channelName
+          : typeof payoutDestination.channel_name === 'string'
+            ? payoutDestination.channel_name
+            : null,
+      channelCategory:
+        category === 'BANK' || category === 'EWALLET' || category === 'OTC'
+          ? category
+          : null,
+      currency:
+        typeof payoutDestination.currency === 'string' ? payoutDestination.currency : null,
+      accountHolderName:
+        typeof payoutDestination.accountHolderName === 'string'
+          ? payoutDestination.accountHolderName
+          : typeof payoutDestination.account_holder_name === 'string'
+            ? payoutDestination.account_holder_name
+            : null,
+      accountNumberMasked:
+        typeof payoutDestination.accountNumberMasked === 'string'
+          ? payoutDestination.accountNumberMasked
+          : typeof payoutDestination.account_number_masked === 'string'
+            ? payoutDestination.account_number_masked
+            : null,
+    };
+  }
+
+  if (typeof encryptedDestination !== 'string') {
     return null;
   }
 
-  const payoutDestination = destination as Prisma.JsonObject;
-  const category = payoutDestination.channelCategory;
-
-  return {
-    channelCode:
-      typeof payoutDestination.channelCode === 'string'
-        ? payoutDestination.channelCode
-        : null,
-    channelName:
-      typeof payoutDestination.channelName === 'string'
-        ? payoutDestination.channelName
-        : null,
-    channelCategory:
-      category === 'BANK' || category === 'EWALLET' || category === 'OTC'
-        ? category
-        : null,
-    currency:
-      typeof payoutDestination.currency === 'string' ? payoutDestination.currency : null,
-    accountHolderName:
-      typeof payoutDestination.accountHolderName === 'string'
-        ? payoutDestination.accountHolderName
-        : null,
-    accountNumberMasked:
-      typeof payoutDestination.accountNumberMasked === 'string'
-        ? payoutDestination.accountNumberMasked
-        : null,
-  };
+  try {
+    return buildPayoutDestinationSummary(decryptPayoutDestination(encryptedDestination));
+  } catch {
+    return null;
+  }
 }
 
 function readWorkflowStage(
