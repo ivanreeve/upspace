@@ -353,16 +353,16 @@ export function CustomerBookingsPanel({ initialBookings, }: { initialBookings?: 
             </div>
           ) : (
             <ScrollArea className="max-h-[560px] rounded-md border border-border/70 bg-muted/10">
-              <Table aria-label="Recent bookings details">
+              <Table aria-label="Recent bookings details" className="min-w-[1040px] table-fixed">
                 <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
                   <TableRow className="hover:bg-transparent">
-                    <TableHead>Booking</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Start</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead>Guests</TableHead>
-                    <TableHead>Total</TableHead>
-                    <TableHead>Requested</TableHead>
+                    <TableHead className="w-[24%]">Booking</TableHead>
+                    <TableHead className="w-[24%]">Status</TableHead>
+                    <TableHead className="w-[14%]">Start</TableHead>
+                    <TableHead className="w-[8%]">Duration</TableHead>
+                    <TableHead className="w-[8%]">Guests</TableHead>
+                    <TableHead className="w-[8%]">Total</TableHead>
+                    <TableHead className="w-[14%]">Requested</TableHead>
                     <TableHead className="w-[84px] text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -375,21 +375,21 @@ export function CustomerBookingsPanel({ initialBookings, }: { initialBookings?: 
 
                     return (
                       <TableRow key={ booking.id }>
-                        <TableCell className="min-w-[240px]">
-                          <div className="space-y-1">
+                        <TableCell className="min-w-0 whitespace-normal align-top">
+                          <div className="min-w-0 space-y-1">
                             <Link
                               href={ `/customer/bookings/${booking.id}` }
-                              className="block text-sm font-semibold text-foreground hover:underline"
+                              className="block break-words text-sm font-semibold leading-5 text-foreground hover:underline"
                             >
                               { booking.spaceName } · { booking.areaName }
                             </Link>
-                            <p className="font-mono text-xs text-muted-foreground">
+                            <p className="break-all font-mono text-xs text-muted-foreground">
                               { booking.id.slice(0, 8) }
                             </p>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
+                        <TableCell className="min-w-0 whitespace-normal align-top">
+                          <div className="min-w-0 space-y-1">
                             <Badge variant={ BOOKING_STATUS_VARIANTS[booking.status] }>
                               { BOOKING_STATUS_LABELS[booking.status] }
                             </Badge>
@@ -398,39 +398,43 @@ export function CustomerBookingsPanel({ initialBookings, }: { initialBookings?: 
                                 <Badge variant={ REFUND_STATUS_VARIANTS[refundSummary.state] }>
                                   { refundSummary.label }
                                 </Badge>
-                                <p className="max-w-[220px] text-xs text-muted-foreground">
+                                <p className="max-w-full break-words text-xs leading-5 text-muted-foreground">
                                   { refundSummary.detail }
                                 </p>
                               </>
                             ) : null }
                           </div>
                         </TableCell>
-                        <TableCell className="min-w-[180px]">
+                        <TableCell className="whitespace-normal align-top">
                           <div className="space-y-1">
-                            <p className="text-sm text-foreground">{ formatBookingDate(booking.startAt) }</p>
+                            <p className="text-sm leading-5 text-foreground">
+                              { formatBookingDate(booking.startAt) }
+                            </p>
                             <p className="text-xs text-muted-foreground">
                               { formatDistanceToNow(new Date(booking.startAt), { addSuffix: true, }) }
                             </p>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="align-top">
                           { booking.bookingHours } hour{ booking.bookingHours === 1 ? '' : 's' }
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="align-top">
                           { guestCount } guest{ guestCount === 1 ? '' : 's' }
                         </TableCell>
-                        <TableCell className="font-semibold text-foreground">
+                        <TableCell className="align-top font-semibold text-foreground">
                           { formatBookingPrice(booking.price) }
                         </TableCell>
-                        <TableCell className="min-w-[180px]">
+                        <TableCell className="whitespace-normal align-top">
                           <div className="space-y-1">
-                            <p className="text-sm text-foreground">{ formatBookingDate(booking.createdAt) }</p>
+                            <p className="text-sm leading-5 text-foreground">
+                              { formatBookingDate(booking.createdAt) }
+                            </p>
                             <p className="text-xs text-muted-foreground">
                               { formatDistanceToNow(new Date(booking.createdAt), { addSuffix: true, }) }
                             </p>
                           </div>
                         </TableCell>
-                        <TableCell className="w-[84px] text-right">
+                        <TableCell className="w-[84px] align-top text-right">
                           <div className="flex items-center justify-end">
                             <BookingRowActions
                               booking={ booking }
