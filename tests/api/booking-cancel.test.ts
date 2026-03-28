@@ -23,6 +23,9 @@ describe('booking cancel api', () => {
   it('cancels paid Xendit bookings and submits a provider refund', async () => {
     vi.spyOn(rateLimitModule, 'enforceRateLimit').mockResolvedValue();
     vi.spyOn(notificationsModule, 'notifyBookingEvent').mockResolvedValue();
+    const notifyCustomerRefundUpdate = vi
+      .spyOn(notificationsModule, 'notifyCustomerRefundUpdate')
+      .mockResolvedValue();
     vi.spyOn(supabaseServerModule, 'createSupabaseServerClient').mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
@@ -162,6 +165,14 @@ describe('booking cancel api', () => {
         walletTransactionId: 'refund-intent-1',
         bookingId: 'booking-1',
         partnerUserId: 21n,
+      })
+    );
+    expect(notifyCustomerRefundUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ bookingId: 'booking-1', }),
+      expect.objectContaining({
+        state: 'processing',
+        amountMinor: '150000',
+        currency: 'PHP',
       })
     );
   });

@@ -480,7 +480,9 @@ describe('provider webhook api', () => {
   it('marks refunds as succeeded from Xendit callbacks and syncs the provider balance', async () => {
     process.env.XENDIT_WEBHOOK_VERIFICATION_TOKEN = 'test-callback-token';
 
-    vi.spyOn(notificationsModule, 'notifyBookingEvent').mockResolvedValue();
+    const notifyCustomerRefundUpdate = vi
+      .spyOn(notificationsModule, 'notifyCustomerRefundUpdate')
+      .mockResolvedValue();
     vi.spyOn(emailModule, 'sendRefundNotificationEmail').mockResolvedValue();
     vi.spyOn(supabaseAdminModule, 'getSupabaseAdminClient').mockReturnValue({ auth: { admin: { getUserById: vi.fn().mockResolvedValue({ data: { user: { email: 'customer@example.com', }, }, }), }, }, } as never);
     vi.spyOn(walletSnapshotsModule, 'recordPartnerWalletSnapshot').mockResolvedValue({
@@ -583,7 +585,14 @@ describe('provider webhook api', () => {
       })
     );
     expect(getPartnerBalance).toHaveBeenCalledWith('acct-remote-1');
-    expect(notificationsModule.notifyBookingEvent).toHaveBeenCalled();
+    expect(notifyCustomerRefundUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ bookingId: 'booking-1', }),
+      expect.objectContaining({
+        state: 'completed',
+        amountMinor: '150000',
+        currency: 'PHP',
+      })
+    );
     expect(emailModule.sendRefundNotificationEmail).toHaveBeenCalled();
   });
 });

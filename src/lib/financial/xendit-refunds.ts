@@ -192,19 +192,21 @@ export async function syncPartnerWalletAfterXenditRefund(input: {
 }
 
 export async function submitXenditRefund(input: CreateXenditRefundInput) {
-  const context = await resolveRefundContext({
-    partnerUserId: input.partnerUserId,
-    paymentTransaction: input.paymentTransaction,
-    providedPaymentReference: input.providedPaymentReference,
-  });
-
-  const provider = getFinancialProvider();
+  let context: XenditRefundContext | null = null;
 
   try {
+    context = await resolveRefundContext({
+      partnerUserId: input.partnerUserId,
+      paymentTransaction: input.paymentTransaction,
+      providedPaymentReference: input.providedPaymentReference,
+    });
+    const resolvedContext = context;
+
+    const provider = getFinancialProvider();
     const providerRefund = await provider.createRefund({
-      partnerProviderAccountId: context.remotePartnerProviderAccountId,
+      partnerProviderAccountId: resolvedContext.remotePartnerProviderAccountId,
       referenceId: input.walletTransactionId,
-      paymentRequestId: context.paymentRequestId,
+      paymentRequestId: resolvedContext.paymentRequestId,
       amountMinor: input.amountMinor,
       currency: input.paymentTransaction.currency_iso3,
       reason: mapRefundReason(input.reason),
@@ -242,10 +244,12 @@ export async function submitXenditRefund(input: CreateXenditRefundInput) {
               provider: 'xendit',
               payment_transaction_id: input.paymentTransaction.id,
               payment_provider_object_id: input.paymentTransaction.provider_object_id,
-              payment_id: context.paymentId,
-              payment_request_id: context.paymentRequestId,
-              local_partner_provider_account_id: context.localPartnerProviderAccountId,
-              remote_partner_provider_account_id: context.remotePartnerProviderAccountId,
+              payment_id: resolvedContext.paymentId,
+              payment_request_id: resolvedContext.paymentRequestId,
+              local_partner_provider_account_id:
+                resolvedContext.localPartnerProviderAccountId,
+              remote_partner_provider_account_id:
+                resolvedContext.remotePartnerProviderAccountId,
               requested_by: input.requestedByAuthUserId,
               failure_reason: providerRefund.failureReason,
               provider_refund: toInputJsonValue(providerRefund.raw),
@@ -275,13 +279,13 @@ export async function submitXenditRefund(input: CreateXenditRefundInput) {
     if (resolvedStatus !== 'pending') {
       await syncPartnerWalletAfterXenditRefund({
         partnerUserId: input.partnerUserId,
-        localPartnerProviderAccountId: context.localPartnerProviderAccountId,
-        remotePartnerProviderAccountId: context.remotePartnerProviderAccountId,
+        localPartnerProviderAccountId: resolvedContext.localPartnerProviderAccountId,
+        remotePartnerProviderAccountId: resolvedContext.remotePartnerProviderAccountId,
       });
     }
 
     return {
-      context,
+      context: resolvedContext,
       providerRefund,
       transaction: updatedTransaction,
     };
@@ -302,10 +306,12 @@ export async function submitXenditRefund(input: CreateXenditRefundInput) {
               provider: 'xendit',
               payment_transaction_id: input.paymentTransaction.id,
               payment_provider_object_id: input.paymentTransaction.provider_object_id,
-              payment_id: context.paymentId,
-              payment_request_id: context.paymentRequestId,
-              local_partner_provider_account_id: context.localPartnerProviderAccountId,
-              remote_partner_provider_account_id: context.remotePartnerProviderAccountId,
+              payment_id: context?.paymentId ?? null,
+              payment_request_id: context?.paymentRequestId ?? null,
+              local_partner_provider_account_id:
+                context?.localPartnerProviderAccountId ?? null,
+              remote_partner_provider_account_id:
+                context?.remotePartnerProviderAccountId ?? null,
               submission_conflict: true,
             }
           ),
@@ -335,6 +341,14 @@ export async function submitXenditRefund(input: CreateXenditRefundInput) {
             provider: 'xendit',
             payment_transaction_id: input.paymentTransaction.id,
             payment_provider_object_id: input.paymentTransaction.provider_object_id,
+            ...(context
+              ? {
+                payment_id: context.paymentId,
+                payment_request_id: context.paymentRequestId,
+                local_partner_provider_account_id: context.localPartnerProviderAccountId,
+                remote_partner_provider_account_id: context.remotePartnerProviderAccountId,
+              }
+              : {}),
             failure_reason: error instanceof Error ? error.message : 'Xendit refund failed.',
           }
         ),
