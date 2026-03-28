@@ -1,6 +1,7 @@
 'use client';
 
 import React, {
+  useCallback,
   useEffect,
   useMemo,
   useReducer,
@@ -801,39 +802,49 @@ function RiskSection({
   );
 }
 
+const chartPrimaryTheme = {
+  light: 'hsl(var(--primary))',
+  dark: 'hsl(var(--secondary))',
+} as const;
+
+const chartPrimaryMutedTheme = {
+  light: 'hsl(var(--primary) / 0.45)',
+  dark: 'hsl(var(--secondary) / 0.45)',
+} as const;
+
 const bookingsChartConfig = {
   bookings: {
     label: 'Bookings',
-    color: 'hsl(var(--chart-1))',
+    theme: chartPrimaryTheme,
   },
   cancellations: {
     label: 'Cancellations',
-    color: 'hsl(var(--chart-4))',
+    theme: chartPrimaryMutedTheme,
   },
 } satisfies ChartConfig;
 
 const revenueChartConfig = {
   revenue: {
     label: 'Revenue',
-    color: 'hsl(var(--chart-2))',
+    theme: chartPrimaryTheme,
   },
 } satisfies ChartConfig;
 
 const queueChartConfig = {
   pendingCount: {
     label: 'Pending',
-    color: 'hsl(var(--chart-4))',
+    theme: chartPrimaryMutedTheme,
   },
   resolvedCount: {
     label: 'Resolved',
-    color: 'hsl(var(--chart-1))',
+    theme: chartPrimaryTheme,
   },
 } satisfies ChartConfig;
 
 const riskChartConfig = {
   cancellationRate: {
     label: 'Cancellation Rate',
-    color: 'hsl(var(--chart-4))',
+    theme: chartPrimaryTheme,
   },
 } satisfies ChartConfig;
 
@@ -848,13 +859,136 @@ const formatShortDate = (value: string) => {
   return shortDateFormatter.format(parsed);
 };
 
+const CHART_EXPORT_STYLE_PROPERTIES = [
+  'fill',
+  'fill-opacity',
+  'stroke',
+  'stroke-opacity',
+  'stroke-width',
+  'stroke-dasharray',
+  'stroke-linecap',
+  'stroke-linejoin',
+  'opacity',
+  'font-size',
+  'font-family',
+  'font-weight',
+  'letter-spacing',
+  'text-anchor',
+  'dominant-baseline',
+  'color',
+  'display',
+  'visibility'
+] as const;
+
+const waitForChartPaint = async () => {
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => resolve());
+    });
+  });
+};
+
+const cloneSvgForExport = (svg: SVGSVGElement) => {
+  const clone = svg.cloneNode(true) as SVGSVGElement;
+  const sourceElements = [svg, ...Array.from(svg.querySelectorAll('*'))];
+  const cloneElements = [clone, ...Array.from(clone.querySelectorAll('*'))];
+
+  sourceElements.forEach((sourceElement, index) => {
+    const cloneElement = cloneElements[index];
+    if (!cloneElement) {
+      return;
+    }
+
+    const computedStyle = window.getComputedStyle(sourceElement);
+    const inlineStyle = CHART_EXPORT_STYLE_PROPERTIES.map((property) => {
+      const value = computedStyle.getPropertyValue(property);
+      return value ? `${property}:${value};` : '';
+    }).join('');
+
+    const existingStyle = cloneElement.getAttribute('style') ?? '';
+    if (inlineStyle) {
+      cloneElement.setAttribute('style', `${existingStyle}${inlineStyle}`);
+    }
+  });
+
+  return clone;
+};
+
+const captureChartImage = async (
+  container: HTMLDivElement | null
+): Promise<string | null> => {
+  if (!container) {
+    return null;
+  }
+
+  await waitForChartPaint();
+
+  const svg = container.querySelector('svg');
+  if (!(svg instanceof SVGSVGElement)) {
+    return null;
+  }
+
+  const bounds = svg.getBoundingClientRect();
+  const width = Math.max(
+    Math.round(bounds.width),
+    svg.viewBox.baseVal.width || Number(svg.getAttribute('width')) || 0
+  );
+  const height = Math.max(
+    Math.round(bounds.height),
+    svg.viewBox.baseVal.height || Number(svg.getAttribute('height')) || 0
+  );
+
+  if (width <= 0 || height <= 0) {
+    return null;
+  }
+
+  const exportedSvg = cloneSvgForExport(svg);
+  exportedSvg.setAttribute('width', String(width));
+  exportedSvg.setAttribute('height', String(height));
+  if (!exportedSvg.getAttribute('viewBox')) {
+    exportedSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  }
+
+  const serializedSvg = new XMLSerializer().serializeToString(exportedSvg);
+  const svgBlob = new Blob([serializedSvg], { type: 'image/svg+xml;charset=utf-8', });
+  const objectUrl = URL.createObjectURL(svgBlob);
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const nextImage = new Image();
+      nextImage.onload = () => resolve(nextImage);
+      nextImage.onerror = () => reject(new Error('Unable to load chart image.'));
+      nextImage.src = objectUrl;
+    });
+
+    const scale = 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+
+    const context = canvas.getContext('2d');
+    if (!context) {
+      return null;
+    }
+
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.scale(scale, scale);
+    context.drawImage(image, 0, 0, width, height);
+    return canvas.toDataURL('image/png');
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+};
+
 type BookingsChartProps = {
   data: AdminReportDailyBooking[];
   isLoading: boolean;
+  captureRef?: React.RefObject<HTMLDivElement | null>;
 };
 
 function BookingsChart({
- data, isLoading, 
+ data, isLoading, captureRef,
 }: BookingsChartProps) {
   return (
     <Card className="rounded-md border border-border/70 bg-muted/20 shadow-none">
@@ -872,29 +1006,31 @@ function BookingsChart({
             No booking data in this range.
           </p>
         ) : (
-          <ChartContainer config={ bookingsChartConfig } className="aspect-auto h-[260px] w-full">
-            <BarChart data={ data } accessibilityLayer>
-              <CartesianGrid vertical={ false } />
-              <XAxis
-                dataKey="date"
-                tickLine={ false }
-                axisLine={ false }
-                tickMargin={ 8 }
-                tickFormatter={ formatShortDate }
-              />
-              <YAxis tickLine={ false } axisLine={ false } allowDecimals={ false } width={ 40 } />
-              <ChartTooltip
-                content={
-                  <ChartTooltipContent
-                    labelFormatter={ (value) => formatShortDate(String(value)) }
-                  />
-                }
-              />
-              <ChartLegend content={ <ChartLegendContent /> } />
-              <Bar dataKey="bookings" fill="var(--color-bookings)" radius={ [4, 4, 0, 0] } />
-              <Bar dataKey="cancellations" fill="var(--color-cancellations)" radius={ [4, 4, 0, 0] } />
-            </BarChart>
-          </ChartContainer>
+          <div ref={ captureRef }>
+            <ChartContainer config={ bookingsChartConfig } className="aspect-auto h-[260px] w-full">
+              <BarChart data={ data } accessibilityLayer>
+                <CartesianGrid vertical={ false } />
+                <XAxis
+                  dataKey="date"
+                  tickLine={ false }
+                  axisLine={ false }
+                  tickMargin={ 8 }
+                  tickFormatter={ formatShortDate }
+                />
+                <YAxis tickLine={ false } axisLine={ false } allowDecimals={ false } width={ 40 } />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      labelFormatter={ (value) => formatShortDate(String(value)) }
+                    />
+                  }
+                />
+                <ChartLegend content={ <ChartLegendContent /> } />
+                <Bar dataKey="bookings" fill="var(--color-bookings)" radius={ [4, 4, 0, 0] } />
+                <Bar dataKey="cancellations" fill="var(--color-cancellations)" radius={ [4, 4, 0, 0] } />
+              </BarChart>
+            </ChartContainer>
+          </div>
         ) }
       </CardContent>
     </Card>
@@ -904,10 +1040,11 @@ function BookingsChart({
 type RevenueChartProps = {
   data: AdminReportDailyRevenue[];
   isLoading: boolean;
+  captureRef?: React.RefObject<HTMLDivElement | null>;
 };
 
 function RevenueChart({
- data, isLoading, 
+ data, isLoading, captureRef,
 }: RevenueChartProps) {
   const chartData = useMemo(
     () => data.map((entry) => ({
@@ -933,45 +1070,47 @@ function RevenueChart({
             No revenue data in this range.
           </p>
         ) : (
-          <ChartContainer config={ revenueChartConfig } className="aspect-auto h-[260px] w-full">
-            <AreaChart data={ chartData } accessibilityLayer>
-              <defs>
-                <linearGradient id="fillRevenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--color-revenue)" stopOpacity={ 0.8 } />
-                  <stop offset="95%" stopColor="var(--color-revenue)" stopOpacity={ 0.1 } />
-                </linearGradient>
-              </defs>
-              <CartesianGrid vertical={ false } />
-              <XAxis
-                dataKey="date"
-                tickLine={ false }
-                axisLine={ false }
-                tickMargin={ 8 }
-                tickFormatter={ formatShortDate }
-              />
-              <YAxis
-                tickLine={ false }
-                axisLine={ false }
-                width={ 60 }
-                tickFormatter={ (value: number) => `${numberFormatter.format(value)}` }
-              />
-              <ChartTooltip
-                content={
-                  <ChartTooltipContent
-                    labelFormatter={ (value) => formatShortDate(String(value)) }
-                    formatter={ (value) => [`PHP ${numberFormatter.format(Number(value))}`, 'Revenue'] }
-                  />
-                }
-              />
-              <Area
-                dataKey="revenue"
-                type="monotone"
-                fill="url(#fillRevenue)"
-                stroke="var(--color-revenue)"
-                strokeWidth={ 2 }
-              />
-            </AreaChart>
-          </ChartContainer>
+          <div ref={ captureRef }>
+            <ChartContainer config={ revenueChartConfig } className="aspect-auto h-[260px] w-full">
+              <AreaChart data={ chartData } accessibilityLayer>
+                <defs>
+                  <linearGradient id="fillRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-revenue)" stopOpacity={ 0.8 } />
+                    <stop offset="95%" stopColor="var(--color-revenue)" stopOpacity={ 0.1 } />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={ false } />
+                <XAxis
+                  dataKey="date"
+                  tickLine={ false }
+                  axisLine={ false }
+                  tickMargin={ 8 }
+                  tickFormatter={ formatShortDate }
+                />
+                <YAxis
+                  tickLine={ false }
+                  axisLine={ false }
+                  width={ 60 }
+                  tickFormatter={ (value: number) => `${numberFormatter.format(value)}` }
+                />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      labelFormatter={ (value) => formatShortDate(String(value)) }
+                      formatter={ (value) => [`PHP ${numberFormatter.format(Number(value))}`, 'Revenue'] }
+                    />
+                  }
+                />
+                <Area
+                  dataKey="revenue"
+                  type="monotone"
+                  fill="url(#fillRevenue)"
+                  stroke="var(--color-revenue)"
+                  strokeWidth={ 2 }
+                />
+              </AreaChart>
+            </ChartContainer>
+          </div>
         ) }
       </CardContent>
     </Card>
@@ -981,10 +1120,11 @@ function RevenueChart({
 type QueueChartProps = {
   data: AdminReportQueueHealth[];
   isLoading: boolean;
+  captureRef?: React.RefObject<HTMLDivElement | null>;
 };
 
 function QueueChart({
- data, isLoading, 
+ data, isLoading, captureRef,
 }: QueueChartProps) {
   return (
     <Card className="rounded-md border border-border/70 bg-muted/20 shadow-none">
@@ -1002,24 +1142,26 @@ function QueueChart({
             No queue data available.
           </p>
         ) : (
-          <ChartContainer config={ queueChartConfig } className="aspect-auto h-[220px] w-full">
-            <BarChart data={ data } layout="vertical" accessibilityLayer>
-              <CartesianGrid horizontal={ false } />
-              <YAxis
-                dataKey="label"
-                type="category"
-                tickLine={ false }
-                axisLine={ false }
-                width={ 120 }
-                className="text-xs"
-              />
-              <XAxis type="number" tickLine={ false } axisLine={ false } allowDecimals={ false } />
-              <ChartTooltip content={ <ChartTooltipContent /> } />
-              <ChartLegend content={ <ChartLegendContent /> } />
-              <Bar dataKey="pendingCount" fill="var(--color-pendingCount)" radius={ [0, 4, 4, 0] } />
-              <Bar dataKey="resolvedCount" fill="var(--color-resolvedCount)" radius={ [0, 4, 4, 0] } />
-            </BarChart>
-          </ChartContainer>
+          <div ref={ captureRef }>
+            <ChartContainer config={ queueChartConfig } className="aspect-auto h-[220px] w-full">
+              <BarChart data={ data } layout="vertical" accessibilityLayer>
+                <CartesianGrid horizontal={ false } />
+                <YAxis
+                  dataKey="label"
+                  type="category"
+                  tickLine={ false }
+                  axisLine={ false }
+                  width={ 120 }
+                  className="text-xs"
+                />
+                <XAxis type="number" tickLine={ false } axisLine={ false } allowDecimals={ false } />
+                <ChartTooltip content={ <ChartTooltipContent /> } />
+                <ChartLegend content={ <ChartLegendContent /> } />
+                <Bar dataKey="pendingCount" fill="var(--color-pendingCount)" radius={ [0, 4, 4, 0] } />
+                <Bar dataKey="resolvedCount" fill="var(--color-resolvedCount)" radius={ [0, 4, 4, 0] } />
+              </BarChart>
+            </ChartContainer>
+          </div>
         ) }
       </CardContent>
     </Card>
@@ -1029,10 +1171,11 @@ function QueueChart({
 type RiskChartProps = {
   data: AdminReportRiskSpace[];
   isLoading: boolean;
+  captureRef?: React.RefObject<HTMLDivElement | null>;
 };
 
 function RiskChart({
- data, isLoading, 
+ data, isLoading, captureRef,
 }: RiskChartProps) {
   const chartData = useMemo(
     () => data.map((space) => ({
@@ -1060,33 +1203,35 @@ function RiskChart({
             No high-risk spaces in this range.
           </p>
         ) : (
-          <ChartContainer config={ riskChartConfig } className="aspect-auto h-[220px] w-full">
-            <BarChart data={ chartData } layout="vertical" accessibilityLayer>
-              <CartesianGrid horizontal={ false } />
-              <YAxis
-                dataKey="name"
-                type="category"
-                tickLine={ false }
-                axisLine={ false }
-                width={ 130 }
-                className="text-xs"
-              />
-              <XAxis
-                type="number"
-                tickLine={ false }
-                axisLine={ false }
-                tickFormatter={ (value: number) => `${value}%` }
-              />
-              <ChartTooltip
-                content={
-                  <ChartTooltipContent
-                    formatter={ (value) => [`${value}%`, 'Cancellation Rate'] }
-                  />
-                }
-              />
-              <Bar dataKey="cancellationRate" fill="var(--color-cancellationRate)" radius={ [0, 4, 4, 0] } />
-            </BarChart>
-          </ChartContainer>
+          <div ref={ captureRef }>
+            <ChartContainer config={ riskChartConfig } className="aspect-auto h-[220px] w-full">
+              <BarChart data={ chartData } layout="vertical" accessibilityLayer>
+                <CartesianGrid horizontal={ false } />
+                <YAxis
+                  dataKey="name"
+                  type="category"
+                  tickLine={ false }
+                  axisLine={ false }
+                  width={ 130 }
+                  className="text-xs"
+                />
+                <XAxis
+                  type="number"
+                  tickLine={ false }
+                  axisLine={ false }
+                  tickFormatter={ (value: number) => `${value}%` }
+                />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      formatter={ (value) => [`${value}%`, 'Cancellation Rate'] }
+                    />
+                  }
+                />
+                <Bar dataKey="cancellationRate" fill="var(--color-cancellationRate)" radius={ [0, 4, 4, 0] } />
+              </BarChart>
+            </ChartContainer>
+          </div>
         ) }
       </CardContent>
     </Card>
@@ -1223,6 +1368,10 @@ function MetricDialog({
 
 export function AdminReportsPage() {
   const [state, dispatch] = useReducer(reportUiReducer, initialReportUiState);
+  const bookingsChartExportRef = useRef<HTMLDivElement | null>(null);
+  const revenueChartExportRef = useRef<HTMLDivElement | null>(null);
+  const queueChartExportRef = useRef<HTMLDivElement | null>(null);
+  const riskChartExportRef = useRef<HTMLDivElement | null>(null);
 
   const {
     data,
@@ -1412,13 +1561,25 @@ value: option.value,
     handleExportCsv(rows, `admin-cancellation-risk-${state.rangeDays}d.csv`);
   };
 
-  const handleExportPdf = async () => {
+  const handleExportPdf = useCallback(async () => {
     if (!data) {
       toast.error('No data available to export.');
       return;
     }
 
     try {
+      const [
+        bookingsChartImage,
+        revenueChartImage,
+        queueChartImage,
+        riskChartImage
+      ] = await Promise.all([
+        captureChartImage(bookingsChartExportRef.current),
+        captureChartImage(revenueChartExportRef.current),
+        captureChartImage(queueChartExportRef.current),
+        captureChartImage(riskChartExportRef.current)
+      ]);
+
       const reportScopeEntries = [
         {
           label: 'Report Range',
@@ -1571,6 +1732,42 @@ value: option.value,
           headers: ['Metric', 'Current', 'Previous', 'Change', 'Notes'],
           rows: trendRows,
         },
+        ...(bookingsChartImage
+          ? [{
+              kind: 'image' as const,
+              title: 'Bookings Trend Chart',
+              imageDataUrl: bookingsChartImage,
+              caption: 'Daily bookings and cancellations over the selected period.',
+              maxHeightMm: 85,
+            }]
+          : []),
+        ...(revenueChartImage
+          ? [{
+              kind: 'image' as const,
+              title: 'Revenue Trend Chart',
+              imageDataUrl: revenueChartImage,
+              caption: 'Daily gross revenue in PHP over the selected period.',
+              maxHeightMm: 85,
+            }]
+          : []),
+        ...(queueChartImage
+          ? [{
+              kind: 'image' as const,
+              title: 'Queue Overview Chart',
+              imageDataUrl: queueChartImage,
+              caption: 'Pending versus resolved items across admin queues.',
+              maxHeightMm: 80,
+            }]
+          : []),
+        ...(riskChartImage
+          ? [{
+              kind: 'image' as const,
+              title: 'Cancellation Risk Chart',
+              imageDataUrl: riskChartImage,
+              caption: 'Top spaces by cancellation rate percentage.',
+              maxHeightMm: 80,
+            }]
+          : []),
         {
           kind: 'table',
           title: 'Queue Health',
@@ -1647,7 +1844,20 @@ value: formatCount(providerHealth?.pendingRefunds),
     } catch {
       toast.error('Failed to generate PDF.');
     }
-  };
+  }, [
+    data,
+    dailyBookings,
+    dailyRevenue,
+    filteredQueues,
+    filteredRiskSpaces,
+    providerHealth,
+    riskSummary,
+    state.queuePendingOnly,
+    state.rangeDays,
+    state.riskHighOnly,
+    state.riskSearch,
+    trends
+  ]);
 
   return (
     <div className="w-full px-4 pb-8 sm:px-6 lg:px-8">
@@ -1693,13 +1903,29 @@ value: metric,
             <Separator />
 
             <div className="grid gap-6 lg:grid-cols-2">
-              <BookingsChart data={ dailyBookings } isLoading={ isLoadingData } />
-              <RevenueChart data={ dailyRevenue } isLoading={ isLoadingData } />
+              <BookingsChart
+                data={ dailyBookings }
+                isLoading={ isLoadingData }
+                captureRef={ bookingsChartExportRef }
+              />
+              <RevenueChart
+                data={ dailyRevenue }
+                isLoading={ isLoadingData }
+                captureRef={ revenueChartExportRef }
+              />
             </div>
 
             <div className="grid gap-6 lg:grid-cols-2">
-              <QueueChart data={ queueHealth } isLoading={ isLoadingData } />
-              <RiskChart data={ topCancellationSpaces } isLoading={ isLoadingData } />
+              <QueueChart
+                data={ queueHealth }
+                isLoading={ isLoadingData }
+                captureRef={ queueChartExportRef }
+              />
+              <RiskChart
+                data={ topCancellationSpaces }
+                isLoading={ isLoadingData }
+                captureRef={ riskChartExportRef }
+              />
             </div>
 
             <Separator />
