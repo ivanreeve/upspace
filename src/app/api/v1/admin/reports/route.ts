@@ -339,7 +339,7 @@ created_at: previousRange,
       pendingRefunds,
       dailyBookingsRaw,
       dailyRevenueRaw
-    ] = await Promise.all([
+    ] = await prisma.$transaction([
       bookingStatusCurrentPromise,
       bookingStatusPreviousPromise,
       bookingStatusBySpacePromise,
