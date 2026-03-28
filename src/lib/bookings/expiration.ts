@@ -107,25 +107,32 @@ export async function warnCapacityConflicts() {
 
     const booking = mapBookingRowToRecord(row);
 
-    await notifyBookingEvent(
-      {
+    try {
+      await notifyBookingEvent(
+        {
+          bookingId: booking.id,
+          spaceId: booking.spaceId,
+          areaId: booking.areaId,
+          spaceName: booking.spaceName,
+          areaName: booking.areaName,
+          customerAuthId: booking.customerAuthId,
+          partnerAuthId: booking.partnerAuthId,
+        },
+        {
+          title: 'Booking capacity warning',
+          body: `${booking.areaName} at ${booking.spaceName} may be over capacity. Please contact the host.`,
+        },
+        {
+          title: 'Capacity conflict to review',
+          body: `${booking.areaName} in ${booking.spaceName} exceeds capacity within 15 minutes. Approve, adjust, or refund.`,
+        }
+      );
+    } catch (notifError) {
+      console.error('Failed to create capacity warning notification', {
         bookingId: booking.id,
-        spaceId: booking.spaceId,
-        areaId: booking.areaId,
-        spaceName: booking.spaceName,
-        areaName: booking.areaName,
-        customerAuthId: booking.customerAuthId,
-        partnerAuthId: booking.partnerAuthId,
-      },
-      {
-        title: 'Booking capacity warning',
-        body: `${booking.areaName} at ${booking.spaceName} may be over capacity. Please contact the host.`,
-      },
-      {
-        title: 'Capacity conflict to review',
-        body: `${booking.areaName} in ${booking.spaceName} exceeds capacity within 15 minutes. Approve, adjust, or refund.`,
-      }
-    );
+        error: notifError,
+      });
+    }
   }
 }
 
@@ -136,8 +143,20 @@ export async function warnCapacityConflicts() {
  * are expired and capacity warnings are issued.
  */
 export async function runBookingLifecycleChecks() {
-  await Promise.all([
+  const results = await Promise.allSettled([
     expireStaleBookings(),
     warnCapacityConflicts()
   ]);
+
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      return;
+    }
+
+    const step = index === 0 ? 'expireStaleBookings' : 'warnCapacityConflicts';
+    console.error('Booking lifecycle check failed', {
+      step,
+      error: result.reason,
+    });
+  });
 }
