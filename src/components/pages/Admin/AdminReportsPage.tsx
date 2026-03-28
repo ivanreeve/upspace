@@ -130,6 +130,41 @@ const formatCount = (value?: number | null) =>
 const formatMinor = (value?: string | null) =>
   value ? formatCurrencyMinor(value, 'PHP') : '-';
 
+const formatChangeLabel = (value?: number | null) => {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return 'No prior data';
+  }
+  if (value === 0) {
+    return 'No change';
+  }
+  return `${Math.abs(value).toFixed(1)}% ${value > 0 ? 'increase' : 'decrease'}`;
+};
+
+const calculateRiskScore = (cancellationRate: number, totalBookings: number) =>
+  Math.round(
+    Math.min(100, cancellationRate * 100 + Math.min(totalBookings, 50))
+  );
+
+const getRiskTier = (cancellationRate: number) => {
+  if (cancellationRate >= RISK_ALERT_THRESHOLD) {
+    return 'High';
+  }
+  if (cancellationRate >= 0.15) {
+    return 'Moderate';
+  }
+  return 'Watch';
+};
+
+const ensurePdfTableRows = (
+  rows: string[][],
+  columnCount: number,
+  emptyLabel = 'No data available'
+) => (
+  rows.length
+    ? rows
+    : [[emptyLabel, ...Array.from({ length: columnCount - 1, }, () => '—')]]
+);
+
 const formatRangeLabel = (range?: AdminReportPayload['range']) => {
   if (!range) return '-';
   const start = dateFormatter.format(new Date(range.start));
@@ -712,8 +747,9 @@ function RiskSection({
               ) : spaces.length ? (
                 spaces.map((space) => {
                   const isHighRisk = space.cancellationRate >= RISK_ALERT_THRESHOLD;
-                  const score = Math.round(
-                    Math.min(100, space.cancellationRate * 100 + Math.min(space.totalBookings, 50))
+                  const score = calculateRiskScore(
+                    space.cancellationRate,
+                    space.totalBookings
                   );
                   return (
                     <TableRow key={ space.space_id }>
@@ -1383,57 +1419,169 @@ value: option.value,
     }
 
     try {
+      const reportScopeEntries = [
+        {
+          label: 'Report Range',
+          value: formatRangeLabel(data.range),
+        },
+        {
+          label: 'Window Size',
+          value: `${state.rangeDays} days`,
+        },
+        {
+          label: 'Queue Filter',
+          value: state.queuePendingOnly ? 'Pending queues only' : 'All queues',
+        },
+        {
+          label: 'Risk Filter',
+          value: state.riskHighOnly
+            ? `High risk only (>= ${Math.round(RISK_ALERT_THRESHOLD * 100)}%)`
+            : 'All flagged spaces',
+        },
+        {
+          label: 'Risk Search',
+          value: state.riskSearch.trim() || 'No search filter applied',
+        },
+        {
+          label: 'Risk Summary',
+          value: riskSummary,
+        }
+      ];
+
+      const trendRows = ensurePdfTableRows([
+        [
+          'Bookings Volume',
+          formatCount(trends?.bookings?.current),
+          formatCount(trends?.bookings?.previous),
+          formatChangeLabel(trends?.bookings?.changePct),
+          'New bookings created in the selected period.'
+        ],
+        [
+          'Gross Revenue',
+          formatMinor(trends?.grossRevenue?.currentMinor),
+          formatMinor(trends?.grossRevenue?.previousMinor),
+          formatChangeLabel(trends?.grossRevenue?.changePct),
+          'Succeeded payment volume.'
+        ],
+        [
+          'Cancellation Rate',
+          formatRate(trends?.cancellationRate?.current),
+          formatRate(trends?.cancellationRate?.previous),
+          formatChangeLabel(trends?.cancellationRate?.changePct),
+          'Cancelled and no-show bookings as a share of bookings created.'
+        ],
+        [
+          'Refund Rate',
+          formatRate(trends?.refunds?.rate?.current),
+          formatRate(trends?.refunds?.rate?.previous),
+          formatChangeLabel(trends?.refunds?.rate?.changePct),
+          'Refund count relative to succeeded payments.'
+        ],
+        [
+          'Refund Count',
+          formatCount(trends?.refunds?.count?.current),
+          formatCount(trends?.refunds?.count?.previous),
+          formatChangeLabel(trends?.refunds?.count?.changePct),
+          'Number of refund transactions recorded.'
+        ],
+        [
+          'Refund Amount',
+          formatMinor(trends?.refunds?.amountMinor?.currentMinor),
+          formatMinor(trends?.refunds?.amountMinor?.previousMinor),
+          formatChangeLabel(trends?.refunds?.amountMinor?.changePct),
+          'Total refunded amount in PHP.'
+        ],
+        [
+          'Average Rating',
+          trends?.averageRating?.current?.toFixed(2) ?? '-',
+          trends?.averageRating?.previous?.toFixed(2) ?? '-',
+          formatChangeLabel(trends?.averageRating?.changePct),
+          'Average star rating from submitted reviews.'
+        ]
+      ], 5);
+
+      const queueRows = ensurePdfTableRows(
+        filteredQueues.map((queue) => [
+          queue.label,
+          String(queue.pendingCount),
+          queue.oldestPendingDays === null ? '-' : String(queue.oldestPendingDays),
+          queue.averageResolutionDays === null ? '-' : queue.averageResolutionDays.toFixed(1),
+          String(queue.resolvedCount),
+          QUEUE_LABEL_HELP[queue.key]
+        ]),
+        6,
+        'No queue activity in this range'
+      );
+
+      const providerCoverage =
+        providerHealth && providerHealth.configuredAccounts > 0
+          ? `${((providerHealth.liveAccounts / providerHealth.configuredAccounts) * 100).toFixed(1)}% live`
+          : 'No configured accounts';
+      const staleCoverage =
+        providerHealth && providerHealth.configuredAccounts > 0
+          ? `${((providerHealth.staleAccounts / providerHealth.configuredAccounts) * 100).toFixed(1)}% stale`
+          : 'No configured accounts';
+
+      const bookingTrendRows = ensurePdfTableRows(
+        dailyBookings.map((entry) => [
+          formatShortDate(entry.date),
+          String(entry.bookings),
+          String(entry.cancellations),
+          entry.bookings > 0
+            ? formatRate(entry.cancellations / entry.bookings)
+            : '0.0%'
+        ]),
+        4,
+        'No booking trend data in this range'
+      );
+
+      const revenueTrendRows = ensurePdfTableRows(
+        dailyRevenue.map((entry) => [
+          formatShortDate(entry.date),
+          formatMinor(entry.revenueMinor)
+        ]),
+        2,
+        'No revenue trend data in this range'
+      );
+
+      const riskRows = ensurePdfTableRows(
+        filteredRiskSpaces.map((space) => [
+          space.space_name,
+          space.city,
+          space.region,
+          String(space.totalBookings),
+          String(space.cancelledBookings),
+          formatRate(space.cancellationRate),
+          String(calculateRiskScore(space.cancellationRate, space.totalBookings)),
+          getRiskTier(space.cancellationRate)
+        ]),
+        8,
+        'No cancellation-risk spaces in this range'
+      );
+
       const sections: PdfSection[] = [
         {
           kind: 'key-value',
+          title: 'Report Scope',
+          entries: reportScopeEntries,
+        },
+        {
+          kind: 'table',
           title: 'Trend Metrics',
-          entries: [
-            {
- label: 'Bookings Volume',
-value: `${formatCount(trends?.bookings?.current)} (prev: ${formatCount(trends?.bookings?.previous)})`, 
-},
-            {
- label: 'Gross Revenue',
-value: `${formatMinor(trends?.grossRevenue?.currentMinor)} (prev: ${formatMinor(trends?.grossRevenue?.previousMinor)})`, 
-},
-            {
- label: 'Cancellation Rate',
-value: `${formatRate(trends?.cancellationRate?.current)} (prev: ${formatRate(trends?.cancellationRate?.previous)})`, 
-},
-            {
- label: 'Refund Rate',
-value: `${formatRate(trends?.refunds?.rate?.current)} (prev: ${formatRate(trends?.refunds?.rate?.previous)})`, 
-},
-            {
- label: 'Average Rating',
-value: trends?.averageRating?.current?.toFixed(2) ?? '-', 
-}
-          ],
+          headers: ['Metric', 'Current', 'Previous', 'Change', 'Notes'],
+          rows: trendRows,
         },
         {
           kind: 'table',
           title: 'Queue Health',
-          headers: ['Queue', 'Pending', 'Oldest (days)', 'Avg Resolution (days)', 'Resolved'],
-          rows: filteredQueues.map((queue) => [
-            queue.label,
-            String(queue.pendingCount),
-            queue.oldestPendingDays === null ? '-' : String(queue.oldestPendingDays),
-            queue.averageResolutionDays === null ? '-' : queue.averageResolutionDays.toFixed(1),
-            String(queue.resolvedCount)
-          ]),
+          headers: ['Queue', 'Pending', 'Oldest (days)', 'Avg Resolution (days)', 'Resolved', 'Context'],
+          rows: queueRows,
         },
         {
           kind: 'table',
           title: 'Cancellation Risk',
-          headers: ['Space', 'City', 'Region', 'Bookings', 'Cancelled', 'Rate'],
-          rows: filteredRiskSpaces.map((space) => [
-            space.space_name,
-            space.city,
-            space.region,
-            String(space.totalBookings),
-            String(space.cancelledBookings),
-            formatRate(space.cancellationRate)
-          ]),
+          headers: ['Space', 'City', 'Region', 'Bookings', 'Cancelled', 'Rate', 'Risk Score', 'Tier'],
+          rows: riskRows,
         },
         {
           kind: 'key-value',
@@ -1448,8 +1596,16 @@ value: formatCount(providerHealth?.configuredAccounts),
 value: formatCount(providerHealth?.liveAccounts), 
 },
             {
+ label: 'Live Coverage',
+value: providerCoverage, 
+},
+            {
  label: 'Stale Accounts',
 value: formatCount(providerHealth?.staleAccounts), 
+},
+            {
+ label: 'Stale Coverage',
+value: staleCoverage, 
 },
             {
  label: 'Failed Snapshots',
@@ -1464,6 +1620,18 @@ value: formatCount(providerHealth?.pendingProviderPayouts),
 value: formatCount(providerHealth?.pendingRefunds), 
 }
           ],
+        },
+        {
+          kind: 'table',
+          title: 'Daily Booking Trend',
+          headers: ['Date', 'Bookings', 'Cancellations', 'Cancellation Rate'],
+          rows: bookingTrendRows,
+        },
+        {
+          kind: 'table',
+          title: 'Daily Revenue Trend',
+          headers: ['Date', 'Revenue'],
+          rows: revenueTrendRows,
         }
       ];
 
@@ -1471,6 +1639,7 @@ value: formatCount(providerHealth?.pendingRefunds),
         title: 'UpSpace Admin Report',
         subtitle: formatRangeLabel(data.range),
         filename: `admin-report-${state.rangeDays}d.pdf`,
+        orientation: 'landscape',
         sections,
       });
 

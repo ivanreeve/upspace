@@ -21,6 +21,7 @@ export type ExportPdfOptions = {
   filename: string;
   sections: PdfSection[];
   generatedAt?: Date;
+  orientation?: 'portrait' | 'landscape';
 };
 
 const PAGE_MARGIN = 14;
@@ -35,7 +36,7 @@ export async function exportPdf(options: ExportPdfOptions): Promise<void> {
   ]);
 
   const doc = new jsPDF({
- orientation: 'portrait',
+orientation: options.orientation ?? 'portrait',
 unit: 'mm',
 format: 'a4', 
 });

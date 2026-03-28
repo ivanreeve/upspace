@@ -115,6 +115,16 @@ const truncate = (value: string, maxLength = 140) => {
   return `${value.slice(0, maxLength - 1)}…`;
 };
 
+const ensurePdfRows = (
+  rows: string[][],
+  columnCount: number,
+  emptyLabel = 'No data available'
+) => (
+  rows.length
+    ? rows
+    : [[emptyLabel, ...Array.from({ length: columnCount - 1, }, () => '—')]]
+);
+
 export function AdminChatReportsPage() {
   const [activeTab, setActiveTab] = useState<ReportTabValue>('pending');
   const [pageSize, setPageSize] = useState<typeof PAGE_SIZE_OPTIONS[number]>(PAGE_SIZE_OPTIONS[1]);
@@ -268,23 +278,83 @@ export function AdminChatReportsPage() {
     }
 
     try {
+      const resolvedCount = reports.filter((report) => report.status === 'resolved').length;
+      const dismissedCount = reports.filter((report) => report.status === 'dismissed').length;
+      const pendingCount = reports.filter((report) => report.status === 'pending').length;
+
       await exportPdf({
         title: 'UpSpace Chat Reports',
         subtitle: `${currentTabInfo?.label ?? activeTab} reports`,
         filename: `chat-reports-${activeTab}.pdf`,
+        orientation: 'landscape',
         sections: [
           {
+            kind: 'key-value',
+            title: 'Report Scope',
+            entries: [
+              {
+                label: 'Queue',
+                value: currentTabInfo?.label ?? activeTab,
+              },
+              {
+                label: 'Description',
+                value: currentTabInfo?.description ?? 'Moderation report export.',
+              },
+              {
+                label: 'Rows Exported',
+                value: String(reports.length),
+              },
+              {
+                label: 'Page Size',
+                value: String(pageSize),
+              },
+              {
+                label: 'Current Page',
+                value: String(pageIndex + 1),
+              },
+              {
+                label: 'Has Next Page',
+                value: nextCursor ? 'Yes' : 'No',
+              },
+              {
+                label: 'Pending in Export',
+                value: String(pendingCount),
+              },
+              {
+                label: 'Resolved in Export',
+                value: String(resolvedCount),
+              },
+              {
+                label: 'Dismissed in Export',
+                value: String(dismissedCount),
+              }
+            ],
+          },
+          {
             kind: 'table',
-            title: `${currentTabInfo?.label ?? activeTab} Reports`,
-            headers: ['Reporter', 'Reported User', 'Space', 'Reason', 'Submitted', 'Status'],
-            rows: reports.map((report) => [
+            title: `${currentTabInfo?.label ?? activeTab} Report Summary`,
+            headers: ['Reporter', 'Reported User', 'Space', 'Reason', 'Submitted', 'Processed', 'Status'],
+            rows: ensurePdfRows(reports.map((report) => [
               `${report.reporter.name} (@${report.reporter.handle})`,
               `${report.reported_user.name} (@${report.reported_user.handle})`,
               report.space.name,
               CHAT_REPORT_REASON_LABELS[report.reason],
               formatDate(report.created_at),
+              formatDate(report.processed_at),
               CHAT_REPORT_STATUS_LABELS[report.status]
-            ]),
+            ]), 7),
+          },
+          {
+            kind: 'table',
+            title: 'Narrative Details',
+            headers: ['Space', 'Reason', 'Reported Details', 'Resolution Note', 'Processed By'],
+            rows: ensurePdfRows(reports.map((report) => [
+              report.space.name,
+              CHAT_REPORT_REASON_LABELS[report.reason],
+              report.details?.trim() || '—',
+              report.resolution_note?.trim() || '—',
+              report.processed_by?.name ?? '—'
+            ]), 5),
           }
         ],
       });
