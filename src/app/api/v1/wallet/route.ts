@@ -44,6 +44,22 @@ function mapWallet(walletRow: wallet) {
   };
 }
 
+function parseMinorAmount(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return BigInt(value);
+  } catch {
+    return null;
+  }
+}
+
+function clampToZero(value: bigint) {
+  return value >= 0n ? value : 0n;
+}
+
 function sanitizeWalletTransactionMetadata(metadata: wallet_transaction['metadata']) {
   if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
     return metadata ?? null;
@@ -169,6 +185,19 @@ status: 'succeeded',
     const resolvedWalletRow = includeProvider
       ? await prisma.wallet.findUnique({ where: { id: walletRow.id, }, }) ?? walletRow
       : walletRow;
+    const providerAvailableBalanceMinor =
+      includeProvider && providerAccount?.currency === walletRow.currency
+        ? parseMinorAmount(providerAccount.availableBalanceMinor)
+        : null;
+    const pendingProviderCreditMinor = providerAvailableBalanceMinor === null
+      ? null
+      : clampToZero(
+        (chargeAgg._sum.amount_minor ?? 0n) -
+        (refundAgg._sum.amount_minor ?? 0n) -
+        (paidOutAgg._sum.amount_minor ?? 0n) -
+        (pendingPayoutAgg._sum.amount_minor ?? 0n) -
+        providerAvailableBalanceMinor
+      );
 
     const bookingIds = Array.from(
       new Set(
@@ -218,6 +247,7 @@ nextCursor,
         totalRefundedMinor: (refundAgg._sum.amount_minor ?? BigInt(0)).toString(),
         pendingPayoutMinor: (pendingPayoutAgg._sum.amount_minor ?? BigInt(0)).toString(),
         totalPaidOutMinor: (paidOutAgg._sum.amount_minor ?? BigInt(0)).toString(),
+        pendingProviderCreditMinor: pendingProviderCreditMinor?.toString() ?? null,
         transactionCount: filteredCount,
       },
     });
