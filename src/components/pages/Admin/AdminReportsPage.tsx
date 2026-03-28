@@ -803,13 +803,13 @@ function RiskSection({
 }
 
 const chartPrimaryTheme = {
-  light: 'hsl(var(--primary))',
-  dark: 'hsl(var(--secondary))',
+  light: 'var(--primary)',
+  dark: 'var(--secondary)',
 } as const;
 
 const chartPrimaryMutedTheme = {
-  light: 'hsl(var(--primary) / 0.45)',
-  dark: 'hsl(var(--secondary) / 0.45)',
+  light: 'color-mix(in oklch, var(--primary) 45%, var(--background))',
+  dark: 'color-mix(in oklch, var(--secondary) 45%, var(--background))',
 } as const;
 
 const bookingsChartConfig = {
