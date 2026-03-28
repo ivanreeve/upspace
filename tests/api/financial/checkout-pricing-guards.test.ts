@@ -53,6 +53,61 @@ describe('financial checkout pricing guards', () => {
     vi.restoreAllMocks();
   });
 
+  it('returns 409 when the customer already has a pending booking for the same area', async () => {
+    const startAt = new Date(Date.now() + 60 * 60 * 1000);
+
+    vi.spyOn(walletServer, 'resolveAuthenticatedUserForWallet').mockResolvedValue({
+      response: null,
+      dbUser: {
+        user_id: 1n,
+        auth_user_id: 'customer-auth-id',
+        role: 'customer',
+      },
+    });
+
+    vi.spyOn(prismaModule, 'prisma', 'get').mockReturnValue({
+      area: { findUnique: vi.fn().mockResolvedValue(makeArea()), },
+      booking: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'pending-booking-id',
+          booking_hours: BigInt(2),
+          guest_count: 1,
+          start_at: new Date(startAt.getTime() - 30 * 60 * 1000),
+          expires_at: new Date(startAt.getTime() + 90 * 60 * 1000),
+          payment_transaction: [],
+        }),
+      },
+    } as unknown as typeof prismaModule.prisma);
+
+    vi.spyOn(pricingRules, 'evaluatePriceRule').mockReturnValue({
+      price: 100,
+      branch: 'unconditional',
+      appliedExpression: '100',
+      conditionsSatisfied: true,
+      usedVariables: [],
+    });
+    vi.spyOn(rateLimit, 'enforceRateLimit').mockResolvedValue();
+    const createBookingPayment = vi.fn();
+    vi.spyOn(providerRegistry, 'getFinancialProvider').mockReturnValue({ createBookingPayment, } as unknown as ReturnType<typeof providerRegistry.getFinancialProvider>);
+
+    const response = await createCheckoutHandler(
+      makeRequest({
+        spaceId: mockSpaceId,
+        areaId: mockAreaId,
+        bookingHours: 1,
+        guestCount: 1,
+        startAt: startAt.toISOString(),
+      })
+    );
+
+    expect(response.status).toBe(409);
+    const body = await response.json();
+    expect(body.error).toBe(
+      'You already have a pending booking request for this area. Please wait for the host to review it before booking this area again.'
+    );
+    expect(createBookingPayment).not.toHaveBeenCalled();
+  });
+
   it('returns 400 when price rule evaluation throws', async () => {
     vi.spyOn(walletServer, 'resolveAuthenticatedUserForWallet').mockResolvedValue({
       response: null,

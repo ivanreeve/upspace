@@ -89,11 +89,14 @@ export async function GET() {
   }
 }
 
+const NAME_PATTERN = /^[a-zA-Z0-9\s.\-]+$/;
+const NAME_FORMAT_MESSAGE = 'Only letters, numbers, spaces, dots, and hyphens are allowed.';
+
 const profileUpdateSchema = z.object({
   handle: z.string().trim().min(3).max(50).optional(),
-  firstName: z.string().max(50).nullable().optional(),
-  middleName: z.string().max(50).nullable().optional(),
-  lastName: z.string().max(50).nullable().optional(),
+  firstName: z.string().max(50).regex(NAME_PATTERN, NAME_FORMAT_MESSAGE).nullable().optional(),
+  middleName: z.string().max(50).regex(NAME_PATTERN, NAME_FORMAT_MESSAGE).nullable().optional(),
+  lastName: z.string().max(50).regex(NAME_PATTERN, NAME_FORMAT_MESSAGE).nullable().optional(),
   birthday: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)

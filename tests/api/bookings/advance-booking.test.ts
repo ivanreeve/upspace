@@ -12,6 +12,12 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { POST as createBookingHandler } from '@/app/api/v1/bookings/route';
 
+type PendingAreaLookupArgs = {
+  where: {
+    area_id?: string;
+  };
+};
+
 vi.mock('@/lib/supabase/server', () => ({
   createSupabaseServerClient: vi.fn().mockResolvedValue({
     auth: {
@@ -240,5 +246,154 @@ conditions: [],
 
     expect(response.status).toBe(400);
     expect(body.error).toContain('only allows bookings up to 24 hours');
+  });
+
+  it('should reject another pending booking request for the same area', async () => {
+    const startAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    const spaceId = crypto.randomUUID();
+    const areaId = crypto.randomUUID();
+
+    (prisma.area.findUnique as any).mockResolvedValue({
+      id: areaId,
+      name: 'Focus Booth',
+      space_id: spaceId,
+      advance_booking_enabled: true,
+      advance_booking_value: 30,
+      advance_booking_unit: 'days',
+      max_capacity: 10,
+      automatic_booking_enabled: false,
+      request_approval_at_capacity: false,
+      price_rule: {
+        id: crypto.randomUUID(),
+        definition: {
+          formula: '100',
+          variables: [],
+          conditions: [],
+        },
+        is_active: true,
+      },
+      space: {
+        id: spaceId,
+        name: 'Test Space',
+        is_published: true,
+        user: { auth_user_id: 'partner-1', },
+      },
+    });
+
+    (prisma.booking.findFirst as any).mockResolvedValue({ id: crypto.randomUUID(), });
+
+    const payload = {
+      spaceId,
+      areaId,
+      guestCount: 1,
+      bookingHours: 1,
+      startAt: startAt.toISOString(),
+    };
+
+    const req = {
+      json: async () => payload,
+      headers: new Headers(),
+    } as unknown as NextRequest;
+
+    const response = await createBookingHandler(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(body.error).toBe(
+      'You already have a pending booking request for this area. Please wait for the host to review it before booking this area again.'
+    );
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+  });
+
+  it('should allow a pending booking in another area of the same space', async () => {
+    const startAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    const spaceId = crypto.randomUUID();
+    const areaId = crypto.randomUUID();
+    const otherAreaId = crypto.randomUUID();
+    const bookingId = crypto.randomUUID();
+
+    (prisma.area.findUnique as any).mockResolvedValue({
+      id: areaId,
+      name: 'Quiet Desk',
+      space_id: spaceId,
+      advance_booking_enabled: true,
+      advance_booking_value: 30,
+      advance_booking_unit: 'days',
+      max_capacity: 10,
+      automatic_booking_enabled: false,
+      request_approval_at_capacity: false,
+      price_rule: {
+        id: crypto.randomUUID(),
+        definition: {
+          formula: '100',
+          variables: [],
+          conditions: [],
+        },
+        is_active: true,
+      },
+      space: {
+        id: spaceId,
+        name: 'Test Space',
+        is_published: true,
+        user: { auth_user_id: 'partner-1', },
+      },
+    });
+
+    const findPendingForOtherArea = (input: PendingAreaLookupArgs) =>
+      Promise.resolve(
+        input.where.area_id === areaId
+          ? null
+          : {
+              id: crypto.randomUUID(),
+              area_id: otherAreaId,
+            }
+      );
+
+    (prisma.booking.findFirst as any).mockImplementation(findPendingForOtherArea);
+    (prisma.booking.create as any).mockResolvedValue({
+      id: bookingId,
+      space_id: spaceId,
+      space_name: 'Test Space',
+      area_id: areaId,
+      area_name: 'Quiet Desk',
+      booking_hours: 1,
+      start_at: startAt,
+      price_minor: 10000,
+      currency: 'PHP',
+      status: 'pending',
+      created_at: new Date(),
+      user_auth_id: 'user-1',
+      partner_auth_id: 'partner-1',
+      area_max_capacity: 10,
+      guest_count: 1,
+    });
+
+    const payload = {
+      spaceId,
+      areaId,
+      guestCount: 1,
+      bookingHours: 1,
+      startAt: startAt.toISOString(),
+    };
+
+    const req = {
+      json: async () => payload,
+      headers: new Headers(),
+    } as unknown as NextRequest;
+
+    const response = await createBookingHandler(req);
+
+    expect(response.status).toBe(202);
+    expect(prisma.booking.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          space_id: spaceId,
+          area_id: areaId,
+          status: 'pending',
+          user_auth_id: 'user-1',
+        }),
+      })
+    );
+    expect(prisma.booking.create).toHaveBeenCalled();
   });
 });

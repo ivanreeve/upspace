@@ -165,6 +165,8 @@ export const BUILT_IN_VARIABLE_KEYS = new Set([
   'date',
   'time',
   'day_of_week',
+  'check_out_date',
+  'check_out_time',
   'area_max_capacity',
   'area_min_capacity'
 ]);
@@ -224,6 +226,18 @@ export const PRICE_RULE_INITIAL_VARIABLES: PriceRuleVariable[] = [
     label: 'guest count',
     type: 'number',
     initialValue: '1',
+    userInput: false,
+  },
+  {
+    key: 'check_out_date',
+    label: 'check-out date',
+    type: 'date',
+    userInput: false,
+  },
+  {
+    key: 'check_out_time',
+    label: 'check-out time',
+    type: 'time',
     userInput: false,
   }
 ];

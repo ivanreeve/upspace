@@ -196,7 +196,7 @@ icon: FaTelegramPlane,
               <button
                 type="button"
                 aria-haspopup="dialog"
-                className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium cursor-pointer transition hover:bg-accent hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-primary/10 text-primary [&_svg]:text-primary px-4 py-2 text-sm font-medium cursor-pointer transition hover:bg-primary/20 dark:bg-transparent dark:text-current dark:[&_svg]:text-current dark:hover:bg-accent dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed"
               >
                 <FiShare2 className="size-4" aria-hidden="true" />
                 Share
