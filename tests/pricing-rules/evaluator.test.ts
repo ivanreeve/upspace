@@ -819,12 +819,22 @@ now: evening,
           makeCondition({
             id: 'c1',
             comparator: '=',
-            left: { kind: 'variable', key: 'check_out_date' },
-            right: { kind: 'literal', value: '2024-01-15', valueType: 'date' },
+            left: {
+ kind: 'variable',
+key: 'check_out_date', 
+},
+            right: {
+ kind: 'literal',
+value: '2024-01-15',
+valueType: 'date', 
+},
           })
         ],
       });
-      const result = evaluatePriceRule(def, { bookingHours: 8, now: checkIn });
+      const result = evaluatePriceRule(def, {
+ bookingHours: 8,
+now: checkIn, 
+});
       expect(result.branch).toBe('then');
     });
 
@@ -837,12 +847,22 @@ now: evening,
           makeCondition({
             id: 'c1',
             comparator: '=',
-            left: { kind: 'variable', key: 'check_out_date' },
-            right: { kind: 'literal', value: '2024-01-16', valueType: 'date' },
+            left: {
+ kind: 'variable',
+key: 'check_out_date', 
+},
+            right: {
+ kind: 'literal',
+value: '2024-01-16',
+valueType: 'date', 
+},
           })
         ],
       });
-      const result = evaluatePriceRule(def, { bookingHours: 4, now: checkIn });
+      const result = evaluatePriceRule(def, {
+ bookingHours: 4,
+now: checkIn, 
+});
       expect(result.branch).toBe('then');
     });
   });
@@ -857,12 +877,22 @@ now: evening,
           makeCondition({
             id: 'c1',
             comparator: '=',
-            left: { kind: 'variable', key: 'check_out_time' },
-            right: { kind: 'literal', value: '12:00', valueType: 'time' },
+            left: {
+ kind: 'variable',
+key: 'check_out_time', 
+},
+            right: {
+ kind: 'literal',
+value: '12:00',
+valueType: 'time', 
+},
           })
         ],
       });
-      const result = evaluatePriceRule(def, { bookingHours: 3, now: checkIn });
+      const result = evaluatePriceRule(def, {
+ bookingHours: 3,
+now: checkIn, 
+});
       expect(result.branch).toBe('then');
     });
 
@@ -875,12 +905,22 @@ now: evening,
           makeCondition({
             id: 'c1',
             comparator: '=',
-            left: { kind: 'variable', key: 'check_out_time' },
-            right: { kind: 'literal', value: '03:00', valueType: 'time' },
+            left: {
+ kind: 'variable',
+key: 'check_out_time', 
+},
+            right: {
+ kind: 'literal',
+value: '03:00',
+valueType: 'time', 
+},
           })
         ],
       });
-      const result = evaluatePriceRule(def, { bookingHours: 5, now: checkIn });
+      const result = evaluatePriceRule(def, {
+ bookingHours: 5,
+now: checkIn, 
+});
       expect(result.branch).toBe('then');
     });
 
@@ -893,18 +933,31 @@ now: evening,
           makeCondition({
             id: 'c1',
             comparator: '>=',
-            left: { kind: 'variable', key: 'check_out_time' },
-            right: { kind: 'literal', value: '18:00', valueType: 'time' },
+            left: {
+ kind: 'variable',
+key: 'check_out_time', 
+},
+            right: {
+ kind: 'literal',
+value: '18:00',
+valueType: 'time', 
+},
           })
         ],
       });
       // 10 hours: check-out at 20:00 → surcharge branch
-      const surcharge = evaluatePriceRule(def, { bookingHours: 10, now: checkIn });
+      const surcharge = evaluatePriceRule(def, {
+ bookingHours: 10,
+now: checkIn, 
+});
       expect(surcharge.branch).toBe('then');
       expect(surcharge.price).toBe(1200);
 
       // 6 hours: check-out at 16:00 → normal branch
-      const normal = evaluatePriceRule(def, { bookingHours: 6, now: checkIn });
+      const normal = evaluatePriceRule(def, {
+ bookingHours: 6,
+now: checkIn, 
+});
       expect(normal.branch).toBe('else');
       expect(normal.price).toBe(600);
     });

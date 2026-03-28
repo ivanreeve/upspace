@@ -1,5 +1,9 @@
 import { randomUUID } from 'crypto';
 
+import { Prisma } from '@prisma/client';
+
+import { PENDING_BOOKING_AREA_CONFLICT_MESSAGE, PendingAreaBookingConflictError } from '@/lib/bookings/pending-request';
+import { matchesPendingBookingRequest } from '@/lib/bookings/pending-request';
 import { BOOKING_PRICE_MINOR_FACTOR, mapBookingRowToRecord, normalizeNumeric } from '@/lib/bookings/serializer';
 import { countActiveBookingsOverlap, resolveBookingDecision } from '@/lib/bookings/occupancy';
 import { sendBookingNotificationEmail } from '@/lib/email';
@@ -319,14 +323,11 @@ export async function createBookingCheckoutSession(
   if (!Number.isFinite(priceMinor) || priceMinor <= 0) {
     throw new BookingCheckoutError(400, 'Unable to compute a valid price for this booking.');
   }
-  const existingPendingBooking = await prisma.booking.findFirst({
+
+  const pendingAreaBooking = await prisma.booking.findFirst({
     where: {
-      area_id: area.id,
-      booking_hours: bookingHours,
-      expires_at: expiresAt,
-      guest_count: guestCount,
       space_id: spaceId,
-      start_at: startAt,
+      area_id: area.id,
       status: 'pending',
       user_auth_id: customer.auth_user_id,
     },
@@ -350,6 +351,20 @@ export async function createBookingCheckoutSession(
       },
     },
   });
+
+  const existingPendingBooking = pendingAreaBooking &&
+    matchesPendingBookingRequest(pendingAreaBooking, {
+      bookingHours,
+      guestCount,
+      startAt,
+      expiresAt,
+    })
+    ? pendingAreaBooking
+    : null;
+
+  if (pendingAreaBooking && !existingPendingBooking) {
+    throw new BookingCheckoutError(409, PENDING_BOOKING_AREA_CONFLICT_MESSAGE);
+  }
 
   const bookingResult = existingPendingBooking
     ? await (async () => {
@@ -382,6 +397,20 @@ export async function createBookingCheckoutSession(
     : await prisma
         .$transaction(
           async (tx) => {
+            const conflictingPendingBooking = await tx.booking.findFirst({
+              where: {
+                space_id: spaceId,
+                area_id: area.id,
+                status: 'pending',
+                user_auth_id: customer.auth_user_id,
+              },
+              select: { id: true, },
+            });
+
+            if (conflictingPendingBooking) {
+              throw new PendingAreaBookingConflictError();
+            }
+
             const activeCount = await countActiveBookingsOverlap(
               tx,
               area.id,
@@ -442,6 +471,15 @@ export async function createBookingCheckoutSession(
           if (error instanceof CapacityReachedError) {
             return null;
           }
+          if (
+            error instanceof PendingAreaBookingConflictError ||
+            (
+              error instanceof Prisma.PrismaClientKnownRequestError &&
+              error.code === 'P2034'
+            )
+          ) {
+            throw new BookingCheckoutError(409, PENDING_BOOKING_AREA_CONFLICT_MESSAGE);
+          }
           throw error;
         });
 
@@ -454,6 +492,10 @@ export async function createBookingCheckoutSession(
     existingPaymentTransaction,
     requiresHostApproval,
   } = bookingResult;
+
+  if (existingPaymentTransaction?.status === 'succeeded') {
+    throw new BookingCheckoutError(409, PENDING_BOOKING_AREA_CONFLICT_MESSAGE);
+  }
 
   const defaultSuccessUrl = `${APP_URL}/marketplace/${area.space.id}?booking_id=${bookingRow.id}&payment=success`;
   const defaultCancelUrl = `${APP_URL}/marketplace/${area.space.id}?booking_id=${bookingRow.id}&payment=cancel`;
