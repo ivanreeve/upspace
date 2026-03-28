@@ -143,6 +143,59 @@ describe('financial checkout pricing guards', () => {
     expect(createBookingPayment).not.toHaveBeenCalled();
   });
 
+  it('returns 400 when a required custom variable is missing', async () => {
+    vi.spyOn(walletServer, 'resolveAuthenticatedUserForWallet').mockResolvedValue({
+      response: null,
+      dbUser: {
+        user_id: 1n,
+        auth_user_id: 'customer-auth-id',
+        role: 'customer',
+      },
+    });
+
+    vi.spyOn(prismaModule, 'prisma', 'get').mockReturnValue({
+      area: {
+        findUnique: vi.fn().mockResolvedValue({
+          ...makeArea(),
+          price_rule: {
+            ...makeArea().price_rule,
+            definition: {
+              formula: '100',
+              conditions: [],
+              variables: [
+                {
+                  key: 'coupon_code',
+                  label: 'Coupon code',
+                  type: 'text',
+                  userInput: true,
+                }
+              ],
+            },
+          },
+        }),
+      },
+    } as unknown as typeof prismaModule.prisma);
+
+    vi.spyOn(rateLimit, 'enforceRateLimit').mockResolvedValue();
+    const createBookingPayment = vi.fn();
+    vi.spyOn(providerRegistry, 'getFinancialProvider').mockReturnValue({ createBookingPayment, } as unknown as ReturnType<typeof providerRegistry.getFinancialProvider>);
+
+    const response = await createCheckoutHandler(
+      makeRequest({
+        spaceId: mockSpaceId,
+        areaId: mockAreaId,
+        bookingHours: 1,
+        guestCount: 1,
+        startAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error).toBe('Missing required booking details: Coupon code');
+    expect(createBookingPayment).not.toHaveBeenCalled();
+  });
+
   it('returns 400 when computed price is zero or negative', async () => {
     vi.spyOn(walletServer, 'resolveAuthenticatedUserForWallet').mockResolvedValue({
       response: null,

@@ -22,7 +22,7 @@ import { prisma } from '@/lib/prisma';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { evaluatePriceRule } from '@/lib/pricing-rules-evaluator';
 import type { PriceRuleRecord } from '@/lib/pricing-rules';
-import { BUILT_IN_VARIABLE_KEYS } from '@/lib/pricing-rules';
+import { BUILT_IN_VARIABLE_KEYS, getInvalidPriceRuleOverrideKeys, getMissingRequiredPriceRuleVariables } from '@/lib/pricing-rules';
 import { isTestingModeEnabled } from '@/lib/testing-mode';
 
 const createBookingSchema = z.object({
@@ -620,6 +620,36 @@ export async function POST(req: NextRequest) {
   if (priceRule.is_active === false) {
     return NextResponse.json(
       { error: 'The pricing rule for this area is currently inactive.', },
+      { status: 400, }
+    );
+  }
+
+  if (parsed.data.variableOverrides && Object.keys(parsed.data.variableOverrides).length > 0) {
+    const invalidKeys = getInvalidPriceRuleOverrideKeys(
+      priceRule.definition,
+      parsed.data.variableOverrides
+    );
+
+    if (invalidKeys.length > 0) {
+      return NextResponse.json(
+        { error: `Invalid variable overrides: ${invalidKeys.join(', ')}`, },
+        { status: 400, }
+      );
+    }
+  }
+
+  const missingRequiredVariables = getMissingRequiredPriceRuleVariables(
+    priceRule.definition,
+    parsed.data.variableOverrides
+  );
+
+  if (missingRequiredVariables.length > 0) {
+    return NextResponse.json(
+      {
+        error: `Missing required booking details: ${missingRequiredVariables
+          .map((variable) => variable.displayName || variable.label || variable.key)
+          .join(', ')}`,
+      },
       { status: 400, }
     );
   }

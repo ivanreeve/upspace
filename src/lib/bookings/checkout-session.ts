@@ -9,7 +9,7 @@ import { countActiveBookingsOverlap, resolveBookingDecision } from '@/lib/bookin
 import { sendBookingNotificationEmail } from '@/lib/email';
 import { prisma } from '@/lib/prisma';
 import { evaluatePriceRule } from '@/lib/pricing-rules-evaluator';
-import { BUILT_IN_VARIABLE_KEYS, type PriceRuleRecord } from '@/lib/pricing-rules';
+import { getInvalidPriceRuleOverrideKeys, getMissingRequiredPriceRuleVariables, type PriceRuleRecord } from '@/lib/pricing-rules';
 import { getFinancialProvider } from '@/lib/providers/provider-registry';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { isTestingModeEnabled } from '@/lib/testing-mode';
@@ -237,18 +237,12 @@ export async function createBookingCheckoutSession(
     throw new BookingCheckoutError(400, 'The pricing rule for this area is currently inactive.');
   }
 
-  // Validate that customer-provided overrides only target variables declared
-  // with userInput: true. This prevents customers from overriding internal
-  // variables the partner intended to be fixed.
+  // Customer overrides may only populate declared user-input variables, and
+  // required fields must be present before we compute pricing.
   if (customVariableOverrides && Object.keys(customVariableOverrides).length > 0) {
-    const allowedOverrideKeys = new Set(
-      priceRule.definition.variables
-        .filter((v) => v.userInput === true)
-        .map((v) => v.key)
-    );
-
-    const invalidKeys = Object.keys(customVariableOverrides).filter(
-      (key) => !allowedOverrideKeys.has(key) && !BUILT_IN_VARIABLE_KEYS.has(key)
+    const invalidKeys = getInvalidPriceRuleOverrideKeys(
+      priceRule.definition,
+      customVariableOverrides
     );
 
     if (invalidKeys.length > 0) {
@@ -257,6 +251,20 @@ export async function createBookingCheckoutSession(
         `Invalid variable overrides: ${invalidKeys.join(', ')}`
       );
     }
+  }
+
+  const missingRequiredVariables = getMissingRequiredPriceRuleVariables(
+    priceRule.definition,
+    customVariableOverrides
+  );
+
+  if (missingRequiredVariables.length > 0) {
+    throw new BookingCheckoutError(
+      400,
+      `Missing required booking details: ${missingRequiredVariables
+        .map((variable) => variable.displayName || variable.label || variable.key)
+        .join(', ')}`
+    );
   }
 
   const priceEvaluation = (() => {
