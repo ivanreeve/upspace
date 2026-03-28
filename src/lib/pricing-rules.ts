@@ -32,6 +32,7 @@ export type PriceRuleVariable = {
   type: PriceRuleVariableType;
   initialValue?: string;
   userInput?: boolean;
+  required?: boolean;
   displayName?: string;
 };
 
@@ -86,6 +87,7 @@ export const priceRuleDefinitionSchema = z.object({
       type: z.enum(['text', 'number', 'date', 'time']),
       initialValue: z.string().optional(),
       userInput: z.boolean().optional(),
+      required: z.boolean().optional(),
       displayName: z.string().optional(),
     })
   ),
@@ -173,6 +175,50 @@ export const BUILT_IN_VARIABLE_KEYS = new Set([
 
 export const BOOKING_DURATION_VARIABLE_REFERENCE_TEXT =
   'booking_hours, booking_days, booking_weeks, booking_months, or guest_count';
+
+export const isUserInputPriceRuleVariable = (
+  variable: Pick<PriceRuleVariable, 'userInput'>
+) => variable.userInput === true;
+
+export const isRequiredPriceRuleVariable = (
+  variable: Pick<PriceRuleVariable, 'userInput' | 'required'>
+) => isUserInputPriceRuleVariable(variable) && variable.required !== false;
+
+export const getUserInputPriceRuleVariables = (
+  definition: PriceRuleDefinition
+) => definition.variables.filter(isUserInputPriceRuleVariable);
+
+export const getInvalidPriceRuleOverrideKeys = (
+  definition: PriceRuleDefinition,
+  overrides?: Record<string, string | number>
+) => {
+  if (!overrides) {
+    return [];
+  }
+
+  const allowedKeys = new Set(
+    getUserInputPriceRuleVariables(definition).map((variable) => variable.key)
+  );
+
+  return Object.keys(overrides).filter((key) => !allowedKeys.has(key));
+};
+
+export const getMissingRequiredPriceRuleVariables = (
+  definition: PriceRuleDefinition,
+  overrides?: Record<string, string | number>
+) =>
+  getUserInputPriceRuleVariables(definition).filter((variable) => {
+    if (!isRequiredPriceRuleVariable(variable)) {
+      return false;
+    }
+
+    const value = overrides?.[variable.key];
+    if (value === undefined || value === '') {
+      return true;
+    }
+
+    return typeof value === 'number' && !Number.isFinite(value);
+  });
 
 export const PRICE_RULE_INITIAL_VARIABLES: PriceRuleVariable[] = [
   {

@@ -68,6 +68,17 @@ export type AdminReportProviderHealth = {
   pendingRefunds: number;
 };
 
+export type AdminReportDailyBooking = {
+  date: string;
+  bookings: number;
+  cancellations: number;
+};
+
+export type AdminReportDailyRevenue = {
+  date: string;
+  revenueMinor: string;
+};
+
 export type AdminReportPayload = {
   range: {
     days: number;
@@ -87,6 +98,10 @@ export type AdminReportPayload = {
   providerHealth: AdminReportProviderHealth;
   risk: {
     topCancellationSpaces: AdminReportRiskSpace[];
+  };
+  timeSeries: {
+    dailyBookings: AdminReportDailyBooking[];
+    dailyRevenue: AdminReportDailyRevenue[];
   };
 };
 

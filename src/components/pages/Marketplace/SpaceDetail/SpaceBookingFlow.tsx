@@ -30,7 +30,6 @@ import { useSearchParams } from 'next/navigation';
 import { BookingCard } from './BookingCard';
 
 import type { MarketplaceSpaceDetail } from '@/lib/queries/space';
-import type { PriceRuleVariable } from '@/lib/pricing-rules';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -57,7 +56,12 @@ import {
 } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { MIN_BOOKING_HOURS } from '@/lib/bookings/constants';
-import { type PriceRuleRecord } from '@/lib/pricing-rules';
+import {
+  getMissingRequiredPriceRuleVariables,
+  getUserInputPriceRuleVariables,
+  type PriceRuleRecord,
+  type PriceRuleVariable
+} from '@/lib/pricing-rules';
 import { evaluatePriceRule } from '@/lib/pricing-rules-evaluator';
 import { useAreaOccupancyQuery, useCreateCheckoutSessionMutation } from '@/hooks/api/useBookings';
 
@@ -558,6 +562,7 @@ function BookingDurationForm({
                     className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
                   >
                     { variable.displayName || variable.label }
+                    { variable.required === false ? ' (optional)' : ' (required)' }
                   </Label>
                   <Input
                     id={ `custom-var-${variable.key}` }
@@ -574,6 +579,8 @@ function BookingDurationForm({
                       'h-10 border-border/50 shadow-none focus:ring-1',
                       isCouponLikeVariable(variable) && 'bg-white dark:bg-input/30'
                     ) }
+                    aria-required={ variable.required !== false }
+                    required={ variable.required !== false }
                   />
                 </div>
               )) }
@@ -952,9 +959,7 @@ value: event.target.value,
     if (!activePriceRule) {
       return [];
     }
-    return activePriceRule.definition.variables.filter(
-      (variable) => variable.userInput === true
-    );
+    return getUserInputPriceRuleVariables(activePriceRule.definition);
   }, [activePriceRule]);
 
   const handleCustomVariableChange = useCallback(
@@ -1111,12 +1116,18 @@ value,
     return PRICE_FORMATTER.format(totalPrice);
   })();
 
-  const hasAllCustomVariables = userInputVariables.every((variable) => {
-    const value = customVariables[variable.key];
-    if (value === undefined || value === '') return false;
-    if (variable.type === 'number' && typeof value === 'number' && !Number.isFinite(value)) return false;
-    return true;
-  });
+  const missingRequiredCustomVariables = useMemo(
+    () => (
+      activePriceRule
+        ? getMissingRequiredPriceRuleVariables(
+            activePriceRule.definition,
+            customVariables
+          )
+        : []
+    ),
+    [activePriceRule, customVariables]
+  );
+  const hasAllCustomVariables = missingRequiredCustomVariables.length === 0;
 
   const canConfirmBooking = Boolean(
     selectedAreaId &&

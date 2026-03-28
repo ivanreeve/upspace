@@ -10,6 +10,7 @@ import {
 } from 'react-icons/fi';
 
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePartnerDashboardFeedQuery } from '@/hooks/api/usePartnerDashboardFeed';
 import type { BookingFeedItem, DashboardFeedItem, NotificationFeedItem } from '@/types/dashboard-feed';
@@ -215,14 +216,18 @@ export function PartnerDashboardFeed({ limit = 20, }: { limit?: number }) {
   }
 
   return (
-    <div className="space-y-2">
-      { data.map((item) => {
-        if (item.type === 'booking') {
-          return <BookingFeedRow key={ `booking-${ item.id }` } item={ item } />;
-        }
+    <div className="max-h-[28rem]">
+      <ScrollArea className="h-full">
+        <div className="space-y-2 pr-3">
+          { data.map((item) => {
+            if (item.type === 'booking') {
+              return <BookingFeedRow key={ `booking-${ item.id }` } item={ item } />;
+            }
 
-        return <NotificationFeedRow key={ `notification-${ item.id }` } item={ item } />;
-      }) }
+            return <NotificationFeedRow key={ `notification-${ item.id }` } item={ item } />;
+          }) }
+        </div>
+      </ScrollArea>
     </div>
   );
 }

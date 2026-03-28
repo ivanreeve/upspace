@@ -1595,6 +1595,12 @@ const normalizeVariableForComparison = (variable: PriceRuleVariable) => {
   if (variable.userInput !== undefined) {
     normalized.userInput = variable.userInput;
   }
+  if (variable.required !== undefined) {
+    normalized.required = variable.required;
+  }
+  if (variable.displayName !== undefined) {
+    normalized.displayName = variable.displayName;
+  }
   return normalized;
 };
 
@@ -1957,6 +1963,8 @@ export type PriceRuleFormState = {
   setNewVariableValue: Dispatch<SetStateAction<string>>;
   newVariableUserInput: boolean;
   setNewVariableUserInput: Dispatch<SetStateAction<boolean>>;
+  newVariableRequired: boolean;
+  setNewVariableRequired: Dispatch<SetStateAction<boolean>>;
   newVariableDisplayName: string;
   setNewVariableDisplayName: Dispatch<SetStateAction<string>>;
   handleAddVariable: () => void;
@@ -2015,6 +2023,7 @@ export function usePriceRuleFormState(
   >('text');
   const [newVariableValue, setNewVariableValue] = useState('');
   const [newVariableUserInput, setNewVariableUserInput] = useState(false);
+  const [newVariableRequired, setNewVariableRequired] = useState(true);
   const [newVariableDisplayName, setNewVariableDisplayName] = useState('');
   const [conditionExpression, setConditionExpression] = useState(
     () => computeInitialFormState(initialValues).conditionExpression
@@ -2037,6 +2046,7 @@ export function usePriceRuleFormState(
     setNewVariableType('text');
     setNewVariableValue('');
     setNewVariableUserInput(false);
+    setNewVariableRequired(true);
     setNewVariableDisplayName('');
     setConditionError(null);
   }, []);
@@ -2183,6 +2193,7 @@ export function usePriceRuleFormState(
             ? undefined
             : newVariableValue || undefined,
           userInput: userInputAllowed || undefined,
+          required: userInputAllowed ? newVariableRequired : undefined,
           displayName: userInputAllowed && newVariableDisplayName.trim()
             ? newVariableDisplayName.trim()
             : undefined,
@@ -2194,6 +2205,7 @@ export function usePriceRuleFormState(
     setNewVariableType('text');
     setNewVariableValue('');
     setNewVariableUserInput(false);
+    setNewVariableRequired(true);
     setNewVariableDisplayName('');
   };
 
@@ -2362,6 +2374,8 @@ export function usePriceRuleFormState(
     setNewVariableValue,
     newVariableUserInput,
     setNewVariableUserInput,
+    newVariableRequired,
+    setNewVariableRequired,
     newVariableDisplayName,
     setNewVariableDisplayName,
     handleAddVariable,
@@ -2384,6 +2398,8 @@ type RuleLanguageEditorProps = {
   setNewVariableValue: Dispatch<SetStateAction<string>>;
   newVariableUserInput: boolean;
   setNewVariableUserInput: Dispatch<SetStateAction<boolean>>;
+  newVariableRequired: boolean;
+  setNewVariableRequired: Dispatch<SetStateAction<boolean>>;
   newVariableDisplayName: string;
   setNewVariableDisplayName: Dispatch<SetStateAction<string>>;
   handleAddVariable: () => void;
@@ -3174,6 +3190,8 @@ type RuleLanguageVariablesSectionProps = Pick<
   | 'setNewVariableValue'
   | 'newVariableUserInput'
   | 'setNewVariableUserInput'
+  | 'newVariableRequired'
+  | 'setNewVariableRequired'
   | 'newVariableDisplayName'
   | 'setNewVariableDisplayName'
   | 'handleAddVariable'
@@ -3191,6 +3209,8 @@ function RuleLanguageVariablesSection({
   setNewVariableValue,
   newVariableUserInput,
   setNewVariableUserInput,
+  newVariableRequired,
+  setNewVariableRequired,
   newVariableDisplayName,
   setNewVariableDisplayName,
   handleAddVariable,
@@ -3227,7 +3247,7 @@ function RuleLanguageVariablesSection({
               </div>
               { variable.userInput ? (
                 <span className="text-[9px] font-semibold text-muted-foreground">
-                  Input
+                  { variable.required === false ? 'Optional' : 'Required' }
                 </span>
               ) : variable.initialValue ? (
                 <span className="text-[9px] text-muted-foreground">
@@ -3413,6 +3433,20 @@ function RuleLanguageVariablesSection({
         { newVariableUserInput &&
           newVariableType !== 'date' &&
           newVariableType !== 'time' && (
+          <>
+          <div className="flex items-center gap-2 whitespace-nowrap">
+            <Switch
+              id="variable-required"
+              checked={ newVariableRequired }
+              onCheckedChange={ (checked) => setNewVariableRequired(Boolean(checked)) }
+            />
+            <label
+              htmlFor="variable-required"
+              className="text-xs text-muted-foreground"
+            >
+              Required
+            </label>
+          </div>
           <div className="flex items-center gap-2 whitespace-nowrap">
             <Input
               id="variable-display-name"
@@ -3423,6 +3457,7 @@ function RuleLanguageVariablesSection({
               aria-label="Variable display name"
             />
           </div>
+          </>
         ) }
       </div>
     </div>
@@ -3686,6 +3721,8 @@ function RuleLanguageEditor({
   setNewVariableValue,
   newVariableUserInput,
   setNewVariableUserInput,
+  newVariableRequired,
+  setNewVariableRequired,
   newVariableDisplayName,
   setNewVariableDisplayName,
   handleAddVariable,
@@ -3728,6 +3765,8 @@ function RuleLanguageEditor({
           setNewVariableValue={ setNewVariableValue }
           newVariableUserInput={ newVariableUserInput }
           setNewVariableUserInput={ setNewVariableUserInput }
+          newVariableRequired={ newVariableRequired }
+          setNewVariableRequired={ setNewVariableRequired }
           newVariableDisplayName={ newVariableDisplayName }
           setNewVariableDisplayName={ setNewVariableDisplayName }
           handleAddVariable={ handleAddVariable }
@@ -4220,6 +4259,8 @@ export function PriceRuleFormShell({
   setNewVariableValue,
   newVariableUserInput,
   setNewVariableUserInput,
+  newVariableRequired,
+  setNewVariableRequired,
   newVariableDisplayName,
   setNewVariableDisplayName,
   handleAddVariable,
@@ -4407,6 +4448,8 @@ export function PriceRuleFormShell({
                 setNewVariableValue={ setNewVariableValue }
                 newVariableUserInput={ newVariableUserInput }
                 setNewVariableUserInput={ setNewVariableUserInput }
+                newVariableRequired={ newVariableRequired }
+                setNewVariableRequired={ setNewVariableRequired }
                 newVariableDisplayName={ newVariableDisplayName }
                 setNewVariableDisplayName={ setNewVariableDisplayName }
                 handleAddVariable={ handleAddVariable }

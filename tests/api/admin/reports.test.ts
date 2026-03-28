@@ -95,7 +95,24 @@ _count: { _all: 1, },
       .mockResolvedValueOnce({ _avg: { rating_star: 4.5, }, })
       .mockResolvedValueOnce({ _avg: { rating_star: 4.0, }, });
 
+    const queryRaw = vi.fn()
+      .mockResolvedValueOnce([
+        {
+          day: new Date('2026-03-01T00:00:00.000Z'),
+          total: 5n,
+          cancelled: 1n,
+        }
+      ])
+      .mockResolvedValueOnce([
+        {
+          day: new Date('2026-03-01T00:00:00.000Z'),
+          revenue_minor: 50000n,
+        }
+      ]);
+
     const prismaMock = {
+      $queryRaw: queryRaw,
+      $transaction: vi.fn(async (operations: Array<Promise<unknown>>) => Promise.all(operations)),
       booking: { groupBy: bookingGroupBy, },
       payment_transaction: { aggregate: paymentAggregate, },
       wallet_transaction: {
@@ -216,6 +233,10 @@ region: 'NCR',
     });
 
     const prismaMock = {
+      $queryRaw: vi.fn()
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]),
+      $transaction: vi.fn(async (operations: Array<Promise<unknown>>) => Promise.all(operations)),
       booking: {
         groupBy: vi.fn()
           .mockResolvedValueOnce([])

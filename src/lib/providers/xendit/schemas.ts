@@ -34,7 +34,8 @@ const xenditPayoutChannelAmountSchema = z.object({
 const xenditRawPayoutChannelSchema = z.object({
   channel_code: z.string().min(1),
   channel_name: z.string().min(1),
-  category: z.string().min(1),
+  channel_category: z.string().min(1).optional(),
+  category: z.string().min(1).optional(),
   currency: z.string().min(1),
   country: z.string().min(1).nullish(),
   amount_limits: xenditPayoutChannelAmountSchema.nullish(),
