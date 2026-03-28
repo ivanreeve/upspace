@@ -13,7 +13,18 @@ type PdfKeyValueSection = {
   entries: { label: string; value: string }[];
 };
 
-export type PdfSection = PdfTableSection | PdfKeyValueSection;
+type PdfImageSection = {
+  kind: 'image';
+  title: string;
+  imageDataUrl: string;
+  caption?: string;
+  maxHeightMm?: number;
+};
+
+export type PdfSection =
+  | PdfTableSection
+  | PdfKeyValueSection
+  | PdfImageSection;
 
 export type ExportPdfOptions = {
   title: string;
@@ -83,6 +94,59 @@ format: 'a4',
     doc.setFont('helvetica', 'bold');
     doc.text(section.title, PAGE_MARGIN, cursorY + 4);
     cursorY += 8;
+
+    if (section.kind === 'image') {
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const usableWidth = pageWidth - PAGE_MARGIN * 2;
+      const imageProps = doc.getImageProperties(section.imageDataUrl);
+      const naturalRatio = imageProps.height / imageProps.width;
+      const reservedCaptionHeight = section.caption ? 10 : 0;
+      const maxHeight = Math.min(
+        section.maxHeightMm ?? pageHeight - cursorY - PAGE_MARGIN - reservedCaptionHeight,
+        pageHeight - cursorY - PAGE_MARGIN - reservedCaptionHeight
+      );
+
+      let imageWidth = usableWidth;
+      let imageHeight = usableWidth * naturalRatio;
+
+      if (imageHeight > maxHeight) {
+        imageHeight = maxHeight;
+        imageWidth = imageHeight / naturalRatio;
+      }
+
+      if (cursorY + imageHeight + reservedCaptionHeight > pageHeight - PAGE_MARGIN) {
+        doc.addPage();
+        cursorY = PAGE_MARGIN;
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text(section.title, PAGE_MARGIN, cursorY + 4);
+        cursorY += 8;
+      }
+
+      doc.addImage(
+        section.imageDataUrl,
+        'PNG',
+        PAGE_MARGIN,
+        cursorY,
+        imageWidth,
+        imageHeight
+      );
+      cursorY += imageHeight + 4;
+
+      if (section.caption) {
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(90);
+        const captionLines = doc.splitTextToSize(section.caption, usableWidth);
+        doc.text(captionLines, PAGE_MARGIN, cursorY + 3);
+        cursorY += captionLines.length * 4 + SECTION_GAP - 1;
+        doc.setTextColor(0);
+      } else {
+        cursorY += SECTION_GAP;
+      }
+
+      continue;
+    }
 
     const body =
       section.kind === 'key-value'
