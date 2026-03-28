@@ -334,9 +334,11 @@ export class XenditFinancialProvider implements FinancialProvider {
       throw new ProviderValidationError('Xendit did not return a cash balance.', 502);
     }
 
+    const currency = cashBalance.currency ?? 'PHP';
+
     return {
-      availableMinor: cashBalance.balance,
-      currency: cashBalance.currency ?? 'PHP',
+      availableMinor: amountToMinorUnits(cashBalance.balance, currency),
+      currency,
       fetchedAt: new Date(),
       raw: cashBalance,
     };
