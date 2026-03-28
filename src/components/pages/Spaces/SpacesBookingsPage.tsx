@@ -108,6 +108,9 @@ const BULK_STATUS_OPTIONS: { label: string; status: BookingStatus }[] = [
   }
 ];
 
+const bulkEditMenuItemClassName =
+  'data-[highlighted]:bg-[oklch(0.955_0.02_204.6929)] focus-visible:bg-[oklch(0.955_0.02_204.6929)] dark:data-[highlighted]:bg-[oklch(0.24_0.02_204.6929)] dark:focus-visible:bg-[oklch(0.24_0.02_204.6929)] data-[highlighted]:text-primary data-[highlighted]:[&_svg]:text-primary dark:data-[highlighted]:text-secondary dark:data-[highlighted]:[&_svg]:text-secondary hover:!text-primary hover:[&_svg]:!text-primary dark:hover:!text-secondary dark:hover:[&_svg]:!text-secondary';
+
 const bookingStatusMeta: Record<
   BookingStatus,
   {
@@ -300,10 +303,14 @@ name,
     });
   }, [sortedBookings]);
 
-  const areaBookingCounts = useMemo(() => {
+  const areaGuestCounts = useMemo(() => {
     const counts = new Map<string, number>();
     sortedBookings.forEach((booking) => {
-      counts.set(booking.areaId, (counts.get(booking.areaId) ?? 0) + 1);
+      if (booking.status !== 'checkedin') {
+        return;
+      }
+      const guests = booking.guestCount ?? 1;
+      counts.set(booking.areaId, (counts.get(booking.areaId) ?? 0) + guests);
     });
     return counts;
   }, [sortedBookings]);
@@ -422,7 +429,7 @@ name,
   };
 
   const renderCapacity = (booking: (typeof bookings)[number]) => {
-    const used = areaBookingCounts.get(booking.areaId) ?? 0;
+    const used = areaGuestCounts.get(booking.areaId) ?? 0;
     const maxCap = booking.areaMaxCapacity ?? null;
     const remaining =
       typeof maxCap === 'number' ? Math.max(maxCap - used, 0) : null;
@@ -436,7 +443,7 @@ name,
       status,
       label:
         maxCap === null
-          ? `${used} booking${used === 1 ? '' : 's'}`
+          ? `${used} guest${used === 1 ? '' : 's'}`
           : `${used}/${maxCap}`,
       helper:
         maxCap === null
@@ -470,11 +477,14 @@ name,
               <TableCell className="w-36">
                 <Skeleton className="h-8 w-28 rounded-md" />
               </TableCell>
-              <TableCell className="w-24">
-                <Skeleton className="h-4 w-14" />
+              <TableCell className="w-28">
+                <Skeleton className="h-4 w-20" />
               </TableCell>
               <TableCell className="w-28">
-                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-20" />
+              </TableCell>
+              <TableCell className="w-20">
+                <Skeleton className="h-4 w-14" />
               </TableCell>
               <TableCell className="w-40">
                 <Skeleton className="h-4 w-28" />
@@ -492,7 +502,7 @@ name,
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={ 9 } className="text-sm text-destructive">
+            <TableCell colSpan={ 11 } className="text-sm text-destructive">
               { error instanceof Error
                 ? error.message
                 : 'Unable to load bookings.' }
@@ -506,7 +516,7 @@ name,
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={ 9 }>
+            <TableCell colSpan={ 11 }>
               <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
                 <FiAlertCircle className="size-5" aria-hidden="true" />
                 <p>
@@ -524,7 +534,7 @@ name,
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={ 9 }>
+            <TableCell colSpan={ 11 }>
               <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
                 <FiAlertCircle className="size-5" aria-hidden="true" />
                 <p>No active bookings are filling your areas right now.</p>
@@ -539,7 +549,7 @@ name,
       return (
         <TableBody>
           <TableRow>
-            <TableCell colSpan={ 9 }>
+            <TableCell colSpan={ 11 }>
               <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
                 <FiAlertCircle className="size-5" aria-hidden="true" />
                 <p>No results match your search.</p>
@@ -563,7 +573,12 @@ name,
           const userHandle =
             booking.customerHandle ?? booking.customerAuthId.slice(0, 8);
           const statusMeta = bookingStatusMeta[booking.status];
-          const primaryAction = bookingPrimaryActionMap[booking.status] ?? null;
+          const rawPrimaryAction = bookingPrimaryActionMap[booking.status] ?? null;
+          const isCheckinAction = booking.status === 'confirmed';
+          const bookingDate = booking.startAt.slice(0, 10);
+          const todayDate = new Date().toISOString().slice(0, 10);
+          const isCheckinDisabled = isCheckinAction && bookingDate !== todayDate;
+          const primaryAction = rawPrimaryAction;
           const canCancel = ACTIVE_BOOKING_STATUSES.has(booking.status);
 
           return (
@@ -635,7 +650,8 @@ name,
                           status: primaryAction.nextStatus,
                         })
                       }
-                      disabled={ bulkUpdate.isPending }
+                      disabled={ bulkUpdate.isPending || isCheckinDisabled }
+                      title={ isCheckinDisabled ? `Check-in available on ${bookingDate}` : undefined }
                       aria-label={ `${primaryAction.label} ${userDisplayName}` }
                     >
                       <primaryAction.icon className="size-3.5" aria-hidden="true" />
@@ -675,6 +691,21 @@ name,
                     </DropdownMenu>
                   ) : null }
                 </div>
+              </TableCell>
+              <TableCell>
+                <span className="text-sm text-foreground">
+                  { bookingDateFormatter.format(new Date(booking.startAt)) }
+                </span>
+              </TableCell>
+              <TableCell>
+                <span className="text-sm text-foreground">
+                  { bookingDateFormatter.format(
+                    new Date(
+                      new Date(booking.startAt).getTime() +
+                        booking.bookingHours * 60 * 60 * 1000
+                    )
+                  ) }
+                </span>
               </TableCell>
               <TableCell>
                 { booking.bookingHours } hr{ booking.bookingHours === 1 ? '' : 's' }
@@ -868,13 +899,17 @@ name,
                       ) }
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-56 rounded-md border border-border bg-card p-1 shadow-lg"
+                  >
                     <DropdownMenuLabel>Change status</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     { BULK_STATUS_OPTIONS.map((option) => (
                       <DropdownMenuItem
                         key={ option.status }
                         onSelect={ () => handleBulkStatusChange(option.status) }
+                        className={ bulkEditMenuItemClassName }
                       >
                         { option.label }
                       </DropdownMenuItem>
@@ -928,6 +963,8 @@ name,
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Space / Area</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Status</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Next step</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Check-in</TableHead>
+                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Check-out</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Duration</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Price</TableHead>
                 <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-white dark:text-foreground">Capacity</TableHead>
@@ -960,7 +997,7 @@ name,
           <div className="space-y-2">
             <label
               htmlFor={ cancellationReasonFieldId }
-              className="text-sm font-medium text-foreground"
+              className="mt-2 block text-sm font-medium text-foreground"
             >
               Cancellation reason
             </label>

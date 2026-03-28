@@ -1,9 +1,11 @@
 import { randomUUID } from 'crypto';
 
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 
 import { runBookingLifecycleChecks } from '@/lib/bookings/expiration';
+import { PENDING_BOOKING_AREA_CONFLICT_MESSAGE, PendingAreaBookingConflictError } from '@/lib/bookings/pending-request';
 import { sendBookingNotificationEmail, sendBookingRejectionEmail } from '@/lib/email';
 import { notifyBookingEvent } from '@/lib/notifications/booking';
 import {
@@ -665,9 +667,25 @@ export async function POST(req: NextRequest) {
 
   class CapacityReachedError extends Error {}
 
-  const bookingResult = await prisma
-    .$transaction(
+  let bookingResult: { bookingRow: Awaited<ReturnType<typeof prisma.booking.create>>; } | null;
+
+  try {
+    bookingResult = await prisma.$transaction(
       async (tx) => {
+        const conflictingPendingBooking = await tx.booking.findFirst({
+          where: {
+            space_id: parsed.data.spaceId,
+            area_id: area.id,
+            status: 'pending',
+            user_auth_id: authData.user.id,
+          },
+          select: { id: true, },
+        });
+
+        if (conflictingPendingBooking) {
+          throw new PendingAreaBookingConflictError();
+        }
+
         const activeCount = await countActiveBookingsOverlap(
           tx,
           area.id,
@@ -718,19 +736,29 @@ export async function POST(req: NextRequest) {
         return { bookingRow: created, };
       },
       { isolationLevel: 'Serializable', }
-    )
-    .catch((error) => {
-      if (error instanceof CapacityReachedError) {
-        return null;
-      }
-      throw error;
-    });
-
-  if (!bookingResult) {
-    return NextResponse.json(
-      { error: 'This area is fully booked for the requested time window.', },
-      { status: 409, }
     );
+  } catch (error) {
+    if (error instanceof CapacityReachedError) {
+      return NextResponse.json(
+        { error: 'This area is fully booked for the requested time window.', },
+        { status: 409, }
+      );
+    }
+
+    if (
+      error instanceof PendingAreaBookingConflictError ||
+      (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2034'
+      )
+    ) {
+      return NextResponse.json(
+        { error: PENDING_BOOKING_AREA_CONFLICT_MESSAGE, },
+        { status: 409, }
+      );
+    }
+
+    throw error;
   }
 
   const { bookingRow, } = bookingResult;

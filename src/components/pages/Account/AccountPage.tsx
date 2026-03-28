@@ -180,6 +180,15 @@ export default function AccountPage() {
   };
 
   const handleSaveProfile = async () => {
+    const namePattern = /^[a-zA-Z0-9\s.\-]+$/;
+    const trimmedFirst = firstName.trim();
+    const trimmedLast = lastName.trim();
+
+    if ((trimmedFirst && !namePattern.test(trimmedFirst)) || (trimmedLast && !namePattern.test(trimmedLast))) {
+      toast.error('Names can only contain letters, numbers, spaces, dots, and hyphens.');
+      return;
+    }
+
     const birthdayValue = birthday ? birthday.trim() : null;
     if (birthdayValue && !/^\d{4}-\d{2}-\d{2}$/.test(birthdayValue)) {
       toast.error('Birthday must be in YYYY-MM-DD format.');

@@ -9,10 +9,13 @@ import { ALLOWED_USER_ROLES } from '@/lib/user-roles';
 const BIRTHDAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 
+const NAME_PATTERN = /^[a-zA-Z0-9\s.\-]+$/;
+const NAME_FORMAT_MESSAGE = 'Only letters, numbers, spaces, dots, and hyphens are allowed.';
+
 const onboardingSchema = z.object({
-  firstName: z.string().trim().min(1, 'First name is required.'),
-  middleName: z.string().trim().optional(),
-  lastName: z.string().trim().min(1, 'Last name is required.'),
+  firstName: z.string().trim().min(1, 'First name is required.').regex(NAME_PATTERN, NAME_FORMAT_MESSAGE),
+  middleName: z.string().trim().regex(NAME_PATTERN, NAME_FORMAT_MESSAGE).optional().or(z.literal('')),
+  lastName: z.string().trim().min(1, 'Last name is required.').regex(NAME_PATTERN, NAME_FORMAT_MESSAGE),
   role: z.enum(ALLOWED_USER_ROLES),
   birthday: z
     .string()
