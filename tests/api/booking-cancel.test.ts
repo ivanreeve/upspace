@@ -90,6 +90,13 @@ describe('booking cancel api', () => {
             partner_provider_account_id: 'provider-local-1',
           },
         }),
+        findMany: vi.fn().mockResolvedValue([{
+          booking_id: 'booking-1',
+          status: 'succeeded',
+          amount_minor: 150000n,
+          currency_iso3: 'PHP',
+          provider: 'xendit',
+        }]),
       },
       booking: {
         findUnique: vi.fn().mockResolvedValue({
@@ -128,6 +135,15 @@ describe('booking cancel api', () => {
         findFirst: vi.fn().mockResolvedValue(null),
         create: vi.fn().mockResolvedValue({ id: 'refund-intent-1', }),
         update: vi.fn().mockResolvedValue({ id: 'refund-intent-1', }),
+        findMany: vi.fn().mockResolvedValue([{
+          booking_id: 'booking-1',
+          status: 'pending',
+          amount_minor: 150000n,
+          currency: 'PHP',
+          created_at: new Date('2026-03-13T09:01:00.000Z'),
+          updated_at: new Date('2026-03-13T09:01:00.000Z'),
+          processed_at: null,
+        }]),
       },
       app_notification: { create: vi.fn().mockResolvedValue({ id: 'notif-1', }), },
     } as unknown as typeof prismaModule.prisma);
@@ -138,6 +154,9 @@ describe('booking cancel api', () => {
     );
 
     expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({ message: 'Booking cancelled. Refund processing has started.', })
+    );
     expect(submitXenditRefund).toHaveBeenCalledWith(
       expect.objectContaining({
         walletTransactionId: 'refund-intent-1',

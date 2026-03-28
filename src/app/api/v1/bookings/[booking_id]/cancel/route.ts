@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { CANCELLABLE_BOOKING_STATUSES } from '@/lib/bookings/constants';
+import { buildCancelSuccessMessage } from '@/lib/bookings/refund-summary';
 import { BOOKING_PRICE_MINOR_FACTOR, mapBookingsWithProfiles, normalizeNumeric } from '@/lib/bookings/serializer';
 import { sendBookingCancellationEmail } from '@/lib/email';
 import { submitXenditRefund } from '@/lib/financial/xendit-refunds';
@@ -309,5 +310,11 @@ error: emailError,
     return notFoundResponse;
   }
 
-  return NextResponse.json({ data: record, });
+  return NextResponse.json({
+    data: record,
+    message: buildCancelSuccessMessage({
+      paymentCaptured: Boolean(record.paymentCaptured),
+      refundSummary: record.refundSummary ?? null,
+    }),
+  });
 }

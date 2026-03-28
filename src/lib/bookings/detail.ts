@@ -1,4 +1,5 @@
 import { normalizeNumeric } from '@/lib/bookings/serializer';
+import { buildBookingRefundSummary, hasCapturedPayment } from '@/lib/bookings/refund-summary';
 import { buildTimeline } from '@/lib/bookings/timeline';
 import { prisma } from '@/lib/prisma';
 import type { BookingDetailRecord } from '@/types/booking-detail';
@@ -42,7 +43,10 @@ export async function getCustomerBookingDetailRecord(
 
   const [paymentTx, refundTxs, statusNotifications] = await Promise.all([
     prisma.payment_transaction.findFirst({
-      where: { booking_id: booking.id, },
+      where: {
+        booking_id: booking.id,
+        status: { in: ['succeeded', 'refunded'], },
+      },
       orderBy: { created_at: 'desc', },
       select: {
         id: true,
@@ -67,6 +71,8 @@ export async function getCustomerBookingDetailRecord(
         amount_minor: true,
         currency: true,
         created_at: true,
+        updated_at: true,
+        processed_at: true,
       },
     }),
     prisma.app_notification.findMany({
@@ -89,7 +95,21 @@ export async function getCustomerBookingDetailRecord(
     .map((notification) => REVIEW_TITLE_MAP[notification.title] ?? null)
     .find((candidate) => candidate !== null) ?? null;
 
+  const paymentSummary = paymentTx
+    ? {
+        status: paymentTx.status,
+        amount_minor: paymentTx.amount_minor,
+        currency_iso3: paymentTx.currency_iso3,
+        provider: paymentTx.provider,
+      }
+    : null;
   const timeline = buildTimeline(booking, paymentTx, refundTxs, statusNotifications);
+  const refundSummary = buildBookingRefundSummary({
+    bookingStatus: booking.status,
+    paymentTx: paymentSummary,
+    refundTxs,
+    bookingCurrency: booking.currency,
+  });
 
   return {
     id: booking.id,
@@ -104,8 +124,9 @@ export async function getCustomerBookingDetailRecord(
     currency: booking.currency,
     status: booking.status,
     createdAt: booking.created_at.toISOString(),
-    paymentCaptured: paymentTx?.status === 'succeeded',
+    paymentCaptured: hasCapturedPayment(paymentSummary),
     paymentMethod: paymentTx?.provider ?? null,
+    refundSummary,
     reviewState,
     latestStatusTitle: statusNotifications.at(-1)?.title ?? null,
     isLive: paymentTx?.is_live ?? null,

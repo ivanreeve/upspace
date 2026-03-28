@@ -51,7 +51,9 @@ import { CANCELLABLE_BOOKING_STATUSES } from '@/lib/bookings/constants';
 import type { BookingRecord, BookingStatus } from '@/lib/bookings/types';
 import { useUserBookingsQuery } from '@/hooks/api/useBookings';
 import { useCustomerCancelBookingMutation } from '@/hooks/api/useCustomerCancelBooking';
+import { BookingCancelDialog } from '@/components/pages/Customer/BookingCancelDialog';
 import { ComplaintDialog } from '@/components/pages/Customer/ComplaintDialog';
+import type { BookingRefundState } from '@/lib/bookings/refund-summary';
 
 const COMPLAINTABLE_BOOKING_STATUSES: BookingStatus[] = ['confirmed', 'completed', 'checkedin', 'checkedout'];
 
@@ -130,6 +132,16 @@ const BOOKING_STATUS_VARIANTS: Record<BookingStatus, 'success' | 'secondary' | '
   noshow: 'destructive',
 };
 
+const REFUND_STATUS_VARIANTS: Record<
+  BookingRefundState,
+  'success' | 'secondary' | 'destructive'
+> = {
+  pending: 'secondary',
+  succeeded: 'success',
+  failed: 'destructive',
+  attention: 'destructive',
+};
+
 const formatBookingDate = (value: string) =>
   new Date(value).toLocaleString(undefined, {
     month: 'short',
@@ -153,7 +165,7 @@ type BookingRowActionsProps = {
   isCancelable: boolean;
   isComplaintable: boolean;
   isMutating: boolean;
-  onCancel: (bookingId: string) => void;
+  onRequestCancel: (booking: BookingRecord) => void;
 };
 
 function BookingRowActions({
@@ -161,7 +173,7 @@ function BookingRowActions({
   isCancelable,
   isComplaintable,
   isMutating,
-  onCancel,
+  onRequestCancel,
 }: BookingRowActionsProps) {
   const [isComplaintDialogOpen, setIsComplaintDialogOpen] = useState(false);
   const bookingHref = `/customer/bookings/${booking.id}`;
@@ -202,7 +214,7 @@ function BookingRowActions({
           { isCancelable && (
             <DropdownMenuItem
               disabled={ isMutating }
-              onSelect={ () => onCancel(booking.id) }
+              onSelect={ () => onRequestCancel(booking) }
               className="text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive focus-visible:[&_svg]:text-destructive data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive data-[highlighted]:[&_svg]:text-destructive"
             >
               <FiXCircle className="size-4 text-destructive" aria-hidden="true" />
@@ -229,6 +241,7 @@ export function CustomerBookingsPanel({ initialBookings, }: { initialBookings?: 
  data: bookings, isLoading, isError,
 } = useUserBookingsQuery(initialBookings ? { initialData: initialBookings, } : undefined);
   const cancelMutation = useCustomerCancelBookingMutation();
+  const [bookingToCancel, setBookingToCancel] = useState<BookingRecord | null>(null);
   const bookingRecords = bookings ?? [];
   const sortedBookings = bookingRecords.slice().sort((left, right) =>
     right.createdAt.localeCompare(left.createdAt)
@@ -358,6 +371,7 @@ export function CustomerBookingsPanel({ initialBookings, }: { initialBookings?: 
                     const isCancelable = CANCELLABLE_BOOKING_STATUSES.includes(booking.status);
                     const isComplaintable = COMPLAINTABLE_BOOKING_STATUSES.includes(booking.status);
                     const guestCount = booking.guestCount ?? 1;
+                    const refundSummary = booking.refundSummary ?? null;
 
                     return (
                       <TableRow key={ booking.id }>
@@ -375,9 +389,21 @@ export function CustomerBookingsPanel({ initialBookings, }: { initialBookings?: 
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={ BOOKING_STATUS_VARIANTS[booking.status] }>
-                            { BOOKING_STATUS_LABELS[booking.status] }
-                          </Badge>
+                          <div className="space-y-1">
+                            <Badge variant={ BOOKING_STATUS_VARIANTS[booking.status] }>
+                              { BOOKING_STATUS_LABELS[booking.status] }
+                            </Badge>
+                            { refundSummary ? (
+                              <>
+                                <Badge variant={ REFUND_STATUS_VARIANTS[refundSummary.state] }>
+                                  { refundSummary.label }
+                                </Badge>
+                                <p className="max-w-[220px] text-xs text-muted-foreground">
+                                  { refundSummary.detail }
+                                </p>
+                              </>
+                            ) : null }
+                          </div>
                         </TableCell>
                         <TableCell className="min-w-[180px]">
                           <div className="space-y-1">
@@ -411,7 +437,7 @@ export function CustomerBookingsPanel({ initialBookings, }: { initialBookings?: 
                               isCancelable={ isCancelable }
                               isComplaintable={ isComplaintable }
                               isMutating={ cancelMutation.isPending }
-                              onCancel={ (bookingId) => cancelMutation.mutate({ bookingId, }) }
+                              onRequestCancel={ setBookingToCancel }
                             />
                           </div>
                         </TableCell>
@@ -424,6 +450,31 @@ export function CustomerBookingsPanel({ initialBookings, }: { initialBookings?: 
           ) }
         </CardContent>
       </Card>
+
+      <BookingCancelDialog
+        booking={ bookingToCancel }
+        open={ Boolean(bookingToCancel) }
+        isPending={ cancelMutation.isPending }
+        onOpenChange={ (open) => {
+          if (!open && !cancelMutation.isPending) {
+            setBookingToCancel(null);
+          }
+        } }
+        onConfirm={ () => {
+          if (!bookingToCancel) {
+            return;
+          }
+
+          cancelMutation.mutate(
+            { bookingId: bookingToCancel.id, },
+            {
+              onSuccess: () => {
+                setBookingToCancel(null);
+              },
+            }
+          );
+        } }
+      />
     </div>
   );
 }

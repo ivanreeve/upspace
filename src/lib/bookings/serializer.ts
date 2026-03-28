@@ -1,4 +1,10 @@
 import type { BookingRecord } from './types';
+import {
+buildBookingRefundSummary,
+hasCapturedPayment,
+type PaymentTxForRefundSummary,
+type RefundTxForRefundSummary
+} from './refund-summary';
 
 import { prisma } from '@/lib/prisma';
 
@@ -47,6 +53,7 @@ export const mapBookingRowToRecord = (row: BookingRow): BookingRecord => ({
       ? priceMinor / BOOKING_PRICE_MINOR_FACTOR
       : null;
   })(),
+  currency: row.currency,
   guestCount: typeof row.guest_count === 'number' && Number.isFinite(row.guest_count)
     ? row.guest_count
     : 1,
@@ -85,29 +92,109 @@ export async function mapBookingsWithProfiles(
   const customerAuthIds = Array.from(
     new Set(rows.map((row) => row.user_auth_id))
   );
+  const bookingIds = Array.from(new Set(rows.map((row) => row.id)));
 
-  const customers = customerAuthIds.length
-    ? await prisma.user.findMany({
-        where: { auth_user_id: { in: customerAuthIds, }, },
-        select: {
-          auth_user_id: true,
-          first_name: true,
-          last_name: true,
-          handle: true,
-        },
-      })
-    : [];
+  const [customers, paymentTxs, refundTxs] = await Promise.all([
+    customerAuthIds.length
+      ? prisma.user.findMany({
+          where: { auth_user_id: { in: customerAuthIds, }, },
+          select: {
+            auth_user_id: true,
+            first_name: true,
+            last_name: true,
+            handle: true,
+          },
+        })
+      : Promise.resolve([]),
+    bookingIds.length
+      ? prisma.payment_transaction.findMany({
+          where: {
+            booking_id: { in: bookingIds, },
+            status: { in: ['succeeded', 'refunded'], },
+          },
+          orderBy: { created_at: 'desc', },
+          select: {
+            booking_id: true,
+            status: true,
+            amount_minor: true,
+            currency_iso3: true,
+            provider: true,
+          },
+        })
+      : Promise.resolve([]),
+    bookingIds.length
+      ? prisma.wallet_transaction.findMany({
+          where: {
+            booking_id: { in: bookingIds, },
+            type: 'refund',
+          },
+          orderBy: { created_at: 'desc', },
+          select: {
+            booking_id: true,
+            status: true,
+            amount_minor: true,
+            currency: true,
+            created_at: true,
+            updated_at: true,
+            processed_at: true,
+          },
+        })
+      : Promise.resolve([])
+  ]);
 
   const customerLookup = new Map(
     customers.map((customer) => [customer.auth_user_id, customer])
   );
+  const paymentLookup = new Map<string, PaymentTxForRefundSummary>();
+  const refundLookup = new Map<string, RefundTxForRefundSummary[]>();
+
+  paymentTxs.forEach((paymentTx) => {
+    if (!paymentTx.booking_id || paymentLookup.has(paymentTx.booking_id)) {
+      return;
+    }
+
+    paymentLookup.set(paymentTx.booking_id, {
+      status: paymentTx.status,
+      amount_minor: paymentTx.amount_minor,
+      currency_iso3: paymentTx.currency_iso3,
+      provider: paymentTx.provider,
+    });
+  });
+
+  refundTxs.forEach((refundTx) => {
+    if (!refundTx.booking_id) {
+      return;
+    }
+
+    const existing = refundLookup.get(refundTx.booking_id) ?? [];
+    existing.push({
+      status: refundTx.status,
+      amount_minor: refundTx.amount_minor,
+      currency: refundTx.currency,
+      created_at: refundTx.created_at,
+      updated_at: refundTx.updated_at,
+      processed_at: refundTx.processed_at,
+    });
+    refundLookup.set(refundTx.booking_id, existing);
+  });
 
   return baseBookings.map((booking) => {
     const profile = customerLookup.get(booking.customerAuthId);
+    const paymentTx = paymentLookup.get(booking.id) ?? null;
+    const refundSummary = buildBookingRefundSummary({
+      bookingStatus: booking.status,
+      paymentTx,
+      refundTxs: refundLookup.get(booking.id) ?? [],
+      bookingCurrency: booking.currency,
+    });
+
     return {
       ...booking,
       customerHandle: profile?.handle ?? null,
       customerName: formatFullName(profile),
+      paymentCaptured: hasCapturedPayment(paymentTx),
+      paymentMethod: paymentTx?.provider ?? null,
+      refundSummary,
     };
   });
 }
