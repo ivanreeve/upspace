@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { CANCELLABLE_BOOKING_STATUSES } from '@/lib/bookings/constants';
+import { buildCancelSuccessMessage } from '@/lib/bookings/refund-summary';
 import { BOOKING_PRICE_MINOR_FACTOR, mapBookingsWithProfiles, normalizeNumeric } from '@/lib/bookings/serializer';
 import { sendBookingCancellationEmail } from '@/lib/email';
 import { submitXenditRefund } from '@/lib/financial/xendit-refunds';
-import { notifyBookingEvent } from '@/lib/notifications/booking';
+import { notifyBookingEvent, notifyCustomerRefundUpdate } from '@/lib/notifications/booking';
 import { prisma } from '@/lib/prisma';
 import { enforceRateLimit, RateLimitExceededError } from '@/lib/rate-limit';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -309,5 +310,45 @@ error: emailError,
     return notFoundResponse;
   }
 
-  return NextResponse.json({ data: record, });
+  if (record.refundSummary) {
+    const refundNotificationState = record.refundSummary.state === 'pending'
+      ? 'processing'
+      : record.refundSummary.state === 'succeeded'
+        ? 'completed'
+        : record.refundSummary.state === 'failed'
+          ? 'failed'
+          : 'review';
+
+    try {
+      await notifyCustomerRefundUpdate(
+        {
+          bookingId: booking.id,
+          spaceId: booking.space_id,
+          areaId: booking.area_id,
+          spaceName: booking.space_name,
+          areaName: booking.area_name,
+          customerAuthId: booking.user_auth_id,
+          partnerAuthId: booking.partner_auth_id,
+        },
+        {
+          state: refundNotificationState,
+          amountMinor: record.refundSummary.amountMinor,
+          currency: record.refundSummary.currency,
+        }
+      );
+    } catch (refundNotifError) {
+      console.error('Failed to create refund status notification', {
+        bookingId: booking.id,
+        error: refundNotifError,
+      });
+    }
+  }
+
+  return NextResponse.json({
+    data: record,
+    message: buildCancelSuccessMessage({
+      paymentCaptured: Boolean(record.paymentCaptured),
+      refundSummary: record.refundSummary ?? null,
+    }),
+  });
 }

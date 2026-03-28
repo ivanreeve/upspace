@@ -22,6 +22,8 @@ type RefundTxForTimeline = {
   amount_minor: bigint;
   currency: string;
   created_at: Date;
+  updated_at: Date | null;
+  processed_at: Date | null;
 };
 
 type StatusChangeEvent = {
@@ -119,6 +121,10 @@ label: 'Booking confirmed',
         : refundStatus === 'pending'
           ? 'Refund processing'
           : 'Refund failed';
+    const timestamp = refundStatus === 'pending'
+      ? refund.created_at
+      : refund.processed_at ?? refund.updated_at ?? refund.created_at;
+
     events.push({
       id: refund.id,
       kind: 'refund',
@@ -126,7 +132,7 @@ label: 'Booking confirmed',
       status: refundStatus,
       amountMinor: refund.amount_minor.toString(),
       currency: refund.currency,
-      timestamp: refund.created_at.toISOString(),
+      timestamp: timestamp.toISOString(),
     });
   }
 

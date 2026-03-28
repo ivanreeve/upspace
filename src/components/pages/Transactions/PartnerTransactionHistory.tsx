@@ -394,7 +394,7 @@ export function PartnerTransactionHistory() {
       </div>
 
       <Card className="overflow-hidden border border-border/60 bg-card py-0">
-        <CardHeader className="border-b border-border/40 bg-muted/10 px-6 pb-5 pt-0">
+        <CardHeader className="border-b border-border/40 bg-muted/10 px-6 pb-5 pt-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="space-y-1">
               <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">

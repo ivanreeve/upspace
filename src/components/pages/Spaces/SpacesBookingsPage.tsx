@@ -26,6 +26,7 @@ import { SpacesBreadcrumbs } from './SpacesBreadcrumbs';
 import { useBulkUpdateBookingStatusMutation, usePartnerBookingsQuery } from '@/hooks/api/useBookings';
 import { usePartnerStuckBookingsQuery, type StuckBookingsSummary } from '@/hooks/api/usePartnerStuckBookings';
 import type { BookingRecord, BookingStatus } from '@/lib/bookings/types';
+import type { BookingRefundState } from '@/lib/bookings/refund-summary';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -65,6 +66,7 @@ import {
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { formatCurrencyMinor } from '@/lib/wallet';
 
 const bookingDateFormatter = new Intl.DateTimeFormat('en-PH', {
   dateStyle: 'medium',
@@ -82,6 +84,28 @@ const ACTIVE_BOOKING_STATUSES = new Set<BookingStatus>([
   'checkedin',
   'pending'
 ]);
+
+const BOOKING_STATUS_FILTER_ORDER: BookingStatus[] = [
+  'pending',
+  'confirmed',
+  'checkedin',
+  'checkedout',
+  'completed',
+  'cancelled',
+  'rejected',
+  'expired',
+  'noshow'
+];
+
+const REFUND_STATUS_VARIANTS: Record<
+  BookingRefundState,
+  'success' | 'secondary' | 'destructive'
+> = {
+  pending: 'secondary',
+  succeeded: 'success',
+  failed: 'destructive',
+  attention: 'destructive',
+};
 
 const CANCELLATION_REASON_MIN_LENGTH = 5;
 
@@ -201,6 +225,37 @@ const bookingPrimaryActionMap: Partial<
   },
 };
 
+const isActionableBooking = (booking: BookingRecord) =>
+  ACTIVE_BOOKING_STATUSES.has(booking.status);
+
+const isMonitorableBooking = (booking: BookingRecord) =>
+  isActionableBooking(booking) || Boolean(booking.refundSummary);
+
+function formatRefundAmount(
+  amountMinor: string | null | undefined,
+  currency: string | null | undefined
+) {
+  if (!amountMinor) {
+    return null;
+  }
+
+  return formatCurrencyMinor(amountMinor, currency ?? 'PHP');
+}
+
+function getRefundMonitoringLabel(booking: BookingRecord) {
+  switch (booking.refundSummary?.state) {
+    case 'pending':
+      return 'Monitor refund';
+    case 'failed':
+    case 'attention':
+      return 'Review refund';
+    case 'succeeded':
+      return 'Refund settled';
+    default:
+      return 'No step';
+  }
+}
+
 export function SpacesBookingsPage({
   initialBookings,
   initialStuckData,
@@ -233,19 +288,26 @@ export function SpacesBookingsPage({
   const isCancellationReasonValid =
     trimmedCancelReason.length >= CANCELLATION_REASON_MIN_LENGTH;
 
-  const activeBookings = useMemo(
-    () =>
-      bookings.filter((booking) => ACTIVE_BOOKING_STATUSES.has(booking.status)),
+  const monitorableBookings = useMemo(
+    () => bookings.filter((booking) => isMonitorableBooking(booking)),
     [bookings]
   );
 
   const sortedBookings = useMemo(
     () =>
-      [...activeBookings].sort(
+      [...monitorableBookings].sort(
         (a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       ),
-    [activeBookings]
+    [monitorableBookings]
+  );
+
+  const availableStatuses = useMemo(
+    () =>
+      BOOKING_STATUS_FILTER_ORDER.filter((status) =>
+        sortedBookings.some((booking) => booking.status === status)
+      ),
+    [sortedBookings]
   );
 
   const uniqueAreas = useMemo(() => {
@@ -296,12 +358,19 @@ name,
     setSelectedIds((current) => {
       const validIds = new Set(
         Array.from(current).filter((id) =>
-          sortedBookings.some((booking) => booking.id === id)
+          sortedBookings.some((booking) =>
+            booking.id === id && isActionableBooking(booking)
+          )
         )
       );
       return validIds.size === current.size ? current : validIds;
     });
   }, [sortedBookings]);
+
+  const actionableFilteredBookings = useMemo(
+    () => filteredBookings.filter((booking) => isActionableBooking(booking)),
+    [filteredBookings]
+  );
 
   const areaGuestCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -315,13 +384,14 @@ name,
     return counts;
   }, [sortedBookings]);
 
-  const activeCount = sortedBookings.length;
+  const activeCount = bookings.filter((booking) => isActionableBooking(booking)).length;
+  const refundTrackedCount = bookings.filter((booking) => booking.refundSummary).length;
   const visibleSelectedCount = filteredBookings.filter((booking) =>
-    selectedIds.has(booking.id)
+    selectedIds.has(booking.id) && isActionableBooking(booking)
   ).length;
   const allVisibleSelected =
-    filteredBookings.length > 0 &&
-    visibleSelectedCount === filteredBookings.length;
+    actionableFilteredBookings.length > 0 &&
+    visibleSelectedCount === actionableFilteredBookings.length;
   const selectionState: boolean | 'indeterminate' = allVisibleSelected
     ? true
     : visibleSelectedCount > 0
@@ -332,9 +402,9 @@ name,
     setSelectedIds((current) => {
       const next = new Set(current);
       if (checked) {
-        filteredBookings.forEach((booking) => next.add(booking.id));
+        actionableFilteredBookings.forEach((booking) => next.add(booking.id));
       } else {
-        filteredBookings.forEach((booking) => next.delete(booking.id));
+        actionableFilteredBookings.forEach((booking) => next.delete(booking.id));
       }
       return next;
     });
@@ -537,7 +607,7 @@ name,
             <TableCell colSpan={ 11 }>
               <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
                 <FiAlertCircle className="size-5" aria-hidden="true" />
-                <p>No active bookings are filling your areas right now.</p>
+                <p>No active bookings or refund updates need attention right now.</p>
               </div>
             </TableCell>
           </TableRow>
@@ -579,7 +649,13 @@ name,
           const todayDate = new Date().toISOString().slice(0, 10);
           const isCheckinDisabled = isCheckinAction && bookingDate !== todayDate;
           const primaryAction = rawPrimaryAction;
-          const canCancel = ACTIVE_BOOKING_STATUSES.has(booking.status);
+          const canCancel = isActionableBooking(booking);
+          const canSelect = isActionableBooking(booking);
+          const refundSummary = booking.refundSummary ?? null;
+          const refundAmount = formatRefundAmount(
+            refundSummary?.amountMinor,
+            refundSummary?.currency
+          );
 
           return (
             <TableRow
@@ -590,6 +666,7 @@ name,
                 <Checkbox
                   aria-label={ `Select booking for ${booking.areaName}` }
                   checked={ isSelected }
+                  disabled={ !canSelect }
                   onCheckedChange={ (checked) =>
                     handleSelectOne(booking.id, Boolean(checked))
                   }
@@ -619,7 +696,7 @@ name,
                   </p>
                 </div>
               </TableCell>
-              <TableCell>
+              <TableCell className="whitespace-normal align-top">
                 <div className="space-y-1">
                   <Badge
                     variant={ statusMeta.variant }
@@ -635,6 +712,21 @@ name,
                   >
                     { statusMeta.helper }
                   </p>
+                  { refundSummary ? (
+                    <>
+                      <Badge
+                        variant={ REFUND_STATUS_VARIANTS[refundSummary.state] }
+                        className="rounded-md"
+                      >
+                        { refundSummary.label }
+                      </Badge>
+                      <p className="max-w-[260px] break-words text-xs leading-5 text-muted-foreground">
+                        { refundAmount
+                          ? `${refundAmount} · ${refundSummary.detail}`
+                          : refundSummary.detail }
+                      </p>
+                    </>
+                  ) : null }
                 </div>
               </TableCell>
               <TableCell>
@@ -658,7 +750,9 @@ name,
                       { primaryAction.label }
                     </Button>
                   ) : (
-                    <span className="text-xs text-muted-foreground">No step</span>
+                    <span className="text-xs text-muted-foreground">
+                      { refundSummary ? getRefundMonitoringLabel(booking) : 'No step' }
+                    </span>
                   ) }
                   { canCancel ? (
                     <DropdownMenu>
@@ -749,13 +843,17 @@ name,
             Bookings
           </h1>
           <p className="text-sm text-muted-foreground">
-            Monitor who is currently booked and track how each area is filling
-            up.
+            Monitor live bookings and refund follow-up across your areas.
           </p>
         </div>
-        <Badge variant="secondary" className="text-xs">
-          { activeCount } active
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="secondary" className="text-xs">
+            { activeCount } active
+          </Badge>
+          <Badge variant="outline" className="text-xs">
+            { refundTrackedCount } refund updates
+          </Badge>
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -788,8 +886,8 @@ name,
               Area capacity overview
             </h2>
             <p id={ descriptionId } className="text-sm text-muted-foreground">
-              Live bookings with per-area capacity signals, search, and bulk
-              edits.
+              Active bookings plus refund-sensitive cancellations with per-area
+              capacity signals, search, and bulk edits.
             </p>
           </div>
           <Button
@@ -830,8 +928,8 @@ name,
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Filter the table and quickly locate people currently booked into
-                your areas.
+                Filter the table and quickly locate active bookings or refund
+                updates tied to your areas.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -844,9 +942,11 @@ name,
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All statuses</SelectItem>
-                  <SelectItem value="confirmed">Confirmed</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="checkedin">Checked in</SelectItem>
+                  { availableStatuses.map((status) => (
+                    <SelectItem key={ status } value={ status }>
+                      { bookingStatusMeta[status].label }
+                    </SelectItem>
+                  )) }
                 </SelectContent>
               </Select>
               { uniqueAreas.length > 1 ? (
@@ -945,8 +1045,8 @@ name,
 
           <Table aria-labelledby={ headingId } aria-describedby={ descriptionId }>
             <TableCaption className="sr-only">
-              Area capacity overview data table with active bookings, search,
-              and bulk actions
+              Area capacity overview data table with active bookings, refund
+              updates, search, and bulk actions
             </TableCaption>
             <TableHeader className="bg-primary dark:bg-transparent">
               <TableRow className="hover:bg-transparent">
@@ -954,6 +1054,7 @@ name,
                   <Checkbox
                     aria-label="Select all visible bookings"
                     checked={ selectionState }
+                    disabled={ actionableFilteredBookings.length === 0 }
                     onCheckedChange={ (checked) =>
                       handleSelectAll(Boolean(checked))
                     }

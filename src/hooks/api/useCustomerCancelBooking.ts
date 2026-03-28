@@ -7,25 +7,34 @@ import { bookingKeys } from './useBookings';
 import { notificationKeys } from './useNotifications';
 
 import { useAuthenticatedFetch } from '@/hooks/useAuthenticatedFetch';
+import type { BookingRecord } from '@/lib/bookings/types';
+
+type CancelBookingResponse = {
+  data: BookingRecord;
+  message?: string;
+};
 
 export function useCustomerCancelBookingMutation() {
   const authFetch = useAuthenticatedFetch();
   const queryClient = useQueryClient();
 
-  return useMutation<unknown, Error, { bookingId: string }>({
+  return useMutation<CancelBookingResponse, Error, { bookingId: string }>({
     mutationFn: async ({ bookingId, }) => {
       const response = await authFetch(`/api/v1/bookings/${bookingId}/cancel`, { method: 'POST', });
+      const payload = await response.json().catch(() => null);
 
       if (!response.ok) {
-        const message = await response.text();
-        throw new Error(message || 'Unable to cancel booking.');
+        const message =
+          typeof payload?.error === 'string'
+            ? payload.error
+            : 'Unable to cancel booking.';
+        throw new Error(message);
       }
 
-      const payload = await response.json();
-      return payload.data;
+      return payload as CancelBookingResponse;
     },
-    onSuccess: () => {
-      toast.success('Booking cancelled.');
+    onSuccess: (payload) => {
+      toast.success(payload.message ?? 'Booking cancelled.');
       queryClient.invalidateQueries({ queryKey: bookingKeys.user(), });
       queryClient.invalidateQueries({ queryKey: bookingKeys.partner(), });
       queryClient.invalidateQueries({ queryKey: notificationKeys.all, });

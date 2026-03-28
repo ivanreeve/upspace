@@ -8,6 +8,7 @@ import {
 } from 'vitest';
 
 import * as xenditRefundsModule from '@/lib/financial/xendit-refunds';
+import * as notificationsModule from '@/lib/notifications/booking';
 import * as prismaModule from '@/lib/prisma';
 import * as walletServerModule from '@/lib/wallet-server';
 import { POST as walletRefundHandler } from '@/app/api/v1/wallet/refund/route';
@@ -21,6 +22,9 @@ describe('wallet refund api', () => {
   });
 
   it('submits Xendit-backed refunds through the provider helper', async () => {
+    const notifyCustomerRefundUpdate = vi
+      .spyOn(notificationsModule, 'notifyCustomerRefundUpdate')
+      .mockResolvedValue();
     vi.spyOn(walletServerModule, 'resolveAuthenticatedUserForWallet').mockResolvedValue({
       response: null,
       dbUser: {
@@ -67,11 +71,32 @@ describe('wallet refund api', () => {
     } as never);
 
     vi.spyOn(prismaModule, 'prisma', 'get').mockReturnValue({
+      $transaction: vi.fn(async (callback) =>
+        callback({
+          wallet_transaction: {
+            findFirst: vi.fn().mockResolvedValue(null),
+            create: vi.fn().mockResolvedValue({
+              id: 'refund-intent-1',
+              type: 'refund',
+              status: 'pending',
+              amount_minor: 150000n,
+              currency: 'PHP',
+              external_reference: null,
+            }),
+          },
+        })
+      ),
       booking: {
         findUnique: vi.fn().mockResolvedValue({
           id: 'booking-1',
           partner_auth_id: 'partner-auth-id',
           price_minor: 150000n,
+          currency: 'PHP',
+          space_id: 'space-1',
+          space_name: 'Space One',
+          area_id: 'area-1',
+          area_name: 'Open Desk',
+          user_auth_id: 'customer-auth-id',
         }),
       },
       payment_transaction: {
@@ -87,17 +112,7 @@ describe('wallet refund api', () => {
           },
         }),
       },
-      wallet_transaction: {
-        findFirst: vi.fn().mockResolvedValue(null),
-        create: vi.fn().mockResolvedValue({
-          id: 'refund-intent-1',
-          type: 'refund',
-          status: 'pending',
-          amount_minor: 150000n,
-          currency: 'PHP',
-          external_reference: null,
-        }),
-      },
+      wallet_transaction: {},
     } as unknown as typeof prismaModule.prisma);
 
     const response = await walletRefundHandler(
@@ -124,6 +139,14 @@ describe('wallet refund api', () => {
         walletTransactionId: 'refund-intent-1',
         partnerUserId: 42n,
         bookingId: 'booking-1',
+      })
+    );
+    expect(notifyCustomerRefundUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ bookingId: 'booking-1', }),
+      expect.objectContaining({
+        state: 'processing',
+        amountMinor: '150000',
+        currency: 'PHP',
       })
     );
   });
