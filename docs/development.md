@@ -1,89 +1,129 @@
 # Development Guide
 
-This document translates the repository standards into day-to-day engineering practice. Use it when adding routes, changing business logic, introducing UI, or preparing a pull request.
+> This document translates the repository standards into day-to-day engineering practice. Use it when adding routes, changing business logic, introducing UI, or preparing a pull request.
 
-## Baseline Standards
+---
+
+## 📚 Table of Contents
+
+- [Baseline Standards](#baseline-standards)
+- [Project Conventions By Area](#project-conventions-by-area)
+- [Recommended Workflow](#recommended-workflow)
+- [Testing Expectations](#testing-expectations)
+- [Documentation Maintenance](#documentation-maintenance)
+- [Pull Request Checklist](#pull-request-checklist)
+- [Design and Frontend Notes](#design-and-frontend-notes)
+- [Legacy and Transitional Areas](#legacy-and-transitional-areas)
+- [If You Are Unsure](#if-you-are-unsure)
+
+---
+
+## 📋 Baseline Standards
 
 ### TypeScript
 
-- Keep TypeScript strict.
-- Avoid `any`.
-- Prefer explicit domain types and Zod inference over ad hoc inline object typing.
-- Preserve existing serialization contracts for route handlers and hooks unless the change is intentional and documented.
+| Standard | Details |
+| --- | --- |
+| Strict mode | Keep TypeScript strict |
+| Types | Avoid `any` |
+| Typing | Prefer explicit domain types and Zod inference over ad hoc inline object typing |
+| Contracts | Preserve existing serialization contracts for route handlers and hooks unless the change is intentional and documented |
 
 ### Validation
 
-- Validate request bodies, query parameters, and path-dependent payloads at the route boundary.
-- Zod is the default runtime validation layer.
-- Do not let unvalidated values reach Prisma or raw SQL.
+| Standard | Details |
+| --- | --- |
+| Boundary | Validate request bodies, query parameters, and path-dependent payloads at the route boundary |
+| Layer | Zod is the default runtime validation layer |
+| Safety | Do not let unvalidated values reach Prisma or raw SQL |
 
 ### Error handling
 
-- API handlers should return explicit, human-readable JSON errors.
-- Client-facing flows should surface meaningful failures through Sonner.
-- Avoid silent failures or logging-only error handling when the user needs feedback.
+| Standard | Details |
+| --- | --- |
+| API errors | API handlers should return explicit, human-readable JSON errors |
+| Client errors | Client-facing flows should surface meaningful failures through Sonner |
+| Silent failures | Avoid silent failures or logging-only error handling when the user needs feedback |
 
 ### UI implementation
 
-- New UI must use components from `@/components/ui/*`.
-- Do not introduce a parallel UI component library.
-- Keep accessibility intact: labels, focus states, semantic markup, and dialog titles are required.
-- Prefer `rounded-md` when adding rounded corners.
+| Standard | Details |
+| --- | --- |
+| Components | New UI must use components from `@/components/ui/*` |
+| Libraries | Do not introduce a parallel UI component library |
+| Accessibility | Keep accessibility intact: labels, focus states, semantic markup, and dialog titles are required |
+| Styling | Prefer `rounded-md` when adding rounded corners |
 
 ### Icons
 
-- Use `react-icons` only.
-- Import from subpaths such as `react-icons/fi` and `react-icons/fa`.
-- Decorative icons should usually be `aria-hidden="true"` and use `className="size-4"` unless the design needs something else.
+| Standard | Details |
+| --- | --- |
+| Library | Use `react-icons` only |
+| Import | Import from subpaths such as `react-icons/fi` and `react-icons/fa` |
+| Decorative | Decorative icons should usually be `aria-hidden="true"` and use `className="size-4"` unless the design needs something else |
 
-## Project Conventions By Area
+---
 
-## Route handlers
+## 🔧 Project Conventions By Area
+
+### Route handlers
 
 When editing `src/app/api/v1/**/route.ts`:
 
-- validate early with Zod;
-- resolve the actor and enforce role access before business logic;
-- keep serialization explicit;
-- return stable JSON envelopes;
-- update docs with `pnpm docs:api`.
+| Step | Action |
+| --- | --- |
+| 1 | Validate early with Zod |
+| 2 | Resolve the actor and enforce role access before business logic |
+| 3 | Keep serialization explicit |
+| 4 | Return stable JSON envelopes |
+| 5 | Update docs with `pnpm docs:api` |
 
-Practical rule: if you changed a route signature, added a query parameter, renamed a route, or introduced a new handler file, the docs must be regenerated in the same change.
+> **Practical rule:** If you changed a route signature, added a query parameter, renamed a route, or introduced a new handler file, the docs must be regenerated in the same change.
 
-## Business logic
+### Business logic
 
 When code starts growing inside a route handler or component:
 
-- move reusable logic into `src/lib`;
-- move repeated query logic into a domain helper;
-- keep serializers and shape-normalization code close to the owning domain.
+| Action | Destination |
+| --- | --- |
+| Move reusable logic | `src/lib` |
+| Move repeated query logic | Domain helper |
+| Keep serializers | Close to the owning domain |
 
 Good examples in the repository:
 
-- booking lifecycle helpers under `src/lib/bookings`
-- pricing rule logic under `src/lib/pricing-rules*`
-- provider integrations under `src/lib/providers`
-- notification mapping under `src/lib/notifications`
+| Area | Location |
+| --- | --- |
+| Booking lifecycle helpers | `src/lib/bookings` |
+| Pricing rule logic | `src/lib/pricing-rules*` |
+| Provider integrations | `src/lib/providers` |
+| Notification mapping | `src/lib/notifications` |
 
-## Hooks and client data
+### Hooks and client data
 
-- Use React Query for business data that benefits from caching and invalidation.
-- Put API-oriented hooks in `src/hooks/api`.
-- Keep hook APIs aligned with the route contracts they depend on.
+| Standard | Details |
+| --- | --- |
+| React Query | Use React Query for business data that benefits from caching and invalidation |
+| Location | Put API-oriented hooks in `src/hooks/api` |
+| Alignment | Keep hook APIs aligned with the route contracts they depend on |
 
-## Raw SQL and Prisma
+### Raw SQL and Prisma
 
 The repository explicitly treats raw SQL as a review hotspot.
 
 If you need raw SQL:
 
-- prefer Prisma query building when possible;
-- if raw SQL is necessary, validate inputs first;
-- keep SQL in multi-line template strings;
-- preserve parameter binding and avoid string concatenation;
-- document why the query is safe in code review.
+| Step | Action |
+| --- | --- |
+| 1 | Prefer Prisma query building when possible |
+| 2 | If raw SQL is necessary, validate inputs first |
+| 3 | Keep SQL in multi-line template strings |
+| 4 | Preserve parameter binding and avoid string concatenation |
+| 5 | Document why the query is safe in code review |
 
-## Recommended Workflow
+---
+
+## 🔄 Recommended Workflow
 
 ### 1. Inspect before editing
 
@@ -125,20 +165,26 @@ If your change affects Prisma schema or migrations, also run:
 pnpm prisma generate
 ```
 
-## Testing Expectations
+---
+
+## 🧪 Testing Expectations
 
 ### What to test
 
-- business logic in `src/lib`
-- complex hooks in `src/hooks`
-- route behavior for new or high-risk API changes
-- edge cases around role access, validation failure, and status transitions
+| Target | Details |
+| --- | --- |
+| Business logic | `src/lib` |
+| Complex hooks | `src/hooks` |
+| Route behavior | New or high-risk API changes |
+| Edge cases | Role access, validation failure, and status transitions |
 
 ### Existing tooling
 
-- `pnpm test`
-- `pnpm test:watch`
-- `pnpm test:coverage`
+| Command | Purpose |
+| --- | --- |
+| `pnpm test` | Run the Vitest suite |
+| `pnpm test:watch` | Run Vitest in watch mode |
+| `pnpm test:coverage` | Run Vitest with coverage reporting |
 
 ### High-value targets
 
@@ -151,18 +197,22 @@ The following areas deserve extra care:
 - AI assistant tool execution boundaries
 - account deactivation and deletion workflows
 
-## Documentation Maintenance
+---
+
+## 📝 Documentation Maintenance
 
 Documentation is now a first-class maintenance task.
 
 ### When you must update docs
 
-- new route handler added
-- route removed or renamed
-- request or response contract changed
-- auth requirements changed
-- feature moved from legacy to active state or vice versa
-- setup prerequisites changed
+| Trigger | Action |
+| --- | --- |
+| New route handler added | Update docs |
+| Route removed or renamed | Update docs |
+| Request or response contract changed | Update docs |
+| Auth requirements changed | Update docs |
+| Feature moved from legacy to active state or vice versa | Update docs |
+| Setup prerequisites changed | Update docs |
 
 ### Documentation surfaces to consider
 
@@ -174,29 +224,39 @@ Documentation is now a first-class maintenance task.
 | `docs/features.md` | User-visible behavior changes |
 | `pnpm docs:api` output | Any `src/app/api/v1` change |
 
-## Pull Request Checklist
+---
+
+## ✅ Pull Request Checklist
 
 Use this before opening or updating a PR:
 
-- run `pnpm lint`
-- run `pnpm test`
-- run `pnpm build`
-- run `pnpm docs:api` if API routes changed
-- confirm no secrets were added
-- check keyboard accessibility for UI changes
-- verify user-facing error states are still clear
+| # | Check |
+| --- | --- |
+| 1 | Run `pnpm lint` |
+| 2 | Run `pnpm test` |
+| 3 | Run `pnpm build` |
+| 4 | Run `pnpm docs:api` if API routes changed |
+| 5 | Confirm no secrets were added |
+| 6 | Check keyboard accessibility for UI changes |
+| 7 | Verify user-facing error states are still clear |
 
-## Design and Frontend Notes
+---
+
+## 🎨 Design and Frontend Notes
 
 The project standards are explicit:
 
-- preserve the existing design language when working inside an established screen;
-- do not introduce random visual systems or external component libraries;
-- use shadcn/ui primitives and compose from there;
-- keep forms accessible and properly labeled;
-- keep dialog content paired with dialog titles.
+| Standard | Details |
+| --- | --- |
+| Design language | Preserve the existing design language when working inside an established screen |
+| External libraries | Do not introduce random visual systems or external component libraries |
+| Composition | Use shadcn/ui primitives and compose from there |
+| Forms | Keep forms accessible and properly labeled |
+| Dialogs | Keep dialog content paired with dialog titles |
 
-## Legacy and Transitional Areas
+---
+
+## ⚠️ Legacy and Transitional Areas
 
 Be careful with features that still exist as compatibility surfaces.
 
@@ -213,13 +273,17 @@ They intentionally return `410 Gone`. Do not build new pricing work against them
 
 `/api/v1/ai-search` is a deprecated alias for `/api/v1/ai-assistant`. Prefer the assistant route for new work.
 
-## If You Are Unsure
+---
+
+## ❓ If You Are Unsure
 
 When the right location for logic is unclear, default to this order:
 
-1. business rules in `src/lib`
-2. thin route handlers in `src/app/api/v1`
-3. data hooks in `src/hooks/api`
-4. UI composition in `src/components/pages`
+| Priority | Location |
+| --- | --- |
+| 1 | Business rules in `src/lib` |
+| 2 | Thin route handlers in `src/app/api/v1` |
+| 3 | Data hooks in `src/hooks/api` |
+| 4 | UI composition in `src/components/pages` |
 
 That order matches how the codebase is already organized and helps prevent route files and React components from becoming the place where everything accumulates.
