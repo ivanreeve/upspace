@@ -1,17 +1,43 @@
 # API Reference
 
-This document is generated from the live `src/app/api/v1/**/route.ts` inventory.
-It is the markdown companion to the Scalar UI at `/docs` and the machine-readable spec at `/openapi.json`.
+> This document is generated from the live `src/app/api/v1/**/route.ts` inventory. It is the markdown companion to the Scalar UI at `/docs` and the machine-readable spec at `/openapi.json`.
 
-## Conventions
+---
 
-- Authentication: most non-public endpoints expect the Supabase session established by the web app. Role-restricted routes are called out in the access column below.
-- Pagination: list endpoints generally use cursor pagination with `limit`, `cursor`, `hasMore`, and `nextCursor` fields.
-- Validation: route handlers use Zod at the boundary. Invalid payloads usually return `400` with either `error`, `message`, or `errors` details.
-- Rate limiting: public catalog routes, partner inventory views, and some suggestion feeds return `429` when throttled.
-- Regeneration: run `pnpm docs:api` after adding, renaming, or removing route handlers.
+## 📚 Table of Contents
 
-## Account
+- [Conventions](#conventions)
+- [Account](#account)
+- [Admin](#admin)
+- [AI](#ai)
+- [Amenities](#amenities)
+- [Auth](#auth)
+- [Bookings](#bookings)
+- [Bookmarks](#bookmarks)
+- [Chat](#chat)
+- [Complaints](#complaints)
+- [Financial](#financial)
+- [Notifications](#notifications)
+- [Partner](#partner)
+- [Public Spaces](#public-spaces)
+- [Transactions](#transactions)
+- [Wallet](#wallet)
+
+---
+
+## 📋 Conventions
+
+| Convention | Details |
+| --- | --- |
+| **Authentication** | Most non-public endpoints expect the Supabase session established by the web app. Role-restricted routes are called out in the access column below. |
+| **Pagination** | List endpoints generally use cursor pagination with `limit`, `cursor`, `hasMore`, and `nextCursor` fields. |
+| **Validation** | Route handlers use Zod at the boundary. Invalid payloads usually return `400` with either `error`, `message`, or `errors` details. |
+| **Rate limiting** | Public catalog routes, partner inventory views, and some suggestion feeds return `429` when throttled. |
+| **Regeneration** | Run `pnpm docs:api` after adding, renaming, or removing route handlers. |
+
+---
+
+## 📤 Account
 
 Data export and account-adjacent utility endpoints.
 
@@ -19,7 +45,9 @@ Data export and account-adjacent utility endpoints.
 | --- | --- | --- | --- |
 | `GET` | `/api/v1/account/export` | Authenticated user | Export the current account data |
 
-## Admin
+---
+
+## 🛡️ Admin
 
 Administration dashboards, moderation queues, payout operations, and verification review flows.
 
@@ -48,7 +76,9 @@ Administration dashboards, moderation queues, payout operations, and verificatio
 | `GET` | `/api/v1/admin/verifications/{verification_id}` | Authenticated admin | Get verification detail |
 | `PATCH` | `/api/v1/admin/verifications/{verification_id}` | Authenticated admin | Review a verification submission |
 
-## AI
+---
+
+## 🤖 AI
 
 Conversational assistant endpoints and persisted AI conversation state.
 
@@ -62,7 +92,9 @@ Conversational assistant endpoints and persisted AI conversation state.
 | `PATCH` | `/api/v1/ai/conversations/{id}` | Authenticated user | Rename an AI conversation |
 | `DELETE` | `/api/v1/ai/conversations/{id}` | Authenticated user | Soft-delete an AI conversation |
 
-## Amenities
+---
+
+## 🏷️ Amenities
 
 Static amenity and review-tag lookup endpoints used by forms and filters.
 
@@ -71,7 +103,9 @@ Static amenity and review-tag lookup endpoints used by forms and filters.
 | `GET` | `/api/v1/amenities/choices` | Public | List amenity choices |
 | `GET` | `/api/v1/reviews/tags` | Public | List review quick tags |
 
-## Auth
+---
+
+## 🔐 Auth
 
 Profile sync, sign-up, deactivation, reactivation, and account removal flows.
 
@@ -87,7 +121,9 @@ Profile sync, sign-up, deactivation, reactivation, and account removal flows.
 | `POST` | `/api/v1/auth/signup/send-otp` | Public | Send sign-up email OTP |
 | `POST` | `/api/v1/auth/sync-profile` | Authenticated user | Sync profile from auth session |
 
-## Bookings
+---
+
+## 📅 Bookings
 
 Customer, partner, and admin booking operations including creation, updates, cancellation, and receipts.
 
@@ -101,7 +137,9 @@ Customer, partner, and admin booking operations including creation, updates, can
 | `GET` | `/api/v1/bookings/{booking_id}/receipt` | Authenticated customer or partner | Get a booking receipt |
 | `PATCH` | `/api/v1/bookings/{booking_id}/reschedule` | Authenticated customer or partner | Reschedule a booking |
 
-## Bookmarks
+---
+
+## 🔖 Bookmarks
 
 Customer bookmark mutations.
 
@@ -110,7 +148,9 @@ Customer bookmark mutations.
 | `POST` | `/api/v1/bookmarks` | Authenticated customer | Bookmark a space |
 | `DELETE` | `/api/v1/bookmarks` | Authenticated customer | Remove a bookmark |
 
-## Chat
+---
+
+## 💬 Chat
 
 Marketplace chat rooms, message history, and moderation reporting.
 
@@ -121,7 +161,9 @@ Marketplace chat rooms, message history, and moderation reporting.
 | `POST` | `/api/v1/chat/reports` | Authenticated user | Report a chat conversation |
 | `GET` | `/api/v1/chat/rooms` | Authenticated user | List chat rooms |
 
-## Complaints
+---
+
+## ⚠️ Complaints
 
 Customer complaints and the partner/admin workflows used to resolve them.
 
@@ -132,7 +174,9 @@ Customer complaints and the partner/admin workflows used to resolve them.
 | `GET` | `/api/v1/partner/complaints` | Authenticated partner | List partner complaints |
 | `PATCH` | `/api/v1/partner/complaints/{complaint_id}` | Authenticated partner | Resolve or escalate a complaint |
 
-## Financial
+---
+
+## 💰 Financial
 
 Checkout creation plus provider-backed payout-account setup and synchronization.
 
@@ -143,7 +187,9 @@ Checkout creation plus provider-backed payout-account setup and synchronization.
 | `POST` | `/api/v1/financial/provider-account` | Authenticated partner | Create or sync a provider payout account |
 | `GET` | `/api/v1/financial/provider-account/status` | Authenticated partner | Get provider payout-account status |
 
-## Notifications
+---
+
+## 🔔 Notifications
 
 In-app notification listing and read/delete mutations.
 
@@ -154,7 +200,9 @@ In-app notification listing and read/delete mutations.
 | `DELETE` | `/api/v1/notifications` | Authenticated user | Delete a notification |
 | `PATCH` | `/api/v1/notifications/mark-all` | Authenticated user | Mark all notifications as read |
 
-## Partner
+---
+
+## 👥 Partner
 
 Partner dashboard, inventory, verification, and custom pricing-rule management endpoints.
 
@@ -179,7 +227,9 @@ Partner dashboard, inventory, verification, and custom pricing-rule management e
 | `POST` | `/api/v1/partner/spaces/{space_id}/verification/withdraw` | Authenticated partner | Withdraw verification submission |
 | `GET` | `/api/v1/partner/stuck-bookings` | Authenticated partner | List stuck bookings |
 
-## Public Spaces
+---
+
+## 🏢 Public Spaces
 
 Public marketplace listing, detail, availability, reviews, and inventory discovery endpoints.
 
@@ -209,7 +259,9 @@ Public marketplace listing, detail, availability, reviews, and inventory discove
 | `POST` | `/api/v1/spaces/{space_id}/reviews` | Authenticated customer | Create a review |
 | `GET` | `/api/v1/spaces/suggest` | Public | Suggest search terms |
 
-## Transactions
+---
+
+## 💳 Transactions
 
 Customer-facing transaction history endpoints.
 
@@ -217,7 +269,9 @@ Customer-facing transaction history endpoints.
 | --- | --- | --- | --- |
 | `GET` | `/api/v1/customer/transactions` | Authenticated customer | List customer transactions |
 
-## Wallet
+---
+
+## 💼 Wallet
 
 Partner wallet balances, payouts, refunds, and transaction history.
 
@@ -228,4 +282,3 @@ Partner wallet balances, payouts, refunds, and transaction history.
 | `POST` | `/api/v1/wallet/payout` | Authenticated partner | Create a payout request |
 | `POST` | `/api/v1/wallet/refund` | Authenticated partner or admin | Issue a wallet-backed refund |
 | `GET` | `/api/v1/wallet/stats` | Authenticated partner | Get wallet statistics |
-
