@@ -18,6 +18,7 @@
 
 ---
 
+<a name="customer-experience"></a>
 ## 👤 Customer Experience
 
 ### Marketplace discovery
@@ -90,6 +91,7 @@ Relevant route families:
 
 ---
 
+<a name="partner-experience"></a>
 ## 👥 Partner Experience
 
 ### Space creation and editing
@@ -204,6 +206,7 @@ Relevant route families:
 
 ---
 
+<a name="admin-experience"></a>
 ## 🛡️ Admin Experience
 
 ### Dashboard and reporting
@@ -254,6 +257,7 @@ Relevant route families:
 
 ---
 
+<a name="ai-features"></a>
 ## 🤖 AI Features
 
 UpSpace includes a marketplace assistant rather than a standalone chatbot toy.
@@ -289,6 +293,7 @@ Relevant route families:
 
 ---
 
+<a name="chat-and-notification-features"></a>
 ## 💬 Chat and Notification Features
 
 ### Chat
@@ -327,6 +332,7 @@ Relevant route families:
 
 ---
 
+<a name="review-and-complaint-features"></a>
 ## ⭐ Review and Complaint Features
 
 ### Reviews
@@ -364,6 +370,7 @@ Relevant route families:
 
 ---
 
+<a name="account-lifecycle-features"></a>
 ## 🔐 Account Lifecycle Features
 
 UpSpace supports more than sign-in and sign-up.
@@ -398,6 +405,7 @@ Relevant route families:
 
 ---
 
+<a name="search-and-discovery-behavior"></a>
 ## 🔍 Search and Discovery Behavior
 
 Search is spread across several feature surfaces:
@@ -412,6 +420,7 @@ Search is spread across several feature surfaces:
 
 ---
 
+<a name="operational-notes"></a>
 ## ⚙️ Operational Notes
 
 ### Rate limiting
