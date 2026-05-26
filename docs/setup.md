@@ -21,6 +21,7 @@
 
 ---
 
+<a name="what-you-need-before-starting"></a>
 ## 🛠️ What You Need Before Starting
 
 ### Required tooling
@@ -51,6 +52,7 @@
 
 ---
 
+<a name="clone-and-install"></a>
 ## 📥 Clone and Install
 
 ```bash
@@ -61,6 +63,7 @@ pnpm install
 
 ---
 
+<a name="environment-variables"></a>
 ## 🔧 Environment Variables
 
 The repository currently does not include a committed `.env.example`, so create `.env` manually in the project root.
@@ -196,6 +199,7 @@ EMAIL_FROM_NAME="UpSpace"
 
 ---
 
+<a name="database-requirements"></a>
 ## 🗄️ Database Requirements
 
 UpSpace expects PostgreSQL with geospatial, text search, and UUID support.
@@ -226,6 +230,7 @@ create extension if not exists "uuid-ossp";
 
 ---
 
+<a name="supabase-notes"></a>
 ## 🔑 Supabase Notes
 
 UpSpace uses Supabase in several places:
@@ -246,6 +251,7 @@ Make sure the following are consistent:
 
 ---
 
+<a name="prisma-and-migrations"></a>
 ## 🔄 Prisma and Migrations
 
 Generate the Prisma client and apply the current schema:
@@ -263,6 +269,7 @@ pnpm prisma generate
 
 ---
 
+<a name="generate-api-documentation"></a>
 ## 📄 Generate API Documentation
 
 Regenerate the checked-in API docs before or after route work:
@@ -278,6 +285,7 @@ This command updates:
 
 ---
 
+<a name="run-the-application"></a>
 ## 🚀 Run the Application
 
 ```bash
@@ -294,6 +302,7 @@ Important local URLs:
 
 ---
 
+<a name="verification-checklist"></a>
 ## ✅ Verification Checklist
 
 Run these before assuming the environment is healthy:
@@ -308,6 +317,7 @@ If the app starts but critical features fail, verify the relevant service class 
 
 ---
 
+<a name="feature-specific-setup-notes"></a>
 ## 🔧 Feature-Specific Setup Notes
 
 ### Redis-backed caching and rate limiting
@@ -347,6 +357,7 @@ The following features depend on working SMTP:
 
 ---
 
+<a name="troubleshooting"></a>
 ## 🛠️ Troubleshooting
 
 ### `Missing Supabase configuration`
@@ -391,6 +402,7 @@ Check:
 
 ---
 
+<a name="recommended-first-run-order"></a>
 ## 📋 Recommended First Run Order
 
 If you are bringing up the project from scratch, this is the most reliable sequence:

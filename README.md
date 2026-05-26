@@ -29,6 +29,7 @@
 
 ---
 
+<a name="about-the-project"></a>
 ## 📖 About the Project
 
 ### Overview
@@ -67,6 +68,7 @@ UpSpace is a full-stack coworking space marketplace and booking application buil
 
 ---
 
+<a name="live-demo"></a>
 ## 🚀 Live Demo
 
 [**Live Website: https://upspaceph.com**](https://upspaceph.com)
@@ -75,6 +77,7 @@ UpSpace is a full-stack coworking space marketplace and booking application buil
 
 ---
 
+<a name="getting-started"></a>
 ## 🛠️ Getting Started
 
 ### Prerequisites
@@ -257,6 +260,7 @@ The repository does not currently include a committed `.env.example`, so create 
 
 ---
 
+<a name="system-config"></a>
 ## ⚙️ System Config
 
 ### Local
@@ -281,6 +285,7 @@ The repository does not currently include a committed `.env.example`, so create 
 
 ---
 
+<a name="test-credentials-access-roles"></a>
 ## 🔐 Test Credentials / Access Roles
 
 > **⚠️ SECURITY WARNING:** If test/demo credentials are created for QA, demonstration, or evaluation, rotate them immediately in any real deployment, never reuse them in production, and restrict access to authorized reviewers.
@@ -295,6 +300,7 @@ Test credentials are not currently published in this repository. When needed, th
 
 ---
 
+<a name="user-roles-permissions"></a>
 ## 👥 User Roles & Permissions
 
 UpSpace supports three principal application roles. The matrix below focuses on representative capabilities.
@@ -327,6 +333,7 @@ UpSpace supports three principal application roles. The matrix below focuses on 
 
 ---
 
+<a name="usage-guide"></a>
 ## 🧭 Usage Guide
 
 ### How to Sign Up or Log In
@@ -367,6 +374,7 @@ Product screenshots are not currently embedded in this README. Recommended captu
 
 ---
 
+<a name="api-documentation"></a>
 ## 🔌 API Documentation
 
 Most backend routes are exposed under the `/api/v1` prefix. A small number of system-level routes (auth callback, provider webhooks, onboarding) live directly under `/api/*`.
@@ -418,6 +426,7 @@ Most backend routes are exposed under the `/api/v1` prefix. A small number of sy
 
 ---
 
+<a name="contributing"></a>
 ## 🤝 Contributing
 
 Contributions should follow the project’s review and testing expectations before merge.
@@ -454,6 +463,7 @@ See [`docs/development.md`](docs/development.md) for the full development guide.
 
 ---
 
+<a name="security"></a>
 ## 🛡️ Security
 
 Security is a shared responsibility across development, QA, deployment, and administrative operations.
@@ -477,12 +487,14 @@ Security is a shared responsibility across development, QA, deployment, and admi
 
 ---
 
+<a name="license"></a>
 ## 📄 License
 
 This project is licensed under the MIT License. See [`LICENSE.md`](LICENSE.md) for details.
 
 ---
 
+<a name="contact-support"></a>
 ## 📬 Contact & Support
 
 | Topic | Details |
