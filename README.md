@@ -18,14 +18,14 @@
 - [Live Demo](#live-demo)
 - [Getting Started](#getting-started)
 - [System Config](#system-config)
-- [Test Credentials / Access Roles](#test-credentials--access-roles)
-- [User Roles & Permissions](#user-roles--permissions)
+- [Test Credentials / Access Roles](#test-credentials-access-roles)
+- [User Roles & Permissions](#user-roles-permissions)
 - [Usage Guide](#usage-guide)
 - [API Documentation](#api-documentation)
 - [Contributing](#contributing)
 - [Security](#security)
 - [License](#license)
-- [Contact & Support](#contact--support)
+- [Contact & Support](#contact-support)
 
 ---
 
@@ -69,9 +69,9 @@ UpSpace is a full-stack coworking space marketplace and booking application buil
 
 ## 🚀 Live Demo
 
-A public live environment is not currently published.
+[**Live Website: https://upspaceph.com**](https://upspaceph.com)
 
-> **Note:** If a staging or production deployment becomes available in the future, it will be listed here with the corresponding URL and deployment notes.
+> **Note:** This is the production deployment. A separate staging environment is not currently published.
 
 ---
 
@@ -266,18 +266,18 @@ The repository does not currently include a committed `.env.example`, so create 
 | **Installation** | `git clone https://github.com/ivanreeve/upspace.git`, `cd upspace`, `pnpm install` |
 | **Tools** | Node.js `20.x`, `pnpm`, Git, PostgreSQL (or Supabase project) |
 | **Environment setup** | Create `.env` manually; enable PostgreSQL extensions (`postgis`, `pg_trgm`, `uuid-ossp`); run `pnpm prisma generate` and `pnpm prisma migrate dev` |
-| **Test credentials** | Not currently published; create locally or in a controlled staging environment (see [Test Credentials / Access Roles](#test-credentials--access-roles)) |
+| **Test credentials** | Not currently published; create locally or in a controlled staging environment (see [Test Credentials / Access Roles](#test-credentials-access-roles)) |
 
 ### Cloud
 
 | Item | Details |
 | --- | --- |
-| **Hosting platform** | Not currently deployed |
-| **URL** | Not published |
+| **Hosting platform** | Vercel (production) |
+| **URL** | [https://upspaceph.com](https://upspaceph.com) |
 | **Deployment account** | — |
 | **Access credentials** | — |
 
-> **Note:** A public staging or production deployment is not currently published. When one is created, update this table with the hosting provider, live URL, deployment account details, and any cloud-specific access credentials.
+> **Note:** A separate staging environment is not currently published.
 
 ---
 
@@ -374,7 +374,7 @@ Most backend routes are exposed under the `/api/v1` prefix. A small number of sy
 ### Base URL
 
 - Local: `http://localhost:3000/api/v1`
-- Production: depends on deployment (not currently published)
+- Production: `https://upspaceph.com/api/v1`
 
 ### Authentication
 
