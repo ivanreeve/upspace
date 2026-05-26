@@ -10,8 +10,8 @@
 
 PostgreSQL with required extensions:
 - **Geospatial**: PostGIS
-- **Security**: `pgcrypto`
-- **Search**: `pg_trgm`, `unaccent`
+- **Search**: `pg_trgm`
+- **UUID generation**: `uuid-ossp` (declared in Prisma schema; `pgcrypto` is not declared, though `gen_random_uuid()` is used as defaults)
 
 ## Development Standards
 

@@ -1,20 +1,43 @@
 # Architecture
 
-This document describes how UpSpace is structured today: the route groups, the domain boundaries, the data model, the integration points, and the documentation pipeline that now feeds Scalar and the generated markdown API inventory.
+> This document describes how UpSpace is structured today: the route groups, the domain boundaries, the data model, the integration points, and the documentation pipeline that now feeds Scalar and the generated markdown API inventory.
 
-## System Overview
+---
+
+## 📚 Table of Contents
+
+- [System Overview](#system-overview)
+- [App Router Structure](#app-router-structure)
+- [API Architecture](#api-architecture)
+- [Domain Model](#domain-model)
+- [Booking Lifecycle Design](#booking-lifecycle-design)
+- [Pricing Model](#pricing-model)
+- [Wallet and Financial Design](#wallet-and-financial-design)
+- [AI Architecture](#ai-architecture)
+- [Search, Geo, and Caching](#search-geo-and-caching)
+- [UI Layer and Component Architecture](#ui-layer-and-component-architecture)
+- [Documentation Architecture](#documentation-architecture)
+- [Suggested Reading Order](#suggested-reading-order)
+
+---
+
+## 🏗️ System Overview
 
 UpSpace is a full-stack App Router application with a single TypeScript codebase and a PostgreSQL-backed data model. The main architectural layers are:
 
-1. App Router pages and layouts in `src/app`
-2. Feature components in `src/components`
-3. Hooks and client data access in `src/hooks`
-4. Server-side business logic in `src/lib`
-5. Prisma-backed persistence in `prisma/schema.prisma`
-6. Route handlers under `src/app/api/v1`
-7. Generated API documentation under `public/openapi.json` and `docs/api-reference.md`
+| # | Layer | Location |
+| --- | --- | --- |
+| 1 | App Router pages and layouts | `src/app` |
+| 2 | Feature components | `src/components` |
+| 3 | Hooks and client data access | `src/hooks` |
+| 4 | Server-side business logic | `src/lib` |
+| 5 | Prisma-backed persistence | `prisma/schema.prisma` |
+| 6 | Route handlers | `src/app/api/v1` |
+| 7 | Generated API documentation | `public/openapi.json` and `docs/api-reference.md` |
 
-## App Router Structure
+---
+
+## 📁 App Router Structure
 
 ### Route groups
 
@@ -33,11 +56,15 @@ The UI is split into role-oriented route groups:
 
 Several cross-cutting concerns are handled centrally:
 
-- `src/app/layout.tsx` provides global providers, styles, and shell behavior.
-- `src/middleware.ts` handles role-aware routing, auth checks, and public-path detection.
-- `src/components/providers.tsx` and `src/components/providers/QueryProvider.tsx` wire client state and React Query.
+| File | Responsibility |
+| --- | --- |
+| `src/app/layout.tsx` | Global providers, styles, and shell behavior |
+| `src/middleware.ts` | Role-aware routing, auth checks, and public-path detection |
+| `src/components/providers/QueryProvider.tsx` | Client state and React Query wiring |
 
-## API Architecture
+---
+
+## 🔌 API Architecture
 
 The versioned REST surface lives under `src/app/api/v1`. The route families map closely to product domains:
 
@@ -70,17 +97,23 @@ Most route handlers follow the same broad shape:
 
 Authentication relies on Supabase sessions, typically resolved server-side through:
 
-- `createSupabaseServerClient`
-- `requirePartnerSession`
-- `requireAdminSession`
+| Helper | Purpose |
+| --- | --- |
+| `createSupabaseServerClient` | Create an SSR-safe Supabase client |
+| `requirePartnerSession` | Enforce partner role |
+| `requireAdminSession` | Enforce admin role |
 
 Authorization is role-based, with three principal roles:
 
-- `customer`
-- `partner`
-- `admin`
+| Role | Description |
+| --- | --- |
+| `customer` | Default traveler-facing role for discovery, booking, and communication |
+| `partner` | Space-owner role for inventory, pricing, verification, and finance operations |
+| `admin` | Platform governance role with moderation, verification review, finance oversight, and user administration |
 
-## Domain Model
+---
+
+## 🗄️ Domain Model
 
 The Prisma schema is the best source of truth for persisted state. The following entities form the core business model.
 
@@ -101,7 +134,7 @@ The Prisma schema is the best source of truth for persisted state. The following
 | `amenity_choice` | Static amenity definition catalog |
 | `amenity` | Join table between a space and an amenity choice |
 | `space_image` and related storage paths | Public listing media resolved through Supabase storage helpers |
-| `availability`-adjacent records | Weekly opening hours and availability rows |
+| `space_availability` | Weekly opening hours and availability rows |
 
 ### Booking and experience
 
@@ -124,8 +157,8 @@ The Prisma schema is the best source of truth for persisted state. The following
 | `price_rule` | Declarative pricing-rule definition attached to a space |
 | `wallet` | Partner balance row |
 | `wallet_transaction` | Wallet ledger entries for charges, refunds, and payouts |
-| `transaction` / payment-related tables | Booking payment and settlement records |
-| `provider-account`-adjacent persisted records | Provider-backed payout-account state |
+| `transaction`, `payment_event`, `payment_transaction` | Booking payment and settlement records |
+| `partner_provider_account` | Provider-backed payout-account state |
 
 ### Verification and moderation
 
@@ -133,9 +166,12 @@ The Prisma schema is the best source of truth for persisted state. The following
 | --- | --- |
 | `verification` | Reviewable verification submission |
 | `verification_document` | Stored supporting documents for verification workflows |
+| `unpublish_request` | Partner request to unpublish a moderated space |
 | moderation queues | Surface from complaints, chat reports, unpublish requests, and deactivation requests |
 
-## Booking Lifecycle Design
+---
+
+## 📋 Booking Lifecycle Design
 
 Bookings are central to the application and drive multiple downstream systems.
 
@@ -143,31 +179,35 @@ Bookings are central to the application and drive multiple downstream systems.
 
 The booking type currently recognizes:
 
-- `pending`
-- `confirmed`
-- `cancelled`
-- `rejected`
-- `expired`
-- `checkedin`
-- `checkedout`
-- `completed`
-- `noshow`
+| State | Description |
+| --- | --- |
+| `pending` | Awaiting confirmation or payment |
+| `confirmed` | Booking is active |
+| `cancelled` | Cancelled by customer or partner |
+| `rejected` | Rejected by partner or system |
+| `expired` | Timed out without action |
+| `checkedin` | Customer has checked in |
+| `checkedout` | Customer has checked out |
+| `completed` | Booking fully completed |
+| `noshow` | Customer did not show up |
 
 Allowed transitions are encoded in `src/lib/bookings/constants.ts`.
 
 ### Supporting subsystems
 
-Booking flows touch:
+| Subsystem | File |
+| --- | --- |
+| Occupancy checks | `src/lib/bookings/occupancy.ts` |
+| Expiration handling | `src/lib/bookings/expiration.ts` |
+| Detail serialization | `src/lib/bookings/detail.ts` |
+| Booking email delivery | `src/lib/email.ts` |
+| In-app notifications | `src/lib/notifications/booking.ts` |
+| Pricing-rule evaluation | `src/lib/pricing-rules-evaluator.ts` |
+| Checkout creation | `src/lib/bookings/checkout-session.ts` |
 
-- occupancy checks in `src/lib/bookings/occupancy.ts`
-- expiration handling in `src/lib/bookings/expiration.ts`
-- detail serialization in `src/lib/bookings/detail.ts`
-- booking email delivery in `src/lib/email.ts`
-- in-app notifications in `src/lib/notifications/booking.ts`
-- pricing-rule evaluation in `src/lib/pricing-rules-evaluator.ts`
-- checkout creation in `src/lib/bookings/checkout-session.ts`
+---
 
-## Pricing Model
+## 💰 Pricing Model
 
 UpSpace no longer treats area pricing as a static rate table. The current architecture favors declarative pricing rules:
 
@@ -176,18 +216,22 @@ UpSpace no longer treats area pricing as a static rate table. The current archit
 - partner CRUD endpoints live under `/api/v1/partner/spaces/{space_id}/pricing-rules*`;
 - legacy base-rate endpoints under `/api/v1/spaces/{space_id}/areas/{area_id}/rates*` are intentionally left as `410 Gone`.
 
-This matters when changing booking or checkout behavior: if you try to reintroduce direct rates in one part of the stack, you will immediately diverge from the current owner-facing product model.
+> **Important:** If you try to reintroduce direct rates in one part of the stack, you will immediately diverge from the current owner-facing product model.
 
-## Wallet and Financial Design
+---
+
+## 💳 Wallet and Financial Design
 
 Wallet behavior is tied to partner operations rather than generic stored-value top-ups.
 
 ### Key rules
 
-- wallet balance is derived from booking-driven credits and operational debits;
-- refunds and payouts create ledger entries, not silent balance mutations;
-- payout-account state is mirrored from Xendit;
-- finance operations expose both admin and partner workflows.
+| Rule | Details |
+| --- | --- |
+| Balance derivation | Wallet balance is derived from booking-driven credits and operational debits |
+| Ledger entries | Refunds and payouts create ledger entries, not silent balance mutations |
+| Payout-account state | Payout-account state is mirrored from Xendit |
+| Workflow exposure | Finance operations expose both admin and partner workflows |
 
 ### Relevant modules
 
@@ -200,7 +244,9 @@ Wallet behavior is tied to partner operations rather than generic stored-value t
 | `src/lib/financial/xendit-refunds.ts` | Refund behavior |
 | `src/lib/providers/xendit/*` | Low-level provider client and payload parsing |
 
-## AI Architecture
+---
+
+## 🤖 AI Architecture
 
 The AI layer is not isolated in a separate service. It is embedded into the Next.js backend.
 
@@ -221,66 +267,86 @@ The AI layer is not isolated in a separate service. It is embedded into the Next
 | `src/lib/ai/search-reference-data.ts` | Lookup data exposed to the assistant |
 | `src/lib/ai/booking-action.ts` | Tool-initiated booking mutations |
 
-The assistant route can search, compare, validate availability, and move users into booking-related flows. This means AI route work must be treated as product work, not just experimentation.
+> **Note:** The assistant route can search, compare, validate availability, and move users into booking-related flows. This means AI route work must be treated as product work, not just experimentation.
 
-## Search, Geo, and Caching
+---
+
+## 🔍 Search, Geo, and Caching
 
 ### Search
 
 Search spans several layers:
 
-- SQL and Prisma-backed listing queries
-- trigram and unaccent support in PostgreSQL
-- geospatial filters and proximity ranking with PostGIS
-- suggestion endpoints for autocomplete
-- AI-driven search as a separate higher-level surface
+| Layer | Technology |
+| --- | --- |
+| Listing queries | SQL and Prisma-backed |
+| Text search | Trigram support in PostgreSQL (`pg_trgm`) |
+| Geospatial | PostGIS filters and proximity ranking |
+| Autocomplete | Suggestion endpoints |
+| Conversational | AI-driven search as a separate higher-level surface |
 
 ### Caching and rate limiting
 
 Redis-backed helpers in `src/lib/cache/redis.ts` and `src/lib/rate-limit.ts` accelerate and protect:
 
-- public space listings
-- suggestion queries
-- partner listing views
-- partner dashboard feed endpoints
+| Target | Cache / Rate Limit |
+| --- | --- |
+| Public space listings | Cached and rate-limited |
+| Suggestion queries | Rate-limited |
+| Partner listing views | Rate-limited |
+| Partner dashboard feed endpoints | Rate-limited |
 
 Without Redis, the app can still run, but you should expect behavior to be less production-like.
 
-## UI Layer and Component Architecture
+---
+
+## 🎨 UI Layer and Component Architecture
 
 The frontend follows a feature-first organization:
 
-- `src/components/pages/*` contains page-specific views and panels
-- `src/components/ui/*` contains shadcn/ui primitives and wrappers
-- `src/hooks/api/*` provides client-side hooks mapped to route-handler families
+| Directory | Purpose |
+| --- | --- |
+| `src/components/pages/*` | Page-specific views and panels |
+| `src/components/ui/*` | shadcn/ui primitives and wrappers |
+| `src/hooks/api/*` | Client-side hooks mapped to route-handler families |
 
-Important UI rules enforced by project conventions:
+### Important UI rules
 
-- new UI should use `@/components/ui/*`
-- icons should come from `react-icons`
-- user-visible failures should surface clearly through Sonner
-- accessibility constraints matter for dialogs, labels, and focus states
+| Rule | Details |
+| --- | --- |
+| Components | New UI should use `@/components/ui/*` |
+| Icons | Icons should come from `react-icons` |
+| Errors | User-visible failures should surface clearly through Sonner |
+| Accessibility | Constraints matter for dialogs, labels, and focus states |
 
-## Documentation Architecture
+---
+
+## 📄 Documentation Architecture
 
 The repository now treats API documentation as generated output instead of a manually curated stub.
 
 ### Source of truth
 
-- live route inventory: `src/app/api/v1/**/route.ts`
-- generator: `scripts/generate-openapi.mjs`
+| Source | Details |
+| --- | --- |
+| Live route inventory | `src/app/api/v1/**/route.ts` |
+| Generator | `scripts/generate-openapi.mjs` |
 
 ### Outputs
 
-- Scalar/OpenAPI source: `public/openapi.json`
-- generated markdown inventory: `docs/api-reference.md`
-- UI: `src/app/docs/page.tsx` and `src/app/docs/ScalarApiReference.tsx`
+| Output | Location |
+| --- | --- |
+| Scalar/OpenAPI source | `public/openapi.json` |
+| Generated markdown inventory | `docs/api-reference.md` |
+| UI | `src/app/docs/page.tsx` and `src/app/docs/ScalarApiReference.tsx` |
 
 ### Why this matters
 
 If a route is added or changed but `pnpm docs:api` is not run, the UI docs and the markdown reference will drift from the code. Documentation maintenance is part of route maintenance.
 
-## Suggested Reading Order
+---
+
+## 📖 Suggested Reading Order
 
 If you are new to the codebase:
 
