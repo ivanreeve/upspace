@@ -25,6 +25,7 @@
 
 ---
 
+<a name="conventions"></a>
 ## 📋 Conventions
 
 | Convention | Details |
@@ -37,6 +38,7 @@
 
 ---
 
+<a name="account"></a>
 ## 📤 Account
 
 Data export and account-adjacent utility endpoints.
@@ -47,6 +49,7 @@ Data export and account-adjacent utility endpoints.
 
 ---
 
+<a name="admin"></a>
 ## 🛡️ Admin
 
 Administration dashboards, moderation queues, payout operations, and verification review flows.
@@ -78,6 +81,7 @@ Administration dashboards, moderation queues, payout operations, and verificatio
 
 ---
 
+<a name="ai"></a>
 ## 🤖 AI
 
 Conversational assistant endpoints and persisted AI conversation state.
@@ -94,6 +98,7 @@ Conversational assistant endpoints and persisted AI conversation state.
 
 ---
 
+<a name="amenities"></a>
 ## 🏷️ Amenities
 
 Static amenity and review-tag lookup endpoints used by forms and filters.
@@ -105,6 +110,7 @@ Static amenity and review-tag lookup endpoints used by forms and filters.
 
 ---
 
+<a name="auth"></a>
 ## 🔐 Auth
 
 Profile sync, sign-up, deactivation, reactivation, and account removal flows.
@@ -123,6 +129,7 @@ Profile sync, sign-up, deactivation, reactivation, and account removal flows.
 
 ---
 
+<a name="bookings"></a>
 ## 📅 Bookings
 
 Customer, partner, and admin booking operations including creation, updates, cancellation, and receipts.
@@ -139,6 +146,7 @@ Customer, partner, and admin booking operations including creation, updates, can
 
 ---
 
+<a name="bookmarks"></a>
 ## 🔖 Bookmarks
 
 Customer bookmark mutations.
@@ -150,6 +158,7 @@ Customer bookmark mutations.
 
 ---
 
+<a name="chat"></a>
 ## 💬 Chat
 
 Marketplace chat rooms, message history, and moderation reporting.
@@ -163,6 +172,7 @@ Marketplace chat rooms, message history, and moderation reporting.
 
 ---
 
+<a name="complaints"></a>
 ## ⚠️ Complaints
 
 Customer complaints and the partner/admin workflows used to resolve them.
@@ -176,6 +186,7 @@ Customer complaints and the partner/admin workflows used to resolve them.
 
 ---
 
+<a name="financial"></a>
 ## 💰 Financial
 
 Checkout creation plus provider-backed payout-account setup and synchronization.
@@ -189,6 +200,7 @@ Checkout creation plus provider-backed payout-account setup and synchronization.
 
 ---
 
+<a name="notifications"></a>
 ## 🔔 Notifications
 
 In-app notification listing and read/delete mutations.
@@ -202,6 +214,7 @@ In-app notification listing and read/delete mutations.
 
 ---
 
+<a name="partner"></a>
 ## 👥 Partner
 
 Partner dashboard, inventory, verification, and custom pricing-rule management endpoints.
@@ -229,6 +242,7 @@ Partner dashboard, inventory, verification, and custom pricing-rule management e
 
 ---
 
+<a name="public-spaces"></a>
 ## 🏢 Public Spaces
 
 Public marketplace listing, detail, availability, reviews, and inventory discovery endpoints.
@@ -261,6 +275,7 @@ Public marketplace listing, detail, availability, reviews, and inventory discove
 
 ---
 
+<a name="transactions"></a>
 ## 💳 Transactions
 
 Customer-facing transaction history endpoints.
@@ -271,6 +286,7 @@ Customer-facing transaction history endpoints.
 
 ---
 
+<a name="wallet"></a>
 ## 💼 Wallet
 
 Partner wallet balances, payouts, refunds, and transaction history.

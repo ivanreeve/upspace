@@ -18,6 +18,7 @@
 
 ---
 
+<a name="baseline-standards"></a>
 ## 📋 Baseline Standards
 
 ### TypeScript
@@ -64,6 +65,7 @@
 
 ---
 
+<a name="project-conventions-by-area"></a>
 ## 🔧 Project Conventions By Area
 
 ### Route handlers
@@ -123,6 +125,7 @@ If you need raw SQL:
 
 ---
 
+<a name="recommended-workflow"></a>
 ## 🔄 Recommended Workflow
 
 ### 1. Inspect before editing
@@ -167,6 +170,7 @@ pnpm prisma generate
 
 ---
 
+<a name="testing-expectations"></a>
 ## 🧪 Testing Expectations
 
 ### What to test
@@ -199,6 +203,7 @@ The following areas deserve extra care:
 
 ---
 
+<a name="documentation-maintenance"></a>
 ## 📝 Documentation Maintenance
 
 Documentation is now a first-class maintenance task.
@@ -226,6 +231,7 @@ Documentation is now a first-class maintenance task.
 
 ---
 
+<a name="pull-request-checklist"></a>
 ## ✅ Pull Request Checklist
 
 Use this before opening or updating a PR:
@@ -242,6 +248,7 @@ Use this before opening or updating a PR:
 
 ---
 
+<a name="design-and-frontend-notes"></a>
 ## 🎨 Design and Frontend Notes
 
 The project standards are explicit:
@@ -256,6 +263,7 @@ The project standards are explicit:
 
 ---
 
+<a name="legacy-and-transitional-areas"></a>
 ## ⚠️ Legacy and Transitional Areas
 
 Be careful with features that still exist as compatibility surfaces.
@@ -275,6 +283,7 @@ They intentionally return `410 Gone`. Do not build new pricing work against them
 
 ---
 
+<a name="if-you-are-unsure"></a>
 ## ❓ If You Are Unsure
 
 When the right location for logic is unclear, default to this order:

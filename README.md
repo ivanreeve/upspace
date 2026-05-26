@@ -18,17 +18,18 @@
 - [Live Demo](#live-demo)
 - [Getting Started](#getting-started)
 - [System Config](#system-config)
-- [Test Credentials / Access Roles](#test-credentials--access-roles)
-- [User Roles & Permissions](#user-roles--permissions)
+- [Test Credentials / Access Roles](#test-credentials-access-roles)
+- [User Roles & Permissions](#user-roles-permissions)
 - [Usage Guide](#usage-guide)
 - [API Documentation](#api-documentation)
 - [Contributing](#contributing)
 - [Security](#security)
 - [License](#license)
-- [Contact & Support](#contact--support)
+- [Contact & Support](#contact-support)
 
 ---
 
+<a name="about-the-project"></a>
 ## 📖 About the Project
 
 ### Overview
@@ -67,14 +68,16 @@ UpSpace is a full-stack coworking space marketplace and booking application buil
 
 ---
 
+<a name="live-demo"></a>
 ## 🚀 Live Demo
 
-A public live environment is not currently published.
+[**Live Website: https://upspaceph.com**](https://upspaceph.com)
 
-> **Note:** If a staging or production deployment becomes available in the future, it will be listed here with the corresponding URL and deployment notes.
+> **Note:** This is the production deployment. A separate staging environment is not currently published.
 
 ---
 
+<a name="getting-started"></a>
 ## 🛠️ Getting Started
 
 ### Prerequisites
@@ -257,6 +260,7 @@ The repository does not currently include a committed `.env.example`, so create 
 
 ---
 
+<a name="system-config"></a>
 ## ⚙️ System Config
 
 ### Local
@@ -266,21 +270,22 @@ The repository does not currently include a committed `.env.example`, so create 
 | **Installation** | `git clone https://github.com/ivanreeve/upspace.git`, `cd upspace`, `pnpm install` |
 | **Tools** | Node.js `20.x`, `pnpm`, Git, PostgreSQL (or Supabase project) |
 | **Environment setup** | Create `.env` manually; enable PostgreSQL extensions (`postgis`, `pg_trgm`, `uuid-ossp`); run `pnpm prisma generate` and `pnpm prisma migrate dev` |
-| **Test credentials** | Not currently published; create locally or in a controlled staging environment (see [Test Credentials / Access Roles](#test-credentials--access-roles)) |
+| **Test credentials** | Not currently published; create locally or in a controlled staging environment (see [Test Credentials / Access Roles](#test-credentials-access-roles)) |
 
 ### Cloud
 
 | Item | Details |
 | --- | --- |
-| **Hosting platform** | Not currently deployed |
-| **URL** | Not published |
+| **Hosting platform** | Vercel (production) |
+| **URL** | [https://upspaceph.com](https://upspaceph.com) |
 | **Deployment account** | — |
 | **Access credentials** | — |
 
-> **Note:** A public staging or production deployment is not currently published. When one is created, update this table with the hosting provider, live URL, deployment account details, and any cloud-specific access credentials.
+> **Note:** A separate staging environment is not currently published.
 
 ---
 
+<a name="test-credentials-access-roles"></a>
 ## 🔐 Test Credentials / Access Roles
 
 > **⚠️ SECURITY WARNING:** If test/demo credentials are created for QA, demonstration, or evaluation, rotate them immediately in any real deployment, never reuse them in production, and restrict access to authorized reviewers.
@@ -295,6 +300,7 @@ Test credentials are not currently published in this repository. When needed, th
 
 ---
 
+<a name="user-roles-permissions"></a>
 ## 👥 User Roles & Permissions
 
 UpSpace supports three principal application roles. The matrix below focuses on representative capabilities.
@@ -327,6 +333,7 @@ UpSpace supports three principal application roles. The matrix below focuses on 
 
 ---
 
+<a name="usage-guide"></a>
 ## 🧭 Usage Guide
 
 ### How to Sign Up or Log In
@@ -367,6 +374,7 @@ Product screenshots are not currently embedded in this README. Recommended captu
 
 ---
 
+<a name="api-documentation"></a>
 ## 🔌 API Documentation
 
 Most backend routes are exposed under the `/api/v1` prefix. A small number of system-level routes (auth callback, provider webhooks, onboarding) live directly under `/api/*`.
@@ -374,7 +382,7 @@ Most backend routes are exposed under the `/api/v1` prefix. A small number of sy
 ### Base URL
 
 - Local: `http://localhost:3000/api/v1`
-- Production: depends on deployment (not currently published)
+- Production: `https://upspaceph.com/api/v1`
 
 ### Authentication
 
@@ -418,6 +426,7 @@ Most backend routes are exposed under the `/api/v1` prefix. A small number of sy
 
 ---
 
+<a name="contributing"></a>
 ## 🤝 Contributing
 
 Contributions should follow the project’s review and testing expectations before merge.
@@ -454,6 +463,7 @@ See [`docs/development.md`](docs/development.md) for the full development guide.
 
 ---
 
+<a name="security"></a>
 ## 🛡️ Security
 
 Security is a shared responsibility across development, QA, deployment, and administrative operations.
@@ -477,12 +487,14 @@ Security is a shared responsibility across development, QA, deployment, and admi
 
 ---
 
+<a name="license"></a>
 ## 📄 License
 
 This project is licensed under the MIT License. See [`LICENSE.md`](LICENSE.md) for details.
 
 ---
 
+<a name="contact-support"></a>
 ## 📬 Contact & Support
 
 | Topic | Details |

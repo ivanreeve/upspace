@@ -21,6 +21,7 @@
 
 ---
 
+<a name="system-overview"></a>
 ## 🏗️ System Overview
 
 UpSpace is a full-stack App Router application with a single TypeScript codebase and a PostgreSQL-backed data model. The main architectural layers are:
@@ -37,6 +38,7 @@ UpSpace is a full-stack App Router application with a single TypeScript codebase
 
 ---
 
+<a name="app-router-structure"></a>
 ## 📁 App Router Structure
 
 ### Route groups
@@ -64,6 +66,7 @@ Several cross-cutting concerns are handled centrally:
 
 ---
 
+<a name="api-architecture"></a>
 ## 🔌 API Architecture
 
 The versioned REST surface lives under `src/app/api/v1`. The route families map closely to product domains:
@@ -113,6 +116,7 @@ Authorization is role-based, with three principal roles:
 
 ---
 
+<a name="domain-model"></a>
 ## 🗄️ Domain Model
 
 The Prisma schema is the best source of truth for persisted state. The following entities form the core business model.
@@ -171,6 +175,7 @@ The Prisma schema is the best source of truth for persisted state. The following
 
 ---
 
+<a name="booking-lifecycle-design"></a>
 ## 📋 Booking Lifecycle Design
 
 Bookings are central to the application and drive multiple downstream systems.
@@ -207,6 +212,7 @@ Allowed transitions are encoded in `src/lib/bookings/constants.ts`.
 
 ---
 
+<a name="pricing-model"></a>
 ## 💰 Pricing Model
 
 UpSpace no longer treats area pricing as a static rate table. The current architecture favors declarative pricing rules:
@@ -220,6 +226,7 @@ UpSpace no longer treats area pricing as a static rate table. The current archit
 
 ---
 
+<a name="wallet-and-financial-design"></a>
 ## 💳 Wallet and Financial Design
 
 Wallet behavior is tied to partner operations rather than generic stored-value top-ups.
@@ -246,6 +253,7 @@ Wallet behavior is tied to partner operations rather than generic stored-value t
 
 ---
 
+<a name="ai-architecture"></a>
 ## 🤖 AI Architecture
 
 The AI layer is not isolated in a separate service. It is embedded into the Next.js backend.
@@ -271,6 +279,7 @@ The AI layer is not isolated in a separate service. It is embedded into the Next
 
 ---
 
+<a name="search-geo-and-caching"></a>
 ## 🔍 Search, Geo, and Caching
 
 ### Search
@@ -300,6 +309,7 @@ Without Redis, the app can still run, but you should expect behavior to be less 
 
 ---
 
+<a name="ui-layer-and-component-architecture"></a>
 ## 🎨 UI Layer and Component Architecture
 
 The frontend follows a feature-first organization:
@@ -321,6 +331,7 @@ The frontend follows a feature-first organization:
 
 ---
 
+<a name="documentation-architecture"></a>
 ## 📄 Documentation Architecture
 
 The repository now treats API documentation as generated output instead of a manually curated stub.
@@ -346,6 +357,7 @@ If a route is added or changed but `pnpm docs:api` is not run, the UI docs and t
 
 ---
 
+<a name="suggested-reading-order"></a>
 ## 📖 Suggested Reading Order
 
 If you are new to the codebase:
